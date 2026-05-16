@@ -70,10 +70,11 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - Stale native electrolyte LLE and reactive-phase tests that protected accepted Ceres equilibrium solves were deleted. Residual-surface derivative tests remain as private diagnostic coverage until native Ipopt route builders own production equilibrium.
 - Old PR #126 and issue-specific Ceres-equilibrium handoff documents were removed from active docs, and literature benchmark metadata now points blocked Ascani LLE/reactive-phase cases at the native Ipopt gate plan.
 - Public route-pending errors now describe the current Ipopt ownership requirement without naming retired solver routes as compatibility context.
-- Runtime reactive-regression capability labels now describe residual-only contexts instead of naming Python orchestration as a solver backend.
+- Runtime reactive-regression capability labels now describe residual-evaluation contexts instead of naming Python orchestration as a solver backend.
 - The unreferenced tracked LaTeX backup `docs/latex/equations_old.tex` was deleted; `docs/latex/equations.tex` remains the equation source of truth.
 - Completed, unreferenced JetBrains cleanup plan artifacts were removed now that the repo-owned script exists.
 - Remaining unreferenced stale handoff/planning artifacts under `docs/handoffs/` and `docs/plans/` were removed so the native Ipopt gate plan is the active implementation handoff.
+- The public reactive-electrolyte fit helper now validates fit requests and raises until native Ceres owns that optimizer with exact derivatives; the retained public path is objective/residual evaluation, not a manufactured fit result.
 - The unused private `_solve_equilibrium_native` pybind wrapper and Python payload adapter were removed; public equilibrium routes remain gated to native Ipopt builders, and private residual-surface bindings stay separate.
 - The `_core` pybind module now disables pybind11 release extras and MSVC optimization for the large binding translation unit; native thermodynamic objects remain Release-optimized.
 - The reactive phase diagnostic extent helper no longer uses NumPy's least-squares convenience path; it uses a direct library linear solve for the small stoichiometric normal system.

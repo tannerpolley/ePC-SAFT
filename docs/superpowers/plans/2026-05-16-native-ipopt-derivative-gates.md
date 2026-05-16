@@ -657,7 +657,7 @@ is documented as a diagnostic residual context until native Ceres owns that rout
 Ipopt as an explicit constrained-NLP backend with current public wiring limited to homogeneous ideal reactive speciation,
 and they state the convex formulation scope as homogeneous ideal subkernels only.
 
-Task 12 continuation note: reactive electrolyte fit status metadata no longer carries an empty placeholder-status list; the residual-only route is labeled `residual_evaluation_only`. EOS derivative coverage matrices now report implemented or out-of-scope rows only instead of acting as a missing-derivative backlog. Unsupported public property-derivative methods raise `InputError` directly rather than returning placeholder derivative result objects.
+Task 12 continuation note: reactive electrolyte fit metadata now reports a gated native-Ceres fit route instead of a public placeholder-status contract. EOS derivative coverage matrices now report implemented or out-of-scope rows only instead of acting as a missing-derivative backlog. Unsupported public property-derivative methods raise `InputError` directly rather than returning placeholder derivative result objects.
 
 Task 12 continuation note: Python/native EOS property wrappers no longer reintroduce removed regression fallback/Hessian skeleton metadata, and public `dadx()` payloads no longer expose an empty missing-derivative reason field. The composition-derivative path now either reports implemented derivative backends or raises a typed unsupported-derivative error.
 
@@ -702,6 +702,8 @@ Task 12 continuation note: obsolete PR #126 and issue-specific Ceres-equilibrium
 Task 12 continuation note: public route-pending errors for neutral flash/LLE/stability, electrolyte LLE/bubble, reactive speciation, and reactive phase equilibrium now state the native Ipopt ownership requirement directly without naming retired solver routes as compatibility context.
 
 Task 12 continuation note: reactive-regression runtime capability labels now describe structured residual-evaluation contexts instead of naming Python orchestration as a solver backend. The metadata keeps the route explicitly non-optimizer until native Ceres derivative coverage owns the production fit.
+
+Task 10/12 continuation note: public `fit_reactive_electrolyte_parameters(...)` now validates the batch/context, fitted parameter map, bounds, iteration count, and tolerance, then raises `InputError` until native Ceres owns the reactive-electrolyte optimizer with exact derivatives. The supported public diagnostic path remains `evaluate_reactive_regression_objective(...)`; tests, docs, runtime capabilities, and the text gate no longer protect the retired residual-only fit status.
 
 Task 12 continuation note: the unreferenced tracked LaTeX backup `docs/latex/equations_old.tex` was deleted. The current source of truth remains `docs/latex/equations.tex`, with generated equation navigation kept in `docs/equations.md` and `docs/equations_registry.yaml`.
 

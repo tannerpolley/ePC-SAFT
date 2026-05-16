@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 import numpy as np
 import pytest
 
@@ -63,33 +61,15 @@ def _native_mixed_pressure_speciation_batch() -> tuple[epcsaft.ReactiveElectroly
     )
     return batch, water_sigma
 
-def test_fit_reactive_electrolyte_parameters_returns_fit_result_and_applies_bounds(monkeypatch, tmp_path: Path) -> None:
-    def fake_solve(**kwargs):
-        mix = kwargs["mixture_factory"](kwargs["initial_x"], kwargs["T"], kwargs["P_seed"])
-        sigma = float(np.asarray(mix._params["s"], dtype=float)[0])
-        pressure = 100000.0 + 1000.0 * (sigma - 3.0)
-        x_a = 0.2 + 0.01 * (sigma - 3.0)
-        return epcsaft.ReactiveElectrolyteBubbleResult(
-            success=True,
-            message="converged",
-            x_liq={"A": x_a, "B": 1.0 - x_a},
-            activity_coefficients={"A": 1.0, "B": 1.0},
-            mass_balance_residuals={"total": 0.0},
-            charge_residual=0.0,
-            reaction_residuals=[],
-            named_reaction_residuals={},
-            P_total=pressure,
-            y_vap={"A": 0.3, "B": 0.7},
-            partial_pressures={"A": 30000.0},
-            fugacity_residual={"A": 0.0},
-            fugacity_residual_norm=1.0e-9,
-            state_failure_count=0,
-            penalty_residuals=[],
-            diagnostics={},
-        )
+def test_fit_reactive_electrolyte_parameters_validates_then_requires_native_ceres(monkeypatch) -> None:
+    called_solver = False
 
-    monkeypatch.setattr("epcsaft.reactive_electrolyte.solve_reactive_electrolyte_bubble", fake_solve)
+    def fail_if_called(**_kwargs):
+        nonlocal called_solver
+        called_solver = True
+        raise AssertionError("fit route must not evaluate residual rows before native Ceres owns optimization")
 
+    monkeypatch.setattr("epcsaft.reactive_electrolyte.solve_reactive_electrolyte_bubble", fail_if_called)
     batch = epcsaft.ReactiveElectrolyteBatch(
         species=["A", "B"],
         rows=[
@@ -115,44 +95,16 @@ def test_fit_reactive_electrolyte_parameters_returns_fit_result_and_applies_boun
         options=epcsaft.ReactiveElectrolyteBatchOptions(include_state_outputs=False),
     )
 
-    fit = epcsaft.fit_reactive_electrolyte_parameters(
-        batch,
-        initial_parameters={"A.sigma": 2.8},
-        lower_bounds={"A.sigma": 2.5},
-        upper_bounds={"A.sigma": 3.05},
-        max_iterations=4,
-        tolerance=1.0e-10,
-    )
-
-    assert isinstance(fit, epcsaft.ReactiveRegressionFitResult)
-    assert fit.status == "residual_evaluation_only"
-    assert fit.termination_reason == "residual_evaluation_only"
-    assert fit.objective_final == pytest.approx(fit.objective_initial)
-    assert fit.gradient_norm is None
-    assert fit.step_norm is None
-    assert fit.parameter_map["A.sigma"] == pytest.approx(2.8)
-    assert fit.active_bounds["A.sigma"] is False
-    assert fit.covariance_available is False
-    summary = epcsaft.summarize_regression_result(fit)
-    assert summary["fit_success"] is False
-    assert summary["fit_status"] == "residual_evaluation_only"
-    assert summary["termination_reason"] == fit.termination_reason
-    assert summary["upper_bounds"]["A.sigma"] == pytest.approx(3.05)
-    assert summary["covariance_status"] == "not_computed"
-
-    summary_path = tmp_path / "fit_summary.json"
-    rows_path = tmp_path / "fit_rows.csv"
-    residuals_path = tmp_path / "fit_residuals.csv"
-    params_path = tmp_path / "fit_params.csv"
-    epcsaft.write_regression_summary(fit, summary_path)
-    epcsaft.write_regression_row_table(fit, rows_path)
-    epcsaft.write_regression_residual_table(fit, residuals_path)
-    epcsaft.write_regression_parameter_table(fit, params_path)
-
-    assert '"fit_success": false' in summary_path.read_text(encoding="utf-8")
-    assert "active_bound" in params_path.read_text(encoding="utf-8")
-    assert rows_path.exists()
-    assert residuals_path.exists()
+    with pytest.raises(epcsaft.InputError, match="native Ceres optimizer"):
+        epcsaft.fit_reactive_electrolyte_parameters(
+            batch,
+            initial_parameters={"A.sigma": 2.8},
+            lower_bounds={"A.sigma": 2.5},
+            upper_bounds={"A.sigma": 3.05},
+            max_iterations=4,
+            tolerance=1.0e-10,
+        )
+    assert called_solver is False
 
 def test_fit_reactive_electrolyte_parameters_rejects_invalid_parameter_inputs(monkeypatch) -> None:
     monkeypatch.setattr(
@@ -216,7 +168,7 @@ def test_fit_reactive_electrolyte_parameters_rejects_invalid_parameter_inputs(mo
             upper_bounds={"A.sigma": 3.1},
         )
 
-def test_fit_reactive_electrolyte_parameters_accepts_speciation_rows(monkeypatch) -> None:
+def test_evaluate_reactive_regression_objective_accepts_speciation_rows(monkeypatch) -> None:
     def fake_speciation(**kwargs):
         mix = kwargs["mixture_factory"](kwargs["initial_x"], kwargs["T"], kwargs["P"])
         sigma = float(np.asarray(mix._params["s"], dtype=float)[0])
@@ -261,117 +213,36 @@ def test_fit_reactive_electrolyte_parameters_accepts_speciation_rows(monkeypatch
         options=epcsaft.ReactiveElectrolyteBatchOptions(include_state_outputs=False),
     )
 
-    fit = epcsaft.fit_reactive_electrolyte_parameters(
+    result = epcsaft.evaluate_reactive_regression_objective(
         batch,
-        initial_parameters={"A.sigma": 2.9},
-        max_iterations=3,
-        tolerance=1.0e-12,
+        parameter_map={"A.sigma": 2.9},
     )
 
-    summary = epcsaft.summarize_regression_result(fit)
-    assert isinstance(fit, epcsaft.ReactiveRegressionFitResult)
-    assert fit.objective_result.batch_result.success_count == 1
+    summary = epcsaft.summarize_regression_result(result)
+    assert result.batch_result.success_count == 1
     assert "validation" in summary["by_source"]
     assert "holdout" in summary["train_validation"]
-    assert isinstance(summary["fit_success"], bool)
+    assert summary["fit_success"] is None
 
-def test_fit_reactive_electrolyte_parameters_reports_route_pending_mixed_objective() -> None:
+def test_evaluate_reactive_regression_objective_reports_route_pending_mixed_objective() -> None:
     batch, _water_sigma = _native_mixed_pressure_speciation_batch()
 
-    fit = epcsaft.fit_reactive_electrolyte_parameters(
+    result = epcsaft.evaluate_reactive_regression_objective(
         batch,
-        initial_parameters={"Na+.sigma": 2.7},
-        lower_bounds={"Na+.sigma": 2.5},
-        upper_bounds={"Na+.sigma": 3.1},
-        max_iterations=2,
-        tolerance=1.0e-8,
+        parameter_map={"Na+.sigma": 2.7},
     )
 
-    payload = fit.to_dict()
-    summary = epcsaft.summarize_regression_result(fit)
-    target_counts = fit.objective_result.batch_result.diagnostics["target_family_counts"]
-    row = fit.objective_result.batch_result.row_results[0]
+    payload = result.to_dict()
+    summary = epcsaft.summarize_regression_result(result)
+    target_counts = result.batch_result.diagnostics["target_family_counts"]
+    row = result.batch_result.row_results[0]
 
-    assert fit.objective_final == pytest.approx(fit.objective_initial)
-    assert fit.status == "failed_rows"
-    assert fit.objective_result.batch_result.success_count == 0
-    assert fit.objective_result.batch_result.failure_count == 1
+    assert result.batch_result.success_count == 0
+    assert result.batch_result.failure_count == 1
     assert row.success is False
     assert row.solver_status == "exception"
     assert "reactive_speciation requires a native Ipopt homogeneous reactive-speciation NLP route" in row.message
     assert target_counts["partial_pressure"] == 1
     assert target_counts["speciation"] == 1
-    assert payload["status"] == fit.status
-    assert payload["termination_reason"] == fit.termination_reason
-    assert payload["objective_initial"] == pytest.approx(fit.objective_initial)
-    assert payload["objective_final"] == pytest.approx(fit.objective_final)
-    assert "bounded_incomplete" not in str(payload)
-    assert summary["fit_status"] == fit.status
-    assert "bounded_incomplete" not in str(summary)
-
-def test_fit_reactive_electrolyte_parameters_reports_nonconverged_fit(monkeypatch) -> None:
-    def fake_solve(**kwargs):
-        mix = kwargs["mixture_factory"](kwargs["initial_x"], kwargs["T"], kwargs["P_seed"])
-        sigma = float(np.asarray(mix._params["s"], dtype=float)[0])
-        pressure = 100000.0 + 1000.0 * (sigma - 3.0)
-        x_a = 0.2 + 0.01 * (sigma - 3.0)
-        return epcsaft.ReactiveElectrolyteBubbleResult(
-            success=True,
-            message="converged",
-            x_liq={"A": x_a, "B": 1.0 - x_a},
-            activity_coefficients={"A": 1.0, "B": 1.0},
-            mass_balance_residuals={"total": 0.0},
-            charge_residual=0.0,
-            reaction_residuals=[],
-            named_reaction_residuals={},
-            P_total=pressure,
-            y_vap={"A": 0.3, "B": 0.7},
-            partial_pressures={"A": 30000.0},
-            fugacity_residual={"A": 0.0},
-            fugacity_residual_norm=1.0e-9,
-            state_failure_count=0,
-            penalty_residuals=[],
-            diagnostics={},
-        )
-
-    monkeypatch.setattr("epcsaft.reactive_electrolyte.solve_reactive_electrolyte_bubble", fake_solve)
-
-    batch = epcsaft.ReactiveElectrolyteBatch(
-        species=["A", "B"],
-        rows=[
-            epcsaft.ReactiveElectrolyteRow(
-                row_id="row1",
-                T=298.15,
-                P_seed=101325.0,
-                totals={"A": 0.2, "B": 0.8},
-                initial_x=[0.2, 0.8],
-                balances={"a_total": {"A": 1.0}, "b_total": {"B": 1.0}},
-                reactions=[],
-                vapor_species=["A", "B"],
-                target_pressure=100600.0,
-                target_speciation={"A": 0.206},
-            )
-        ],
-        balances={"a_total": {"A": 1.0}, "b_total": {"B": 1.0}},
-        reactions=[],
-        vapor_species=["A", "B"],
-        base_parameters=_tiny_base_parameters(),
-        options=epcsaft.ReactiveElectrolyteBatchOptions(include_state_outputs=False),
-    )
-
-    fit = epcsaft.fit_reactive_electrolyte_parameters(
-        batch,
-        initial_parameters={"A.sigma": 2.8},
-        max_iterations=1,
-        tolerance=1.0e-12,
-    )
-
-    assert fit.success is False
-    assert (
-        fit.message
-        == "reactive-regression optimization is residual-evaluation-only until native Ceres derivative coverage is routed."
-    )
-    assert fit.status == "residual_evaluation_only"
-    assert fit.termination_reason == "residual_evaluation_only"
-    assert fit.objective_final <= fit.objective_initial
-    assert fit.iterations == 0
+    assert payload["objective"] == pytest.approx(result.objective)
+    assert summary["fit_status"] == "not_a_fit"

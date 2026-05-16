@@ -524,7 +524,7 @@ class ReactiveRegressionJacobianResult:
 
 @dataclass(frozen=True, slots=True)
 class ReactiveRegressionFitResult:
-    """Structured result for a bounded reactive-regression fit loop."""
+    """Structured result payload for native Ceres reactive-regression fits."""
 
     success: bool
     message: str
@@ -936,13 +936,17 @@ def fit_reactive_electrolyte_parameters(
     max_iterations: int = 6,
     tolerance: float = 1.0e-6,
 ) -> ReactiveRegressionFitResult:
-    return _fit_reactive_parameters_impl(
+    _validate_reactive_fit_request(
         batch_or_context,
         initial_parameters=initial_parameters,
         lower_bounds=lower_bounds,
         upper_bounds=upper_bounds,
         max_iterations=max_iterations,
         tolerance=tolerance,
+    )
+    raise InputError(
+        "reactive electrolyte parameter fitting requires a native Ceres optimizer with exact derivatives; "
+        "use evaluate_reactive_regression_objective(...) for diagnostic residual evaluation until that route exists."
     )
 
 
@@ -1134,7 +1138,7 @@ def write_regression_residual_table(
     return target
 
 
-def _fit_reactive_parameters_impl(
+def _validate_reactive_fit_request(
     batch_or_context: ReactiveElectrolyteBatch | ReactiveElectrolyteRegressionContext,
     *,
     initial_parameters: Mapping[str, float],
@@ -1142,32 +1146,18 @@ def _fit_reactive_parameters_impl(
     upper_bounds: Mapping[str, float | None] | None = None,
     max_iterations: int = 6,
     tolerance: float = 1.0e-6,
-) -> ReactiveRegressionFitResult:
-    if isinstance(batch_or_context, ReactiveElectrolyteRegressionContext):
-        context = batch_or_context
-    else:
-        context = ReactiveElectrolyteRegressionContext.from_batch(
-            species=batch_or_context.species,
-            rows=batch_or_context.rows,
-            balances=batch_or_context.balances,
-            reactions=batch_or_context.reactions,
-            options=batch_or_context.options,
-            vapor_species=batch_or_context.vapor_species,
-            volatile_species=batch_or_context.volatile_species,
-            nonvolatile_species=batch_or_context.nonvolatile_species,
-            base_parameters=batch_or_context.base_parameters,
-            user_options=batch_or_context.user_options,
-            mixture_factory=batch_or_context.mixture_factory,
-            mixture_factory_builder=batch_or_context.mixture_factory_builder,
-            reactive_speciation_options=batch_or_context.reactive_speciation_options,
-            reactive_bubble_options=batch_or_context.reactive_bubble_options,
+) -> None:
+    if not isinstance(batch_or_context, (ReactiveElectrolyteBatch, ReactiveElectrolyteRegressionContext)):
+        raise InputError(
+            "batch_or_context must be a ReactiveElectrolyteBatch or ReactiveElectrolyteRegressionContext."
         )
-    current = {str(k): float(v) for k, v in initial_parameters.items()}
+    if not isinstance(initial_parameters, Mapping):
+        raise InputError("initial_parameters must be a mapping of fitted parameter names to values.")
+    current = {str(k): _finite_fit_number(v, f"initial_parameters[{k!r}]") for k, v in initial_parameters.items()}
     if not current:
         raise InputError("initial_parameters must include at least one fitted parameter.")
-    seed_map = dict(current)
-    lower = {str(k): (None if v is None else float(v)) for k, v in (lower_bounds or {}).items()}
-    upper = {str(k): (None if v is None else float(v)) for k, v in (upper_bounds or {}).items()}
+    lower = _fit_bounds_map(lower_bounds, "lower_bounds")
+    upper = _fit_bounds_map(upper_bounds, "upper_bounds")
     parameter_names = tuple(current)
     unknown_lower = sorted(set(lower) - set(parameter_names))
     if unknown_lower:
@@ -1180,80 +1170,33 @@ def _fit_reactive_parameters_impl(
         hi = upper.get(name)
         if lo is not None and hi is not None and lo > hi:
             raise InputError(f"Bounds for {name} are inconsistent: lower_bound > upper_bound.")
-    if max_iterations <= 0:
+    try:
+        iteration_count = int(max_iterations)
+    except (TypeError, ValueError):
+        raise InputError("max_iterations must be positive.") from None
+    if iteration_count <= 0:
         raise InputError("max_iterations must be positive.")
-    if tolerance <= 0.0:
+    tolerance_value = _finite_fit_number(tolerance, "tolerance")
+    if tolerance_value <= 0.0:
         raise InputError("tolerance must be positive.")
 
-    trajectory: list[dict[str, Any]] = []
-    objective_result = context.evaluate_objective(current)
-    objective_initial = float(objective_result.objective)
-    message = "reactive-regression optimization is residual-evaluation-only until native Ceres derivative coverage is routed."
-    termination_reason = "residual_evaluation_only"
-    final_jacobian: ReactiveRegressionJacobianResult | None = None
-    last_step_norm: float | None = None
 
-    covariance_available = False
-    covariance_matrix: np.ndarray | None = None
-    identifiability_status = "not_computed"
-    covariance_diagnostics: dict[str, Any] = {"covariance_reason": "jacobian_not_computed"}
-    if final_jacobian is not None:
-        finite = np.all(np.isfinite(final_jacobian.jacobian))
-        if finite and final_jacobian.jacobian.size:
-            jtj = final_jacobian.jacobian.T @ final_jacobian.jacobian
-            try:
-                covariance_matrix = np.linalg.pinv(jtj)
-                covariance_available = True
-                cond_value = float(np.linalg.cond(jtj))
-                identifiability_status = "well_conditioned" if cond_value < 1.0e8 else "ill_conditioned"
-                covariance_diagnostics = {"condition_number": cond_value}
-            except np.linalg.LinAlgError:
-                covariance_diagnostics = {"covariance_reason": "JTJ inversion failed"}
-    active_bounds = {
-        name: (
-            (
-                lower.get(name) is not None
-                and math.isclose(current[name], float(lower[name]), rel_tol=0.0, abs_tol=1.0e-10)
-            )
-            or (
-                upper.get(name) is not None
-                and math.isclose(current[name], float(upper[name]), rel_tol=0.0, abs_tol=1.0e-10)
-            )
-        )
-        for name in parameter_names
-    }
-    gradient_norm = None if final_jacobian is None else float(np.linalg.norm(final_jacobian.gradient))
-    success = False
-    if objective_result.batch_result.failure_count:
-        status = "failed_rows"
-    else:
-        status = "residual_evaluation_only"
-    return ReactiveRegressionFitResult(
-        success=success,
-        message=message,
-        status=status,
-        termination_reason=termination_reason,
-        iterations=len(trajectory),
-        objective_initial=objective_initial,
-        objective_final=float(objective_result.objective),
-        gradient_norm=gradient_norm,
-        step_norm=last_step_norm,
-        parameter_map=current,
-        seed_map=seed_map,
-        lower_bounds=lower,
-        upper_bounds=upper,
-        active_bounds=active_bounds,
-        objective_result=objective_result,
-        covariance_available=covariance_available,
-        covariance_matrix=covariance_matrix,
-        identifiability_status=identifiability_status,
-        diagnostics={
-            "trajectory": trajectory,
-            "jacobian": None if final_jacobian is None else final_jacobian.to_dict(),
-            "covariance": covariance_diagnostics,
-            "route_boundary_reason": message,
-        },
-    )
+def _finite_fit_number(value: Any, label: str) -> float:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        raise InputError(f"{label} must be finite.") from None
+    if not math.isfinite(number):
+        raise InputError(f"{label} must be finite.")
+    return number
+
+
+def _fit_bounds_map(values: Mapping[str, float | None] | None, label: str) -> dict[str, float | None]:
+    if values is None:
+        return {}
+    if not isinstance(values, Mapping):
+        raise InputError(f"{label} must be a mapping of fitted parameter names to bounds.")
+    return {str(k): (None if v is None else _finite_fit_number(v, f"{label}[{k!r}]")) for k, v in values.items()}
 
 
 def _write_csv_rows(path: Path, rows: Sequence[Mapping[str, Any]]) -> None:

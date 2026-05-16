@@ -362,7 +362,7 @@ Main entry points:
 - ``ReactiveElectrolyteBatch``: shared species, balances, reactions, parameter payload, and solver options
 - ``ReactiveElectrolyteRegressionContext.from_batch(...)``: compile invariant row/schema metadata once
 - ``evaluate_reactive_regression_objective(...)``: evaluate a structured mixed residual objective
-- ``fit_reactive_electrolyte_parameters(...)``: residual-only fit-result wrapper over the compiled context
+- ``fit_reactive_electrolyte_parameters(...)``: validate a requested fit and raise until the native Ceres optimizer owns it
 - ``summarize_regression_result(...)`` plus ``write_regression_*`` helpers: stable JSON/CSV reporting
 
 Minimal example:
@@ -438,12 +438,6 @@ Structured outputs follow stable field names:
   ``residual_names``, ``residual_row_map``, ``diagnostics``, ``cache_stats``,
   ``timing_summary``
 - objective: ``objective``, ``metrics``, and the embedded ``batch_result``
-- fit: ``success``, ``message``, ``status``, ``termination_reason``,
-  ``iterations``, ``objective_initial``, ``objective_final``,
-  ``gradient_norm``, ``step_norm``, ``parameter_map``, ``seed_map``,
-  ``lower_bounds``, ``upper_bounds``, ``active_bounds``, ``objective_result``,
-  ``covariance_available``, ``covariance_matrix``, ``identifiability_status``,
-  and ``diagnostics``
 
 Reporting helpers write those schemas without downstream column guessing:
 
@@ -452,20 +446,21 @@ Reporting helpers write those schemas without downstream column guessing:
    epcsaft.write_regression_summary(result, "build/regression/summary.json")
    epcsaft.write_regression_row_table(result, "build/regression/rows.csv")
    epcsaft.write_regression_residual_table(result, "build/regression/residuals.csv")
+   epcsaft.write_regression_parameter_table(
+       {"Na+.sigma": 2.85},
+       "build/regression/parameters.csv",
+       seed_map={"Na+.sigma": 2.80},
+   )
 
-Reactive-electrolyte fitting currently returns ``residual_evaluation_only`` until native
-Ceres derivative coverage owns the optimization. Pass that result directly to
-the same reporting helpers. ``write_regression_parameter_table(...)``
-accepts either a raw parameter map plus ``seed_map=...`` or the full
-``ReactiveRegressionFitResult`` so seed values, parameter movement, bounds, and
-active-bound flags stay aligned with the solved fit payload.
-
-The fit helper accepts the compiled batch or context plus the initial parameter
-map and optional fit controls:
+Reactive-electrolyte fitting is gated until native Ceres owns this optimizer
+with exact residual derivatives. The public fit helper still validates the
+compiled batch or context plus the initial parameter map and optional fit
+controls, then raises ``InputError`` instead of returning a synthetic fit
+payload:
 
 .. code-block:: python
 
-   fit = epcsaft.fit_reactive_electrolyte_parameters(
+   epcsaft.fit_reactive_electrolyte_parameters(
        context,
        initial_parameters={"Na+.sigma": 2.85},
        lower_bounds={"Na+.sigma": 2.5},
@@ -475,27 +470,11 @@ map and optional fit controls:
    )
 
 ``summarize_regression_result(...)`` returns ``fit_success = null`` for
-objective-only results and a boolean for true fit results. Fit results also
-carry an explicit transitional status contract:
-
-.. list-table::
-   :header-rows: 1
-
-   * - ``status``
-     - Meaning
-   * - ``residual_evaluation_only``
-     - Native Ceres derivative coverage has not yet taken ownership of this
-       optimization route, so the wrapper evaluates the objective and returns a
-       structured fit payload without moving parameters.
-   * - ``failed_rows``
-     - The final objective includes failed rows; inspect row diagnostics before
-       using the parameters.
-
-The package does not emit placeholder public statuses such as
-``bounded_incomplete``. Downstream workflows should branch on ``status``,
-``termination_reason``, ``objective_initial``, ``objective_final``,
-``gradient_norm``, and ``step_norm`` instead of inventing their own fit-state
-labels.
+objective-only results. Native Ceres fit results will provide the fit boolean,
+parameter map, covariance, and identifiability fields once that optimizer route
+is registered. Until then, downstream workflows should use
+``evaluate_reactive_regression_objective(...)`` for residual diagnostics and
+``write_regression_parameter_table(...)`` for seed or candidate parameter maps.
 
 The package-owned micro-benchmark harness for this layer is:
 

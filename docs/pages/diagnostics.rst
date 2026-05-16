@@ -11,14 +11,14 @@ and package workflow status. The important backend labels are:
 * ``native_ipopt_equilibrium_nlp_required``: public route name is declared, but
   execution is gated until the native Ipopt NLP route builder owns the solve.
 * ``batch_residual_evaluation_context``: Python batches rows and formats
-  diagnostics for a residual-only context; this is not a production optimizer.
+  diagnostics for a residual context; this is not a production optimizer.
 
 For reactive electrolyte regression, inspect
-``capabilities()["regression"]["reactive_electrolyte_batch_context"]["fit_status_contract"]``.
-It lists the public fit statuses, the top-level convergence fields, and the
-``residual_evaluation_only`` status used while native Ceres derivative coverage is not
-routed. The sibling
-``mixed_pressure_speciation_residual_context`` capability advertises the
+``capabilities()["regression"]["reactive_electrolyte_batch_context"]["fit_route"]``.
+It records that the public fit helper validates parameter maps and bounds, then
+raises ``InputError`` until native Ceres owns the optimizer route with exact
+derivatives. The sibling ``mixed_pressure_speciation_residual_context``
+capability advertises the
 diagnostic residual context, its supported target families, and the fact that
 it is not a production optimizer. Thermodynamic calculations remain native
 while row batching and diagnostic formatting stay outside the optimizer path.

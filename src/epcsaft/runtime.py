@@ -650,20 +650,15 @@ def capabilities() -> dict[str, object]:
             "reactive_electrolyte_batch_context": {
                 "available": True,
                 "backend": "batch_residual_evaluation_context",
-                "fit_status_contract": {
-                    "available": True,
-                    "statuses": [
-                        "failed_rows",
-                        "residual_evaluation_only",
-                    ],
-                    "fields": [
-                        "status",
-                        "termination_reason",
-                        "objective_initial",
-                        "objective_final",
-                        "gradient_norm",
-                        "step_norm",
-                    ],
+                "fit_route": {
+                    "available": False,
+                    "status": "route_pending",
+                    "backend": "native_ceres_required",
+                    "optimizer": "native_ceres",
+                    "raises": "InputError",
+                    "residual_evaluator": "evaluate_reactive_regression_objective",
+                    "validates_parameter_bounds": True,
+                    "derivative_requirement": "ceres_autodiff_or_cppad_implicit_exact_jacobian",
                 },
                 "mixed_pressure_speciation_residual_context": {
                     "available": True,

@@ -48,12 +48,12 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert capabilities["native_extension"] is True
     ipopt = capabilities["optimizers"]["ipopt"]
     assert ipopt["backend"] == "ipopt"
-    fit_contract = capabilities["regression"]["reactive_electrolyte_batch_context"]["fit_status_contract"]
-    assert fit_contract["available"] is True
-    assert "bounded_incomplete" not in fit_contract["statuses"]
-    assert "line" + "_search_failed" not in fit_contract["statuses"]
-    assert fit_contract["statuses"] == ["failed_rows", "residual_evaluation_only"]
-    assert "residual_evaluation_only" in fit_contract["statuses"]
+    fit_route = capabilities["regression"]["reactive_electrolyte_batch_context"]["fit_route"]
+    assert fit_route["available"] is False
+    assert fit_route["status"] == "route_pending"
+    assert fit_route["backend"] == "native_ceres_required"
+    assert fit_route["residual_evaluator"] == "evaluate_reactive_regression_objective"
+    assert fit_route["validates_parameter_bounds"] is True
     mixed_regression = capabilities["regression"]["reactive_electrolyte_batch_context"][
         "mixed_pressure_speciation_residual_context"
     ]
@@ -166,7 +166,8 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert batch_context["backend"] == "batch_residual_evaluation_context"
     assert "ReactiveElectrolyteRegressionContext" in batch_context["classes"]
     assert batch_context["methods"] == ["evaluate_objective"]
-    assert batch_context["fit_status_contract"]["statuses"] == ["failed_rows", "residual_evaluation_only"]
+    assert batch_context["fit_route"]["status"] == "route_pending"
+    assert batch_context["fit_route"]["optimizer"] == "native_ceres"
     assert capabilities["equilibrium"]["problem_objects"]["entrypoint"] == "mixture.solve_equilibrium(problem)"
     assert (
         capabilities["equilibrium"]["contribution_maps"]["activity_coefficient_term_decomposition_available"] is False
