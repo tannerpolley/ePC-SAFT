@@ -88,7 +88,6 @@ def test_electrolyte_lle_direct_feed_requested_ipopt_requires_native_adapter() -
             z=feed,
             options=epcsaft.EquilibriumOptions(
                 solver_backend="ipopt",
-                hessian_strategy="lbfgs",
                 max_iterations=80,
                 tolerance=1.0e-8,
             ),
@@ -132,7 +131,7 @@ def test_electrolyte_lle_rejects_neutral_lle_initial_phase_labels() -> None:
     mix = _ascani_water_butanol_nacl_mixture()
     feed = np.asarray([0.55, 0.40, 0.025, 0.025], dtype=float)
 
-    with pytest.raises(epcsaft.InputError, match="aq.*org.*phase_fraction"):
+    with pytest.raises(epcsaft.InputError, match=r"aq.*org.*phase_fraction"):
         mix.equilibrium(
             kind="electrolyte_lle",
             T=298.15,

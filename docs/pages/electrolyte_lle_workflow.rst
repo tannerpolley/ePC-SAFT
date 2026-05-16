@@ -78,11 +78,11 @@ failure diagnostics without phases.
 Native IPOPT plan
 -----------------
 
-``EquilibriumOptions`` accepts ``solver_backend="auto" | "newton" | "ipopt"``
-and ``hessian_strategy="gauss_newton" | "lbfgs"``. The default ``auto`` keeps
-the current native route. ``solver_backend="ipopt"`` is reserved for the native
-Ipopt constrained-NLP adapter. Until that adapter is wired to public electrolyte
-equilibrium routes, an explicit IPOPT request raises ``InputError``.
+``EquilibriumOptions`` accepts ``solver_backend="auto" | "ipopt"``. The
+default ``auto`` keeps the current native route. ``solver_backend="ipopt"`` is
+reserved for the native Ipopt constrained-NLP adapter. Until that adapter is
+wired to public electrolyte equilibrium routes, an explicit IPOPT request raises
+``InputError``.
 
 The planned native adapter will expose material balance, charge balance, phase
 amounts, thermodynamic objective terms, and derivative callbacks as formal NLP

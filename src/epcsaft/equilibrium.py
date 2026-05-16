@@ -50,7 +50,6 @@ class EquilibriumOptions:
     experimental_coupled_density_lle: bool = False
     jacobian_backend: Literal["auto", "autodiff", "analytic", "cppad"] = "auto"
     solver_backend: Literal["auto", "ipopt"] = "auto"
-    hessian_strategy: Literal["gauss_newton", "lbfgs"] = "gauss_newton"
     timeout_seconds: float | None = None
     max_seed_attempts: int | None = None
     max_density_failures: int | None = None
@@ -564,7 +563,6 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
             "experimental_coupled_density_lle",
             "jacobian_backend",
             "solver_backend",
-            "hessian_strategy",
             "timeout_seconds",
             "max_seed_attempts",
             "max_density_failures",
@@ -609,11 +607,6 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
     solver_backend = str(options.solver_backend).strip().lower()
     if solver_backend not in {"auto", "ipopt"}:
         raise InputError("options.solver_backend must be 'auto' or 'ipopt'.")
-    hessian_strategy = str(options.hessian_strategy).strip().lower()
-    hessian_aliases = {"gn": "gauss_newton", "gauss-newton": "gauss_newton", "bfgs": "lbfgs"}
-    hessian_strategy = hessian_aliases.get(hessian_strategy, hessian_strategy)
-    if hessian_strategy not in {"gauss_newton", "lbfgs"}:
-        raise InputError("options.hessian_strategy must be 'gauss_newton' or 'lbfgs'.")
     timeout_seconds = _optional_positive_float_option(options.timeout_seconds, "timeout_seconds")
     max_seed_attempts = _optional_positive_int_option(options.max_seed_attempts, "max_seed_attempts")
     max_density_failures = _optional_positive_int_option(options.max_density_failures, "max_density_failures")
@@ -634,7 +627,6 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
         experimental_coupled_density_lle=options.experimental_coupled_density_lle,
         jacobian_backend=jacobian_backend,  # type: ignore[arg-type]
         solver_backend=solver_backend,  # type: ignore[arg-type]
-        hessian_strategy=hessian_strategy,  # type: ignore[arg-type]
         timeout_seconds=timeout_seconds,
         max_seed_attempts=max_seed_attempts,
         max_density_failures=max_density_failures,
@@ -1060,7 +1052,6 @@ def _options_to_native_dict(options: EquilibriumOptions) -> dict[str, Any]:
         "experimental_coupled_density_lle": bool(options.experimental_coupled_density_lle),
         "jacobian_backend": str(options.jacobian_backend),
         "solver_backend": str(options.solver_backend),
-        "hessian_strategy": str(options.hessian_strategy),
         "timeout_seconds": None if options.timeout_seconds is None else float(options.timeout_seconds),
         "max_seed_attempts": None if options.max_seed_attempts is None else int(options.max_seed_attempts),
         "max_density_failures": None if options.max_density_failures is None else int(options.max_density_failures),
@@ -1318,7 +1309,6 @@ def _add_legacy_option_diagnostics(diagnostics: dict[str, Any], options: Equilib
     diagnostics.setdefault("density_diagnostics_mode", str(options.density_diagnostics))
     diagnostics.setdefault("experimental_coupled_density_lle", bool(options.experimental_coupled_density_lle))
     diagnostics.setdefault("requested_solver_backend", str(options.solver_backend))
-    diagnostics.setdefault("requested_hessian_strategy", str(options.hessian_strategy))
     diagnostics.setdefault("selected_solver_backend", "native")
     diagnostics.setdefault(
         "solver_selection_reason", "default_native" if options.solver_backend == "auto" else "explicit_request"
@@ -1553,7 +1543,6 @@ def _equilibrium_options_from_reactive_options(options: Any) -> EquilibriumOptio
         min_composition=float(options.min_mole_fraction),
         jacobian_backend=str(options.jacobian_backend),
         solver_backend="auto",
-        hessian_strategy=str(options.hessian_strategy),
         return_best_effort=bool(options.return_best_effort),
     )
 

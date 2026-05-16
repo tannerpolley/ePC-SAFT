@@ -380,6 +380,8 @@ Task 8 progress note: the public `EquilibriumOptions.solver_backend` contract no
 
 Task 8 continuation note: obsolete public candidate fallback controls and diagnostics were removed from `EquilibriumOptions`, option normalization, and electrolyte LLE failure diagnostics. The old compatibility dictionary aliases for split and solver-acceptance tolerances are no longer accepted.
 
+Task 8 continuation note: the public `EquilibriumOptions.hessian_strategy` knob was removed. Hessian choices are now native solver-internal details only, consistent with the gate that allows Ipopt limited-memory and Ceres Gauss-Newton behavior without reporting them as package derivative backends.
+
 ### Task 9: Replace Electrolyte And Reactive Phase Equilibrium Routes
 
 **Files:**
