@@ -1058,9 +1058,9 @@ py::dict evaluate_chemical_equilibrium_residual_native_binding(
     return native_chemical_residual_evaluation_to_dict(result);
 }
 
-std::vector<std::string> string_vector_from_request(const py::dict& request, const char* key, std::vector<std::string> fallback) {
+std::vector<std::string> string_vector_from_request(const py::dict& request, const char* key, std::vector<std::string> default_value) {
     if (!request.contains(key) || request[key].is_none()) {
-        return fallback;
+        return default_value;
     }
     return request[key].cast<std::vector<std::string>>();
 }

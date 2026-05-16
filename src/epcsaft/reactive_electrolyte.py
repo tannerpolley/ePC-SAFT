@@ -207,7 +207,7 @@ def solve_reactive_electrolyte_bubble_sweep(
                 point_options,
                 initial_pressure=float(last_pressure if last_pressure is not None else pressure_seed),
                 initial_y_vap=last_y,
-                fallback_pressure=pressure_seed,
+                default_pressure_seed=pressure_seed,
             )
             pressure_seed = float(last_pressure if last_pressure is not None else pressure_seed)
         result = solve_reactive_electrolyte_bubble(
@@ -247,10 +247,10 @@ def _with_bubble_continuation(
     *,
     initial_pressure: float,
     initial_y_vap: Mapping[str, float] | None,
-    fallback_pressure: float,
+    default_pressure_seed: float,
 ) -> ReactiveElectrolyteBubbleOptions:
     base = options.bubble_options or ElectrolyteBubbleOptions(
-        initial_pressure=float(fallback_pressure),
+        initial_pressure=float(default_pressure_seed),
         return_best_effort=options.error_mode != "raise",
     )
     return replace(

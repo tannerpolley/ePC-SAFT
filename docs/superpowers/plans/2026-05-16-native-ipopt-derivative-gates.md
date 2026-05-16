@@ -511,6 +511,8 @@ Task 12 continuation note: stale planning and GoalBuddy notes no longer preserve
 
 Task 12 continuation note: reactive electrolyte regression no longer exposes the unused failed warm-start policy or the per-row reused-seed status flag. Failed reused seeds remain visible through `warm_start_failed` and `warm_start_source`, while the residual-only route keeps explicit penalty/drop failure handling.
 
+Task 12 continuation note: active source, tests, and dev scripts no longer carry the remaining old retry/default token names. The cleanup renamed internal pressure-seed/default variables, removed an unused reactive regression seed helper, and kept deterministic parameter defaults explicit under non-retry naming.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**

@@ -3861,43 +3861,6 @@ def _reactive_regression_options(options: Any, penalty: float, options_type: Any
     return options
 
 
-def _reactive_regression_options_with_seed(
-    options: Any,
-    bubble_options_type: Any,
-    *,
-    initial_pressure: float,
-    initial_y_vap: Mapping[str, float] | None,
-    fallback_pressure: float,
-) -> Any:
-    base = options.bubble_options or bubble_options_type(
-        initial_pressure=float(fallback_pressure),
-        return_best_effort=True,
-    )
-    bubble_options = bubble_options_type(
-        initial_pressure=float(initial_pressure),
-        min_pressure=base.min_pressure,
-        max_pressure=base.max_pressure,
-        max_iterations=base.max_iterations,
-        max_vapor_iterations=base.max_vapor_iterations,
-        max_bracket_expansions=base.max_bracket_expansions,
-        tolerance=base.tolerance,
-        vapor_tolerance=base.vapor_tolerance,
-        pressure_factor=base.pressure_factor,
-        min_composition=base.min_composition,
-        charge_tolerance=base.charge_tolerance,
-        return_best_effort=base.return_best_effort,
-        initial_y_vap=initial_y_vap or base.initial_y_vap,
-    )
-    return type(options)(
-        speciation_options=options.speciation_options,
-        bubble_options=bubble_options,
-        phase_handoff_mass_tolerance=options.phase_handoff_mass_tolerance,
-        phase_handoff_charge_tolerance=options.phase_handoff_charge_tolerance,
-        phase_handoff_reaction_tolerance=options.phase_handoff_reaction_tolerance,
-        error_mode=options.error_mode,
-        penalty_value=options.penalty_value,
-    )
-
 
 def _record_reactions(reactions: Any, record: Mapping[str, Any]) -> Any:
     if not callable(reactions):

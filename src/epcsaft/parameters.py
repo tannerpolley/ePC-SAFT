@@ -892,9 +892,9 @@ def _resolve_component_field(dataset: dict, component: str, field: str, T: float
     if row is None:
         row = dataset["pure"].get(component)
     if row is None:
-        fallback = _deterministic_default(component, field, T)
-        if fallback is not _MISSING:
-            return fallback
+        deterministic_value = _deterministic_default(component, field, T)
+        if deterministic_value is not _MISSING:
+            return deterministic_value
         raise KeyError(
             f"Component '{component}' is missing in dataset '{dataset['dataset_name']}' pure parameter files."
         )
@@ -909,9 +909,9 @@ def _resolve_component_field(dataset: dict, component: str, field: str, T: float
     if parsed is not None:
         return parsed
 
-    fallback = _deterministic_default(component, field, T)
-    if fallback is not _MISSING:
-        return fallback
+    deterministic_value = _deterministic_default(component, field, T)
+    if deterministic_value is not _MISSING:
+        return deterministic_value
 
     raise KeyError(
         f"Missing required value in dataset '{dataset['dataset_name']}', component '{component}', field '{field}'."
@@ -952,9 +952,9 @@ def _resolve_component_field_with_source(
             source_key = dataset["pure_default_key"]
 
     if row is None:
-        fallback = _deterministic_default(component, field, T)
-        if fallback is not _MISSING:
-            return fallback, source_key
+        deterministic_value = _deterministic_default(component, field, T)
+        if deterministic_value is not _MISSING:
+            return deterministic_value, source_key
         raise KeyError(
             f"Component '{component}' is missing in dataset '{dataset['dataset_name']}' pure parameter files."
         )

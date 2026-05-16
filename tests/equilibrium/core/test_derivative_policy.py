@@ -37,7 +37,7 @@ def test_equilibrium_options_reject_legacy_autodiff_backend() -> None:
         )
 
 
-def test_auto_equilibrium_diagnostics_do_not_fallback_to_numerical_derivative() -> None:
+def test_auto_equilibrium_diagnostics_reject_numerical_derivative_route() -> None:
     mix, feed = _neutral_mixture()
 
     result = mix.flash_tp(T=220.0, P=1.0e5, z=feed, options=epcsaft.EquilibriumOptions(jacobian_backend="auto"))

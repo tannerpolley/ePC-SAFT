@@ -184,9 +184,9 @@ def _find_vsdevcmd() -> Path:
             candidate = Path(output) / "Common7" / "Tools" / "VsDevCmd.bat"
             if candidate.is_file():
                 return candidate
-    fallback = Path(r"C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\Common7\Tools\VsDevCmd.bat")
-    if fallback.is_file():
-        return fallback
+    default_path = Path(r"C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\Common7\Tools\VsDevCmd.bat")
+    if default_path.is_file():
+        return default_path
     raise FileNotFoundError("MSVC toolchain requested, but VsDevCmd.bat was not found.")
 
 

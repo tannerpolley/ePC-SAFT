@@ -193,7 +193,7 @@ def test_pypi_publish_workflow_uses_trusted_publishing() -> None:
     assert "Environment name: ``pypi``" in publishing_docs
 
 
-def test_version_fallbacks_are_derived_from_pyproject() -> None:
+def test_version_defaults_are_derived_from_pyproject() -> None:
     cmake = _read("CMakeLists.txt")
     docs_conf = _read("docs/conf.py")
 
