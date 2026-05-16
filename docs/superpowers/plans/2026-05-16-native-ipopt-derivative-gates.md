@@ -281,6 +281,8 @@ Task 2 continuation note: neutral equilibrium and native chemical-equilibrium di
 
 Task 2 continuation note: the strict text gate now blocks explicit Ceres trust-region strategy names. Transitional equilibrium Ceres routes rely on solver defaults and report only an internal trust-region label.
 
+Task 2 continuation note: the neutral equilibrium benchmark payload and table no longer report the retired legacy solver-dodge field; the workflow keeps timing, fingerprint, failure, and diagnostics-key evidence only.
+
 ### Task 3: Build Dependency Boundary
 
 **Files:**
