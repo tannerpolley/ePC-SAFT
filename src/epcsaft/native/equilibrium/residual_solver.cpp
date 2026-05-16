@@ -100,7 +100,7 @@ NativeResidualSolveResult solve_native_residual_problem(
     (void)options;
     out.solver_backend = "none";
     out.solver_method = "none";
-    out.termination_type = "ceres_not_available";
+    out.termination_type = "ceres_disabled";
     out.rejection_reason = "Ceres support is required for native residual solving.";
     throw SolutionError(out.rejection_reason);
 #else
