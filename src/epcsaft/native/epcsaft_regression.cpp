@@ -1049,7 +1049,7 @@ GenericRegressionDebugResult evaluate_generic_residuals_cpp(
     }
     out.residual_norm = std::sqrt(std::max(0.0, 2.0 * out.cost));
     out.jacobian_available = false;
-    out.jacobian_backend = "not_used";
+    out.jacobian_backend = "not_applicable";
     for (const auto &item : raw_by_term) {
         out.metrics_by_term[item.first] = rms_metric_cpp(item.second);
     }

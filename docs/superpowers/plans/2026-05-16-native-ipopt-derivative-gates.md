@@ -617,6 +617,8 @@ Task 10 continuation note: reactive electrolyte batch capabilities now expose a 
 
 Task 10 continuation note: the public generic native-record derivative helper was deleted because it only advertised derivative backend selection and then raised without returning an exact derivative payload. Public derivative-matrix access now remains limited to implemented exact routes such as the native pure-neutral Ceres objective until each generic target family has analytical, CppAD, or implicit derivative matrices behind its Ceres path.
 
+Task 10 continuation note: internal residual-score-only regression hooks no longer report themselves as optimizer backends or emit placeholder derivative backend labels. They now use the `diagnostic_residual_score` backend with `not_applicable` optimizer and derivative metadata, and the source/test/script text gate blocks reintroducing the retired residual-score backend label.
+
 ### Task 11: Internal Extension Boundaries
 
 **Files:**

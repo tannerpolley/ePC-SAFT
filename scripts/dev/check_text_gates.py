@@ -139,6 +139,7 @@ def _source_blocked_terms(rel: str) -> tuple[str, ...]:
         "golden" + "_section",
         "golden" + "-" + "section",
         "evaluate" + "_generic" + "_regression" + "_derivatives",
+        "residual" + "_score" + "_native",
         "sci" + "py.optimize",
         "np.linalg." + "lstsq",
         "numpy.linalg." + "lstsq",

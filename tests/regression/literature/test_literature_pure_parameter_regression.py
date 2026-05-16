@@ -14,7 +14,6 @@ from tests.regression.literature.test_mea_co2_h2o_pure_parameter_benchmark impor
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 FIXTURE = REPO_ROOT / "tests" / "fixtures" / "literature" / "pure_neutral" / "mea_co2_h2o_benchmark.json"
-DISALLOWED_BACKENDS = {"numerical" + "_derivative", "fd", "numerical" + "_jacobian"}
 LITERATURE_USER_OPTIONS = {
     "elec_model": {
         "rel_perm": {"rule": "empirical", "differential_mode": "auto"},
@@ -78,10 +77,11 @@ def test_literature_pure_parameter_regression_uses_local_benchmark_fixture(tmp_p
     assert set(results) == set(fixture["components"])
     for component, result in results.items():
         assert result.success, result.message
-        assert result.backend == "residual_score_native"
-        assert result.optimizer_backend == "residual_score_native"
-        assert result.derivative_backend.lower() not in DISALLOWED_BACKENDS
-        assert result.jacobian_backend.lower() not in DISALLOWED_BACKENDS
+        assert result.backend == "diagnostic_residual_score"
+        assert result.optimizer_backend == "not_applicable"
+        assert result.derivative_backend == "not_applicable"
+        assert result.jacobian_backend == "not_applicable"
+        assert result.jacobian_available is False
         assert result.problem.fit_targets == tuple(fixture["fit_targets"][component])
         expected_mode = "pure_neutral" if component == "MEA" else "pure_ion"
         assert result.problem.mode == expected_mode
