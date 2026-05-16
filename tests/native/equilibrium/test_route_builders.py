@@ -1,0 +1,79 @@
+from __future__ import annotations
+
+import numpy as np
+import pytest
+
+import epcsaft
+from epcsaft import _core
+
+
+def _neutral_binary_mixture() -> epcsaft.ePCSAFTMixture:
+    params = {
+        "m": np.asarray([1.0, 1.6069]),
+        "s": np.asarray([3.7039, 3.5206]),
+        "e": np.asarray([150.03, 191.42]),
+        "k_ij": np.asarray([[0.0, 3.0e-4], [3.0e-4, 0.0]]),
+    }
+    return epcsaft.ePCSAFTMixture.from_params(params, species=["Methane", "Ethane"])
+
+
+def test_neutral_two_phase_eos_nlp_contract_uses_phase_system_blocks() -> None:
+    mix = _neutral_binary_mixture()
+    temperature = 300.0
+    phase_amounts = [
+        np.asarray([0.7, 0.3], dtype=float),
+        np.asarray([0.1, 0.9], dtype=float),
+    ]
+    volumes = [float(phase_amounts[0].sum() / 80.0), float(phase_amounts[1].sum() / 140.0)]
+    feed_amounts = phase_amounts[0] + phase_amounts[1]
+    target_pressure = mix.state(
+        T=temperature,
+        rho=phase_amounts[0].sum() / volumes[0],
+        x=phase_amounts[0] / phase_amounts[0].sum(),
+        phase="liquid",
+    ).pressure()
+
+    payload = _core._native_neutral_two_phase_eos_nlp_contract(
+        mix._native,
+        temperature,
+        target_pressure,
+        [phase.tolist() for phase in phase_amounts],
+        volumes,
+        feed_amounts.tolist(),
+    )
+    phase_system = _core._native_eos_phase_system(
+        mix._native,
+        temperature,
+        target_pressure,
+        [phase.tolist() for phase in phase_amounts],
+        volumes,
+        feed_amounts.tolist(),
+    )
+
+    assert payload["problem_name"] == "neutral_two_phase_eos"
+    assert payload["derivative_backend"] == "analytic_cppad"
+    assert payload["phase_count"] == 2
+    assert payload["species_count"] == 2
+    assert payload["variable_count"] == 6
+    assert payload["constraint_count"] == 4
+    assert payload["jacobian_nonzero_count"] == 24
+    assert payload["initial_point"] == pytest.approx([0.7, 0.3, volumes[0], 0.1, 0.9, volumes[1]])
+    assert payload["objective_at_initial"] == pytest.approx(phase_system["objective"])
+    assert payload["gradient_at_initial"] == pytest.approx(phase_system["gradient"], rel=1.0e-12, abs=1.0e-12)
+    assert payload["constraints_at_initial"] == pytest.approx(
+        phase_system["constraints"],
+        rel=1.0e-12,
+        abs=1.0e-8,
+    )
+    assert payload["jacobian_values_at_initial"] == pytest.approx(
+        phase_system["constraint_jacobian_row_major"],
+        rel=1.0e-12,
+        abs=1.0e-8,
+    )
+    assert len(payload["variable_lower_bounds"]) == payload["variable_count"]
+    assert len(payload["variable_upper_bounds"]) == payload["variable_count"]
+    assert len(payload["constraint_lower_bounds"]) == payload["constraint_count"]
+    assert len(payload["constraint_upper_bounds"]) == payload["constraint_count"]
+    assert np.all(np.asarray(payload["variable_lower_bounds"], dtype=float) > 0.0)
+    assert payload["constraint_lower_bounds"] == pytest.approx([0.0, 0.0, 0.0, 0.0])
+    assert payload["constraint_upper_bounds"] == pytest.approx([0.0, 0.0, 0.0, 0.0])

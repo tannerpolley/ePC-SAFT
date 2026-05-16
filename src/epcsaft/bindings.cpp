@@ -15,6 +15,7 @@
 #include "gibbs_blocks.h"
 #include "ipopt_adapter.h"
 #include "reaction_block.h"
+#include "route_builders.h"
 
 epcsaft::native::cppad_support::CppADDerivativeResult cppad_eos_contribution_derivatives_cpp(
     double t,
@@ -572,6 +573,31 @@ py::dict association_mass_action_block_to_dict(
     out["jacobian_shape"] = py::make_tuple(result.jacobian_rows, result.jacobian_cols);
     out["site_fraction_jacobian_row_major"] = result.site_fraction_jacobian_row_major;
     out["site_composition_jacobian_row_major"] = result.site_composition_jacobian_row_major;
+    return out;
+}
+
+py::dict neutral_two_phase_eos_nlp_contract_to_dict(
+    const epcsaft::native::equilibrium_nlp::NeutralTwoPhaseEosNlpContract& result
+) {
+    py::dict out;
+    out["problem_name"] = result.problem_name;
+    out["derivative_backend"] = result.derivative_backend;
+    out["phase_count"] = result.phase_count;
+    out["species_count"] = result.species_count;
+    out["variable_count"] = result.variable_count;
+    out["constraint_count"] = result.constraint_count;
+    out["jacobian_nonzero_count"] = result.jacobian_nonzero_count;
+    out["initial_point"] = result.initial_point;
+    out["variable_lower_bounds"] = result.variable_lower_bounds;
+    out["variable_upper_bounds"] = result.variable_upper_bounds;
+    out["constraint_lower_bounds"] = result.constraint_lower_bounds;
+    out["constraint_upper_bounds"] = result.constraint_upper_bounds;
+    out["objective_at_initial"] = result.objective_at_initial;
+    out["gradient_at_initial"] = result.gradient_at_initial;
+    out["constraints_at_initial"] = result.constraints_at_initial;
+    out["jacobian_rows"] = result.jacobian_rows;
+    out["jacobian_cols"] = result.jacobian_cols;
+    out["jacobian_values_at_initial"] = result.jacobian_values_at_initial;
     return out;
 }
 
@@ -1297,6 +1323,28 @@ PYBIND11_MODULE(_core, m) {
                 site_fractions,
                 site_composition,
                 delta_row_major
+            )
+        );
+    });
+    m.def("_native_neutral_two_phase_eos_nlp_contract", [](
+        const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+        double temperature,
+        double target_pressure,
+        const std::vector<std::vector<double>>& phase_amounts,
+        const std::vector<double>& volumes,
+        const std::vector<double>& feed_amounts
+    ) {
+        if (!mixture) {
+            throw ValueError("Neutral two-phase EOS NLP contract requires a native mixture.");
+        }
+        return neutral_two_phase_eos_nlp_contract_to_dict(
+            epcsaft::native::equilibrium_nlp::evaluate_neutral_two_phase_eos_nlp_contract(
+                mixture->args(),
+                temperature,
+                target_pressure,
+                phase_amounts,
+                volumes,
+                feed_amounts
             )
         );
     });

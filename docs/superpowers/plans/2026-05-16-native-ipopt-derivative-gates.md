@@ -442,6 +442,12 @@ Task 8 continuation note: public neutral bubble/dew scalar solve paths were remo
 
 Task 8 continuation note: `EquilibriumOptions.jacobian_backend` no longer accepts the legacy `autodiff` spelling. Public equilibrium derivative selection is limited to `auto`, `analytic`, or `cppad`, matching the analytical/CppAD derivative gate outside Ceres-owned regression.
 
+Task 8 continuation note: the first neutral route-builder contract now exists under `equilibrium_nlp/route_builders.*`.
+It wraps the reusable EOS phase-system assembly as an `NlpProblem` with one canonical initial point, positive variable
+bounds, zero-valued material/pressure constraints, scaling, and exact analytical/CppAD objective and constraint
+derivatives. This is a contract scaffold for Ipopt wiring only; production neutral TP flash/VLE/LLE/bubble/dew route
+replacement remains open.
+
 ### Task 9: Replace Electrolyte And Reactive Phase Equilibrium Routes
 
 **Files:**
