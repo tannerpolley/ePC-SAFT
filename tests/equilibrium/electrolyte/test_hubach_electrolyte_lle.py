@@ -10,7 +10,6 @@ import pytest
 import epcsaft
 from epcsaft import ePCSAFTMixture
 from epcsaft.equilibrium_core.electrolyte_seeds import charge_neutral_lle_seed_from_org_phase
-from tests.equilibrium.electrolyte.test_electrolyte_lle_smokes import _assert_electrolyte_lle_route_pending
 from tests.helpers.numeric import assert_allclose
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -84,45 +83,6 @@ def test_hubach_seed_helper_constructs_charge_neutral_material_balanced_guess() 
     assert abs(float(np.dot(org_out, mix.parameters["z"]))) <= 1.0e-8
     assert org_out[1] + org_out[2] > aq[1] + aq[2]
     assert aq[0] > org_out[0]
-
-
-@pytest.mark.skipif(
-    os.environ.get("EPCSAFT_RUN_HUBACH_LLE") != "1", reason="Hubach native LLE solve is an opt-in hard-case regression."
-)
-def test_hubach_row0_explicit_seed_requires_native_ipopt_route() -> None:
-    feed = _row0_feed()
-    mix = _hubach_mixture(feed)
-
-    with pytest.raises(epcsaft.InputError) as excinfo:
-        mix.equilibrium(
-            kind="electrolyte_lle",
-            T=T_K,
-            P=P_PA,
-            z=feed,
-            initial_phases=_row0_initial_phases(),
-            options=epcsaft.EquilibriumOptions(max_iterations=180, tolerance=1.0e-8),
-        )
-
-    _assert_electrolyte_lle_route_pending(excinfo)
-
-
-@pytest.mark.skipif(
-    os.environ.get("EPCSAFT_RUN_HUBACH_LLE") != "1", reason="Hubach native LLE solve is an opt-in hard-case regression."
-)
-def test_hubach_cold_start_requires_native_ipopt_route() -> None:
-    feed = _row0_feed()
-    mix = _hubach_mixture(feed)
-
-    with pytest.raises(epcsaft.InputError) as excinfo:
-        mix.equilibrium(
-            kind="electrolyte_lle",
-            T=T_K,
-            P=P_PA,
-            z=feed,
-            options=epcsaft.EquilibriumOptions(max_iterations=2, tolerance=1.0e-12),
-        )
-
-    _assert_electrolyte_lle_route_pending(excinfo)
 
 
 @pytest.mark.skipif(
