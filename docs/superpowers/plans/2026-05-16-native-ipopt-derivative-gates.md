@@ -519,6 +519,8 @@ Task 12 continuation note: the tracked text gate now enforces that active source
 
 Task 12 continuation note: fixed-liquid electrolyte bubble pressure and composed reactive electrolyte bubble pressure no longer execute the package-owned pressure-search route from public Python entry points. The public contracts now validate inputs and raise `InputError` until native Ipopt route builders own those solves; capabilities, docs, and tests mark both routes as `route_pending`, and the public `ElectrolyteBubbleOptions` surface no longer carries the disabled pressure-search controls.
 
+Task 12 continuation note: the private native electrolyte bubble pressure-search binding and C++ implementation were deleted after the public route moved to route-pending. The removed code included the pybind `_solve_electrolyte_bubble_native` entrypoint, the native route option struct, vapor submixture helpers, and the log-pressure search implementation.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**
