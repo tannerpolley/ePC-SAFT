@@ -316,12 +316,14 @@ Task 4 note: the adapter boundary now lives under `src/epcsaft/native/equilibriu
 - Create: `src/epcsaft/native/equilibrium_nlp/reaction_block.cpp`
 - Add tests under `tests/native/equilibrium/`
 
-- [ ] Implement ideal homogeneous reduced Gibbs objective terms.
-- [ ] Implement reaction extent/species amount variable mapping.
-- [ ] Add analytical gradients/Jacobians for ideal reaction/speciation cases.
-- [ ] Add ideal liquid and ideal vapor validation cases proving `Q = K`.
-- [ ] Explicitly label these tests as convex ideal subkernel coverage only.
-- [ ] Commit as `Add ideal Gibbs reaction NLP blocks`.
+- [x] Implement ideal homogeneous reduced Gibbs objective terms.
+- [x] Implement reaction extent/species amount variable mapping.
+- [x] Add analytical gradients/Jacobians for ideal reaction/speciation cases.
+- [x] Add ideal liquid and ideal vapor validation cases proving `Q = K`.
+- [x] Explicitly label these tests as convex ideal subkernel coverage only.
+- [x] Commit as `Add ideal Gibbs reaction NLP blocks`.
+
+Task 5 note: the convex coverage is deliberately limited to homogeneous ideal reaction/speciation validation blocks. It does not assert convexity for ePC-SAFT multiphase, electrolyte, density, or association equilibrium.
 
 ### Task 6: Replace Reactive Speciation Solve Ownership
 

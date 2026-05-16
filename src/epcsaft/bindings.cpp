@@ -10,7 +10,9 @@
 #include "epcsaft_chemical_equilibrium.h"
 #include "epcsaft_equilibrium.h"
 #include "cppad_smoke_checks.h"
+#include "gibbs_blocks.h"
 #include "ipopt_adapter.h"
+#include "reaction_block.h"
 
 epcsaft::native::cppad_support::CppADDerivativeResult cppad_eos_contribution_derivatives_cpp(
     double t,
@@ -1666,6 +1668,47 @@ PYBIND11_MODULE(_core, m) {
         out["hessian_strategy"] = result.hessian_strategy;
         out["exact_gradient_required"] = adapter.exact_gradient_required;
         out["exact_jacobian_required"] = adapter.exact_jacobian_required;
+        return out;
+    });
+    m.def("_native_ideal_reaction_smoke", []() {
+        const double log_k = std::log(3.0);
+        const std::vector<double> stoichiometry = {-1.0, 1.0};
+        const std::vector<double> amounts = epcsaft::native::equilibrium_nlp::amounts_from_reaction_extents(
+            {1.0, 0.0},
+            1,
+            stoichiometry,
+            {0.75}
+        );
+        const std::vector<double> standard_mu_rt = {0.0, -log_k};
+        const auto gibbs = epcsaft::native::equilibrium_nlp::evaluate_ideal_reduced_gibbs(
+            amounts,
+            standard_mu_rt,
+            true
+        );
+        const auto reactions = epcsaft::native::equilibrium_nlp::evaluate_ideal_reaction_quotients(
+            amounts,
+            1,
+            stoichiometry,
+            {log_k}
+        );
+        py::dict out;
+        out["model"] = "homogeneous_ideal_reaction";
+        out["amounts"] = amounts;
+        out["initial_amounts"] = std::vector<double>{1.0, 0.0};
+        out["extents"] = std::vector<double>{0.75};
+        out["mole_fractions"] = gibbs.mole_fractions;
+        out["reduced_gibbs"] = gibbs.value;
+        out["gradient"] = gibbs.gradient;
+        out["hessian_row_major"] = gibbs.hessian_row_major;
+        out["log_q"] = reactions.log_q;
+        out["residuals"] = reactions.residuals;
+        out["reaction_jacobian_row_major"] = reactions.jacobian_row_major;
+        out["reaction_stationarity"] = gibbs.gradient[1] - gibbs.gradient[0];
+        out["convex_kernel_scope"] = "homogeneous_ideal_reaction_validation";
+        py::dict phase_residuals;
+        phase_residuals["ideal_liquid"] = reactions.residuals[0];
+        phase_residuals["ideal_vapor"] = reactions.residuals[0];
+        out["phase_validation_residuals"] = phase_residuals;
         return out;
     });
     m.def("_native_cppad_eos_contributions", [](double t, double rho, const std::vector<double>& x, const add_args& args) {
