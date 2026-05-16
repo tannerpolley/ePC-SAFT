@@ -221,24 +221,24 @@ worker process:
    )
 
 Keep strict exceptions for single scientific claims. For broad downstream
-sweeps where the caller needs to record every row, add
-``return_best_effort=True`` and check ``result.split_detected`` plus
-``result.diagnostics["acceptance_gate"]`` before using any phases:
+sweeps where the caller needs to record every row, catch ``SolutionError`` and
+store ``exc.args[1]`` diagnostics before moving to the next row:
 
 .. code-block:: python
 
-   result = mixture.electrolyte_lle_tp(
-       T=294.15,
-       P=101325.0,
-       z=feed,
-       options=epcsaft.EquilibriumOptions(
-           timeout_seconds=8.0,
-           max_seed_attempts=4,
-           return_best_effort=True,
-       ),
-   )
-   if not result.split_detected:
-       print(result.diagnostics["acceptance_gate"], result.diagnostics["seed_attempts"])
+   try:
+       result = mixture.electrolyte_lle_tp(
+           T=294.15,
+           P=101325.0,
+           z=feed,
+           options=epcsaft.EquilibriumOptions(
+               timeout_seconds=8.0,
+               max_seed_attempts=4,
+           ),
+       )
+   except epcsaft.SolutionError as exc:
+       diagnostics = exc.args[1]
+       print(diagnostics["acceptance_gate"], diagnostics["seed_attempts"])
 
 Reactive speciation
 -------------------

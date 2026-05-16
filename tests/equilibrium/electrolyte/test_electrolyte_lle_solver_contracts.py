@@ -140,26 +140,22 @@ def test_electrolyte_lle_solver_failure_reports_current_ceres_derivatives() -> N
     assert diagnostics["acceptance_gate"] == "predictive_solve_failed"
     _assert_transitional_ceres_diagnostics(diagnostics)
 
-def test_electrolyte_lle_best_effort_reports_current_ceres_derivatives() -> None:
+def test_electrolyte_lle_failure_stays_loud_without_unaccepted_result() -> None:
     mix = _case2_mixture()
 
-    result = mix.equilibrium(
-        kind="electrolyte_lle",
-        T=298.15,
-        P=1.0e5,
-        z=_case2_feed(),
-        options=epcsaft.EquilibriumOptions(
-            max_iterations=1,
-            tolerance=1.0e-12,
-            return_best_effort=True,
-        ),
-    )
+    with pytest.raises(epcsaft.SolutionError) as excinfo:
+        mix.equilibrium(
+            kind="electrolyte_lle",
+            T=298.15,
+            P=1.0e5,
+            z=_case2_feed(),
+            options=epcsaft.EquilibriumOptions(max_iterations=1, tolerance=1.0e-12),
+        )
 
-    assert result.split_detected is False
-    assert result.phases == ()
-    assert result.diagnostics["acceptance_gate"] == "predictive_solve_failed"
-    assert result.diagnostics["best_effort_phases_returned"] is False
-    _assert_transitional_ceres_diagnostics(result.diagnostics)
+    diagnostics = excinfo.value.args[1]
+    assert diagnostics["acceptance_gate"] == "predictive_solve_failed"
+    assert "phases" not in diagnostics
+    _assert_transitional_ceres_diagnostics(diagnostics)
 
 def test_electrolyte_lle_seed_budget_reports_current_ceres_derivatives() -> None:
     mix = _case2_mixture()

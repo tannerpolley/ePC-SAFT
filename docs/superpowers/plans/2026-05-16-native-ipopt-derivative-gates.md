@@ -521,6 +521,8 @@ Task 12 continuation note: fixed-liquid electrolyte bubble pressure and composed
 
 Task 12 continuation note: the private native electrolyte bubble pressure-search binding and C++ implementation were deleted after the public route moved to route-pending. The removed code included the pybind `_solve_electrolyte_bubble_native` entrypoint, the native route option struct, vapor submixture helpers, and the log-pressure search implementation.
 
+Task 12 continuation note: `EquilibriumOptions` no longer exposes the equilibrium-level best-effort result switch. Neutral/electrolyte LLE failures stay loud with JSON-safe diagnostics on `SolutionError`, and docs/tests now instruct downstream sweeps to catch failures rather than consume unaccepted phase results.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**

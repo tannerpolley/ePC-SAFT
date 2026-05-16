@@ -53,7 +53,6 @@ class EquilibriumOptions:
     max_seed_attempts: int | None = None
     max_density_failures: int | None = None
     max_total_objective_evaluations: int | None = None
-    return_best_effort: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -566,7 +565,6 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
             "max_seed_attempts",
             "max_density_failures",
             "max_total_objective_evaluations",
-            "return_best_effort",
         }
         unknown = sorted(set(raw) - allowed)
         if unknown:
@@ -612,8 +610,6 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
     max_total_objective_evaluations = _optional_positive_int_option(
         options.max_total_objective_evaluations, "max_total_objective_evaluations"
     )
-    if not isinstance(options.return_best_effort, bool):
-        raise InputError("options.return_best_effort must be boolean.")
     return EquilibriumOptions(
         max_iterations=max_iterations,
         tolerance=tolerance,
@@ -630,7 +626,6 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
         max_seed_attempts=max_seed_attempts,
         max_density_failures=max_density_failures,
         max_total_objective_evaluations=max_total_objective_evaluations,
-        return_best_effort=options.return_best_effort,
     )
 
 
@@ -1057,7 +1052,6 @@ def _options_to_native_dict(options: EquilibriumOptions) -> dict[str, Any]:
         "max_total_objective_evaluations": (
             None if options.max_total_objective_evaluations is None else int(options.max_total_objective_evaluations)
         ),
-        "return_best_effort": bool(options.return_best_effort),
     }
 
 
@@ -1316,7 +1310,6 @@ def _add_legacy_option_diagnostics(diagnostics: dict[str, Any], options: Equilib
     diagnostics.setdefault("density_best_candidate_rejection_reason", "")
     diagnostics.setdefault("density_warm_start_source", "")
     diagnostics.setdefault("density_validity_gate", "not_evaluated")
-    diagnostics.setdefault("return_best_effort", bool(options.return_best_effort))
 
 
 def _diagnostics_with_options(
@@ -1536,7 +1529,6 @@ def _equilibrium_options_from_reactive_options(options: Any) -> EquilibriumOptio
         min_composition=float(options.min_mole_fraction),
         jacobian_backend=str(options.jacobian_backend),
         solver_backend="auto",
-        return_best_effort=bool(options.return_best_effort),
     )
 
 
@@ -1791,8 +1783,7 @@ def lle_flash(
     assert isinstance(result, EquilibriumResult)
     diagnostics = dict(result.diagnostics)
     if (
-        not opts.return_best_effort
-        and result.split_detected is False
+        result.split_detected is False
         and diagnostics.get("solution_accepted") is False
         and diagnostics.get("stability_stable") is False
         and "initial liquid phases are compositionally identical" not in str(diagnostics.get("message", ""))

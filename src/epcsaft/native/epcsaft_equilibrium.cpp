@@ -2376,7 +2376,6 @@ EquilibriumResultNative electrolyte_lle_failure_result(
     result.diagnostics_bool["experimental_coupled_density_lle"] = options.experimental_coupled_density_lle;
     result.diagnostics_bool["coupled_density_lle_attempted"] = options.experimental_coupled_density_lle;
     result.diagnostics_bool["density_best_candidate_refinement_used"] = false;
-    result.diagnostics_bool["return_best_effort"] = options.return_best_effort;
     result.diagnostics_int["density_failure_count"] = 0;
     result.diagnostics_bool["stability_checked"] = true;
     result.diagnostics_bool["stability_stable"] = stability.stable;
@@ -2416,13 +2415,6 @@ EquilibriumResultNative electrolyte_lle_failure_result(
         result.diagnostics_string["best_noncollapsed_candidate"] = "available";
     } else {
         result.diagnostics_string["best_noncollapsed_candidate"] = "none";
-    }
-    result.diagnostics_bool["best_effort_phases_returned"] = false;
-    if (options.return_best_effort && has_best_noncollapsed && best.aq_comp.size() == feed.size() && best.org_comp.size() == feed.size()) {
-        result.phases.push_back(phase_from_state("aq", best.aq_comp, 1.0 - best.beta_org, best.aq_state, options.include_phase_diagnostics));
-        result.phases.push_back(phase_from_state("org", best.org_comp, best.beta_org, best.org_state, options.include_phase_diagnostics));
-        result.diagnostics_bool["best_effort_phases_returned"] = true;
-        result.diagnostics_string["message"] = "electrolyte LLE flash returned best-effort diagnostic phases without predictive acceptance";
     }
     result.attempt_diagnostics = attempts;
     return result;
@@ -3002,8 +2994,6 @@ EquilibriumResultNative electrolyte_lle_native(
     result.diagnostics_bool["experimental_coupled_density_lle"] = options.experimental_coupled_density_lle;
     result.diagnostics_bool["coupled_density_lle_attempted"] = options.experimental_coupled_density_lle;
     result.diagnostics_bool["density_best_candidate_refinement_used"] = false;
-    result.diagnostics_bool["return_best_effort"] = options.return_best_effort;
-    result.diagnostics_bool["best_effort_phases_returned"] = false;
     result.diagnostics_bool["stability_checked"] = true;
     result.diagnostics_bool["stability_stable"] = stability.stable;
     result.diagnostics_bool["solution_accepted"] = true;
