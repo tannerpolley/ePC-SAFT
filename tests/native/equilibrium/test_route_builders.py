@@ -135,6 +135,52 @@ def test_neutral_lle_route_contract_builds_native_initial_point_from_feed() -> N
     assert np.asarray(payload["constraints_at_initial"], dtype=float)[:2] == pytest.approx([0.0, 0.0])
 
 
+@pytest.mark.parametrize(
+    ("binding_name", "problem_name"),
+    [
+        ("_native_neutral_bubble_p_eos_nlp_contract", "neutral_bubble_p_eos"),
+        ("_native_neutral_dew_p_eos_nlp_contract", "neutral_dew_p_eos"),
+    ],
+)
+def test_neutral_fixed_temperature_pressure_route_contract_pins_specified_phase(
+    binding_name: str,
+    problem_name: str,
+) -> None:
+    mix = _neutral_binary_mixture()
+    temperature = 300.0
+    composition = np.asarray([0.35, 0.65], dtype=float)
+
+    payload = getattr(_core, binding_name)(
+        mix._native,
+        temperature,
+        composition.tolist(),
+    )
+
+    initial = np.asarray(payload["initial_point"], dtype=float)
+    jacobian = np.asarray(payload["jacobian_values_at_initial"], dtype=float).reshape(
+        payload["constraint_count"],
+        payload["variable_count"],
+    )
+    local_variable_count = composition.size + 1
+    pressure_col = payload["variable_count"] - 1
+    first_amounts = initial[: composition.size]
+    second_amounts = initial[local_variable_count : local_variable_count + composition.size]
+    fixed_amounts = first_amounts if "bubble" in problem_name else second_amounts
+
+    assert payload["problem_name"] == problem_name
+    assert payload["derivative_backend"] == "analytic_cppad"
+    assert payload["phase_count"] == 2
+    assert payload["species_count"] == composition.size
+    assert payload["variable_count"] == 2 * local_variable_count + 1
+    assert payload["constraint_count"] == composition.size + 3
+    assert payload["jacobian_nonzero_count"] == payload["variable_count"] * payload["constraint_count"]
+    assert np.all(initial > 0.0)
+    assert fixed_amounts / fixed_amounts.sum() == pytest.approx(composition)
+    assert payload["constraints_at_initial"][: composition.size + 1] == pytest.approx([0.0, 0.0, 0.0])
+    assert jacobian[-2, pressure_col] == pytest.approx(-1.0)
+    assert jacobian[-1, pressure_col] == pytest.approx(-1.0)
+
+
 def test_neutral_two_phase_eos_route_result_translates_solver_and_postsolve() -> None:
     mix = _neutral_binary_mixture()
     temperature = 300.0

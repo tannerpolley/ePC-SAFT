@@ -491,6 +491,12 @@ two-liquid initial point from the feed, submits exactly one Ipopt route call, an
 native two-phase payloads into `liq1`/`liq2` results. User-provided `initial_phases` remain validation input only, not a
 solver seed or retry mechanism. Local no-Ipopt builds still fail loudly with the native Ipopt ownership message.
 
+Task 8 continuation note: private native fixed-temperature bubble/dew pressure NLP contracts now exist as route-builder
+scaffolds. Each contract uses one pressure variable, two EOS phase blocks, fixed composition rows for the specified
+phase, unit phase-amount scaling rows, pressure-consistency rows with exact pressure-variable Jacobian entries, and one
+deterministic initial point. These contracts are not public accepted routes yet; public bubble/dew methods remain
+native-Ipopt route-gated until a full accepted solve and postsolve proof exists.
+
 ### Task 9: Replace Electrolyte And Reactive Phase Equilibrium Routes
 
 **Files:**

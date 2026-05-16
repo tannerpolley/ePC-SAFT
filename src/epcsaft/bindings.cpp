@@ -1508,6 +1508,38 @@ PYBIND11_MODULE(_core, m) {
             )
         );
     });
+    m.def("_native_neutral_bubble_p_eos_nlp_contract", [](
+        const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+        double temperature,
+        const std::vector<double>& liquid_composition
+    ) {
+        if (!mixture) {
+            throw ValueError("Neutral bubble pressure EOS NLP contract requires a native mixture.");
+        }
+        return neutral_two_phase_eos_nlp_contract_to_dict(
+            epcsaft::native::equilibrium_nlp::evaluate_neutral_bubble_p_eos_nlp_contract(
+                mixture->args(),
+                temperature,
+                liquid_composition
+            )
+        );
+    });
+    m.def("_native_neutral_dew_p_eos_nlp_contract", [](
+        const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+        double temperature,
+        const std::vector<double>& vapor_composition
+    ) {
+        if (!mixture) {
+            throw ValueError("Neutral dew pressure EOS NLP contract requires a native mixture.");
+        }
+        return neutral_two_phase_eos_nlp_contract_to_dict(
+            epcsaft::native::equilibrium_nlp::evaluate_neutral_dew_p_eos_nlp_contract(
+                mixture->args(),
+                temperature,
+                vapor_composition
+            )
+        );
+    });
     m.def("_native_neutral_two_phase_eos_route_result", [](
         const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
         double temperature,

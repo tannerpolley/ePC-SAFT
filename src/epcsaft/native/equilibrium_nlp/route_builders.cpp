@@ -35,6 +35,66 @@ void require_positive_finite(double value, const std::string& label) {
     throw ValueError(label + " must be positive and finite.");
 }
 
+double positive_sum(const std::vector<double>& values, const std::string& label) {
+    if (values.empty()) {
+        throw ValueError(label + " requires at least one value.");
+    }
+    double total = 0.0;
+    for (double value : values) {
+        require_positive_finite(value, label + " value");
+        total += value;
+    }
+    require_positive_finite(total, label + " total");
+    return total;
+}
+
+std::vector<double> normalized_positive_values(const std::vector<double>& values, const std::string& label) {
+    const double total = positive_sum(values, label);
+    std::vector<double> normalized;
+    normalized.reserve(values.size());
+    for (double value : values) {
+        normalized.push_back(value / total);
+    }
+    return normalized;
+}
+
+std::vector<double> deterministic_composition_shift(const std::vector<double>& composition) {
+    std::vector<double> shifted = composition;
+    if (composition.size() <= 1) {
+        return shifted;
+    }
+
+    std::vector<double> positions;
+    positions.reserve(composition.size());
+    const double denominator = static_cast<double>(composition.size() - 1);
+    for (std::size_t index = 0; index < composition.size(); ++index) {
+        positions.push_back(-1.0 + 2.0 * static_cast<double>(index) / denominator);
+    }
+    double weighted_position = 0.0;
+    for (std::size_t index = 0; index < composition.size(); ++index) {
+        weighted_position += composition[index] * positions[index];
+    }
+    std::vector<double> direction;
+    direction.reserve(composition.size());
+    double max_abs_direction = 0.0;
+    for (double position : positions) {
+        const double value = position - weighted_position;
+        direction.push_back(value);
+        max_abs_direction = std::max(max_abs_direction, std::abs(value));
+    }
+    double shifted_sum = 0.0;
+    for (std::size_t index = 0; index < composition.size(); ++index) {
+        const double scaled_direction = max_abs_direction > 0.0 ? direction[index] / max_abs_direction : 0.0;
+        shifted[index] = composition[index] * (1.0 + 0.2 * scaled_direction);
+        shifted_sum += shifted[index];
+    }
+    require_positive_finite(shifted_sum, "shifted composition sum");
+    for (double& value : shifted) {
+        value /= shifted_sum;
+    }
+    return shifted;
+}
+
 NeutralTwoPhaseEosInitialPoint build_neutral_two_phase_eos_initial_point(
     const std::vector<double>& feed_amounts,
     double temperature,
@@ -43,53 +103,9 @@ NeutralTwoPhaseEosInitialPoint build_neutral_two_phase_eos_initial_point(
 ) {
     require_positive_finite(temperature, route_label + " temperature");
     require_positive_finite(target_pressure, route_label + " pressure");
-    if (feed_amounts.empty()) {
-        throw ValueError(route_label + " requires at least one feed amount.");
-    }
-    double total_feed = 0.0;
-    for (double amount : feed_amounts) {
-        require_positive_finite(amount, route_label + " feed amount");
-        total_feed += amount;
-    }
-    require_positive_finite(total_feed, route_label + " total feed amount");
-
-    std::vector<double> composition;
-    composition.reserve(feed_amounts.size());
-    for (double amount : feed_amounts) {
-        composition.push_back(amount / total_feed);
-    }
-
-    std::vector<double> first_composition = composition;
-    if (composition.size() > 1) {
-        std::vector<double> positions;
-        positions.reserve(composition.size());
-        const double denominator = static_cast<double>(composition.size() - 1);
-        for (std::size_t index = 0; index < composition.size(); ++index) {
-            positions.push_back(-1.0 + 2.0 * static_cast<double>(index) / denominator);
-        }
-        double weighted_position = 0.0;
-        for (std::size_t index = 0; index < composition.size(); ++index) {
-            weighted_position += composition[index] * positions[index];
-        }
-        std::vector<double> direction;
-        direction.reserve(composition.size());
-        double max_abs_direction = 0.0;
-        for (double position : positions) {
-            const double value = position - weighted_position;
-            direction.push_back(value);
-            max_abs_direction = std::max(max_abs_direction, std::abs(value));
-        }
-        double first_sum = 0.0;
-        for (std::size_t index = 0; index < composition.size(); ++index) {
-            const double scaled_direction = max_abs_direction > 0.0 ? direction[index] / max_abs_direction : 0.0;
-            first_composition[index] = composition[index] * (1.0 + 0.2 * scaled_direction);
-            first_sum += first_composition[index];
-        }
-        require_positive_finite(first_sum, route_label + " first phase composition sum");
-        for (double& value : first_composition) {
-            value /= first_sum;
-        }
-    }
+    const double total_feed = positive_sum(feed_amounts, route_label + " feed amount");
+    const std::vector<double> composition = normalized_positive_values(feed_amounts, route_label + " feed amount");
+    const std::vector<double> first_composition = deterministic_composition_shift(composition);
 
     NeutralTwoPhaseEosInitialPoint out;
     out.phase_amounts.assign(2, std::vector<double>(feed_amounts.size(), 0.0));
@@ -355,17 +371,11 @@ private:
     int species_count_ = 0;
 };
 
-}  // namespace
-
-NeutralTwoPhaseEosNlpContract evaluate_neutral_two_phase_eos_nlp_contract(
-    const add_args& args,
-    double temperature,
-    double target_pressure,
-    const std::vector<std::vector<double>>& phase_amounts,
-    const std::vector<double>& volumes,
-    const std::vector<double>& feed_amounts
+NeutralTwoPhaseEosNlpContract make_nlp_contract(
+    const NlpProblem& problem,
+    int phase_count,
+    int species_count
 ) {
-    NeutralTwoPhaseEosProblem problem(args, temperature, target_pressure, phase_amounts, volumes, feed_amounts);
     validate_nlp_problem_shape(problem);
 
     const std::vector<double> initial = problem.initial_point();
@@ -375,8 +385,8 @@ NeutralTwoPhaseEosNlpContract evaluate_neutral_two_phase_eos_nlp_contract(
     NeutralTwoPhaseEosNlpContract out;
     out.problem_name = problem.name();
     out.derivative_backend = "analytic_cppad";
-    out.phase_count = problem.phase_count();
-    out.species_count = problem.species_count();
+    out.phase_count = phase_count;
+    out.species_count = species_count;
     out.variable_count = problem.variable_count();
     out.constraint_count = problem.constraint_count();
     out.jacobian_nonzero_count = problem.jacobian_nonzero_count();
@@ -392,6 +402,20 @@ NeutralTwoPhaseEosNlpContract evaluate_neutral_two_phase_eos_nlp_contract(
     out.jacobian_cols = structure.cols;
     out.jacobian_values_at_initial = problem.jacobian_values(initial);
     return out;
+}
+
+}  // namespace
+
+NeutralTwoPhaseEosNlpContract evaluate_neutral_two_phase_eos_nlp_contract(
+    const add_args& args,
+    double temperature,
+    double target_pressure,
+    const std::vector<std::vector<double>>& phase_amounts,
+    const std::vector<double>& volumes,
+    const std::vector<double>& feed_amounts
+) {
+    NeutralTwoPhaseEosProblem problem(args, temperature, target_pressure, phase_amounts, volumes, feed_amounts);
+    return make_nlp_contract(problem, problem.phase_count(), problem.species_count());
 }
 
 NeutralTwoPhaseEosNlpContract evaluate_neutral_two_phase_eos_tp_flash_nlp_contract(
