@@ -28,7 +28,7 @@ def _electrolyte_mixture() -> epcsaft.ePCSAFTMixture:
     return epcsaft.ePCSAFTMixture.from_dataset("2022_Ascani", ["H2O", "Butanol", "Na+", "Cl-"], feed, 298.15)
 
 
-def test_associating_neutral_lle_solves_without_numerical_perturbation_derivatives() -> None:
+def test_associating_neutral_lle_solves_with_cppad_implicit_derivatives() -> None:
     mix = _associating_lle_mixture()
 
     result = mix.lle_tp(

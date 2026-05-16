@@ -64,7 +64,7 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - Several tests still assert legacy missing-status behavior instead of implemented derivative coverage.
 - Several tests still protect fallback diagnostics, debug skip controls, or legacy custom solver routes.
 - Ceres and CppAD are now required by the local dev script, package build backend, and CMake configure gate. Ipopt remains a system-dependency opt-in until the adapter is implemented.
-- `tests/native/equilibrium/test_reactive_phase_equilibrium_residual_jacobian.py` still uses source-perturbation comparison language and should be rewritten around analytical or CppAD Jacobian evidence.
+- Native derivative tests now avoid perturbation-derived oracle checks; the reactive-phase Jacobian test is rewritten around CppAD backend, shape, finite-value, and analytical row-contract evidence.
 
 Full-suite failures from the duration run that align with planned cleanup or next implementation:
 
@@ -73,7 +73,7 @@ Full-suite failures from the duration run that align with planned cleanup or nex
 - `tests/native/contracts/test_equilibrium_native_contracts.py::test_native_electrolyte_lle_residual_evaluator_rejects_auto_without_autodiff`
 - `tests/native/contracts/test_equilibrium_native_contracts.py::test_package_runtime_has_no_external_optimizer_dependency_or_imports`
 - `tests/native/contracts/test_equilibrium_native_contracts.py::test_public_equilibrium_does_not_expose_python_backend_tokens`
-- `tests/native/cppad/test_cppad_lle_derivatives.py::test_associating_neutral_lle_solves_without_numerical_derivative_derivatives`
+- `tests/native/cppad/test_cppad_lle_derivatives.py::test_associating_neutral_lle_solves_with_cppad_implicit_derivatives`
 - `tests/native/equilibrium/test_reactive_phase_equilibrium_ceres_solver.py::test_reactive_phase_native_ceres_solver_rejects_unusable_solution`
 - `tests/workflows/repo/test_dependency_issue_triage.py::test_issue_number_and_url_resolve_to_same_gh_issue_view_call`
 

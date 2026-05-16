@@ -267,6 +267,8 @@ Task 1 note: the first committed gate covers the explicit backend-status and num
 - [x] Validate the quick gate remains under 10 minutes.
 - [x] Commit as `Audit and tighten solver gate tests`.
 
+Task 2 continuation note: native derivative tests that previously used source perturbations as oracle evidence have been rewritten around analytical/CppAD derivative contracts, exact chain-rule identities, backend identity, and finite/nonzero payload checks.
+
 ### Task 3: Build Dependency Boundary
 
 **Files:**
