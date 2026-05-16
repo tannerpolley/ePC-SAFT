@@ -18,10 +18,10 @@ For reactive electrolyte regression, inspect
 It lists the public fit statuses, the top-level convergence fields, and the
 ``residual_evaluation_only`` status used while native Ceres derivative coverage is not
 routed. The sibling
-``bounded_mixed_pressure_speciation_regression`` capability advertises the
+``mixed_pressure_speciation_residual_context`` capability advertises the
 diagnostic residual context, its supported target families, and the fact that
 it is not a production optimizer. Python still owns row orchestration and
-bounded step diagnostics while the thermodynamic calculations remain native.
+diagnostic formatting while the thermodynamic calculations remain native.
 
 Reactive Speciation And Bubble Diagnostics
 ------------------------------------------

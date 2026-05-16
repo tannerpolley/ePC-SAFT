@@ -461,6 +461,8 @@ Task 10 continuation note: regression public/native result payloads no longer ex
 
 Task 10 continuation note: the residual-only reactive electrolyte fit wrapper no longer exposes a public `damping` argument or stale line-search status documentation. It remains a structured residual-evaluation result until native Ceres derivative coverage owns that optimization route.
 
+Task 10 continuation note: reactive electrolyte batch capabilities now expose only the implemented residual-only/failed-row fit statuses and renamed the mixed pressure/speciation entry to a residual-context capability. The public metadata no longer advertises bounded step control or line-search fit outcomes for this route.
+
 ### Task 11: Internal Extension Boundaries
 
 **Files:**

@@ -51,9 +51,11 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     fit_contract = capabilities["regression"]["reactive_electrolyte_batch_context"]["fit_status_contract"]
     assert fit_contract["available"] is True
     assert "bounded_incomplete" not in fit_contract["statuses"]
+    assert "line_search_failed" not in fit_contract["statuses"]
+    assert fit_contract["statuses"] == ["failed_rows", "residual_evaluation_only"]
     assert "residual_evaluation_only" in fit_contract["statuses"]
     mixed_regression = capabilities["regression"]["reactive_electrolyte_batch_context"][
-        "bounded_mixed_pressure_speciation_regression"
+        "mixed_pressure_speciation_residual_context"
     ]
     assert mixed_regression["available"] is True
     assert mixed_regression["status"] == "diagnostic_residual_context"
@@ -61,7 +63,7 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert mixed_regression["optimizer"] is None
     assert mixed_regression["supports_pressure_targets"] is True
     assert mixed_regression["supports_speciation_targets"] is True
-    assert mixed_regression["supports_bounds"] is True
+    assert mixed_regression["validates_parameter_bounds"] is True
     assert mixed_regression["native_hot_loop"] is False
     assert mixed_regression["ceres"]["production"] is False
     assert ipopt["available"] is info["optional_dependencies"]["ipopt"]["available"]
@@ -143,7 +145,7 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert batch_context["backend"] == "python_batched_native_solvers"
     assert "ReactiveElectrolyteRegressionContext" in batch_context["classes"]
     assert batch_context["methods"] == ["evaluate_objective"]
-    assert "residual_evaluation_only" in batch_context["fit_status_contract"]["statuses"]
+    assert batch_context["fit_status_contract"]["statuses"] == ["failed_rows", "residual_evaluation_only"]
     assert capabilities["equilibrium"]["problem_objects"]["entrypoint"] == "mixture.solve_equilibrium(problem)"
     assert (
         capabilities["equilibrium"]["contribution_maps"]["activity_coefficient_term_decomposition_available"] is False

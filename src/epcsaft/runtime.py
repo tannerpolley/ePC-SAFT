@@ -642,9 +642,6 @@ def capabilities() -> dict[str, object]:
                 "fit_status_contract": {
                     "available": True,
                     "statuses": [
-                        "converged",
-                        "max_iterations",
-                        "line_search_failed",
                         "failed_rows",
                         "residual_evaluation_only",
                     ],
@@ -657,7 +654,7 @@ def capabilities() -> dict[str, object]:
                         "step_norm",
                     ],
                 },
-                "bounded_mixed_pressure_speciation_regression": {
+                "mixed_pressure_speciation_residual_context": {
                     "available": True,
                     "status": "diagnostic_residual_context",
                     "production_optimizer": False,
@@ -669,7 +666,7 @@ def capabilities() -> dict[str, object]:
                     "supports_fugacity_targets": True,
                     "supports_density_targets": True,
                     "supports_relative_permittivity_targets": True,
-                    "supports_bounds": True,
+                    "validates_parameter_bounds": True,
                     "native_hot_loop": False,
                     "ceres": {
                         "available": bool(ceres["available"]),
@@ -677,7 +674,7 @@ def capabilities() -> dict[str, object]:
                         "reason": "native Ceres reactive batch optimizer not registered",
                     },
                     "thermodynamic_backend": "native",
-                    "python_role": "row orchestration, bounded step control, diagnostics",
+                    "python_role": "row orchestration and diagnostics",
                 },
                 "classes": [
                     "ReactiveElectrolyteBatch",
