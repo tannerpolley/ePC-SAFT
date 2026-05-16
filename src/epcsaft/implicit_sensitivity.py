@@ -39,7 +39,7 @@ class ImplicitSolveResult:
         status = str(self.status).strip().lower()
         disallowed_backend = "numerical" + "_" + "derivative"
         if disallowed_backend in backend or disallowed_backend in status:
-            raise InputError("Perturbation differencing is not an allowed implicit sensitivity backend.")
+            raise InputError("Implicit solved-state sensitivities require analytic or CppAD residual Jacobians.")
 
         state = _array_payload(self.state, name="state")
         residual = _array_payload(self.residual, name="residual")

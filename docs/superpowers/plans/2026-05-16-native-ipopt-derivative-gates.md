@@ -708,6 +708,10 @@ Task 12 continuation note: public `EquilibriumOptions` no longer accepts the old
 density-budget, or objective-evaluation budget controls. The facade keeps `timeout_seconds` as the wall-clock option
 for native Ipopt routes and rejects removed option dictionary keys before route dispatch.
 
+Task 12 continuation note: implicit solved-state sensitivity errors now state the positive allowed contract directly:
+analytic or CppAD residual Jacobians. The tracked text gate also blocks reintroducing the old derivative-approximation
+wording in active tracked files.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**
