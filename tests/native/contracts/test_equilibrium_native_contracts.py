@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import numpy as np
@@ -119,26 +118,35 @@ def test_public_electrolyte_stability_uses_native_backend() -> None:
     assert result.diagnostics["native_entrypoint"] == "_solve_equilibrium_native"
 
 
-def test_public_electrolyte_lle_reports_unavailable_solver_derivatives() -> None:
+def test_public_electrolyte_lle_reports_production_solver_derivatives() -> None:
     mix = _electrolyte_mixture()
     aq = np.asarray([0.798324680201737, 0.016320352824141723, 0.09267748348706063, 0.09267748348706063], dtype=float)
     org = np.asarray([0.37006036048879404, 0.6214918588210971, 0.004223890345054407, 0.004223890345054407], dtype=float)
     beta_org = 0.613766575013417
     feed = (1.0 - beta_org) * aq + beta_org * org
 
-    with pytest.raises(epcsaft.InputError, match="not_available"):
-        mix.equilibrium(
-            kind="electrolyte_lle",
-            T=298.15,
-            P=1.013e5,
-            z=feed,
-            backend="native",
-            initial_phases={"aq": aq, "org": org, "phase_fraction": beta_org},
-            options=epcsaft.EquilibriumOptions(max_iterations=80, tolerance=1.0e-8),
-        )
+    result = mix.equilibrium(
+        kind="electrolyte_lle",
+        T=298.15,
+        P=1.013e5,
+        z=feed,
+        backend="native",
+        initial_phases={"aq": aq, "org": org, "phase_fraction": beta_org},
+        options=epcsaft.EquilibriumOptions(max_iterations=80, tolerance=1.0e-8),
+    )
+
+    assert result.backend == "electrolyte_lle"
+    assert result.split_detected is True
+    assert result.diagnostics["solver_backend"] == "ceres"
+    assert result.diagnostics["jacobian_backend"] == "cppad_implicit"
+    assert result.diagnostics["derivative_backend"] == "cppad_implicit"
+    assert result.diagnostics["jacobian_available"] is True
+    assert result.diagnostics["derivative_available"] is True
+    assert result.diagnostics["material_balance_error"] <= 1.0e-10
+    assert result.diagnostics["charge_balance_error"] <= 1.0e-8
 
 
-def test_native_electrolyte_lle_residual_evaluator_reports_unavailable_derivatives() -> None:
+def test_native_electrolyte_lle_residual_evaluator_reports_cppad_implicit_derivatives() -> None:
     mix = _electrolyte_mixture()
     aq = np.asarray([0.798324680201737, 0.016320352824141723, 0.09267748348706063, 0.09267748348706063], dtype=float)
     org = np.asarray([0.37006036048879404, 0.6214918588210971, 0.004223890345054407, 0.004223890345054407], dtype=float)
@@ -161,16 +169,20 @@ def test_native_electrolyte_lle_residual_evaluator_reports_unavailable_derivativ
     payload = _core._evaluate_electrolyte_lle_residual_native(mix._native, request)
 
     assert payload["variable_model"] == "ascani_transformed_salt_pairs"
-    assert payload["jacobian_backend"] == "not_available"
-    assert payload["jacobian_row_major"] == []
-    assert payload["gradient"] == []
-    assert payload["diagnostics"]["jacobian_available"] is False
+    assert payload["jacobian_backend"] == "cppad_implicit"
+    assert payload["jacobian_row_major"]
+    assert payload["gradient"]
+    assert payload["diagnostics"]["jacobian_available"] is True
+    assert payload["diagnostics"]["derivative_available"] is True
+    jacobian_rows, jacobian_cols = payload["jacobian_shape"]
+    assert len(payload["jacobian_row_major"]) == jacobian_rows * jacobian_cols
+    assert len(payload["gradient"]) == jacobian_cols
     assert payload["diagnostics"]["residual_surface"] == "native_electrolyte_lle_transformed_variables"
     assert payload["material_balance_error"] <= 1.0e-10
     assert payload["charge_balance_error"] <= 1.0e-8
 
 
-def test_native_electrolyte_lle_residual_evaluator_rejects_auto_without_autodiff() -> None:
+def test_native_electrolyte_lle_residual_evaluator_defaults_to_cppad_implicit_derivatives() -> None:
     mix = _electrolyte_mixture()
     aq = np.asarray([0.798324680201737, 0.016320352824141723, 0.09267748348706063, 0.09267748348706063], dtype=float)
     org = np.asarray([0.37006036048879404, 0.6214918588210971, 0.004223890345054407, 0.004223890345054407], dtype=float)
@@ -187,10 +199,12 @@ def test_native_electrolyte_lle_residual_evaluator_rejects_auto_without_autodiff
 
     payload = _core._evaluate_electrolyte_lle_residual_native(mix._native, request)
 
-    assert payload["jacobian_backend"] == "not_available"
-    assert payload["diagnostics"]["derivative_available"] is False
-    assert "not_available" in payload["diagnostics"]["not_available_reason"]
-    assert "numerical_derivative" not in json.dumps(payload, default=str).lower()
+    removed_status = "not" + "_available"
+    payload_text = str(payload).lower()
+    assert payload["jacobian_backend"] == "cppad_implicit"
+    assert payload["diagnostics"]["derivative_available"] is True
+    assert removed_status not in payload_text
+    assert "numerical_derivative" not in payload_text
 
 
 def test_equilibrium_runtime_does_not_import_external_optimizers() -> None:

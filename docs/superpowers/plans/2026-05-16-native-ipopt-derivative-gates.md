@@ -411,6 +411,10 @@ Task 8 continuation note: `EquilibriumOptions.jacobian_backend` no longer accept
 
 Task 9 progress note: the public `ReactiveSpeciationOptions.hessian_strategy` knob was removed for the same reason as the equilibrium facade knob. Hessian behavior remains internal to native solver adapters.
 
+Task 9 continuation note: stale electrolyte LLE contract tests that expected missing residual derivatives were rewritten to assert the implemented Ceres solve plus CppAD-implicit transformed-variable residual Jacobian surface.
+
+Task 9 continuation note: the Python reactive-phase diagnostics no longer call NumPy's least-squares convenience routine for reaction extent reporting. The helper uses a small direct linear solve of the stoichiometric normal system and remains diagnostic-only.
+
 ### Task 10: Make Regression Ceres-Only
 
 **Files:**

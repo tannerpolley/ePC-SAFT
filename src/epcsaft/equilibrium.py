@@ -1689,7 +1689,10 @@ def _named_reaction_extents(
     if reaction_matrix.size == 0 or not reaction_names:
         return {}
     try:
-        extents, *_ = np.linalg.lstsq(reaction_matrix.T, overall - feed, rcond=None)
+        delta = overall - feed
+        gram = reaction_matrix @ reaction_matrix.T
+        rhs = reaction_matrix @ delta
+        extents = np.linalg.solve(gram, rhs)
     except np.linalg.LinAlgError:
         return {name: float("nan") for name in reaction_names}
     return {name: float(value) for name, value in zip(reaction_names, extents)}

@@ -68,14 +68,12 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - The public implicit-sensitivity placeholder helper was removed. Reactive speciation tests now require real analytical/CppAD-backed implicit solve payloads and raising behavior for unsupported implicit derivative requests.
 - The legacy reactive-speciation `jacobian_backend="autodiff"` selector was removed; option tests now reject it and explicit derivative requests are limited to analytical/CppAD semantics.
 - The public `EquilibriumOptions.jacobian_backend` selector now rejects the same legacy backend spelling, keeping phase-equilibrium derivative requests aligned to analytical/CppAD semantics.
+- Stale native electrolyte LLE contract tests were rewritten from missing-derivative assertions to the implemented Ceres plus CppAD-implicit residual/Jacobian surface.
+- The reactive phase diagnostic extent helper no longer uses NumPy's least-squares convenience path; it uses a direct library linear solve for the small stoichiometric normal system.
 
 Full-suite failures from the duration run that align with planned cleanup or next implementation:
 
-- `tests/native/contracts/test_equilibrium_native_contracts.py::test_public_electrolyte_lle_reports_unavailable_solver_derivatives`
-- `tests/native/contracts/test_equilibrium_native_contracts.py::test_native_electrolyte_lle_residual_evaluator_reports_unavailable_derivatives`
-- `tests/native/contracts/test_equilibrium_native_contracts.py::test_native_electrolyte_lle_residual_evaluator_rejects_auto_without_autodiff`
 - `tests/native/contracts/test_equilibrium_native_contracts.py::test_package_runtime_has_no_external_optimizer_dependency_or_imports`
-- `tests/native/contracts/test_equilibrium_native_contracts.py::test_public_equilibrium_does_not_expose_python_backend_tokens`
 - `tests/native/cppad/test_cppad_lle_derivatives.py::test_associating_neutral_lle_solves_with_cppad_implicit_derivatives`
 - `tests/native/equilibrium/test_reactive_phase_equilibrium_ceres_solver.py::test_reactive_phase_native_ceres_solver_rejects_unusable_solution`
 - `tests/workflows/repo/test_dependency_issue_triage.py::test_issue_number_and_url_resolve_to_same_gh_issue_view_call`
