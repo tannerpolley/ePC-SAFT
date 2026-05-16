@@ -567,6 +567,8 @@ Task 12 continuation note: the unreferenced tracked LaTeX backup `docs/latex/equ
 
 Task 12 continuation note: completed, unreferenced JetBrains cleanup plan artifacts under `docs/plans/` were removed. The implemented script remains `scripts/dev/configure_jetbrains_project.py`, and local agent routing continues to point there.
 
+Task 12 continuation note: remaining unreferenced stale handoff/planning artifacts under `docs/handoffs/` and `docs/plans/` were removed. This plan remains the active implementation handoff for equilibrium, regression, derivative, and documentation gate work.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**
