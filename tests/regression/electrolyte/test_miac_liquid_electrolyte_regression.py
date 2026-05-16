@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 import epcsaft
 from analyses.data_validation.miac_fits.scripts import validate_miac_fits as vmf
@@ -87,7 +88,7 @@ def test_miac_liquid_electrolyte_figiel_outputs_and_coverage_matrix_are_finite()
     backend_labels = {str(row["backend"]).lower() for row in coverage_rows}
 
     assert case["pair_key"] in mean_molality
-    assert mean_molality[case["pair_key"]] == np.float64(case["expected_miac"])
+    assert mean_molality[case["pair_key"]] == pytest.approx(float(case["expected_miac"]), rel=1.0e-11, abs=1.0e-12)
     assert derivatives["supported"] is True
     assert derivatives["backend"] in {"analytic", "cppad"}
     assert np.all(np.isfinite(derivatives["a_born_d_d_born"]))

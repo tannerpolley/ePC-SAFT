@@ -273,6 +273,8 @@ Task 2 continuation note: native derivative tests that previously used source pe
 
 Task 2 continuation note: the stale full-duration failure list in the tracked test audit has been retired. The previously listed dependency, CppAD LLE, reactive-phase Ceres, and dependency-triage nodes now pass individually.
 
+Task 2 continuation note: after the reactive-speciation diagnostic and MIAC fixture cleanup slices, `uv run python run_pytest.py --all -q` passed with 524 tests and 21 skips in 164.09 seconds.
+
 ### Task 3: Build Dependency Boundary
 
 **Files:**
@@ -353,6 +355,8 @@ Task 6 progress note: the first route slice adds explicit `solver_backend="ipopt
 Task 6 continuation note: the public helper that manufactured missing implicit-derivative payloads was removed. Reactive speciation now records implicit solve results only for real analytical/CppAD-backed solved-state sensitivities; unsupported implicit derivative requests raise instead of returning placeholder diagnostics.
 
 Task 6 continuation note: the legacy `jacobian_backend="autodiff"` selector was removed from reactive speciation. Explicit derivative selection is now `auto`, `analytic` as an alias for auto, or `cppad`; CppAD still fails loudly until that residual route exists.
+
+Task 6 continuation note: no-reaction, failed, and best-effort reactive speciation paths now omit implicit-sensitivity payloads when the native result has no reaction-constant sensitivity matrix. Real implicit solve payloads remain required when the native matrices exist.
 
 ### Task 7: Build EOS Phase Blocks For Equilibrium
 

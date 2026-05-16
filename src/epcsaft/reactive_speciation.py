@@ -675,21 +675,31 @@ def _normalize_reactive_derivative_diagnostics(diagnostics: dict[str, Any]) -> N
         "reactive_speciation_variables",
         solved_state_backend,
     )
-    reactive_implicit_result = _native_reactive_implicit_result(
-        diagnostics,
-        solved_state_backend=solved_state_backend,
-        derivative_backend=derivative_backend,
-    )
-    blocks = list(diagnostics.get("implicit_sensitivity_blocks", []))
-    if "reactive_speciation_variables" not in blocks:
-        blocks.append("reactive_speciation_variables")
-    diagnostics["implicit_sensitivity_blocks"] = blocks
-    diagnostics.setdefault(
-        "implicit_solve_results",
-        {
-            "reactive_speciation_variables": reactive_implicit_result.to_dict(),
-        },
-    )
+    if _has_native_reactive_implicit_payload(diagnostics):
+        reactive_implicit_result = _native_reactive_implicit_result(
+            diagnostics,
+            solved_state_backend=solved_state_backend,
+            derivative_backend=derivative_backend,
+        )
+        blocks = list(diagnostics.get("implicit_sensitivity_blocks", []))
+        if "reactive_speciation_variables" not in blocks:
+            blocks.append("reactive_speciation_variables")
+        diagnostics["implicit_sensitivity_blocks"] = blocks
+        diagnostics.setdefault(
+            "implicit_solve_results",
+            {
+                "reactive_speciation_variables": reactive_implicit_result.to_dict(),
+            },
+        )
+    else:
+        diagnostics.setdefault("implicit_solve_results", {})
+
+
+def _has_native_reactive_implicit_payload(diagnostics: dict[str, Any]) -> bool:
+    rows = int(diagnostics.get("reactive_speciation_residual_rows", 0))
+    state_size = int(diagnostics.get("reactive_speciation_state_size", 0))
+    parameter_size = int(diagnostics.get("reactive_speciation_parameter_size", 0))
+    return rows > 0 and state_size > 0 and parameter_size > 0
 
 
 def _native_reactive_implicit_result(

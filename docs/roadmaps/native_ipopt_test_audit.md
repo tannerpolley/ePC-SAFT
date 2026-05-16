@@ -13,6 +13,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
   - Result: `531 tests collected in 2.50s`; wrapper wall time `3.518s`.
 - Full duration command: `uv run python run_pytest.py --all -q --durations=30`
   - Result: failed; `496 passed, 8 failed, 27 skipped` in `239.64s`; wrapper wall time `240.664s`.
+- Full-suite rerun command after the cleanup slices: `uv run python run_pytest.py --all -q`
+  - Result: `524 passed, 21 skipped` in `164.09s`; wrapper wall time `165.4s`.
 - Quick validation command: `uv run python scripts/dev/validate_project.py quick`
   - Result after the native dependency gate landed: `35 passed in 21.53s`
   - This is comfortably under the 10 minute quick-gate target.
@@ -70,6 +72,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - The public `EquilibriumOptions.jacobian_backend` selector now rejects the same legacy backend spelling, keeping phase-equilibrium derivative requests aligned to analytical/CppAD semantics.
 - Stale native electrolyte LLE contract tests were rewritten from missing-derivative assertions to the implemented Ceres plus CppAD-implicit residual/Jacobian surface.
 - The reactive phase diagnostic extent helper no longer uses NumPy's least-squares convenience path; it uses a direct library linear solve for the small stoichiometric normal system.
+- No-reaction, failed, and best-effort reactive speciation paths now omit implicit-sensitivity payloads when the native route has no reaction-constant sensitivity matrix instead of returning placeholders or raising during diagnostic normalization.
+- The MIAC electrolyte fixture check now uses a strict approximate comparison instead of exact binary float equality.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
 

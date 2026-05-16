@@ -166,6 +166,7 @@ def test_native_chemical_equilibrium_skips_soft_start_when_no_reactions() -> Non
     assert result.diagnostics["soft_start_success"] is False
     assert result.diagnostics["soft_start_used"] is False
     assert result.diagnostics["soft_start_rejection_reason"] == "no_reactions"
+    assert result.diagnostics["implicit_solve_results"] == {}
 
 def test_native_chemical_equilibrium_handles_trace_species_seed_without_invalid_numbers() -> None:
     mix = epcsaft.ePCSAFTMixture.from_params(
