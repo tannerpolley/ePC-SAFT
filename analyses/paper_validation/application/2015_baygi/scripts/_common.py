@@ -352,7 +352,7 @@ def regressed_parameter_rows(path: Path) -> list[dict[str, str]]:
     from epcsaft.regression import _fit_pure_neutral_associating_native
 
     records = baygi_mea_fit_records()
-    max_nfev = int(os.environ.get("EPCSAFT_BAYGI_REGRESSION_MAX_NFEV", "30"))
+    max_nfev = int(os.environ.get("EPCSAFT_BAYGI_REGRESSION_MAX_NFEV", "1"))
     rows: list[dict[str, str | float | int | bool]] = []
     for assoc_scheme, table_values in TABLE2_MEA_PARAMETERS.items():
         result = _fit_pure_neutral_associating_native(

@@ -9,7 +9,6 @@
 #include <sstream>
 #include <string>
 
-#include <unsupported/Eigen/LevenbergMarquardt>
 
 #ifdef EPCSAFT_HAS_CERES
 #include <ceres/cost_function.h>
@@ -28,7 +27,6 @@ using thermo_detail::kDispersionB2;
 namespace regression_detail {
 
 constexpr double kRegressionGradientFloor = 1.0e-300;
-constexpr double kTransformFiniteBound = 25.0;
 constexpr int kThetaSize = 3;
 constexpr int kSeedRho = 0;
 constexpr int kSeedM = 1;
@@ -38,7 +36,6 @@ constexpr int kSeedCount = 4;
 
 using ResidualVector = Eigen::VectorXd;
 using ResidualJacobian = Eigen::MatrixXd;
-using LMInputVector = Eigen::VectorXd;
 
 double scalar_value(double x) {
     return x;
@@ -460,44 +457,6 @@ double rms_metric_cpp(const vector<double> &values) {
     return std::sqrt(accum / static_cast<double>(values.size()));
 }
 
-std::string least_squares_status_message_cpp(Eigen::LevenbergMarquardtSpace::Status status) {
-    using Eigen::LevenbergMarquardtSpace::Status;
-    switch (status) {
-        case Status::RelativeReductionTooSmall:
-            return "Levenberg-Marquardt terminated because the relative reduction became small.";
-        case Status::RelativeErrorTooSmall:
-            return "Levenberg-Marquardt terminated because the relative step became small.";
-        case Status::RelativeErrorAndReductionTooSmall:
-            return "Levenberg-Marquardt terminated because the relative step and reduction became small.";
-        case Status::CosinusTooSmall:
-            return "Levenberg-Marquardt terminated because the gradient cosine became small.";
-        case Status::TooManyFunctionEvaluation:
-            return "Levenberg-Marquardt exceeded the maximum function evaluation count.";
-        case Status::FtolTooSmall:
-            return "Levenberg-Marquardt ftol is too small for further progress.";
-        case Status::XtolTooSmall:
-            return "Levenberg-Marquardt xtol is too small for further progress.";
-        case Status::GtolTooSmall:
-            return "Levenberg-Marquardt gtol is too small for further progress.";
-        case Status::ImproperInputParameters:
-            return "Levenberg-Marquardt reported improper input parameters.";
-        case Status::UserAsked:
-            return "Levenberg-Marquardt terminated early by user request.";
-        case Status::Running:
-        case Status::NotStarted:
-        default:
-            return "Levenberg-Marquardt terminated without a clear success code.";
-    }
-}
-
-bool least_squares_status_success_cpp(Eigen::LevenbergMarquardtSpace::Status status) {
-    using Eigen::LevenbergMarquardtSpace::Status;
-    return status == Status::RelativeReductionTooSmall
-        || status == Status::RelativeErrorTooSmall
-        || status == Status::RelativeErrorAndReductionTooSmall
-        || status == Status::CosinusTooSmall;
-}
-
 void validate_fused_state_cpp(const PureNeutralFusedState &state, const char *label) {
     if (!(std::isfinite(state.dpdrho) && std::abs(state.dpdrho) > 0.0)) {
         throw ValueError(std::string("Encountered invalid exact dp/drho during native regression ") + label + " evaluation.");
@@ -632,19 +591,6 @@ constexpr std::array<std::array<double, kThetaSize>, 5> kDeterministicSeedFactor
     {{0.97, 1.02, 0.98}},
     {{1.03, 0.98, 1.02}},
 }};
-
-double logistic_cpp(double y) {
-    if (y >= 0.0) {
-        double exp_neg = std::exp(-y);
-        return 1.0 / (1.0 + exp_neg);
-    }
-    double exp_pos = std::exp(y);
-    return exp_pos / (1.0 + exp_pos);
-}
-
-double logit_cpp(double p) {
-    return std::log(p / (1.0 - p));
-}
 
 double validate_positive_bound_cpp(double value, const char *label) {
     if (!(value > 0.0) || !std::isfinite(value)) {
@@ -1194,23 +1140,6 @@ GenericRegressionDebugResult evaluate_generic_residuals_cpp(
     return out;
 }
 
-GenericRegressionDebugResult evaluate_generic_residuals_with_jacobian_cpp(
-    const vector<add_args> &base_args_by_record,
-    const vector<GenericRegressionRecord> &records,
-    const vector<int> &target_kinds,
-    const vector<int> &target_indices,
-    const vector<int> &target_indices_2,
-    const vector<double> &theta
-) {
-    (void)base_args_by_record;
-    (void)records;
-    (void)target_kinds;
-    (void)target_indices;
-    (void)target_indices_2;
-    (void)theta;
-    throw ValueError("not_available: generic regression sensitivities are not implemented.");
-}
-
 struct BinaryKijResidualEvaluation {
     ResidualVector residuals;
     ResidualJacobian jacobian;
@@ -1697,49 +1626,6 @@ BinaryKijResidualEvaluation evaluate_binary_kij_residual_jacobian_cpp(
     return out;
 }
 
-struct GenericBoundedTransformResult {
-    vector<double> x;
-};
-
-GenericBoundedTransformResult generic_unconstrained_to_bounded_cpp(
-    const LMInputVector &y,
-    const vector<double> &lower,
-    const vector<double> &upper
-) {
-    GenericBoundedTransformResult out;
-    out.x.resize(static_cast<size_t>(y.size()), 0.0);
-    for (Index i = 0; i < y.size(); ++i) {
-        double lo = lower[static_cast<size_t>(i)];
-        double hi = upper[static_cast<size_t>(i)];
-        if (!std::isfinite(lo) || !std::isfinite(hi) || !(hi > lo)) {
-            throw ValueError("Native generic regression requires finite strictly increasing bounds.");
-        }
-        double sigma = logistic_cpp(y[i]);
-        out.x[static_cast<size_t>(i)] = lo + (hi - lo) * sigma;
-    }
-    return out;
-}
-
-LMInputVector generic_bounded_to_unconstrained_cpp(
-    const vector<double> &x,
-    const vector<double> &lower,
-    const vector<double> &upper
-) {
-    LMInputVector y(static_cast<Index>(x.size()));
-    for (size_t i = 0; i < x.size(); ++i) {
-        double lo = lower[i];
-        double hi = upper[i];
-        if (!std::isfinite(lo) || !std::isfinite(hi) || !(hi > lo)) {
-            throw ValueError("Native generic regression requires finite strictly increasing bounds.");
-        }
-        double clipped = clip_start_value_cpp(x[i], lo, hi);
-        double p = (clipped - lo) / (hi - lo);
-        p = std::min(1.0 - 1.0e-12, std::max(1.0e-12, p));
-        y[static_cast<Index>(i)] = logit_cpp(p);
-    }
-    return y;
-}
-
 vector<vector<double>> generic_candidate_starts_cpp(
     const vector<double> &x0,
     const vector<double> &lower,
@@ -1770,201 +1656,6 @@ vector<vector<double>> generic_candidate_starts_cpp(
         append_start_if_distinct_cpp(starts, std::move(point));
     }
     return starts;
-}
-
-struct GenericLeastSquaresFunctor : Eigen::DenseFunctor<double> {
-    static int residual_count_from_records(const vector<GenericRegressionRecord> &records) {
-        int count = 0;
-        for (const auto &record : records) {
-            if (record.term == kGenericTermBinaryVLE) {
-                if (record.target_index >= 0) {
-                    ++count;
-                }
-                if (record.target_index_2 >= 0) {
-                    ++count;
-                }
-            } else {
-                ++count;
-            }
-        }
-        return std::max(1, count);
-    }
-
-    GenericLeastSquaresFunctor(
-        vector<add_args> base_args_by_record,
-        vector<GenericRegressionRecord> records,
-        vector<int> target_kinds,
-        vector<int> target_indices,
-        vector<int> target_indices_2,
-        vector<double> lower,
-        vector<double> upper
-    )
-        : Eigen::DenseFunctor<double>(
-              static_cast<int>(target_kinds.size()),
-              residual_count_from_records(records)
-          ),
-          base_args_by_record(std::move(base_args_by_record)),
-          records(std::move(records)),
-          target_kinds(std::move(target_kinds)),
-          target_indices(std::move(target_indices)),
-          target_indices_2(std::move(target_indices_2)),
-          lower(std::move(lower)),
-          upper(std::move(upper)) {}
-
-    int operator()(const LMInputVector &y, ResidualVector &fvec) {
-        try {
-            GenericBoundedTransformResult transform = generic_unconstrained_to_bounded_cpp(y, lower, upper);
-            GenericRegressionDebugResult eval = evaluate_generic_residuals_cpp(
-                base_args_by_record,
-                records,
-                target_kinds,
-                target_indices,
-                target_indices_2,
-                transform.x
-            );
-            for (Index i = 0; i < fvec.size(); ++i) {
-                fvec[i] = eval.residuals[static_cast<size_t>(i)];
-            }
-            return 0;
-        } catch (...) {
-            return -1;
-        }
-    }
-
-    int df(const LMInputVector &y, ResidualJacobian &fjac) {
-        constexpr double eps = 1.0e-6;
-        ResidualVector f0(values());
-        if ((*this)(y, f0) != 0) {
-            return -1;
-        }
-        for (Index j = 0; j < inputs(); ++j) {
-            LMInputVector yp = y;
-            LMInputVector ym = y;
-            yp[j] += eps;
-            ym[j] -= eps;
-            ResidualVector fp(values());
-            ResidualVector fm(values());
-            if ((*this)(yp, fp) != 0 || (*this)(ym, fm) != 0) {
-                return -1;
-            }
-            fjac.col(j) = (fp - fm) / (2.0 * eps);
-        }
-        return 0;
-    }
-
-    vector<add_args> base_args_by_record;
-    vector<GenericRegressionRecord> records;
-    vector<int> target_kinds;
-    vector<int> target_indices;
-    vector<int> target_indices_2;
-    vector<double> lower;
-    vector<double> upper;
-};
-
-GenericRegressionResult generic_result_from_eval_cpp(
-    const GenericRegressionDebugResult &eval,
-    const vector<double> &x,
-    bool success,
-    int status,
-    const std::string &message,
-    int nfev,
-    int iterations
-) {
-    GenericRegressionResult out;
-    out.x = x;
-    out.cost = eval.cost;
-    out.residual_norm = eval.residual_norm;
-    out.metrics_by_term = eval.metrics_by_term;
-    out.success = success;
-    out.status = status;
-    out.message = message;
-    out.nfev = nfev;
-    out.iterations = iterations;
-    out.backend = "least_squares_native";
-    out.jacobian_available = eval.jacobian_available;
-    out.jacobian_backend = eval.jacobian_backend;
-    out.jacobian_fallback_used = eval.jacobian_fallback_used;
-    out.jacobian_fallback_reason = eval.jacobian_fallback_reason;
-    out.not_available_reason = eval.not_available_reason;
-    out.hessian_available = eval.hessian_available;
-    out.hessian_backend = eval.hessian_backend;
-    out.hessian_fallback_used = eval.hessian_fallback_used;
-    out.hessian_fallback_reason = eval.hessian_fallback_reason;
-    return out;
-}
-
-GenericRegressionResult solve_one_generic_start_cpp(
-    const vector<add_args> &base_args_by_record,
-    const vector<GenericRegressionRecord> &records,
-    const vector<int> &target_kinds,
-    const vector<int> &target_indices,
-    const vector<int> &target_indices_2,
-    const vector<double> &start,
-    const vector<double> &lower,
-    const vector<double> &upper,
-    int max_nfev
-) {
-    GenericRegressionDebugResult initial_eval = evaluate_generic_residuals_cpp(
-        base_args_by_record,
-        records,
-        target_kinds,
-        target_indices,
-        target_indices_2,
-        start
-    );
-    if (max_nfev <= 1) {
-        GenericRegressionResult out = generic_result_from_eval_cpp(
-            initial_eval,
-            start,
-            std::isfinite(initial_eval.residual_norm),
-            0,
-            "evaluated initial native generic residual without optimizer",
-            1,
-            0
-        );
-        out.initial_cost = initial_eval.cost;
-        out.initial_residual_norm = initial_eval.residual_norm;
-        return out;
-    }
-    GenericLeastSquaresFunctor functor(
-        base_args_by_record,
-        records,
-        target_kinds,
-        target_indices,
-        target_indices_2,
-        lower,
-        upper
-    );
-    Eigen::LevenbergMarquardt<GenericLeastSquaresFunctor> lm(functor);
-    lm.setFtol(1.0e-6);
-    lm.setXtol(1.0e-6);
-    lm.setGtol(0.0);
-    lm.setFactor(10.0);
-    lm.setMaxfev(max_nfev);
-
-    LMInputVector y = generic_bounded_to_unconstrained_cpp(start, lower, upper);
-    Eigen::LevenbergMarquardtSpace::Status status = lm.minimize(y);
-    GenericBoundedTransformResult final_transform = generic_unconstrained_to_bounded_cpp(y, lower, upper);
-    GenericRegressionDebugResult final_eval = evaluate_generic_residuals_cpp(
-        base_args_by_record,
-        records,
-        target_kinds,
-        target_indices,
-        target_indices_2,
-        final_transform.x
-    );
-    GenericRegressionResult out = generic_result_from_eval_cpp(
-        final_eval,
-        final_transform.x,
-        least_squares_status_success_cpp(status) || final_eval.residual_norm <= initial_eval.residual_norm + 1.0e-12,
-        static_cast<int>(status),
-        least_squares_status_message_cpp(status),
-        static_cast<int>(lm.nfev() + lm.njev()),
-        static_cast<int>(lm.iterations())
-    );
-    out.initial_cost = initial_eval.cost;
-    out.initial_residual_norm = initial_eval.residual_norm;
-    return out;
 }
 
 #ifdef EPCSAFT_HAS_CERES
@@ -2297,7 +1988,6 @@ using regression_detail::solve_one_start_ceres_cpp;
 #endif
 using regression_detail::choose_better_generic_result_cpp;
 using regression_detail::evaluate_generic_residuals_cpp;
-using regression_detail::evaluate_generic_residuals_with_jacobian_cpp;
 using regression_detail::generic_candidate_starts_cpp;
 using regression_detail::kGenericTargetDBorn;
 using regression_detail::kGenericTargetDielc;
@@ -2309,7 +1999,6 @@ using regression_detail::kGenericTargetS;
 using regression_detail::solve_one_binary_kij_ceres_start_cpp;
 using regression_detail::solve_one_pure_ion_ceres_start_cpp;
 #endif
-using regression_detail::solve_one_generic_start_cpp;
 
 epcsaft::native::cppad_support::CppADDerivativeResult cppad_pure_neutral_parameter_derivatives_cpp(
     double t,
@@ -2328,7 +2017,6 @@ PureNeutralRegressionDebugResult evaluate_pure_neutral_objective_debug_cpp(
     const vector<double> &x
 ) {
     validate_pure_neutral_base_args_cpp(base_args);
-    constexpr std::array<double, kThetaSize> kObjectiveSteps = {1.0e-6, 1.0e-6, 1.0e-5};
     RegressionProfilingStats profiling;
     PureNeutralResidualEvaluation residual_eval = evaluate_residual_jacobian_cpp(
         base_args,
@@ -2342,33 +2030,7 @@ PureNeutralRegressionDebugResult evaluate_pure_neutral_objective_debug_cpp(
     PureNeutralObjectiveEvaluation eval = objective_from_residual_eval_cpp(residual_eval);
     PureNeutralRegressionDebugResult out;
     out.objective = eval.objective;
-    out.gradient.assign(static_cast<size_t>(kThetaSize), 0.0);
-    for (int j = 0; j < kThetaSize; ++j) {
-        vector<double> x_forward = x;
-        vector<double> x_backward = x;
-        x_forward[static_cast<size_t>(j)] += kObjectiveSteps[static_cast<size_t>(j)];
-        x_backward[static_cast<size_t>(j)] -= kObjectiveSteps[static_cast<size_t>(j)];
-        PureNeutralObjectiveEvaluation forward_eval = evaluate_pure_neutral_objective_cpp(
-            base_args,
-            density_records,
-            density_scale,
-            pure_vle_records,
-            pure_vle_scale,
-            x_forward,
-            nullptr
-        );
-        PureNeutralObjectiveEvaluation backward_eval = evaluate_pure_neutral_objective_cpp(
-            base_args,
-            density_records,
-            density_scale,
-            pure_vle_records,
-            pure_vle_scale,
-            x_backward,
-            nullptr
-        );
-        out.gradient[static_cast<size_t>(j)] =
-            (forward_eval.objective - backward_eval.objective) / (2.0 * kObjectiveSteps[static_cast<size_t>(j)]);
-    }
+    out.gradient.assign(eval.gradient.begin(), eval.gradient.end());
     out.residuals.assign(
         residual_eval.residuals.data(),
         residual_eval.residuals.data() + residual_eval.residuals.size()
@@ -2456,7 +2118,7 @@ GenericRegressionDebugResult evaluate_generic_regression_debug_cpp(
     const vector<int> &target_indices_2,
     const vector<double> &x
 ) {
-    return evaluate_generic_residuals_with_jacobian_cpp(
+    return evaluate_generic_residuals_cpp(
         base_args_by_record,
         records,
         target_kinds,
@@ -2464,55 +2126,6 @@ GenericRegressionDebugResult evaluate_generic_regression_debug_cpp(
         target_indices_2,
         x
     );
-}
-
-GenericRegressionResult fit_generic_least_squares_cpp(
-    const vector<add_args> &base_args_by_record,
-    const vector<GenericRegressionRecord> &records,
-    const vector<int> &target_kinds,
-    const vector<int> &target_indices,
-    const vector<int> &target_indices_2,
-    const vector<double> &x0,
-    const vector<double> &lower,
-    const vector<double> &upper,
-    int multistart,
-    int max_nfev
-) {
-    if (target_kinds.empty()) {
-        throw ValueError("Native generic regression requires at least one optimization target.");
-    }
-    if (x0.size() != target_kinds.size() || lower.size() != target_kinds.size() || upper.size() != target_kinds.size()) {
-        throw ValueError("Native generic regression target arrays must have matching lengths.");
-    }
-    vector<vector<double>> starts = generic_candidate_starts_cpp(x0, lower, upper, multistart);
-    bool have_result = false;
-    GenericRegressionResult best;
-    int starts_tried = 0;
-    int nfev_total = 0;
-    for (const auto &start : starts) {
-        GenericRegressionResult candidate = solve_one_generic_start_cpp(
-            base_args_by_record,
-            records,
-            target_kinds,
-            target_indices,
-            target_indices_2,
-            start,
-            lower,
-            upper,
-            max_nfev
-        );
-        ++starts_tried;
-        nfev_total += candidate.nfev;
-        best = choose_better_generic_result_cpp(have_result, best, candidate);
-        have_result = true;
-    }
-    if (!have_result) {
-        throw ValueError("Native generic least-squares regression did not generate any candidate starts.");
-    }
-    best.starts_tried = starts_tried;
-    best.nfev = nfev_total;
-    best.backend = "least_squares_native";
-    return best;
 }
 
 GenericRegressionResult fit_generic_ceres_cpp(

@@ -79,8 +79,8 @@ def test_literature_pure_parameter_regression_uses_local_benchmark_fixture(tmp_p
     assert set(results) == set(fixture["components"])
     for component, result in results.items():
         assert result.success, result.message
-        assert result.backend == "least_squares_native"
-        assert result.optimizer_backend == "least_squares_native"
+        assert result.backend == "residual_score_native"
+        assert result.optimizer_backend == "residual_score_native"
         assert result.derivative_backend.lower() not in DISALLOWED_BACKENDS
         assert result.jacobian_backend.lower() not in DISALLOWED_BACKENDS
         assert result.jacobian_fallback_used is False

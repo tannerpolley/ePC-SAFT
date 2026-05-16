@@ -26,7 +26,7 @@ def _minimal_nacl_records():
         }
     ]
 
-def _stub_native_generic_runner(monkeypatch, *, backend="least_squares_native"):
+def _stub_native_generic_runner(monkeypatch, *, backend="ceres"):
     calls = []
     jacobian_backend = "cppad_implicit" if backend == "ceres" else "stub"
 
@@ -87,8 +87,7 @@ def _stub_native_generic_runner(monkeypatch, *, backend="least_squares_native"):
             "hessian_fallback_reason": "stubbed hessian skeleton",
         }
 
-    runner_name = "_run_native_generic_ceres" if backend == "ceres" else "_run_native_generic_least_squares"
-    monkeypatch.setattr(regression_module, runner_name, fake_runner)
+    monkeypatch.setattr(regression_module, "_run_native_generic_ceres", fake_runner)
     return calls
 
 def test_fit_pure_neutral_requires_pressure_for_density_records():
@@ -375,7 +374,7 @@ def test_fit_binary_pair_rejects_native_least_squares_backend():
         {"T": 340.0, "P": 101325.0, "x_H2O": 0.6, "x_Ethanol": 0.4, "y_H2O": 0.4, "y_Ethanol": 0.6},
     ]
 
-    with pytest.raises(InputError, match="native analytic/CppAD/implicit"):
+    with pytest.raises(InputError, match="optimizer_backend='ceres'"):
         epcsaft.fit_binary_pair(
             records,
             ("H2O", "Ethanol"),

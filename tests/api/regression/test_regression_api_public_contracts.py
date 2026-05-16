@@ -24,7 +24,7 @@ def _minimal_nacl_records():
         }
     ]
 
-def _stub_native_generic_runner(monkeypatch, *, backend="least_squares_native"):
+def _stub_native_generic_runner(monkeypatch, *, backend="ceres"):
     calls = []
     jacobian_backend = "cppad_implicit" if backend == "ceres" else "stub"
 
@@ -85,8 +85,7 @@ def _stub_native_generic_runner(monkeypatch, *, backend="least_squares_native"):
             "hessian_fallback_reason": "stubbed hessian skeleton",
         }
 
-    runner_name = "_run_native_generic_ceres" if backend == "ceres" else "_run_native_generic_least_squares"
-    monkeypatch.setattr(regression_module, runner_name, fake_runner)
+    monkeypatch.setattr(regression_module, "_run_native_generic_ceres", fake_runner)
     return calls
 
 def test_public_regression_surface_includes_ion_and_binary_v1():

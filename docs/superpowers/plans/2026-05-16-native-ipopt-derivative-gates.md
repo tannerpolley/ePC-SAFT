@@ -399,15 +399,17 @@ Task 6 progress note: the first route slice adds explicit `solver_backend="ipopt
 - Modify: `src/epcsaft/bindings.cpp`
 - Modify regression tests and docs.
 
-- [ ] Delete Eigen unsupported nonlinear optimizer production paths.
-- [ ] Delete old least-squares backend public aliases.
-- [ ] Route pure-neutral, pure-ion, binary pair, and generic supported fits through Ceres.
+- [x] Delete Eigen unsupported nonlinear optimizer production paths.
+- [x] Delete old least-squares backend public aliases.
+- [x] Route pure-neutral, pure-ion, binary pair, and generic supported fits through Ceres.
 - [ ] Use Ceres autodiff where residuals can be templated.
 - [ ] Use analytical/CppAD Jacobians where residuals depend on implicit EOS/state derivatives.
 - [ ] Add tests proving no numeric-diff Ceres route exists.
 - [ ] Commit as `Make regression Ceres-only`.
 
-Task 10 progress note: the first regression slice moves public nonassociating pure-neutral regression to the native Ceres route by default, rejects the old native least-squares backend from that public path, removes the Python and pybind private pure-neutral least-squares entry points, and updates capability metadata so Ceres is a production optimizer when compiled. Generic/associating benchmark least-squares cleanup remains open because those target families still need Ceres derivative coverage before their old analysis hooks can be deleted.
+Task 10 progress note: the first regression slice moves public nonassociating pure-neutral regression to the native Ceres route by default, rejects the old native least-squares backend from that public path, removes the Python and pybind private pure-neutral least-squares entry points, and updates capability metadata so Ceres is a production optimizer when compiled.
+
+Task 10 continuation note: the second regression slice removes the private generic Eigen Levenberg-Marquardt route, its perturbation Jacobian, its pybind/Python wrapper, and the doctor-required symbol. Supported generic production fits remain Ceres-owned. Associating and MEA-CO2-H2O benchmark helpers now do residual-only scoring and reject optimization until native analytic/CppAD/implicit Ceres derivative coverage exists for those target families.
 
 ### Task 11: Internal Extension Boundaries
 

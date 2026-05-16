@@ -16,7 +16,6 @@ from .epcsaft import (
     _core,
     _evaluate_generic_native_debug,
     _fit_generic_native_ceres,
-    _fit_generic_native_least_squares,
     _fit_pure_neutral_native_debug,
     check_association,
     create_struct,
@@ -1624,7 +1623,7 @@ def _native_miac_pair_indices(record: Mapping[str, Any], species: Sequence[str])
     raise InputError(f"Requested mean-ionic label '{label}' is not present in the fitted species list.")
 
 
-def _run_native_generic_least_squares(
+def _run_native_generic_score(
     fixed_payloads: Sequence[Mapping[str, Any]],
     native_records: Sequence[Mapping[str, Any]],
     optimization_names: Sequence[str],
@@ -1638,24 +1637,53 @@ def _run_native_generic_least_squares(
     multistart: int = 0,
     max_nfev: int = 200,
 ) -> dict[str, Any]:
+    _ = lower, upper
+    if multistart:
+        raise InputError("Generic residual scoring does not perform multistart optimization.")
+    if max_nfev != 1:
+        raise InputError(GENERIC_NATIVE_OPTIMIZER_UNSUPPORTED_REASON)
     target_kinds, target_indices, target_indices_2 = _native_target_payload(
         optimization_names,
         species,
         component=component,
         pair=pair,
     )
-    return _fit_generic_native_least_squares(
+    result = _evaluate_generic_native_debug(
         [dict(payload) for payload in fixed_payloads],
         [dict(record) for record in native_records],
         target_kinds,
         target_indices,
         target_indices_2,
         theta0,
-        lower,
-        upper,
-        multistart=int(multistart),
-        max_nfev=int(max_nfev),
     )
+    cost = float(result["cost"])
+    residual_norm = float(result["residual_norm"])
+    return {
+        "x": np.asarray(theta0, dtype=float),
+        "cost": cost,
+        "residual_norm": residual_norm,
+        "initial_cost": cost,
+        "initial_residual_norm": residual_norm,
+        "metrics_by_term": {str(k): float(v) for k, v in dict(result["metrics_by_term"]).items()},
+        "success": bool(np.isfinite(residual_norm)),
+        "status": 0,
+        "nfev": 1,
+        "iterations": 0,
+        "starts_tried": 1,
+        "message": "evaluated native generic residual without optimizer",
+        "backend": "residual_score_native",
+        "optimizer_backend": "residual_score_native",
+        "derivative_backend": "not_used",
+        "jacobian_available": False,
+        "jacobian_backend": "not_used",
+        "jacobian_fallback_used": False,
+        "jacobian_fallback_reason": "",
+        "not_available_reason": "",
+        "hessian_available": False,
+        "hessian_backend": "not_used",
+        "hessian_fallback_used": False,
+        "hessian_fallback_reason": "",
+    }
 
 
 def _run_native_generic_ceres(
@@ -2576,7 +2604,7 @@ def _fit_pure_neutral_associating_native(
             fixed_payloads.append(params)
             native_records.append(native_record)
 
-    result = _run_native_generic_least_squares(
+    result = _run_native_generic_score(
         fixed_payloads,
         native_records,
         normalized_fit_targets,
@@ -2740,15 +2768,11 @@ def _reject_numerical_derivative_options(options: Any) -> None:
 
 def _optimizer_backend_from_options(options: Mapping[str, Any] | None, default: str) -> str:
     backend = str((options or {}).get("optimizer_backend", default)).strip().lower()
-    aliases = {
-        "native": "least_squares_native",
-        "least_squares": "least_squares_native",
-        "least_squares_native": "least_squares_native",
-        "ceres": "ceres",
-    }
-    if backend not in aliases:
-        raise InputError(f"Unsupported optimizer_backend: {backend}")
-    return aliases[backend]
+    if backend == "ceres":
+        return "ceres"
+    if backend in {"native", "least_squares", "least_squares_native"}:
+        raise InputError("optimizer_backend='ceres' is required for native regression solves.")
+    raise InputError(f"Unsupported optimizer_backend: {backend}")
 
 
 def _normalize_user_targets(parameters_to_fit: Iterable[str] | None, default: Sequence[str]) -> tuple[str, ...]:
@@ -3497,7 +3521,7 @@ def _fit_mea_co2_h2o_component(
             fixed_payloads.append(_params_for_native_record(dataset, species, x, T, user_options))
             native_records.append(native_record)
 
-    result = _run_native_generic_least_squares(
+    result = _run_native_generic_score(
         fixed_payloads,
         native_records,
         fit_targets,

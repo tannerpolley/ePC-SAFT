@@ -90,10 +90,19 @@ def test_doctor_tracks_native_symbols_added_by_recent_workflows():
 
     assert "_fit_pure_neutral_native_ceres" in required
     assert "_fit_pure_neutral_native_least_squares" not in required
-    assert "_fit_generic_native_least_squares" in required
+    assert "_fit_generic_native_least_squares" not in required
+    assert "_fit_generic_native_ceres" in required
     assert "_evaluate_generic_native_debug" in required
     assert "_solve_equilibrium_native" in required
     assert "_native_ipopt_smoke" in required
+
+
+def test_native_regression_source_has_no_eigen_nonlinear_optimizer_route():
+    source = Path("src/epcsaft/native/epcsaft_regression.cpp").read_text(encoding="utf-8")
+
+    assert "unsupported/Eigen/LevenbergMarquardt" not in source
+    assert "LevenbergMarquardt" not in source
+    assert "NumericalDiff" not in source
 
 
 def test_doctor_recommends_ninja_migration_for_mingw_build_tree():

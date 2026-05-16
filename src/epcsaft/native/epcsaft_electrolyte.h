@@ -547,18 +547,6 @@ GenericRegressionDebugResult evaluate_generic_regression_debug_cpp(
     const vector<int> &target_indices_2,
     const vector<double> &x
 );
-GenericRegressionResult fit_generic_least_squares_cpp(
-    const vector<add_args> &base_args_by_record,
-    const vector<GenericRegressionRecord> &records,
-    const vector<int> &target_kinds,
-    const vector<int> &target_indices,
-    const vector<int> &target_indices_2,
-    const vector<double> &x0,
-    const vector<double> &lower,
-    const vector<double> &upper,
-    int multistart,
-    int max_nfev
-);
 GenericRegressionResult fit_generic_ceres_cpp(
     const vector<add_args> &base_args_by_record,
     const vector<GenericRegressionRecord> &records,

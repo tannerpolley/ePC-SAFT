@@ -1,11 +1,11 @@
 import csv
-import os
 from pathlib import Path
 
 import numpy as np
 import pytest
 
 from epcsaft import create_parameter_template, ePCSAFTMixture, write_fit_result
+from epcsaft._types import InputError
 from epcsaft.regression import _fit_mea_co2_h2o_pure_parameter_benchmark
 
 SPECIES = ["H2O", "MEA", "CO2", "MEAH+", "MEACOO-", "HCO3-"]
@@ -129,7 +129,7 @@ def test_mea_co2_h2o_benchmark_smoke_fits_only_pure_parameters(tmp_path):
     assert set(results) == {"MEA", "MEAH+", "MEACOO-", "HCO3-"}
     assert results["MEA"].problem.fit_targets == ("m", "s", "e", "e_assoc", "vol_a")
     assert results["MEAH+"].problem.fit_targets == ("s", "e", "d_born")
-    assert all(result.backend == "least_squares_native" for result in results.values())
+    assert all(result.backend == "residual_score_native" for result in results.values())
     assert all(result.success for result in results.values())
     assert all("binary" not in term.term_type for result in results.values() for term in result.problem.terms)
     assert results["MEA"].metrics_by_term["initial_residual_norm"] == pytest.approx(results["MEA"].residual_norm)
@@ -168,8 +168,7 @@ def test_mea_co2_h2o_benchmark_writes_only_pure_rows_and_protects_existing_cells
         write_fit_result(results["MEA"], empty_root, overwrite=False)
 
 
-@pytest.mark.skipif(os.environ.get("EPCSAFT_RUN_MEA_REGRESSION") != "1", reason="opt-in MEA regression benchmark")
-def test_mea_co2_h2o_benchmark_opt_in_real_multistart(tmp_path):
+def test_mea_co2_h2o_benchmark_rejects_optimizer_without_derivative_path(tmp_path):
     reference_root = _benchmark_dataset(tmp_path, REFERENCE_VALUES, "MEA_CO2_H2O_Reference")
     records = _benchmark_records(reference_root)
     fit_root = _benchmark_dataset(
@@ -183,17 +182,12 @@ def test_mea_co2_h2o_benchmark_opt_in_real_multistart(tmp_path):
         "MEA_CO2_H2O_Fit",
     )
 
-    results = _fit_mea_co2_h2o_pure_parameter_benchmark(
-        records,
-        dataset=fit_root,
-        species=SPECIES,
-        user_options=ADVANCED_USER_OPTIONS,
-        multistart=1,
-        max_nfev=2,
-    )
-
-    assert all(result.success for result in results.values())
-    assert all(result.nfev > 1 for result in results.values())
-    assert all(
-        result.residual_norm <= result.metrics_by_term["initial_residual_norm"] + 1.0e-12 for result in results.values()
-    )
+    with pytest.raises(InputError, match=r"multistart optimization|native analytic/CppAD/implicit derivative path"):
+        _fit_mea_co2_h2o_pure_parameter_benchmark(
+            records,
+            dataset=fit_root,
+            species=SPECIES,
+            user_options=ADVANCED_USER_OPTIONS,
+            multistart=1,
+            max_nfev=2,
+        )
