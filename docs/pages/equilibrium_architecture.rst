@@ -43,12 +43,13 @@ Example
 Solver Selection
 ----------------
 
-``solver_backend="auto"`` uses the production native defaults. ``ipopt`` is an
-explicit opt-in native constrained-NLP backend and is not selected
-automatically. The current public Ipopt route is homogeneous ideal reactive
-speciation; broader multiphase, electrolyte, and EOS-coupled equilibrium routes
-remain route-builder work. Use ``epcsaft.capabilities()`` to check which
-optional solver paths are available in the current install.
+``solver_backend="auto"`` is conservative: it may use a validated native
+default only where one exists, and otherwise raises at the route boundary.
+``ipopt`` is the explicit native constrained-NLP backend for production
+equilibrium routes as they land. The current public Ipopt route is homogeneous
+ideal reactive speciation; broader multiphase, electrolyte, and EOS-coupled
+equilibrium routes remain route-builder work. Use ``epcsaft.capabilities()`` to
+check which optional solver paths are available in the current install.
 
 The convex Gibbs formulation is limited to homogeneous ideal reaction or
 speciation subkernels and validation tests. Full ePC-SAFT multiphase,

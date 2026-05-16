@@ -130,7 +130,7 @@ class ReactionConstantConvention:
 
     @property
     def requires_activity_coefficients(self) -> bool:
-        """Whether the convention needs activity coefficients in the current native route."""
+        """Whether the convention needs activity coefficients."""
         return self.native_standard_state_code == _REACTION_STANDARD_STATES["mole_fraction_activity"]
 
     def to_dict(self) -> dict[str, Any]:
