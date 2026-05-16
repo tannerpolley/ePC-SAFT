@@ -256,7 +256,6 @@ class ReactiveSpeciationOptions:
     min_mole_fraction: float = 1.0e-14
     jacobian_backend: str = "auto"
     solver_backend: str = "auto"
-    hessian_strategy: str = "gauss_newton"
     phase: str = "liq"
     return_best_effort: bool = False
     error_mode: str = "raise"
@@ -446,11 +445,6 @@ def _normalize_options(options: ReactiveSpeciationOptions | None) -> ReactiveSpe
     solver_backend = str(options.solver_backend).strip().lower()
     if solver_backend not in {"auto", "ipopt"}:
         raise InputError("ReactiveSpeciationOptions.solver_backend must be 'auto' or 'ipopt'.")
-    hessian_strategy = str(options.hessian_strategy).strip().lower()
-    hessian_aliases = {"gn": "gauss_newton", "gauss-newton": "gauss_newton", "bfgs": "lbfgs"}
-    hessian_strategy = hessian_aliases.get(hessian_strategy, hessian_strategy)
-    if hessian_strategy not in {"gauss_newton", "lbfgs"}:
-        raise InputError("ReactiveSpeciationOptions.hessian_strategy must be 'gauss_newton' or 'lbfgs'.")
     for name in ("mass_tolerance", "charge_tolerance", "reaction_tolerance"):
         value = getattr(options, name)
         if value is not None and value <= 0.0:
@@ -458,7 +452,6 @@ def _normalize_options(options: ReactiveSpeciationOptions | None) -> ReactiveSpe
     if (
         jacobian_backend == options.jacobian_backend
         and solver_backend == options.solver_backend
-        and hessian_strategy == options.hessian_strategy
         and error_mode == options.error_mode
         and activity_output == options.activity_output
         and return_best_effort == options.return_best_effort
@@ -471,7 +464,6 @@ def _normalize_options(options: ReactiveSpeciationOptions | None) -> ReactiveSpe
         min_mole_fraction=options.min_mole_fraction,
         jacobian_backend=jacobian_backend,
         solver_backend=solver_backend,
-        hessian_strategy=hessian_strategy,
         phase=options.phase,
         return_best_effort=return_best_effort,
         error_mode=error_mode,
@@ -526,7 +518,6 @@ def _solve_reactive_speciation_native(
             "min_mole_fraction": float(options.min_mole_fraction),
             "jacobian_backend": str(options.jacobian_backend),
             "solver_backend": str(options.solver_backend),
-            "hessian_strategy": str(options.hessian_strategy),
             "phase": str(options.phase),
             "activity_output": str(options.activity_output),
         },
@@ -581,7 +572,6 @@ def _solve_reactive_speciation_native(
             "initial_x_source": str(initial_x_source),
             "continuation_used": str(initial_x_source) != "initial_x",
             "requested_solver_backend": str(options.solver_backend),
-            "requested_hessian_strategy": str(options.hessian_strategy),
             "selected_solver_backend": str(diagnostics.get("selected_solver_backend", "native")),
             "solver_selection_reason": str(
                 diagnostics.get(

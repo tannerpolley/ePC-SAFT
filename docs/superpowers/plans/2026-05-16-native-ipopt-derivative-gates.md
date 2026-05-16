@@ -399,6 +399,8 @@ Task 8 continuation note: the public `EquilibriumOptions.hessian_strategy` knob 
 - [ ] Add charge/material/reaction/phase-distance acceptance tests.
 - [ ] Commit as `Replace electrolyte reactive equilibrium with native Ipopt`.
 
+Task 9 progress note: the public `ReactiveSpeciationOptions.hessian_strategy` knob was removed for the same reason as the equilibrium facade knob. Hessian behavior remains internal to native solver adapters.
+
 ### Task 10: Make Regression Ceres-Only
 
 **Files:**

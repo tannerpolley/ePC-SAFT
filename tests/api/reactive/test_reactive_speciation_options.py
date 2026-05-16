@@ -44,13 +44,11 @@ def test_reactive_speciation_options_expose_jacobian_backend_selector() -> None:
     assert "jacobian_backend" in {field.name for field in fields(epcsaft.ReactiveSpeciationOptions)}
     assert "finite" + "_difference_step" not in {field.name for field in fields(epcsaft.ReactiveSpeciationOptions)}
     assert "solver_backend" in {field.name for field in fields(epcsaft.ReactiveSpeciationOptions)}
-    assert "hessian_strategy" in {field.name for field in fields(epcsaft.ReactiveSpeciationOptions)}
 
 @pytest.mark.parametrize(
     ("options", "message"),
     [
         (epcsaft.ReactiveSpeciationOptions(solver_backend="python_ipopt"), "solver_backend"),
-        (epcsaft.ReactiveSpeciationOptions(hessian_strategy="exact"), "hessian_strategy"),
     ],
 )
 def test_reactive_speciation_rejects_invalid_optimizer_options(options, message) -> None:
