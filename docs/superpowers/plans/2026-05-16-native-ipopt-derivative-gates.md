@@ -396,6 +396,13 @@ pressure-gradient identities, and curvature-to-pressure-Jacobian identity for a 
 Task 7 checkbox remains open because association/electrolyte-coupled variables and route-builder integration
 still need to be implemented before neutral/electrolyte Ipopt routes can consume the block.
 
+Task 7 continuation note: the EOS phase-block layer now also exposes a two-phase system assembly that concatenates
+phase amount/volume variables, sums the phase Helmholtz/pressure-work objective terms, adds exact material-balance
+constraints, and places each phase's CppAD pressure-consistency Jacobian row into the global constraint Jacobian.
+Focused tests prove material-balance assembly, objective/gradient composition, and exact pressure-row placement. This
+is still an NLP block assembly, not a production flash route; route builders, association variables, and electrolyte
+charge blocks remain open.
+
 ### Task 8: Replace Neutral Equilibrium Routes
 
 **Files:**

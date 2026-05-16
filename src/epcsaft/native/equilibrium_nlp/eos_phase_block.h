@@ -43,12 +43,41 @@ struct EosPhaseBlockResult {
     std::vector<double> pressure_jacobian_row_major;
 };
 
+struct EosPhaseSystemResult {
+    std::string block;
+    std::string derivative_backend;
+    int phase_count = 0;
+    int species_count = 0;
+    std::vector<std::string> variable_names;
+    std::vector<std::string> constraint_names;
+    double temperature = 0.0;
+    double target_pressure = 0.0;
+    std::vector<double> feed_amounts;
+    std::vector<EosPhaseBlockResult> phase_blocks;
+    double objective = 0.0;
+    std::vector<double> gradient;
+    std::vector<double> constraints;
+    std::string constraint_jacobian_backend;
+    int constraint_jacobian_rows = 0;
+    int constraint_jacobian_cols = 0;
+    std::vector<double> constraint_jacobian_row_major;
+};
+
 EosPhaseBlockResult evaluate_eos_phase_block(
     const add_args& args,
     double temperature,
     double target_pressure,
     const std::vector<double>& amounts,
     double volume
+);
+
+EosPhaseSystemResult evaluate_eos_phase_system(
+    const add_args& args,
+    double temperature,
+    double target_pressure,
+    const std::vector<std::vector<double>>& phase_amounts,
+    const std::vector<double>& volumes,
+    const std::vector<double>& feed_amounts
 );
 
 }  // namespace epcsaft::native::equilibrium_nlp

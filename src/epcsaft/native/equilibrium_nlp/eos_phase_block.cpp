@@ -37,6 +37,30 @@ std::vector<std::string> amount_variable_names(std::size_t count) {
     return names;
 }
 
+std::vector<std::string> phase_system_variable_names(std::size_t phase_count, std::size_t species_count) {
+    std::vector<std::string> names;
+    names.reserve(phase_count * (species_count + 1));
+    for (std::size_t phase = 0; phase < phase_count; ++phase) {
+        for (std::size_t species = 0; species < species_count; ++species) {
+            names.push_back("phase_" + std::to_string(phase) + ".n_" + std::to_string(species));
+        }
+        names.push_back("phase_" + std::to_string(phase) + ".volume");
+    }
+    return names;
+}
+
+std::vector<std::string> phase_system_constraint_names(std::size_t phase_count, std::size_t species_count) {
+    std::vector<std::string> names;
+    names.reserve(species_count + phase_count);
+    for (std::size_t species = 0; species < species_count; ++species) {
+        names.push_back("material_balance_" + std::to_string(species));
+    }
+    for (std::size_t phase = 0; phase < phase_count; ++phase) {
+        names.push_back("phase_" + std::to_string(phase) + ".pressure_consistency");
+    }
+    return names;
+}
+
 std::vector<double> composition_from_amounts(const std::vector<double>& amounts, double total_amount) {
     std::vector<double> composition;
     composition.reserve(amounts.size());
@@ -52,6 +76,13 @@ double ideal_helmholtz_amount_volume_term(const std::vector<double>& amounts, do
         value += amount * (std::log(amount / volume) - 1.0);
     }
     return value;
+}
+
+void require_finite_nonnegative(double value, const std::string& label) {
+    if (std::isfinite(value) && value >= 0.0) {
+        return;
+    }
+    throw ValueError(label + " must be finite and non-negative.");
 }
 
 }  // namespace
@@ -175,6 +206,98 @@ EosPhaseBlockResult evaluate_eos_phase_block(
     result.pressure_jacobian_row_major = result.constraint_jacobian_row_major;
     result.pressure_density_derivative =
         -result.pressure_jacobian_row_major[static_cast<std::size_t>(volume_row)] * volume / density;
+    return result;
+}
+
+EosPhaseSystemResult evaluate_eos_phase_system(
+    const add_args& args,
+    double temperature,
+    double target_pressure,
+    const std::vector<std::vector<double>>& phase_amounts,
+    const std::vector<double>& volumes,
+    const std::vector<double>& feed_amounts
+) {
+    if (phase_amounts.empty()) {
+        throw ValueError("EOS phase system requires at least one phase.");
+    }
+    const std::size_t phase_count = phase_amounts.size();
+    const std::size_t species_count = feed_amounts.size();
+    if (species_count == 0) {
+        throw ValueError("EOS phase system requires at least one feed species amount.");
+    }
+    if (volumes.size() != phase_count) {
+        throw ValueError("EOS phase system volume count must match phase count.");
+    }
+    for (double amount : feed_amounts) {
+        require_finite_nonnegative(amount, "EOS phase system feed amount");
+    }
+
+    EosPhaseSystemResult result;
+    result.block = "eos_phase_system";
+    result.derivative_backend = "analytic_cppad";
+    result.phase_count = static_cast<int>(phase_count);
+    result.species_count = static_cast<int>(species_count);
+    result.variable_names = phase_system_variable_names(phase_count, species_count);
+    result.constraint_names = phase_system_constraint_names(phase_count, species_count);
+    result.temperature = temperature;
+    result.target_pressure = target_pressure;
+    result.feed_amounts = feed_amounts;
+    result.phase_blocks.reserve(phase_count);
+
+    const std::size_t local_variable_count = species_count + 1;
+    result.gradient.reserve(phase_count * local_variable_count);
+    for (std::size_t phase = 0; phase < phase_count; ++phase) {
+        if (phase_amounts[phase].size() != species_count) {
+            throw ValueError("EOS phase system phase amount sizes must match feed species count.");
+        }
+        result.phase_blocks.push_back(
+            evaluate_eos_phase_block(args, temperature, target_pressure, phase_amounts[phase], volumes[phase])
+        );
+        const EosPhaseBlockResult& block = result.phase_blocks.back();
+        if (block.gradient.size() != local_variable_count
+            || block.pressure_jacobian_row_major.size() != local_variable_count) {
+            throw ValueError("EOS phase block derivative size did not match the phase system variables.");
+        }
+        result.objective += block.objective;
+        result.gradient.insert(result.gradient.end(), block.gradient.begin(), block.gradient.end());
+    }
+
+    const std::size_t constraint_count = species_count + phase_count;
+    const std::size_t variable_count = phase_count * local_variable_count;
+    result.constraints.assign(constraint_count, 0.0);
+    for (std::size_t species = 0; species < species_count; ++species) {
+        result.constraints[species] = -feed_amounts[species];
+        for (std::size_t phase = 0; phase < phase_count; ++phase) {
+            result.constraints[species] += phase_amounts[phase][species];
+        }
+    }
+    for (std::size_t phase = 0; phase < phase_count; ++phase) {
+        result.constraints[species_count + phase] = result.phase_blocks[phase].pressure_consistency_residual;
+    }
+
+    result.constraint_jacobian_backend = "analytic_cppad";
+    result.constraint_jacobian_rows = static_cast<int>(constraint_count);
+    result.constraint_jacobian_cols = static_cast<int>(variable_count);
+    result.constraint_jacobian_row_major.assign(constraint_count * variable_count, 0.0);
+    for (std::size_t species = 0; species < species_count; ++species) {
+        for (std::size_t phase = 0; phase < phase_count; ++phase) {
+            result.constraint_jacobian_row_major[
+                species * variable_count + phase * local_variable_count + species
+            ] = 1.0;
+        }
+    }
+    for (std::size_t phase = 0; phase < phase_count; ++phase) {
+        const EosPhaseBlockResult& block = result.phase_blocks[phase];
+        if (block.pressure_jacobian_row_major.size() != local_variable_count) {
+            throw ValueError("EOS phase pressure Jacobian size did not match the phase variable model.");
+        }
+        const std::size_t row = species_count + phase;
+        const std::size_t col_offset = phase * local_variable_count;
+        for (std::size_t col = 0; col < local_variable_count; ++col) {
+            result.constraint_jacobian_row_major[row * variable_count + col_offset + col] =
+                block.pressure_jacobian_row_major[col];
+        }
+    }
     return result;
 }
 

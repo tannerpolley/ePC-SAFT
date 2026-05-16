@@ -531,6 +531,32 @@ py::dict eos_phase_block_to_dict(const epcsaft::native::equilibrium_nlp::EosPhas
     return out;
 }
 
+py::dict eos_phase_system_to_dict(const epcsaft::native::equilibrium_nlp::EosPhaseSystemResult& result) {
+    py::dict out;
+    out["block"] = result.block;
+    out["derivative_backend"] = result.derivative_backend;
+    out["phase_count"] = result.phase_count;
+    out["species_count"] = result.species_count;
+    out["variable_names"] = result.variable_names;
+    out["constraint_names"] = result.constraint_names;
+    out["temperature"] = result.temperature;
+    out["target_pressure"] = result.target_pressure;
+    out["feed_amounts"] = result.feed_amounts;
+    out["objective"] = result.objective;
+    out["gradient"] = result.gradient;
+    out["constraints"] = result.constraints;
+    out["constraint_jacobian_backend"] = result.constraint_jacobian_backend;
+    out["constraint_jacobian_shape"] =
+        py::make_tuple(result.constraint_jacobian_rows, result.constraint_jacobian_cols);
+    out["constraint_jacobian_row_major"] = result.constraint_jacobian_row_major;
+    py::list phase_blocks;
+    for (const auto& block : result.phase_blocks) {
+        phase_blocks.append(eos_phase_block_to_dict(block));
+    }
+    out["phase_blocks"] = phase_blocks;
+    return out;
+}
+
 py::dict native_density_failure_payload(const DensitySolveDiagnostics& diagnostics) {
     py::dict out;
     py::list contexts;
@@ -1211,6 +1237,26 @@ PYBIND11_MODULE(_core, m) {
             target_pressure,
             amounts,
             volume
+        ));
+    });
+    m.def("_native_eos_phase_system", [](
+        const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+        double temperature,
+        double target_pressure,
+        const std::vector<std::vector<double>>& phase_amounts,
+        const std::vector<double>& volumes,
+        const std::vector<double>& feed_amounts
+    ) {
+        if (!mixture) {
+            throw ValueError("EOS phase system requires a native mixture.");
+        }
+        return eos_phase_system_to_dict(epcsaft::native::equilibrium_nlp::evaluate_eos_phase_system(
+            mixture->args(),
+            temperature,
+            target_pressure,
+            phase_amounts,
+            volumes,
+            feed_amounts
         ));
     });
     m.def("_native_cppad_eos_contributions", [](double t, double rho, const std::vector<double>& x, const add_args& args) {

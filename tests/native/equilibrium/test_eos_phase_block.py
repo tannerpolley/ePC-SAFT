@@ -17,6 +17,31 @@ def _neutral_binary_mixture() -> epcsaft.ePCSAFTMixture:
     return epcsaft.ePCSAFTMixture.from_params(params, species=["Methane", "Ethane"])
 
 
+def _two_phase_binary_case() -> tuple[
+    epcsaft.ePCSAFTMixture,
+    float,
+    list[np.ndarray],
+    list[float],
+    np.ndarray,
+    float,
+]:
+    mix = _neutral_binary_mixture()
+    temperature = 300.0
+    phase_amounts = [
+        np.asarray([0.7, 0.3], dtype=float),
+        np.asarray([0.1, 0.9], dtype=float),
+    ]
+    volumes = [float(phase_amounts[0].sum() / 80.0), float(phase_amounts[1].sum() / 140.0)]
+    feed_amounts = phase_amounts[0] + phase_amounts[1]
+    target_pressure = mix.state(
+        T=temperature,
+        rho=phase_amounts[0].sum() / volumes[0],
+        x=phase_amounts[0] / phase_amounts[0].sum(),
+        phase="liquid",
+    ).pressure()
+    return mix, temperature, phase_amounts, volumes, feed_amounts, target_pressure
+
+
 def test_eos_phase_block_builds_amount_volume_variables_and_pressure_gate() -> None:
     mix = _neutral_binary_mixture()
     amounts = np.asarray([0.8, 1.2], dtype=float)
@@ -112,3 +137,80 @@ def test_eos_phase_block_reports_pressure_constraint_jacobian_from_exact_curvatu
     assert np.all(np.isfinite(objective_curvature))
     assert np.all(np.isfinite(constraint_jacobian))
     assert constraint_jacobian[0, :] == pytest.approx(expected_pressure_jacobian, rel=1.0e-11, abs=1.0e-8)
+
+
+def test_eos_phase_system_assembles_two_phase_material_balance_and_objective() -> None:
+    mix, temperature, phase_amounts, volumes, feed_amounts, target_pressure = _two_phase_binary_case()
+
+    payload = _core._native_eos_phase_system(
+        mix._native,
+        temperature,
+        target_pressure,
+        [phase.tolist() for phase in phase_amounts],
+        volumes,
+        feed_amounts.tolist(),
+    )
+    phase_blocks = [
+        _core._native_eos_phase_block(mix._native, temperature, target_pressure, phase.tolist(), volume)
+        for phase, volume in zip(phase_amounts, volumes, strict=True)
+    ]
+
+    assert payload["block"] == "eos_phase_system"
+    assert payload["phase_count"] == 2
+    assert payload["species_count"] == 2
+    assert payload["variable_names"] == [
+        "phase_0.n_0",
+        "phase_0.n_1",
+        "phase_0.volume",
+        "phase_1.n_0",
+        "phase_1.n_1",
+        "phase_1.volume",
+    ]
+    assert payload["constraint_names"] == [
+        "material_balance_0",
+        "material_balance_1",
+        "phase_0.pressure_consistency",
+        "phase_1.pressure_consistency",
+    ]
+    assert payload["constraints"][:2] == pytest.approx([0.0, 0.0], abs=1.0e-14)
+    assert payload["objective"] == pytest.approx(sum(block["objective"] for block in phase_blocks))
+    assert payload["gradient"] == pytest.approx(
+        phase_blocks[0]["gradient"] + phase_blocks[1]["gradient"],
+        rel=1.0e-12,
+        abs=1.0e-12,
+    )
+
+
+def test_eos_phase_system_reports_exact_material_and_pressure_jacobian_rows() -> None:
+    mix, temperature, phase_amounts, volumes, feed_amounts, target_pressure = _two_phase_binary_case()
+
+    payload = _core._native_eos_phase_system(
+        mix._native,
+        temperature,
+        target_pressure,
+        [phase.tolist() for phase in phase_amounts],
+        volumes,
+        feed_amounts.tolist(),
+    )
+    phase_blocks = [
+        _core._native_eos_phase_block(mix._native, temperature, target_pressure, phase.tolist(), volume)
+        for phase, volume in zip(phase_amounts, volumes, strict=True)
+    ]
+
+    assert payload["constraint_jacobian_backend"] == "analytic_cppad"
+    assert payload["constraint_jacobian_shape"] == (4, 6)
+    jacobian = np.asarray(payload["constraint_jacobian_row_major"], dtype=float).reshape((4, 6))
+    assert np.array_equal(
+        jacobian[:2, :],
+        np.asarray(
+            [
+                [1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.0, 1.0, 0.0],
+            ],
+            dtype=float,
+        ),
+    )
+    assert jacobian[2, :3] == pytest.approx(phase_blocks[0]["pressure_jacobian"], rel=1.0e-12, abs=1.0e-8)
+    assert jacobian[2, 3:] == pytest.approx([0.0, 0.0, 0.0], abs=0.0)
+    assert jacobian[3, :3] == pytest.approx([0.0, 0.0, 0.0], abs=0.0)
+    assert jacobian[3, 3:] == pytest.approx(phase_blocks[1]["pressure_jacobian"], rel=1.0e-12, abs=1.0e-8)
