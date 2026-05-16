@@ -60,7 +60,12 @@ def _blocked_terms() -> tuple[str, ...]:
     second = "finite" + "_" + "difference"
     third = "finite" + "-" + "difference"
     fourth = "finite" + " " + "difference"
-    return (first, second, third, fourth)
+    fifth = "central" + "_" + "perturbation"
+    sixth = "source" + "_" + "perturbation"
+    seventh = "perturbation" + "_" + "derivative"
+    eighth = "numerical" + "diff"
+    ninth = "levenberg" + "marquardt"
+    return (first, second, third, fourth, fifth, sixth, seventh, eighth, ninth)
 
 
 def main() -> int:
