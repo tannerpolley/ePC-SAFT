@@ -49,6 +49,7 @@ def test_reactive_speciation_options_expose_jacobian_backend_selector() -> None:
     ("options", "message"),
     [
         (epcsaft.ReactiveSpeciationOptions(solver_backend="python_ipopt"), "solver_backend"),
+        (epcsaft.ReactiveSpeciationOptions(jacobian_backend="autodiff"), "jacobian_backend"),
     ],
 )
 def test_reactive_speciation_rejects_invalid_optimizer_options(options, message) -> None:

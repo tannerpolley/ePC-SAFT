@@ -350,6 +350,8 @@ Task 6 progress note: the first route slice adds explicit `solver_backend="ipopt
 
 Task 6 continuation note: the public helper that manufactured missing implicit-derivative payloads was removed. Reactive speciation now records implicit solve results only for real analytical/CppAD-backed solved-state sensitivities; unsupported implicit derivative requests raise instead of returning placeholder diagnostics.
 
+Task 6 continuation note: the legacy `jacobian_backend="autodiff"` selector was removed from reactive speciation. Explicit derivative selection is now `auto`, `analytic` as an alias for auto, or `cppad`; CppAD still fails loudly until that residual route exists.
+
 ### Task 7: Build EOS Phase Blocks For Equilibrium
 
 **Files:**

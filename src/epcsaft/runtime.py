@@ -646,7 +646,7 @@ def capabilities() -> dict[str, object]:
                     "apparent",
                 ],
                 "derivative_gap_status": "implicit_sensitivity_available_for_reaction_constant_response",
-                "explicit_autodiff_raises_when_unavailable": True,
+                "explicit_cppad_request_raises_until_implemented": True,
                 "solver_backends": ["auto", "ipopt"],
                 "ipopt_available": bool(ipopt["available"]),
                 "explicit_ipopt_request": "ideal_mole_fraction_routes_to_native_ipopt_when_compiled",

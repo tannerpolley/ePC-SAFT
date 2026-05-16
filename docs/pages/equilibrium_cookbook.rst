@@ -68,14 +68,11 @@ these fields as routing hints, not as proof that a physical case is valid.
      - Package regression helpers.
      - You need a Python optimizer loop.
    * - ``jacobian_backend="auto"``
-     - You want the native chemical-equilibrium default: analytic, CppAD, or implicit sensitivities where available, clear ``not_available`` diagnostics otherwise.
+     - You want the native chemical-equilibrium default: analytic, CppAD, or implicit sensitivities where available, clear failures otherwise.
      - You need strict failure when a specific derivative backend is unavailable.
-   * - ``jacobian_backend="autodiff"``
-     - You need an existing legacy Eigen forward-mode path and want unsupported routes to fail loudly.
-     - You need an automatic analytical substitute.
    * - ``jacobian_backend="cppad"``
-     - You need a CppAD residual derivative path and want unsupported routes to return ``not_available``.
-     - You need a numerical-derivative substitute.
+     - You need a CppAD residual derivative path and want unsupported routes to fail loudly.
+     - You expect a fallback derivative substitute.
    * - ``differential_mode="autodiff"``
      - You need implemented autodiff derivative paths.
      - You need an automatic analytical substitute.

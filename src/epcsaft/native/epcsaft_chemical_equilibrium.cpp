@@ -272,7 +272,7 @@ struct ChemicalEvaluationCounters {
 };
 
 struct ChemicalDerivativeSelection {
-    std::string backend = "not_available";
+    std::string backend = "";
     std::string capability_path = "";
     std::string not_available_reason = "";
     bool derivative_available = false;
@@ -284,14 +284,11 @@ ChemicalDerivativeSelection select_chemical_derivative_backend(
 ) {
     ChemicalDerivativeSelection selection;
     const std::string requested = options.jacobian_backend;
-    if (requested == "autodiff" || requested == "cppad") {
-        selection.not_available_reason = requested == "cppad"
-            ? "not_available: CppAD chemical-equilibrium residual jacobian is not implemented for log-species amounts."
-            : "not_available: legacy Eigen forward-mode chemical-equilibrium residual jacobian is not implemented for log-species amounts.";
-        throw ValueError(selection.not_available_reason);
+    if (requested == "cppad") {
+        throw ValueError("CppAD chemical-equilibrium residual jacobian requires implemented log-species amount coverage.");
     }
     if (requested != "auto" && requested != "analytic") {
-        throw ValueError("chemical equilibrium jacobian_backend must be 'auto', 'autodiff', 'analytic', or 'cppad'.");
+        throw ValueError("chemical equilibrium jacobian_backend must be 'auto', 'analytic', or 'cppad'.");
     }
     if (standard_states_all_ideal_mole_fraction(reaction_standard_states)) {
         selection.backend = "analytic";

@@ -104,7 +104,7 @@ def test_activity_coupled_reactive_speciation_uses_native_activity_residual() ->
     assert result.diagnostics["derivative_backend_by_block"]["reactive_speciation_variables"] == "analytic_implicit"
 
 
-def test_explicit_cppad_reactive_speciation_returns_not_available_until_supported() -> None:
+def test_explicit_cppad_reactive_speciation_fails_until_supported() -> None:
     mix = epcsaft.ePCSAFTMixture.from_params(
         {
             "m": np.asarray([1.0, 1.0]),
@@ -114,7 +114,7 @@ def test_explicit_cppad_reactive_speciation_returns_not_available_until_supporte
         species=["A", "B"],
     )
 
-    with pytest.raises(epcsaft.InputError, match="not_available"):
+    with pytest.raises(epcsaft.InputError, match="CppAD chemical-equilibrium residual jacobian"):
         mix.chemical_equilibrium(
             T=298.15,
             P=1.0e5,

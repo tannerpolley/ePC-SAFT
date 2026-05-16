@@ -437,9 +437,9 @@ def _normalize_options(options: ReactiveSpeciationOptions | None) -> ReactiveSpe
     jacobian_backend = str(options.jacobian_backend).strip().lower()
     if jacobian_backend == "analytic":
         jacobian_backend = "auto"
-    if jacobian_backend not in {"auto", "autodiff", "cppad"}:
+    if jacobian_backend not in {"auto", "cppad"}:
         raise InputError(
-            "ReactiveSpeciationOptions.jacobian_backend must be 'auto', 'autodiff', 'analytic', or 'cppad'."
+            "ReactiveSpeciationOptions.jacobian_backend must be 'auto', 'analytic', or 'cppad'."
         )
     solver_backend = str(options.solver_backend).strip().lower()
     if solver_backend not in {"auto", "ipopt"}:
