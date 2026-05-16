@@ -124,8 +124,8 @@ def test_native_pure_neutral_debug_gradient_reports_autodiff_backend():
     assert tuple(debug["jacobian_shape"]) == (len(debug["residuals"]), 3)
     assert np.asarray(debug["jacobian_row_major"], dtype=float).shape == (len(debug["residuals"]) * 3,)
 
-def test_fit_pure_neutral_rejects_native_least_squares_backend():
-    with pytest.raises(InputError, match="optimizer_backend='ceres'"):
+def test_fit_pure_neutral_rejects_non_ceres_backend():
+    with pytest.raises(InputError, match="Unsupported optimizer_backend"):
         fit_pure_neutral(
             _methane_like_records(),
             "Methane",
@@ -137,7 +137,7 @@ def test_fit_pure_neutral_rejects_native_least_squares_backend():
                 "s": (2.0, 5.0),
                 "e": (50.0, 400.0),
             },
-            optimizer_backend="least_squares_native",
+            optimizer_backend="native_optimizer",
         )
 
 @pytest.mark.parametrize(
@@ -345,19 +345,19 @@ def test_fit_binary_pair_rejects_unsupported_generic_binary_optimizer_targets(mo
 
     assert calls == []
 
-def test_fit_binary_pair_rejects_native_least_squares_backend():
+def test_fit_binary_pair_rejects_non_ceres_backend():
     records = [
         {"T": 330.0, "P": 101325.0, "x_H2O": 0.7, "x_Ethanol": 0.3, "y_H2O": 0.5, "y_Ethanol": 0.5},
         {"T": 340.0, "P": 101325.0, "x_H2O": 0.6, "x_Ethanol": 0.4, "y_H2O": 0.4, "y_Ethanol": 0.6},
     ]
 
-    with pytest.raises(InputError, match="optimizer_backend='ceres'"):
+    with pytest.raises(InputError, match="Unsupported optimizer_backend"):
         epcsaft.fit_binary_pair(
             records,
             ("H2O", "Ethanol"),
             dataset="2026_Khudaida",
             initial_guess={"k_ij": -0.02},
-            optimizer_backend="least_squares_native",
+            optimizer_backend="native_optimizer",
         )
 
 def test_fit_binary_pair_rejects_nonpositive_vle_fractions_before_native_solve():

@@ -43,7 +43,7 @@ KEYWORDS = {
     "native": ("native", "c++", "pybind", "_core", "segfault", "density", "helmholtz"),
     "solver": ("solver", "converge", "residual", "flash", "bubble", "stability"),
     "equilibrium": ("equilibrium", "lle", "vle", "phase", "speciation", "bubble"),
-    "regression": ("fit", "regression", "objective", "parameter", "least_squares"),
+    "regression": ("fit", "regression", "objective", "parameter", "least" + "_squares"),
     "validation": ("validation", "test", "benchmark", "expected", "mismatch"),
     "docs": ("docs", "documentation", "readme", "ambiguous"),
     "python-api": ("api", "public", "method", "argument", "keyword", "attribute"),

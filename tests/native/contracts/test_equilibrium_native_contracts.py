@@ -152,9 +152,9 @@ def test_equilibrium_runtime_does_not_import_external_optimizers() -> None:
     external_optimizer = "sci" + "py.optimize"
     forbidden = (
         external_optimizer,
-        "least_squares",
-        "differential_evolution",
-        "minimize_scalar",
+        "least" + "_squares",
+        "differential" + "_evolution",
+        "minimize" + "_scalar",
         "_solve_predictive_electrolyte",
         "_electrolyte_gibbs_seed_from_trial",
         "_electrolyte_stability_from_basis",

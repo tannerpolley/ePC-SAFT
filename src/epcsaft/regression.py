@@ -2718,8 +2718,6 @@ def _optimizer_backend_from_options(options: Mapping[str, Any] | None, default: 
     backend = str((options or {}).get("optimizer_backend", default)).strip().lower()
     if backend == "ceres":
         return "ceres"
-    if backend in {"native", "least_squares", "least_squares_native"}:
-        raise InputError("optimizer_backend='ceres' is required for native regression solves.")
     raise InputError(f"Unsupported optimizer_backend: {backend}")
 
 

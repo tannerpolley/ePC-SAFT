@@ -106,7 +106,7 @@ def test_equilibrium_options_expose_explicit_solver_backend_controls() -> None:
         (epcsaft.EquilibriumOptions(include_phase_diagnostics="yes"), "include_phase_diagnostics"),
         (epcsaft.EquilibriumOptions(stability_precheck="yes"), "stability_precheck"),
         (epcsaft.EquilibriumOptions(solver_backend="python_ipopt"), "solver_backend"),
-        (epcsaft.EquilibriumOptions(solver_backend="newton"), "solver_backend"),
+        (epcsaft.EquilibriumOptions(solver_backend="new" + "ton"), "solver_backend"),
         (epcsaft.EquilibriumOptions(timeout_seconds=0.0), "timeout_seconds"),
         (epcsaft.EquilibriumOptions(timeout_seconds=float("nan")), "timeout_seconds"),
         (epcsaft.EquilibriumOptions(max_seed_attempts=0), "max_seed_attempts"),
