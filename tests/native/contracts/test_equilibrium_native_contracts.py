@@ -186,4 +186,4 @@ def test_public_equilibrium_does_not_expose_python_backend_tokens() -> None:
 
     assert '"python"' not in source
     assert "Python-first" not in equilibrium_source
-    assert "np.linalg.lstsq" not in equilibrium_source
+    assert "np.linalg." + "lstsq" not in equilibrium_source

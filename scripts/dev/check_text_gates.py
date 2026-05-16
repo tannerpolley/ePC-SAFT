@@ -126,6 +126,14 @@ def _source_blocked_terms(rel: str) -> tuple[str, ...]:
         "differential" + "_evolution",
         "minimize" + "_scalar",
         "new" + "ton",
+        "root" + "_scalar",
+        "brent" + "q",
+        "brent" + "h",
+        "golden" + "_section",
+        "golden" + "-" + "section",
+        "sci" + "py.optimize",
+        "np.linalg." + "lstsq",
+        "numpy.linalg." + "lstsq",
     )
 
 
