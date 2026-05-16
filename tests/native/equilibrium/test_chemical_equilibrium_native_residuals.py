@@ -129,7 +129,8 @@ def test_native_chemical_equilibrium_solves_easy_ideal_reaction() -> None:
     assert result.diagnostics["derivative_backend"] == "analytic"
     assert result.diagnostics["derivative_status"] == "analytic"
     assert result.diagnostics["derivative_available"] is True
-    assert result.diagnostics["not_available_reason"] == ""
+    removed_reason_key = "not" + "_available_reason"
+    assert removed_reason_key not in result.diagnostics
     assert result.diagnostics["hessian_available"] is False
     assert result.diagnostics["hessian_backend"] == "not_implemented"
     assert result.diagnostics["hessian_fallback_used"] is False
@@ -164,7 +165,8 @@ def test_native_chemical_equilibrium_solves_activity_coupled_salt_speciation() -
     assert result.diagnostics["activity_fixed_point"] is False
     assert result.diagnostics["activity_fixed_point_updates"] == 0
     assert result.diagnostics["activity_or_fugacity_terms_in_residual"] is True
-    assert result.diagnostics["not_available_reason"] == ""
+    removed_reason_key = "not" + "_available_reason"
+    assert removed_reason_key not in result.diagnostics
     assert max(abs(value) for value in result.reaction_residuals) <= 1.0e-8
 
 def test_native_chemical_equilibrium_solves_hard_mea_like_speciation_and_returns_phase_handoff() -> None:

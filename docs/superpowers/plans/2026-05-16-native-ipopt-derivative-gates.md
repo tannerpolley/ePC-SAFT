@@ -277,6 +277,8 @@ Task 2 continuation note: after the reactive-speciation diagnostic and MIAC fixt
 
 Task 2 continuation note: electrolyte LLE tests that still named the current Ceres equilibrium route as production coverage were rewritten to call it transitional/current Ceres coverage. The reactive-phase residual-surface evaluator now computes the exact CppAD-implicit Jacobian by default for `auto`, `analytic`, and `cppad` requests instead of emitting an empty derivative payload.
 
+Task 2 continuation note: neutral equilibrium and native chemical-equilibrium diagnostics no longer manufacture missing-status reason fields on successful routes. Routes without a derivative payload now use `not_applicable`, and successful native chemical-equilibrium payloads omit the old empty reason field.
+
 ### Task 3: Build Dependency Boundary
 
 **Files:**

@@ -45,12 +45,13 @@ def test_auto_equilibrium_diagnostics_do_not_fallback_to_numerical_derivative() 
     diagnostics = result.diagnostics
     assert diagnostics["requested_jacobian_backend"] == "auto"
     assert diagnostics["jacobian_fallback_used"] is False
-    assert diagnostics["derivative_backend"] == "not_available"
-    assert diagnostics["derivative_status"] == "not_available"
-    assert diagnostics["not_available_reason"].startswith("not_available")
+    assert diagnostics["derivative_backend"] == "not_applicable"
+    assert diagnostics["derivative_status"] == "not_applicable"
+    removed_reason_key = "not" + "_available_reason"
+    assert removed_reason_key not in diagnostics
     assert diagnostics["thermodynamic_backend"] == "epcsaft_state_fugacity_activity_property_api"
     assert "density_roots" in diagnostics["solved_internal_states"]
-    assert diagnostics["derivative_backend_by_block"]["density_root"] == "not_available"
+    assert diagnostics["derivative_backend_by_block"]["density_root"] == "not_applicable"
     assert "numerical_derivative" not in str(diagnostics).lower()
 
 

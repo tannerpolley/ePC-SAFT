@@ -274,7 +274,6 @@ struct ChemicalEvaluationCounters {
 struct ChemicalDerivativeSelection {
     std::string backend = "";
     std::string capability_path = "";
-    std::string not_available_reason = "";
     bool derivative_available = false;
 };
 
@@ -771,9 +770,7 @@ Eigen::MatrixXd chemical_residual_jacobian(
     (void)phase_int;
     (void)activity_model;
     (void)state_failure_count;
-    throw ValueError(selected.not_available_reason.empty()
-        ? "not_available: chemical-equilibrium residual jacobian is unavailable."
-        : selected.not_available_reason);
+    throw ValueError("chemical-equilibrium residual jacobian has no registered analytical or CppAD backend.");
 }
 
 bool is_scalar_binary_activity_problem(
@@ -883,8 +880,7 @@ void add_reactive_speciation_implicit_sensitivity_diagnostics(
         result.diagnostics_vector["reactive_speciation_log_amount_sensitivity_to_log_k_row_major"] =
             matrix_to_row_major_vector(sensitivity);
     } catch (const std::exception& exc) {
-        result.diagnostics_string["implicit_sensitivity_backend"] = "not_available";
-        result.diagnostics_string["implicit_sensitivity_status"] = "not_available";
+        result.diagnostics_string["implicit_sensitivity_status"] = "omitted";
         result.diagnostics_string["implicit_sensitivity_reason"] = exc.what();
     }
 }
@@ -1057,7 +1053,6 @@ bool try_scalar_binary_activity_solve_native(
     result.diagnostics_string["derivative_backend"] = derivative_selection.backend;
     result.diagnostics_string["derivative_status"] = derivative_selection.backend;
     result.diagnostics_string["derivative_capability_path"] = derivative_selection.capability_path;
-    result.diagnostics_string["not_available_reason"] = derivative_selection.not_available_reason;
     result.diagnostics_string["selected_solver_backend"] = "native_scalar_binary_activity_bracket";
     result.diagnostics_string["activity_derivative_policy"] = "native_scalar_activity_root";
     result.diagnostics_bool["derivative_available"] = derivative_selection.derivative_available;
@@ -1276,7 +1271,6 @@ ChemicalResidualEvaluationNative evaluate_chemical_equilibrium_residual_native(
     out.diagnostics_string["derivative_backend"] = derivative_selection.backend;
     out.diagnostics_string["derivative_status"] = derivative_selection.backend;
     out.diagnostics_string["derivative_capability_path"] = derivative_selection.capability_path;
-    out.diagnostics_string["not_available_reason"] = derivative_selection.not_available_reason;
     out.diagnostics_string["hessian_backend"] = "gauss_newton";
     out.diagnostics_string["hessian_kind"] = "approximate_least_squares_gauss_newton";
     out.diagnostics_string["hessian_structure"] = "dense_lower_triangular";
@@ -1517,7 +1511,6 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
             result.diagnostics_string["derivative_backend"] = derivative_selection.backend;
             result.diagnostics_string["derivative_status"] = derivative_selection.backend;
             result.diagnostics_string["derivative_capability_path"] = derivative_selection.capability_path;
-            result.diagnostics_string["not_available_reason"] = derivative_selection.not_available_reason;
             result.diagnostics_bool["derivative_available"] = derivative_selection.derivative_available;
             result.diagnostics_bool["jacobian_available"] = derivative_selection.derivative_available;
             result.diagnostics_bool["jacobian_fallback_used"] = false;
@@ -1644,7 +1637,6 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
     result.diagnostics_string["derivative_backend"] = derivative_selection.backend;
     result.diagnostics_string["derivative_status"] = derivative_selection.backend;
     result.diagnostics_string["derivative_capability_path"] = derivative_selection.capability_path;
-    result.diagnostics_string["not_available_reason"] = derivative_selection.not_available_reason;
     result.diagnostics_bool["derivative_available"] = derivative_selection.derivative_available;
     result.diagnostics_bool["jacobian_available"] = derivative_selection.derivative_available;
     result.diagnostics_bool["jacobian_fallback_used"] = false;

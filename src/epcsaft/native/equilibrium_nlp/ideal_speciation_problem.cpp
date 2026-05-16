@@ -557,7 +557,6 @@ ChemicalEquilibriumResultNative solve_ideal_speciation_chemical_equilibrium_ipop
     result.diagnostics_string["derivative_status"] = "analytic";
     result.diagnostics_string["derivative_capability_path"] =
         "chemical_equilibrium:ideal_mole_fraction:ipopt_amount_gibbs";
-    result.diagnostics_string["not_available_reason"] = "";
     result.diagnostics_string["selected_solver_backend"] = "native_ipopt";
     result.diagnostics_string["solver_selection_reason"] = "explicit_request";
     result.diagnostics_string["hessian_backend"] = "ipopt_limited_memory_solver_internal";
