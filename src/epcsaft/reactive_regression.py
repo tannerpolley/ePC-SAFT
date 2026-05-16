@@ -1251,7 +1251,6 @@ def _fit_reactive_parameters_impl(
             "trajectory": trajectory,
             "jacobian": None if final_jacobian is None else final_jacobian.to_dict(),
             "covariance": covariance_diagnostics,
-            "derivative_status": "residual_evaluation_only",
             "route_boundary_reason": message,
         },
     )

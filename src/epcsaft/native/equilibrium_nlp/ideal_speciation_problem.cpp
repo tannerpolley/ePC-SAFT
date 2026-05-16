@@ -554,7 +554,6 @@ ChemicalEquilibriumResultNative solve_ideal_speciation_chemical_equilibrium_ipop
     result.diagnostics_string["requested_jacobian_backend"] = options.jacobian_backend;
     result.diagnostics_string["jacobian_backend"] = "analytic";
     result.diagnostics_string["derivative_backend"] = "analytic";
-    result.diagnostics_string["derivative_status"] = "analytic";
     result.diagnostics_string["derivative_capability_path"] =
         "chemical_equilibrium:ideal_mole_fraction:ipopt_amount_gibbs";
     result.diagnostics_string["selected_solver_backend"] = "native_ipopt";

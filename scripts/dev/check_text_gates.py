@@ -126,6 +126,7 @@ def _source_blocked_terms(rel: str) -> tuple[str, ...]:
         "damp" + "ing",
         "native" + "_scalar" + "_binary" + "_activity",
         "binary" + "_log" + "_amounts",
+        "derivative" + "_status",
         "least" + "_squares",
         "differential" + "_evolution",
         "minimize" + "_scalar",

@@ -128,7 +128,8 @@ def test_native_chemical_equilibrium_residual_evaluator_uses_analytic_jacobian_b
     assert removed_hessian_key not in payload
     diagnostics = payload["diagnostics"]
     assert diagnostics["derivative_backend"] == "analytic"
-    assert diagnostics["derivative_status"] == "analytic"
+    removed_derivative_label_key = "derivative" + "_status"
+    assert removed_derivative_label_key not in diagnostics
     assert diagnostics["derivative_capability_path"] == "chemical_equilibrium:ideal_mole_fraction:log_amounts"
     assert diagnostics["derivative_available"] is True
     removed_reason_key = "not" + "_available_reason"

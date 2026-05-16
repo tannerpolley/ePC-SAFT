@@ -62,9 +62,8 @@ reaction constraints in amount variables with exact analytic derivatives.
 ``jacobian_backend="auto"`` is accepted for this ideal route and reports the
 analytic derivative backend. Activity- or concentration-coupled standard states
 raise until their EOS derivative NLP blocks are implemented. Diagnostics report
-``requested_jacobian_backend``, ``derivative_backend``, and ``derivative_status``
-for strict route-boundary failures. Approximate Jacobian substitutes are not
-supported.
+``requested_jacobian_backend`` and ``derivative_backend`` for strict
+route-boundary failures. Approximate Jacobian substitutes are not supported.
 
 .. code-block:: python
 

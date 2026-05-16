@@ -19,7 +19,6 @@ def test_equilibrium_capabilities_expose_derivative_policy() -> None:
         "thermodynamic_backend",
         "solver_backend",
         "derivative_backend",
-        "derivative_status",
         "solved_internal_states",
         "derivative_backend_by_block",
         "implicit_sensitivity_blocks",

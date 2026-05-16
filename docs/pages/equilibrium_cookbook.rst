@@ -113,12 +113,11 @@ Derivative policy
 -----------------
 
 Equilibrium solvers do not execute perturbation-approximated Jacobians. Solver and
-result diagnostics report the derivative status explicitly:
+result diagnostics report the derivative backend explicitly:
 
 - ``thermodynamic_backend``
 - ``solver_backend``
 - ``derivative_backend``
-- ``derivative_status``
 - ``solved_internal_states``
 - ``derivative_backend_by_block``
 - ``implicit_sensitivity_blocks``
@@ -278,7 +277,6 @@ a result as a production reactive-speciation solve:
 - ``diagnostics["activity_model"]``
 - ``diagnostics["reaction_standard_states"]``
 - ``diagnostics["derivative_backend"]``
-- ``diagnostics["derivative_status"]``
 - ``diagnostics["ipopt_solver_ran"]``
 - ``diagnostics["ipopt_accepted"]``
 

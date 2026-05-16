@@ -675,7 +675,6 @@ ChemicalResidualEvaluationNative evaluate_chemical_equilibrium_residual_native(
     out.diagnostics_string["phase"] = options.phase;
     out.diagnostics_string["jacobian_backend"] = derivative_selection.backend;
     out.diagnostics_string["derivative_backend"] = derivative_selection.backend;
-    out.diagnostics_string["derivative_status"] = derivative_selection.backend;
     out.diagnostics_string["derivative_capability_path"] = derivative_selection.capability_path;
     out.diagnostics_bool["derivative_available"] = derivative_selection.derivative_available;
     out.diagnostics_bool["jacobian_available"] = derivative_selection.derivative_available;

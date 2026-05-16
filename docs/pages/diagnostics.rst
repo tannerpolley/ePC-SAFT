@@ -36,7 +36,7 @@ blocks exist. For accepted ideal routes, check:
 * ``selected_solver_backend`` is ``native_ipopt``.
 * ``problem_class`` is ``homogeneous_ideal_gibbs_speciation``.
 * ``reaction_standard_states`` records the public reaction-constant convention.
-* ``derivative_backend`` and ``derivative_status`` report ``analytic``.
+* ``derivative_backend`` reports ``analytic``.
 * ``ipopt_solver_ran`` and ``ipopt_accepted`` describe the native NLP solve.
 
 Reactive electrolyte bubble result fields are retained as the target structured

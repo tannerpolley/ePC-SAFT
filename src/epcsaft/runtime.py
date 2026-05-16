@@ -489,7 +489,6 @@ def capabilities() -> dict[str, object]:
                     "thermodynamic_backend",
                     "solver_backend",
                     "derivative_backend",
-                    "derivative_status",
                     "residual_norm",
                     "best_state_available",
                     "best_state",

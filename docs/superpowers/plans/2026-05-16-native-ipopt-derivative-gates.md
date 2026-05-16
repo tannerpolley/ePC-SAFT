@@ -744,6 +744,10 @@ Figure rendering uses tracked cached diagnostics by default, and live saturation
 native Ipopt bubble/dew route owns that calculation. The MIAC runtime profiler now consumes the current
 `density_warm_start_rejections` metric instead of the retired warm-start rejection-alias field.
 
+Task 12 continuation note: active source, tests, and dev scripts no longer expose or assert the old derivative status
+diagnostic alias. Positive derivative reporting uses `derivative_backend` plus block-specific backend fields, and the
+tracked text gate blocks the removed alias in executable surfaces.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**
