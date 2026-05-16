@@ -283,6 +283,8 @@ Task 2 continuation note: the strict text gate now blocks explicit Ceres trust-r
 
 Task 2 continuation note: the neutral equilibrium benchmark payload and table no longer report the retired legacy solver-dodge field; the workflow keeps timing, fingerprint, failure, and diagnostics-key evidence only.
 
+Task 2 continuation note: the reactive regression benchmark payload and table no longer aggregate retired solver-dodge flags, missing-counter lists, or density warm-start dodge counters. Benchmark evidence is now limited to timing, success/failure counts, fingerprints, diagnostic keys, target-family counts, cache hits/misses, and solve/evaluation counters.
+
 ### Task 3: Build Dependency Boundary
 
 **Files:**
