@@ -99,7 +99,12 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert capabilities["optimizers"]["ceres"]["available"] is ceres["available"]
     assert capabilities["optimizers"]["ceres"]["production"] is ceres["available"]
     assert capabilities["optimizers"]["ceres"]["native_hot_loop"] is ceres["available"]
-    assert capabilities["equilibrium"]["neutral_tp_flash"]["available"] is True
+    neutral_tp = capabilities["equilibrium"]["neutral_tp_flash"]
+    assert neutral_tp["available"] is False
+    assert neutral_tp["backend"] == "native_ipopt_equilibrium_nlp_required"
+    assert neutral_tp["methods"] == ["tp_flash", "flash_tp"]
+    assert neutral_tp["status"] == "route_pending"
+    assert neutral_tp["previous_solver_disabled"] == "native_tp_flash_route"
     assert capabilities["equilibrium"]["neutral_bubble_dew"] == {
         "available": False,
         "backend": "native_ipopt_equilibrium_nlp_required",

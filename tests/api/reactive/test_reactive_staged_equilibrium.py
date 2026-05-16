@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import json
-
 import numpy as np
 import pytest
 
 import epcsaft
+from tests.equilibrium.core.test_vle import _assert_tp_flash_route_pending
 
 
 def _hydrocarbon_mixture() -> epcsaft.ePCSAFTMixture:
@@ -24,32 +23,25 @@ def _hydrocarbon_mixture() -> epcsaft.ePCSAFTMixture:
     return epcsaft.ePCSAFTMixture.from_params(params, species=["Methane", "Ethane", "Propane"])
 
 
-def test_solve_reactive_staged_equilibrium_returns_chemical_and_phase_results() -> None:
+def test_solve_reactive_staged_equilibrium_requires_native_ipopt_phase_route() -> None:
     mix = _hydrocarbon_mixture()
 
-    result = epcsaft.solve_reactive_staged_equilibrium(
-        species=mix.species,
-        mixture_factory=lambda x, T, P: mix,
-        T=220.0,
-        P=1.0e5,
-        balances={
-            "methane": {"Methane": 1.0},
-            "ethane": {"Ethane": 1.0},
-            "propane": {"Propane": 1.0},
-        },
-        totals={"methane": 0.1, "ethane": 0.3, "propane": 0.6},
-        reactions=[],
-        initial_x=[0.1, 0.3, 0.6],
-        phase_kind="tp_flash",
-    )
+    with pytest.raises(epcsaft.InputError) as excinfo:
+        epcsaft.solve_reactive_staged_equilibrium(
+            species=mix.species,
+            mixture_factory=lambda x, T, P: mix,
+            T=220.0,
+            P=1.0e5,
+            balances={
+                "methane": {"Methane": 1.0},
+                "ethane": {"Ethane": 1.0},
+                "propane": {"Propane": 1.0},
+            },
+            totals={"methane": 0.1, "ethane": 0.3, "propane": 0.6},
+            reactions=[],
+            initial_x=[0.1, 0.3, 0.6],
+            phase_kind="tp_flash",
+        )
 
-    assert isinstance(result, epcsaft.ReactiveStagedEquilibriumResult)
-    assert result.success is True
-    assert result.chemical.success is True
-    assert isinstance(result.phase, epcsaft.EquilibriumResult)
-    assert result.phase.problem_kind == "tp_flash"
-    assert result.z == pytest.approx({"Methane": 0.1, "Ethane": 0.3, "Propane": 0.6})
-    assert result.diagnostics["workflow"] == "chemical_equilibrium_then_phase_equilibrium"
-    assert result.diagnostics["phase_kind"] == "tp_flash"
+    _assert_tp_flash_route_pending(excinfo)
     assert "reactive_flash_tp" not in dir(mix)
-    json.dumps(result.to_dict(), allow_nan=False)

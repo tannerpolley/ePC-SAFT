@@ -68,6 +68,16 @@ def test_neutral_lle_capability_requires_native_ipopt_route() -> None:
     assert neutral_lle["previous_solver_disabled"] == "ceres_residual_lle_route"
 
 
+def test_neutral_tp_flash_capability_requires_native_ipopt_route() -> None:
+    neutral_tp = epcsaft.capabilities()["equilibrium"]["neutral_tp_flash"]
+
+    assert neutral_tp["available"] is False
+    assert neutral_tp["status"] == "route_pending"
+    assert neutral_tp["backend"] == "native_ipopt_equilibrium_nlp_required"
+    assert neutral_tp["methods"] == ["tp_flash", "flash_tp"]
+    assert neutral_tp["previous_solver_disabled"] == "native_tp_flash_route"
+
+
 def test_electrolyte_lle_capability_requires_native_ipopt_route() -> None:
     electrolyte_lle = epcsaft.capabilities()["equilibrium"]["electrolyte_lle"]
 

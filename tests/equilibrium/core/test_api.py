@@ -7,6 +7,7 @@ import pytest
 
 import epcsaft
 from epcsaft import ePCSAFTMixture
+from tests.equilibrium.core.test_vle import _assert_tp_flash_route_pending
 from tests.helpers.numeric import assert_allclose
 
 
@@ -37,17 +38,6 @@ def _ionic_mixture() -> ePCSAFTMixture:
     return ePCSAFTMixture.from_params(params, species=["water", "Na+", "Cl-"])
 
 
-def _assert_json_like(value):
-    if isinstance(value, dict):
-        for item in value.values():
-            _assert_json_like(item)
-    elif isinstance(value, list):
-        for item in value:
-            _assert_json_like(item)
-    else:
-        assert not isinstance(value, np.ndarray)
-
-
 def test_equilibrium_public_exports_are_available() -> None:
     assert hasattr(epcsaft, "EquilibriumOptions")
     assert hasattr(epcsaft, "EquilibriumPhase")
@@ -60,33 +50,26 @@ def test_equilibrium_public_exports_are_available() -> None:
     assert hasattr(epcsaft, "dew_t")
 
 
-def test_tp_flash_returns_structured_result_and_json_like_dict() -> None:
+def test_tp_flash_requires_native_ipopt_route() -> None:
     mix = _hydrocarbon_mixture()
 
-    result = mix.equilibrium(kind="tp_flash", T=220.0, P=1.0e5, z=np.asarray([0.1, 0.3, 0.6]))
+    with pytest.raises(epcsaft.InputError) as excinfo:
+        mix.equilibrium(kind="tp_flash", T=220.0, P=1.0e5, z=np.asarray([0.1, 0.3, 0.6]))
 
-    assert isinstance(result, epcsaft.EquilibriumResult)
-    assert result.backend == "neutral_vle"
-    assert result.problem_kind == "tp_flash"
-    assert result.phase_labels == ["liq", "vap"]
-    payload = result.to_dict()
-    assert payload["phase_labels"] == ["liq", "vap"]
-    json.dumps(payload, allow_nan=False)
-    _assert_json_like(payload)
+    _assert_tp_flash_route_pending(excinfo)
 
 
-def test_explicit_flash_tp_matches_legacy_equilibrium_dispatch() -> None:
+def test_explicit_flash_tp_matches_equilibrium_route_pending_policy() -> None:
     mix = _hydrocarbon_mixture()
     feed = np.asarray([0.1, 0.3, 0.6])
 
-    direct = mix.flash_tp(T=220.0, P=1.0e5, z=feed)
-    legacy = mix.equilibrium(kind="tp_flash", T=220.0, P=1.0e5, z=feed)
+    with pytest.raises(epcsaft.InputError) as direct_exc:
+        mix.flash_tp(T=220.0, P=1.0e5, z=feed)
+    with pytest.raises(epcsaft.InputError) as dispatched_exc:
+        mix.equilibrium(kind="tp_flash", T=220.0, P=1.0e5, z=feed)
 
-    assert isinstance(direct, epcsaft.EquilibriumResult)
-    assert direct.problem_kind == legacy.problem_kind
-    assert direct.phase_labels == legacy.phase_labels
-    assert_allclose(direct.phases[0].composition, legacy.phases[0].composition)
-    assert_allclose(direct.phases[1].composition, legacy.phases[1].composition)
+    _assert_tp_flash_route_pending(direct_exc)
+    _assert_tp_flash_route_pending(dispatched_exc)
 
 
 @pytest.mark.parametrize(
@@ -111,13 +94,13 @@ def test_solve_equilibrium_accepts_typed_problem_objects() -> None:
     mix = _hydrocarbon_mixture()
     feed = np.asarray([0.1, 0.3, 0.6])
 
-    flash = mix.solve_equilibrium(epcsaft.TPFlash(T=220.0, P=1.0e5, z=feed))
+    with pytest.raises(epcsaft.InputError) as flash_exc:
+        mix.solve_equilibrium(epcsaft.TPFlash(T=220.0, P=1.0e5, z=feed))
     stability = mix.solve_equilibrium(
         epcsaft.StabilityAnalysis(T=300.0, P=1.0e5, z=feed, parent_phase="liq", trial_phases=("liq",))
     )
 
-    assert isinstance(flash, epcsaft.EquilibriumResult)
-    assert flash.problem_kind == "tp_flash"
+    _assert_tp_flash_route_pending(flash_exc)
     assert isinstance(stability, epcsaft.StabilityResult)
     assert stability.problem_kind == "stability"
 
@@ -200,17 +183,21 @@ def test_explicit_chemical_equilibrium_matches_legacy_equilibrium_dispatch() -> 
 
 
 def test_equilibrium_phase_exposes_explicit_ln_fugacity_alias() -> None:
-    mix = _hydrocarbon_mixture()
-
-    result = mix.equilibrium(kind="tp_flash", T=220.0, P=1.0e5, z=np.asarray([0.1, 0.3, 0.6]))
-
-    phase = result.phases[0]
+    phase = epcsaft.EquilibriumPhase(
+        "liq",
+        composition=np.asarray([0.1, 0.3, 0.6]),
+        density=10.0,
+        temperature=220.0,
+        pressure=1.0e5,
+        phase_fraction=1.0,
+        ln_fugacity_coefficient=np.asarray([0.0, 0.1, 0.2]),
+    )
     assert_allclose(phase.ln_fugacity_coefficient, phase.fugacity_coefficient)
     payload = phase.to_dict()
     assert "ln_fugacity_coefficient" in payload
     assert "fugacity_coefficient" in payload
     assert_allclose(payload["ln_fugacity_coefficient"], payload["fugacity_coefficient"])
-    json.dumps(result.to_dict(), allow_nan=False)
+    json.dumps(payload, allow_nan=False)
 
 
 @pytest.mark.parametrize(

@@ -507,7 +507,14 @@ def capabilities() -> dict[str, object]:
                     "association_solver_status",
                 ],
             },
-            "neutral_tp_flash": {"available": True, "backend": "native"},
+            "neutral_tp_flash": {
+                "available": False,
+                "backend": "native_ipopt_equilibrium_nlp_required",
+                "methods": ["tp_flash", "flash_tp"],
+                "status": "route_pending",
+                "previous_solver_disabled": "native_tp_flash_route",
+                "ipopt_formulation": "thermodynamic_constrained_nlp",
+            },
             "neutral_lle_flash": {
                 "available": False,
                 "backend": "native_ipopt_equilibrium_nlp_required",

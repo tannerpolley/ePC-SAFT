@@ -46,22 +46,6 @@ def _hydrocarbon_mixture() -> epcsaft.ePCSAFTMixture:
     return epcsaft.ePCSAFTMixture.from_params(params, species=["Methane", "Ethane", "Propane"])
 
 
-def _methanol_cyclohexane_mixture() -> epcsaft.ePCSAFTMixture:
-    params = {
-        "MW": np.asarray([32.042e-3, 84.147e-3]),
-        "m": np.asarray([1.5255, 2.5303]),
-        "s": np.asarray([3.2300, 3.8499]),
-        "e": np.asarray([188.90, 278.11]),
-        "e_assoc": np.asarray([2899.5, 0.0]),
-        "vol_a": np.asarray([0.035176, 0.0]),
-        "assoc_scheme": ["2B", None],
-        "k_ij": np.asarray([[0.0, 0.051], [0.051, 0.0]]),
-        "z": np.asarray([0.0, 0.0]),
-        "dielc": np.asarray([33.05, 2.02]),
-    }
-    return epcsaft.ePCSAFTMixture.from_params(params, species=["Methanol", "Cyclohexane"])
-
-
 def _round_scalar(value: Any, digits: int = 10) -> float:
     return round(float(value), digits)
 
@@ -84,28 +68,6 @@ def _git_commit() -> str | None:
         return None
     commit = completed.stdout.strip()
     return commit or None
-
-
-def _equilibrium_observation(result: epcsaft.EquilibriumResult) -> BenchmarkObservation:
-    diagnostics = dict(result.diagnostics)
-    fingerprint = {
-        "backend": str(result.backend),
-        "problem_kind": str(result.problem_kind),
-        "phase_labels": list(result.phase_labels),
-        "split_detected": bool(result.split_detected),
-        "stable": bool(result.stable),
-        "phase_fractions": _round_array([phase.phase_fraction for phase in result.phases]),
-        "densities": _round_array([phase.density for phase in result.phases]),
-        "pressures": _round_array([phase.pressure for phase in result.phases]),
-        "temperatures": _round_array([phase.temperature for phase in result.phases]),
-        "compositions": [_round_array(phase.composition) for phase in result.phases],
-        "ln_phi": [_round_array(phase.ln_fugacity_coefficient) for phase in result.phases],
-        "fugacity_residual_norm": _round_scalar(diagnostics.get("fugacity_residual_norm", 0.0)),
-    }
-    return BenchmarkObservation(
-        fingerprint=fingerprint,
-        diagnostics=diagnostics,
-    )
 
 
 def _state_observation(state: epcsaft.ePCSAFTState) -> BenchmarkObservation:
@@ -137,49 +99,9 @@ def _prepare_neutral_state() -> PreparedBenchmarkCase:
     )
 
 
-def _prepare_tp_flash() -> PreparedBenchmarkCase:
-    mix = _hydrocarbon_mixture()
-    feed = np.asarray([0.1, 0.3, 0.6], dtype=float)
-
-    def runner() -> BenchmarkObservation:
-        result = mix.flash_tp(T=220.0, P=1.0e5, z=feed)
-        return _equilibrium_observation(result)
-
-    return PreparedBenchmarkCase(
-        case="tp_flash",
-        description="Methane/ethane/propane TP flash at T=220 K, P=1e5 Pa, z=[0.1, 0.3, 0.6].",
-        runner=runner,
-    )
-
-
-def _prepare_lle_seeded() -> PreparedBenchmarkCase:
-    mix = _methanol_cyclohexane_mixture()
-    methanol_poor = np.asarray([0.05, 0.95], dtype=float)
-    methanol_rich = np.asarray([0.85, 0.15], dtype=float)
-    feed = 0.5 * methanol_poor + 0.5 * methanol_rich
-    initial_phases = {"liq1": methanol_poor, "liq2": methanol_rich, "phase_fraction": 0.5}
-    options = epcsaft.EquilibriumOptions(
-        max_iterations=240,
-        tolerance=1.0e-10,
-        jacobian_backend="auto",
-    )
-
-    def runner() -> BenchmarkObservation:
-        result = mix.lle_tp(T=298.15, P=1.013e5, z=feed, initial_phases=initial_phases, options=options)
-        return _equilibrium_observation(result)
-
-    return PreparedBenchmarkCase(
-        case="lle_seeded",
-        description="Seeded methanol/cyclohexane neutral LLE flash at T=298.15 K, P=1.013e5 Pa.",
-        runner=runner,
-    )
-
-
 CASE_BUILDERS: OrderedDict[str, Callable[[], PreparedBenchmarkCase]] = OrderedDict(
     (
         ("neutral_state", _prepare_neutral_state),
-        ("tp_flash", _prepare_tp_flash),
-        ("lle_seeded", _prepare_lle_seeded),
     )
 )
 

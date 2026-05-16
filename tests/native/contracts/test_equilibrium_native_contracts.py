@@ -7,6 +7,7 @@ import pytest
 
 import epcsaft
 from epcsaft import _core, ePCSAFTMixture
+from tests.equilibrium.core.test_vle import _assert_tp_flash_route_pending
 from tests.equilibrium.electrolyte.test_electrolyte_lle_smokes import _assert_electrolyte_lle_route_pending
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -38,15 +39,13 @@ def test_native_equilibrium_entrypoint_is_exposed() -> None:
     assert hasattr(_core, "_evaluate_electrolyte_lle_residual_native")
 
 
-def test_public_equilibrium_result_comes_from_native_backend() -> None:
+def test_public_tp_flash_requires_native_ipopt_route() -> None:
     mix = _hydrocarbon_mixture()
 
-    result = mix.equilibrium(kind="tp_flash", T=220.0, P=1.0e5, z=[0.1, 0.3, 0.6], backend="native")
+    with pytest.raises(epcsaft.InputError) as excinfo:
+        mix.equilibrium(kind="tp_flash", T=220.0, P=1.0e5, z=[0.1, 0.3, 0.6], backend="native")
 
-    assert isinstance(result, epcsaft.EquilibriumResult)
-    assert result.backend == "neutral_vle"
-    assert result.diagnostics["solver_language"] == "c++"
-    assert result.diagnostics["native_entrypoint"] == "_solve_equilibrium_native"
+    _assert_tp_flash_route_pending(excinfo)
 
 
 def test_native_electrolyte_stability_entrypoint_runs_in_cpp() -> None:

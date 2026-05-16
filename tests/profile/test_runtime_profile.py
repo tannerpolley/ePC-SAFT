@@ -18,6 +18,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+import epcsaft
 from epcsaft import ePCSAFTMixture
 
 REPORT_DIR = Path(__file__).resolve().parents[2] / "build" / "runtime_profile"
@@ -238,6 +239,15 @@ def test_runtime_profile_oop_methods():
     ionic_species = ctx["ionic_species"]
     z_feed = ctx["z_feed"]
 
+    def _equilibrium_tp_flash_gate():
+        with pytest.raises(epcsaft.InputError, match="tp_flash requires a native Ipopt equilibrium NLP route"):
+            ctx["equilibrium_mix"].equilibrium(
+                kind="tp_flash",
+                T=220.0,
+                P=1.0e5,
+                z=ctx["equilibrium_feed"],
+            )
+
     benches = [
         (
             "ctor.from_params",
@@ -255,13 +265,8 @@ def test_runtime_profile_oop_methods():
         ("mixture.reset_runtime_cache_stats", lambda: ctx["neutral_mix"].reset_runtime_cache_stats(), 10, 1),
         ("mixture.runtime_cache_stats", lambda: ctx["neutral_mix"].runtime_cache_stats(), 10, 1),
         (
-            "mixture.equilibrium.tp_flash",
-            lambda: ctx["equilibrium_mix"].equilibrium(
-                kind="tp_flash",
-                T=220.0,
-                P=1.0e5,
-                z=ctx["equilibrium_feed"],
-            ),
+            "mixture.equilibrium.tp_flash_gate",
+            _equilibrium_tp_flash_gate,
             3,
             0,
         ),
@@ -378,7 +383,7 @@ def test_runtime_profile_oop_methods():
         "ePCSAFTMixture.clear_runtime_caches": "mixture.clear_runtime_caches",
         "ePCSAFTMixture.reset_runtime_cache_stats": "mixture.reset_runtime_cache_stats",
         "ePCSAFTMixture.runtime_cache_stats": "mixture.runtime_cache_stats",
-        "ePCSAFTMixture.equilibrium": "mixture.equilibrium.tp_flash",
+        "ePCSAFTMixture.equilibrium": "mixture.equilibrium.tp_flash_gate",
         "ePCSAFTMixture.state": "state.from_P",
         "ePCSAFTState.pressure": "state.pressure",
         "ePCSAFTState.density": "state.density",

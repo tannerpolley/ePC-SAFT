@@ -48,6 +48,13 @@ def _raise_native_ipopt_lle_required(route: str, *, previous_route: str = "Ceres
     )
 
 
+def _raise_native_ipopt_tp_flash_required() -> None:
+    raise InputError(
+        "tp_flash requires a native Ipopt equilibrium NLP route. "
+        "The previous native TP flash route is disabled by the solver gate."
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class EquilibriumOptions:
     """Numerical controls for equilibrium solvers."""
@@ -1574,15 +1581,13 @@ def dew_t(mixture: Any, *, P: float, y: Any, options: EquilibriumOptions | None 
 def tp_flash(
     mixture: Any, *, T: float, P: float, z: Any, options: EquilibriumOptions | None = None
 ) -> EquilibriumResult:
-    """Solve a neutral TP flash through the native C++ equilibrium backend."""
+    """Validate a neutral TP flash request and require the native Ipopt route."""
     opts = _normalize_options(options)
-    feed = _normalize_feed(z, mixture.ncomp, opts.min_composition, "tp_flash")
+    _normalize_feed(z, mixture.ncomp, opts.min_composition, "tp_flash")
     _reject_ion_containing_mixture(mixture)
-    temperature = _positive_scalar(T, "T", "tp_flash")
-    pressure = _positive_scalar(P, "P", "tp_flash")
-    result = _call_native_equilibrium(mixture, kind="tp_flash", T=temperature, P=pressure, z=feed, options=opts)
-    assert isinstance(result, EquilibriumResult)
-    return result
+    _positive_scalar(T, "T", "tp_flash")
+    _positive_scalar(P, "P", "tp_flash")
+    _raise_native_ipopt_tp_flash_required()
 
 
 def lle_flash(

@@ -211,7 +211,7 @@ def test_slice_targets_use_grouped_test_subpackages():
     assert "tests/api/runtime/test_runtime_exports_and_metadata.py" in run_pytest.API_TEST_TARGETS
     assert (
         "tests/equilibrium/core/test_vle.py::"
-        "test_ternary_hydrocarbon_basis_tp_flash_closes_material_and_fugacity_balance"
+        "test_ternary_hydrocarbon_basis_tp_flash_requires_native_ipopt_route"
     ) in run_pytest.GENERIC_TEST_TARGETS
     assert (
         "tests/equilibrium/core/test_lle.py::test_methanol_cyclohexane_lle_flash_requires_native_ipopt_with_seed"

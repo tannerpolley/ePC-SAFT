@@ -377,7 +377,7 @@ class ePCSAFTMixture:
         return solve(self)
 
     def flash_tp(self, T, P, z, *, options=None):
-        """Solve a neutral TP flash with explicit thermodynamic-method naming."""
+        """Validate a neutral TP flash request with explicit thermodynamic-method naming."""
         from .equilibrium import tp_flash
 
         return tp_flash(self, T=T, P=P, z=z, options=options)

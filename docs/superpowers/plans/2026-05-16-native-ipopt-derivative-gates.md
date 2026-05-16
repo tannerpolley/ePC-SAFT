@@ -549,6 +549,8 @@ Task 12 continuation note: public neutral LLE no longer executes the transitiona
 
 Task 12 continuation note: public electrolyte LLE no longer executes the transitional Ceres residual route from `electrolyte_lle` or `electrolyte_lle_tp`. The public adapter validates ion-containing mixtures, charge-neutral feeds, electrolyte formula bases, molality/direct-feed inputs, and optional `aq`/`org` phase seeds, then raises until a native Ipopt constrained NLP route owns production electrolyte LLE; lower-level native residual-surface coverage remains private diagnostic coverage.
 
+Task 12 continuation note: public neutral TP flash no longer executes the native package-owned TP flash route from `tp_flash`, `flash_tp`, typed `TPFlash`, or neutral `auto` dispatch. The public adapter validates feed, mixture, and scalar inputs, then raises until a native Ipopt constrained NLP route owns production TP flash. Neutral equilibrium benchmark coverage was narrowed to property-state timing so benchmark scripts do not exercise disabled public flash/LLE routes.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**
