@@ -1,4 +1,5 @@
 from __future__ import annotations
+# ruff: noqa: I001
 
 import csv
 import math
@@ -7,6 +8,8 @@ import platform
 import sys
 
 
+from collections.abc import Iterable
+from collections.abc import Mapping
 from pathlib import Path
 import sys as _bootstrap_sys
 from pathlib import Path as _BootstrapPath
@@ -19,8 +22,6 @@ for _candidate in _BootstrapPath(__file__).resolve().parents:
 else:
     raise ModuleNotFoundError("Could not locate repo root containing scripts/plot_outputs.py")
 from scripts.plot_outputs import REPO_ROOT
-from typing import Iterable
-from typing import Mapping
 
 import matplotlib
 import numpy as np
@@ -39,9 +40,6 @@ from scripts.plot_outputs import paper_validation_output_path
 from scripts.plot_outputs import save_plot_figure
 
 require_epcsaft_install()
-
-from epcsaft import SolutionError
-from epcsaft import ePCSAFTMixture
 
 MEA_MW = 0.06108
 T_MIN = 303.15
@@ -235,70 +233,6 @@ def contribution_terms(params: dict) -> str:
     return "hc;disp;assoc"
 
 
-def _fugacity_difference(mixture: ePCSAFTMixture, T: float, log_p: float) -> float:
-    P = math.exp(float(log_p))
-    x = np.asarray([1.0], dtype=float)
-    mixture.clear_runtime_caches()
-    liquid = mixture.state(T, x, P=P, phase="liq")
-    mixture.clear_runtime_caches()
-    vapor = mixture.state(T, x, P=P, phase="vap")
-    return float(liquid.fugacity_coefficient(natural_log=True)[0] - vapor.fugacity_coefficient(natural_log=True)[0])
-
-
-def _bracket_saturation(mixture: ePCSAFTMixture, T: float, p_hint: float) -> tuple[float, float] | None:
-    guesses = np.clip(p_hint * np.exp(np.linspace(-2.0, 2.0, 33)), 1.0e-3, 1.0e8)
-    samples: list[tuple[float, float]] = []
-    for P in sorted(set(float(value) for value in guesses)):
-        try:
-            samples.append((math.log(P), _fugacity_difference(mixture, T, math.log(P))))
-        except (SolutionError, ValueError, OverflowError, RuntimeError):
-            continue
-    for (x0, y0), (x1, y1) in zip(samples, samples[1:]):
-        if not np.isfinite(y0) or not np.isfinite(y1):
-            continue
-        if y0 == 0.0:
-            return x0, x0
-        if y0 * y1 < 0.0:
-            return x0, x1
-    return None
-
-
-def _bisect_log_pressure_root(
-    mixture: ePCSAFTMixture,
-    T: float,
-    lower: float,
-    upper: float,
-    *,
-    tolerance: float = 1.0e-10,
-    max_iterations: int = 100,
-) -> float:
-    if lower == upper:
-        return float(lower)
-    f_lower = _fugacity_difference(mixture, T, lower)
-    f_upper = _fugacity_difference(mixture, T, upper)
-    if f_lower == 0.0:
-        return float(lower)
-    if f_upper == 0.0:
-        return float(upper)
-    if f_lower * f_upper > 0.0:
-        raise RuntimeError("Saturation bracket does not contain a sign change.")
-
-    lo = float(lower)
-    hi = float(upper)
-    flo = float(f_lower)
-    for _ in range(max_iterations):
-        mid = 0.5 * (lo + hi)
-        f_mid = _fugacity_difference(mixture, T, mid)
-        if abs(f_mid) <= tolerance or abs(hi - lo) <= tolerance:
-            return float(mid)
-        if flo * f_mid <= 0.0:
-            hi = mid
-        else:
-            lo = mid
-            flo = float(f_mid)
-    return float(0.5 * (lo + hi))
-
-
 def metric_rows(rows: list[dict], field: str) -> list[dict]:
     reference = {round(float(row["T_K"]), 6): float(row[field]) for row in rows if row["series"] == "DIPPR"}
     out: list[dict] = []
@@ -362,7 +296,6 @@ def regressed_parameter_rows(path: Path) -> list[dict[str, str]]:
             fixed_parameters={"MW": MEA_MW},
             initial_guess=table_values,
             bounds=_baygi_regression_bounds(table_values),
-            multistart=0,
             max_nfev=max_nfev,
         )
         row: dict[str, str | float | int | bool] = {
@@ -421,54 +354,7 @@ def model_saturation_rows(
     *,
     parameter_sets: Mapping[str, Mapping[str, float]] | None = None,
 ) -> tuple[list[dict], list[dict]]:
-    rows: list[dict] = []
-    diagnostics: list[dict] = []
-    parameter_sets = TABLE2_MEA_PARAMETERS if parameter_sets is None else parameter_sets
-    for assoc_scheme in ("2B", "3B", "4C"):
-        params = build_mea_params(assoc_scheme, parameter_sets[assoc_scheme])
-        terms = contribution_terms(params)
-        for T in temperatures:
-            mixture = ePCSAFTMixture.from_params(params, species=["MEA"])
-            p_hint = baygi_mea_psat_pa(float(T))
-            bracket = _bracket_saturation(mixture, float(T), p_hint)
-            if bracket is None:
-                diagnostics.append(
-                    {
-                        "series": f"MEA {assoc_scheme}",
-                        "T_K": float(T),
-                        "P_Pa": "",
-                        "rho_mol_m3": "",
-                        "status": "no_saturation_bracket",
-                        "contribution_terms": terms,
-                    }
-                )
-                continue
-            try:
-                log_p = _bisect_log_pressure_root(mixture, float(T), *bracket)
-                P = math.exp(float(log_p))
-                mixture.clear_runtime_caches()
-                liquid = mixture.state(float(T), np.asarray([1.0], dtype=float), P=P, phase="liq")
-                rho = float(liquid.molar_density())
-            except (SolutionError, ValueError, OverflowError, RuntimeError) as exc:
-                diagnostics.append(
-                    {
-                        "series": f"MEA {assoc_scheme}",
-                        "T_K": float(T),
-                        "P_Pa": "",
-                        "rho_mol_m3": "",
-                        "status": f"solve_failed:{type(exc).__name__}",
-                        "contribution_terms": terms,
-                    }
-                )
-                continue
-            row = {
-                "series": f"MEA {assoc_scheme}",
-                "T_K": float(T),
-                "P_Pa": P,
-                "rho_mol_m3": rho,
-                "status": "solved",
-                "contribution_terms": terms,
-            }
-            rows.append(row)
-            diagnostics.append(row)
-    return rows, diagnostics
+    raise RuntimeError(
+        "Baygi saturation recomputation requires a native Ipopt bubble/dew route. "
+        "Use the tracked cached diagnostics for figure rendering until that route is implemented."
+    )

@@ -739,6 +739,11 @@ Task 12 continuation note: stale tracked GoalBuddy artifacts for superseded nati
 reactive-equilibrium, and PR #126 repair stories were removed from active docs. This plan is now the authoritative
 tracked handoff for native Ipopt equilibrium, native Ceres regression, derivative gates, and solver-cleanup work.
 
+Task 12 continuation note: the retained Baygi 2015 analysis no longer owns a package-local saturation solve loop.
+Figure rendering uses tracked cached diagnostics by default, and live saturation recomputation fails loudly until a
+native Ipopt bubble/dew route owns that calculation. The MIAC runtime profiler now consumes the current
+`density_warm_start_rejections` metric instead of the retired warm-start rejection-alias field.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**

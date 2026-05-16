@@ -1,7 +1,7 @@
 analysis_id: 2015_baygi
 title: Baygi 2015 pure MEA validation
 kind: paper_validation
-status: migrated
+status: cached_route_gated
 package: epcsaft
 commands:
   run_all: uv run python analyses/paper_validation/application/2015_baygi/scripts/run_all.py

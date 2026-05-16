@@ -11,12 +11,14 @@ Run directly with:
 """
 
 from __future__ import annotations
+# ruff: noqa: I001
 
 import csv
 import os
 import sys
 
 
+from collections.abc import Callable
 import time
 from pathlib import Path
 import sys as _bootstrap_sys
@@ -31,7 +33,6 @@ else:
     raise ModuleNotFoundError("Could not locate repo root containing scripts/plot_outputs.py")
 from scripts.plot_outputs import REPO_ROOT
 from statistics import mean
-from typing import Callable, Dict, List, Tuple
 
 import numpy as np
 
@@ -73,7 +74,7 @@ def _to_ms(seconds: float) -> float:
 
 
 def _bench(
-    name: str, fn: Callable[[], object], repeats: int, warmup: int = 1, meta: Dict[str, object] | None = None
+    name: str, fn: Callable[[], object], repeats: int, warmup: int = 1, meta: dict[str, object] | None = None
 ) -> dict:
     for _ in range(max(0, int(warmup))):
         fn()
@@ -82,7 +83,7 @@ def _bench(
     fn()
     first_ms = _to_ms(time.perf_counter() - t0)
 
-    times_ms: List[float] = []
+    times_ms: list[float] = []
     for _ in range(max(1, int(repeats))):
         t1 = time.perf_counter()
         fn()
@@ -109,7 +110,7 @@ def _capture_cache_profile(
     name: str,
     fn: Callable[[], object],
     mixture,
-    meta: Dict[str, object] | None = None,
+    meta: dict[str, object] | None = None,
 ) -> dict:
     mixture.clear_runtime_caches()
     mixture.reset_runtime_cache_stats()
@@ -134,7 +135,7 @@ def _capture_cache_profile(
     return row
 
 
-def _find_combo(solvent_system: str, salt: str, comp_signature=None) -> Dict[str, object]:
+def _find_combo(solvent_system: str, salt: str, comp_signature=None) -> dict[str, object]:
     for combo in vmf.discover_combos(solvent_scope=solvent_system, salt_scope=salt):
         if comp_signature is None:
             if not combo.get("comp_signature"):
@@ -145,11 +146,11 @@ def _find_combo(solvent_system: str, salt: str, comp_signature=None) -> Dict[str
 
 
 def _profile_combo(
-    combo: Dict[str, object],
+    combo: dict[str, object],
     dataset_name: str,
     grid_points: int,
     repeats: int,
-) -> Tuple[List[dict], List[str]]:
+) -> tuple[list[dict], list[str]]:
     salt = str(combo["salt"])
     solvent_system = str(combo["solvent_system"])
     label = f"{solvent_system}/{salt}"
@@ -286,8 +287,8 @@ def _profile_combo(
         f"{label}: per-point work is dominated by state_from_pressure ({state_ms:.2f} ms) and activity_mean_ionic_molality ({gamma_ms:.2f} ms); mole-fraction conversion is only {x_ms:.3f} ms.",
         f"{label}: activity_mean_ionic_molality ({gamma_ms:.2f} ms) is roughly {gamma_ms / max(fug_ms, 1.0e-12):.0f}x the plain fugacity_coefficient call ({fug_ms:.3f} ms); after cache reuse, the remaining overhead is now the small extra reference/basis algebra rather than repeated reference-state solves.",
         f"{label}: one model curve of {grid_points} points costs about {approx_curve_ms/1000.0:.2f} s from just the repeated pressure-state plus activity calls before Python bookkeeping or plotting.",
-        f"{label}: cached state sweep over {grid_points} points saw {int(sweep_state['density_warm_start_hits'])} density warm-start hits and {int(sweep_state['density_warm_start_fallbacks'])} fallbacks.",
-        f"{label}: cached mean-ionic sweep over {grid_points} points saw {int(sweep_miac['reference_state_cache_hits'])} reference-state cache hits, {int(sweep_miac['reference_state_cache_misses'])} misses, {int(sweep_miac['density_warm_start_hits'])} density warm-start hits, and {int(sweep_miac['density_warm_start_fallbacks'])} fallbacks.",
+        f"{label}: cached state sweep over {grid_points} points saw {int(sweep_state['density_warm_start_hits'])} density warm-start hits and {int(sweep_state['density_warm_start_rejections'])} rejections.",
+        f"{label}: cached mean-ionic sweep over {grid_points} points saw {int(sweep_miac['reference_state_cache_hits'])} reference-state cache hits, {int(sweep_miac['reference_state_cache_misses'])} misses, {int(sweep_miac['density_warm_start_hits'])} density warm-start hits, and {int(sweep_miac['density_warm_start_rejections'])} rejections.",
     ]
     if osm_ms > gamma_ms * 0.5:
         notes.append(
@@ -296,7 +297,7 @@ def _profile_combo(
     return rows, notes
 
 
-def _write_reports(rows: List[dict], notes: List[str], grid_points: int, repeats: int) -> None:
+def _write_reports(rows: list[dict], notes: list[str], grid_points: int, repeats: int) -> None:
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
 
     fields = [
@@ -315,7 +316,7 @@ def _write_reports(rows: List[dict], notes: List[str], grid_points: int, repeats
         "reference_state_cache_hits",
         "reference_state_cache_misses",
         "density_warm_start_hits",
-        "density_warm_start_fallbacks",
+        "density_warm_start_rejections",
     ]
     with REPORT_CSV.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=fields)
@@ -346,7 +347,7 @@ def _write_reports(rows: List[dict], notes: List[str], grid_points: int, repeats
     REPORT_MD.write_text("\n".join(lines), encoding="utf-8")
 
 
-def run_miac_runtime_profile() -> List[dict]:
+def run_miac_runtime_profile() -> list[dict]:
     grid_points = _requested_grid_points()
     repeats = _requested_repeats()
 
@@ -356,8 +357,8 @@ def run_miac_runtime_profile() -> List[dict]:
         (_find_combo("water-ethanol", "NaBr", comp_signature=(("water", 0.0), ("ethanol", 1.0))), "2025_Figiel"),
     ]
 
-    rows: List[dict] = []
-    notes: List[str] = []
+    rows: list[dict] = []
+    notes: list[str] = []
     for combo, dataset_name in cases:
         case_rows, case_notes = _profile_combo(combo, dataset_name, grid_points, repeats)
         rows.extend(case_rows)
