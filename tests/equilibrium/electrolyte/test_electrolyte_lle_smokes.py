@@ -106,20 +106,17 @@ def test_electrolyte_lle_rejects_neutral_lle_initial_phase_labels() -> None:
         )
 
 
-def test_equilibrium_options_default_iteration_budget_is_robust_for_electrolyte_lle() -> None:
+def test_equilibrium_options_default_max_iterations_remains_explicit() -> None:
     options = epcsaft.EquilibriumOptions()
 
     assert options.max_iterations == 180
 
 
-def test_equilibrium_options_expose_density_robustness_controls() -> None:
-    options = epcsaft.EquilibriumOptions(
-        density_diagnostics="full",
-        experimental_coupled_density_lle=True,
-    )
+def test_equilibrium_options_do_not_expose_removed_density_route_controls() -> None:
+    option_fields = set(epcsaft.EquilibriumOptions.__dataclass_fields__)
 
-    assert options.density_diagnostics == "full"
-    assert options.experimental_coupled_density_lle is True
+    assert "density_diagnostics" not in option_fields
+    assert "experimental_coupled_density_lle" not in option_fields
 
 
 def test_electrolyte_lle_rejects_non_neutral_direct_feed() -> None:

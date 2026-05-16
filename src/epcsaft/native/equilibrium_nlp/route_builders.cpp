@@ -35,22 +35,23 @@ void require_positive_finite(double value, const std::string& label) {
     throw ValueError(label + " must be positive and finite.");
 }
 
-NeutralTwoPhaseEosInitialPoint build_neutral_tp_flash_initial_point(
+NeutralTwoPhaseEosInitialPoint build_neutral_two_phase_eos_initial_point(
     const std::vector<double>& feed_amounts,
     double temperature,
-    double target_pressure
+    double target_pressure,
+    const std::string& route_label
 ) {
-    require_positive_finite(temperature, "Neutral TP flash route temperature");
-    require_positive_finite(target_pressure, "Neutral TP flash route pressure");
+    require_positive_finite(temperature, route_label + " temperature");
+    require_positive_finite(target_pressure, route_label + " pressure");
     if (feed_amounts.empty()) {
-        throw ValueError("Neutral TP flash route requires at least one feed amount.");
+        throw ValueError(route_label + " requires at least one feed amount.");
     }
     double total_feed = 0.0;
     for (double amount : feed_amounts) {
-        require_positive_finite(amount, "Neutral TP flash route feed amount");
+        require_positive_finite(amount, route_label + " feed amount");
         total_feed += amount;
     }
-    require_positive_finite(total_feed, "Neutral TP flash route total feed amount");
+    require_positive_finite(total_feed, route_label + " total feed amount");
 
     std::vector<double> composition;
     composition.reserve(feed_amounts.size());
@@ -84,7 +85,7 @@ NeutralTwoPhaseEosInitialPoint build_neutral_tp_flash_initial_point(
             first_composition[index] = composition[index] * (1.0 + 0.2 * scaled_direction);
             first_sum += first_composition[index];
         }
-        require_positive_finite(first_sum, "Neutral TP flash route first phase composition sum");
+        require_positive_finite(first_sum, route_label + " first phase composition sum");
         for (double& value : first_composition) {
             value /= first_sum;
         }
@@ -95,15 +96,15 @@ NeutralTwoPhaseEosInitialPoint build_neutral_tp_flash_initial_point(
     for (std::size_t index = 0; index < feed_amounts.size(); ++index) {
         out.phase_amounts[0][index] = 0.5 * total_feed * first_composition[index];
         out.phase_amounts[1][index] = feed_amounts[index] - out.phase_amounts[0][index];
-        require_positive_finite(out.phase_amounts[0][index], "Neutral TP flash route first phase amount");
-        require_positive_finite(out.phase_amounts[1][index], "Neutral TP flash route second phase amount");
+        require_positive_finite(out.phase_amounts[0][index], route_label + " first phase amount");
+        require_positive_finite(out.phase_amounts[1][index], route_label + " second phase amount");
     }
 
     const double density = std::max(target_pressure / (kGasConstant * temperature), 1.0e-12);
     out.volumes.reserve(2);
     for (const auto& amounts : out.phase_amounts) {
         const double phase_total = std::accumulate(amounts.begin(), amounts.end(), 0.0);
-        require_positive_finite(phase_total, "Neutral TP flash route phase amount total");
+        require_positive_finite(phase_total, route_label + " phase amount total");
         out.volumes.push_back(phase_total / density);
     }
     return out;
@@ -400,7 +401,25 @@ NeutralTwoPhaseEosNlpContract evaluate_neutral_two_phase_eos_tp_flash_nlp_contra
     const std::vector<double>& feed_amounts
 ) {
     const NeutralTwoPhaseEosInitialPoint initial =
-        build_neutral_tp_flash_initial_point(feed_amounts, temperature, target_pressure);
+        build_neutral_two_phase_eos_initial_point(feed_amounts, temperature, target_pressure, "Neutral TP flash route");
+    return evaluate_neutral_two_phase_eos_nlp_contract(
+        args,
+        temperature,
+        target_pressure,
+        initial.phase_amounts,
+        initial.volumes,
+        feed_amounts
+    );
+}
+
+NeutralTwoPhaseEosNlpContract evaluate_neutral_two_phase_eos_lle_nlp_contract(
+    const add_args& args,
+    double temperature,
+    double target_pressure,
+    const std::vector<double>& feed_amounts
+) {
+    const NeutralTwoPhaseEosInitialPoint initial =
+        build_neutral_two_phase_eos_initial_point(feed_amounts, temperature, target_pressure, "Neutral LLE route");
     return evaluate_neutral_two_phase_eos_nlp_contract(
         args,
         temperature,
@@ -583,7 +602,35 @@ NeutralTwoPhaseEosRouteResult solve_neutral_two_phase_eos_tp_flash_route(
     double phase_distance_tolerance
 ) {
     const NeutralTwoPhaseEosInitialPoint initial =
-        build_neutral_tp_flash_initial_point(feed_amounts, temperature, target_pressure);
+        build_neutral_two_phase_eos_initial_point(feed_amounts, temperature, target_pressure, "Neutral TP flash route");
+    return solve_neutral_two_phase_eos_route(
+        args,
+        temperature,
+        target_pressure,
+        initial.phase_amounts,
+        initial.volumes,
+        feed_amounts,
+        options,
+        material_tolerance,
+        pressure_tolerance,
+        chemical_potential_tolerance,
+        phase_distance_tolerance
+    );
+}
+
+NeutralTwoPhaseEosRouteResult solve_neutral_two_phase_eos_lle_route(
+    const add_args& args,
+    double temperature,
+    double target_pressure,
+    const std::vector<double>& feed_amounts,
+    const IpoptSolveOptions& options,
+    double material_tolerance,
+    double pressure_tolerance,
+    double chemical_potential_tolerance,
+    double phase_distance_tolerance
+) {
+    const NeutralTwoPhaseEosInitialPoint initial =
+        build_neutral_two_phase_eos_initial_point(feed_amounts, temperature, target_pressure, "Neutral LLE route");
     return solve_neutral_two_phase_eos_route(
         args,
         temperature,

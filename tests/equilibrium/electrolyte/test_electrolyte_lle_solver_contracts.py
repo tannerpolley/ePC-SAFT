@@ -57,44 +57,29 @@ def test_auto_kind_routes_explicit_ionic_feed_to_pending_electrolyte_lle() -> No
     _assert_electrolyte_lle_route_pending(excinfo)
 
 
-def test_electrolyte_lle_solver_budget_options_validate_before_route_gate() -> None:
+def test_electrolyte_lle_rejects_removed_solver_budget_options() -> None:
     mix = _case2_mixture()
 
-    with pytest.raises(epcsaft.InputError) as excinfo:
+    with pytest.raises(epcsaft.InputError, match="max_seed_attempts"):
         mix.equilibrium(
             kind="electrolyte_lle",
             T=298.15,
             P=1.0e5,
             z=_case2_feed(),
-            options=epcsaft.EquilibriumOptions(
-                max_iterations=80,
-                tolerance=1.0e-12,
-                max_seed_attempts=1,
-                max_total_objective_evaluations=1,
-            ),
+            options={"max_seed_attempts": 1},
         )
 
-    _assert_electrolyte_lle_route_pending(excinfo)
 
-
-def test_electrolyte_lle_ignored_option_dict_validates_before_route_gate() -> None:
+def test_electrolyte_lle_rejects_removed_option_dict_keys() -> None:
     mix = _case2_mixture()
 
-    with pytest.raises(epcsaft.InputError) as excinfo:
+    with pytest.raises(epcsaft.InputError, match="force_seed_solve"):
         mix.equilibrium(
             kind="electrolyte_lle",
             T=298.15,
             P=1.0e5,
             z=_case2_feed(),
             options={
-                "max_nfev": 1,
-                "solver_tol": 1.0e-12,
-                "tpdf_global_trials": 1200,
-                "tpdf_local_trials": 600,
-                "charge_weight": 1000.0,
-                "seed_x": [0.55, 0.40, 0.025, 0.025],
                 "force_seed_solve": True,
             },
         )
-
-    _assert_electrolyte_lle_route_pending(excinfo)

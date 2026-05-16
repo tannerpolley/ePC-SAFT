@@ -192,7 +192,7 @@ def test_tp_flash_converts_accepted_native_route_payload(monkeypatch: pytest.Mon
     result = mix.equilibrium(kind="tp_flash", T=220.0, P=1.0e5, z=feed)
 
     assert result.backend == "native_equilibrium_nlp"
-    assert result.problem_kind == "neutral_two_phase_eos"
+    assert result.problem_kind == "neutral_tp_flash"
     assert result.split_detected is True
     assert [phase.label for phase in result.phases] == ["phase_0", "phase_1"]
     assert result.phases[0].fugacity_coefficient == pytest.approx(np.exp(result.phases[0].ln_fugacity_coefficient))

@@ -108,6 +108,33 @@ def test_neutral_tp_flash_route_contract_builds_native_initial_point_from_feed()
     assert np.asarray(payload["constraints_at_initial"], dtype=float)[:2] == pytest.approx([0.0, 0.0])
 
 
+def test_neutral_lle_route_contract_builds_native_initial_point_from_feed() -> None:
+    mix = _neutral_binary_mixture()
+    temperature = 298.15
+    target_pressure = 1.013e5
+    feed_amounts = np.asarray([0.45, 0.55], dtype=float)
+
+    payload = _core._native_neutral_lle_eos_nlp_contract(
+        mix._native,
+        temperature,
+        target_pressure,
+        feed_amounts.tolist(),
+    )
+
+    initial = np.asarray(payload["initial_point"], dtype=float).reshape(2, 3)
+    phase_amounts = initial[:, :2]
+    volumes = initial[:, 2]
+    phase_compositions = phase_amounts / np.sum(phase_amounts, axis=1, keepdims=True)
+
+    assert payload["problem_name"] == "neutral_two_phase_eos"
+    assert payload["derivative_backend"] == "analytic_cppad"
+    assert np.all(phase_amounts > 0.0)
+    assert np.all(volumes > 0.0)
+    assert np.sum(phase_amounts, axis=0) == pytest.approx(feed_amounts)
+    assert phase_compositions[0] != pytest.approx(phase_compositions[1])
+    assert np.asarray(payload["constraints_at_initial"], dtype=float)[:2] == pytest.approx([0.0, 0.0])
+
+
 def test_neutral_two_phase_eos_route_result_translates_solver_and_postsolve() -> None:
     mix = _neutral_binary_mixture()
     temperature = 300.0
@@ -166,6 +193,38 @@ def test_neutral_two_phase_eos_route_result_translates_solver_and_postsolve() ->
         assert payload["postsolve"]["rejection_reason"] == "accepted"
     else:
         assert payload["status"] in {"solver_rejected", "postsolve_rejected"}
+
+
+def test_neutral_lle_route_result_uses_ipopt_adapter_gate() -> None:
+    mix = _neutral_binary_mixture()
+    payload = _core._native_neutral_lle_eos_route_result(
+        mix._native,
+        298.15,
+        1.013e5,
+        [0.45, 0.55],
+        30,
+        1.0e-8,
+        1.0e-7,
+        1.0e-5,
+        1.0e-7,
+        1.0e-4,
+    )
+
+    assert payload["backend"] == "ipopt"
+    assert payload["problem_name"] == "neutral_two_phase_eos"
+    assert payload["derivative_backend"] == "analytic_cppad"
+    assert payload["exact_gradient_required"] is True
+    assert payload["exact_jacobian_required"] is True
+    if not payload["compiled"]:
+        assert payload["ran"] is False
+        assert payload["accepted"] is False
+        assert payload["status"] == "requires_ipopt_build"
+        return
+
+    assert payload["ran"] is True
+    assert np.asarray(payload["phase_amounts"], dtype=float).shape == (2, 2)
+    assert np.asarray(payload["phase_volumes"], dtype=float).shape == (2,)
+    assert payload["status"] in {"accepted", "solver_rejected", "postsolve_rejected"}
 
 
 def test_neutral_two_phase_eos_postsolve_rejects_collapsed_phases() -> None:

@@ -129,44 +129,35 @@ def test_hubach_cold_start_requires_native_ipopt_route() -> None:
     os.environ.get("EPCSAFT_RUN_HUBACH_LLE") != "1",
     reason="Hubach cold-start failure is an opt-in hard-case regression.",
 )
-def test_hubach_cold_start_ignored_options_require_native_ipopt_route() -> None:
+def test_hubach_cold_start_rejects_removed_option_dict_keys() -> None:
     feed = _row0_feed()
     mix = _hubach_mixture(feed)
 
-    with pytest.raises(epcsaft.InputError) as excinfo:
+    with pytest.raises(epcsaft.InputError, match="force_seed_solve"):
         mix.equilibrium(
             kind="electrolyte_lle",
             T=T_K,
             P=P_PA,
             z=feed,
             options={
-                "max_nfev": 20,
-                "solver_tol": 1.0e-8,
-                "tpdf_global_trials": 1200,
-                "tpdf_local_trials": 600,
-                "charge_weight": 1000.0,
                 "force_seed_solve": True,
             },
         )
-
-    _assert_electrolyte_lle_route_pending(excinfo)
 
 
 @pytest.mark.skipif(
     os.environ.get("EPCSAFT_RUN_HUBACH_LLE") != "1",
     reason="Hubach density diagnostics are an opt-in hard-case regression.",
 )
-def test_hubach_density_diagnostics_option_requires_native_ipopt_route() -> None:
+def test_hubach_rejects_removed_density_diagnostics_option() -> None:
     feed = _row0_feed()
     mix = _hubach_mixture(feed)
 
-    with pytest.raises(epcsaft.InputError) as excinfo:
+    with pytest.raises(epcsaft.InputError, match="density_diagnostics"):
         mix.equilibrium(
             kind="electrolyte_lle",
             T=T_K,
             P=P_PA,
             z=feed,
-            options=epcsaft.EquilibriumOptions(max_iterations=2, tolerance=1.0e-12, density_diagnostics="full"),
+            options={"density_diagnostics": "full"},
         )
-
-    _assert_electrolyte_lle_route_pending(excinfo)

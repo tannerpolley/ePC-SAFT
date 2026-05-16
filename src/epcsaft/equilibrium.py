@@ -66,15 +66,9 @@ class EquilibriumOptions:
     min_composition: float = 1.0e-12
     include_phase_diagnostics: bool = False
     stability_precheck: bool = True
-    ignored_legacy_options: tuple[str, ...] = ()
-    density_diagnostics: Literal["auto", "off", "full"] = "auto"
-    experimental_coupled_density_lle: bool = False
     jacobian_backend: Literal["auto", "analytic", "cppad"] = "auto"
     solver_backend: Literal["auto", "ipopt"] = "auto"
     timeout_seconds: float | None = None
-    max_seed_attempts: int | None = None
-    max_density_failures: int | None = None
-    max_total_objective_evaluations: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -563,41 +557,20 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
         return EquilibriumOptions()
     if isinstance(options, Mapping):
         raw = dict(options)
-        ignored_keys = []
-        translated: dict[str, Any] = {}
-        legacy_map = {
-            "max_nfev": "max_iterations",
-            "solver_tol": "tolerance",
-        }
-        for source, target in legacy_map.items():
-            if source in raw:
-                translated[target] = raw.pop(source)
-        ignored_legacy = {"tpdf_global_trials", "tpdf_local_trials", "charge_weight", "seed_x", "force_seed_solve"}
-        for key in sorted(ignored_legacy):
-            if key in raw:
-                raw.pop(key)
-                ignored_keys.append(key)
         allowed = {
             "max_iterations",
             "tolerance",
             "min_composition",
             "include_phase_diagnostics",
             "stability_precheck",
-            "density_diagnostics",
-            "experimental_coupled_density_lle",
             "jacobian_backend",
             "solver_backend",
             "timeout_seconds",
-            "max_seed_attempts",
-            "max_density_failures",
-            "max_total_objective_evaluations",
         }
         unknown = sorted(set(raw) - allowed)
         if unknown:
             raise InputError("Unknown equilibrium option key(s): {}.".format(", ".join(unknown)))
-        translated.update(raw)
-        translated["ignored_legacy_options"] = tuple(ignored_keys)
-        options = EquilibriumOptions(**translated)
+        options = EquilibriumOptions(**raw)
     if not isinstance(options, EquilibriumOptions):
         raise InputError("options must be an EquilibriumOptions instance.")
     if isinstance(options.max_iterations, bool) or not isinstance(options.max_iterations, Integral):
@@ -615,12 +588,6 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
         raise InputError("options.include_phase_diagnostics must be boolean.")
     if not isinstance(options.stability_precheck, bool):
         raise InputError("options.stability_precheck must be boolean.")
-    ignored_legacy_options = tuple(str(item) for item in options.ignored_legacy_options)
-    density_diagnostics = str(options.density_diagnostics).strip().lower()
-    if density_diagnostics not in {"auto", "off", "full"}:
-        raise InputError("options.density_diagnostics must be 'auto', 'off', or 'full'.")
-    if not isinstance(options.experimental_coupled_density_lle, bool):
-        raise InputError("options.experimental_coupled_density_lle must be boolean.")
     jacobian_backend = str(options.jacobian_backend).strip().lower()
     if jacobian_backend not in {"auto", "analytic", "cppad"}:
         raise InputError("options.jacobian_backend must be 'auto', 'analytic', or 'cppad'.")
@@ -628,26 +595,15 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
     if solver_backend not in {"auto", "ipopt"}:
         raise InputError("options.solver_backend must be 'auto' or 'ipopt'.")
     timeout_seconds = _optional_positive_float_option(options.timeout_seconds, "timeout_seconds")
-    max_seed_attempts = _optional_positive_int_option(options.max_seed_attempts, "max_seed_attempts")
-    max_density_failures = _optional_positive_int_option(options.max_density_failures, "max_density_failures")
-    max_total_objective_evaluations = _optional_positive_int_option(
-        options.max_total_objective_evaluations, "max_total_objective_evaluations"
-    )
     return EquilibriumOptions(
         max_iterations=max_iterations,
         tolerance=tolerance,
         min_composition=min_composition,
         include_phase_diagnostics=options.include_phase_diagnostics,
         stability_precheck=options.stability_precheck,
-        ignored_legacy_options=ignored_legacy_options,
-        density_diagnostics=density_diagnostics,  # type: ignore[arg-type]
-        experimental_coupled_density_lle=options.experimental_coupled_density_lle,
         jacobian_backend=jacobian_backend,  # type: ignore[arg-type]
         solver_backend=solver_backend,  # type: ignore[arg-type]
         timeout_seconds=timeout_seconds,
-        max_seed_attempts=max_seed_attempts,
-        max_density_failures=max_density_failures,
-        max_total_objective_evaluations=max_total_objective_evaluations,
     )
 
 
@@ -666,17 +622,6 @@ def _optional_positive_float_option(value: Any, label: str) -> float | None:
     out = _finite_float_option(value, label)
     if out <= 0.0:
         raise InputError(f"options.{label} must be positive when provided.")
-    return out
-
-
-def _optional_positive_int_option(value: Any, label: str) -> int | None:
-    if value is None:
-        return None
-    if isinstance(value, bool) or not isinstance(value, Integral):
-        raise InputError(f"options.{label} must be an integer greater than zero when provided.")
-    out = int(value)
-    if out <= 0:
-        raise InputError(f"options.{label} must be an integer greater than zero when provided.")
     return out
 
 
@@ -984,40 +929,35 @@ def _phase_state(
     }
 
 
-def _native_neutral_tp_flash(
+def _neutral_two_phase_eos_tolerances(P: float, options: EquilibriumOptions) -> tuple[float, float, float, float]:
+    material_tolerance = options.tolerance
+    pressure_tolerance = max(abs(P) * options.tolerance, options.tolerance)
+    chemical_potential_tolerance = options.tolerance
+    phase_distance_tolerance = max(10.0 * options.min_composition, 1.0e-8)
+    return material_tolerance, pressure_tolerance, chemical_potential_tolerance, phase_distance_tolerance
+
+
+def _accepted_native_neutral_two_phase_result(
     mixture: Any,
     *,
     T: float,
     P: float,
     feed: np.ndarray,
-    options: EquilibriumOptions,
+    route: Mapping[str, Any],
+    tolerances: tuple[float, float, float, float],
+    route_label: str,
+    problem_kind: str,
+    phase_labels: tuple[str, str],
 ) -> EquilibriumResult:
     from . import _core
 
-    material_tolerance = options.tolerance
-    pressure_tolerance = max(abs(P) * options.tolerance, options.tolerance)
-    chemical_potential_tolerance = options.tolerance
-    phase_distance_tolerance = max(10.0 * options.min_composition, 1.0e-8)
-    route = _core._native_neutral_tp_flash_eos_route_result(
-        mixture._native,
-        T,
-        P,
-        feed.tolist(),
-        options.max_iterations,
-        options.tolerance,
-        material_tolerance,
-        pressure_tolerance,
-        chemical_potential_tolerance,
-        phase_distance_tolerance,
-    )
-    if str(route.get("status", "")) == "requires_ipopt_build":
-        _raise_native_ipopt_tp_flash_required()
+    material_tolerance, pressure_tolerance, chemical_potential_tolerance, phase_distance_tolerance = tolerances
     if not bool(route.get("accepted", False)):
         postsolve = route.get("postsolve", {})
         diagnostics = dict(postsolve) if isinstance(postsolve, Mapping) else {}
         diagnostics["route_status"] = route.get("status", "rejected")
         diagnostics["solver_status"] = route.get("solver_status", "not_started")
-        raise SolutionError("Native neutral TP flash route was rejected.", diagnostics)
+        raise SolutionError(f"Native neutral {route_label} route was rejected.", diagnostics)
 
     result_payload = _core._native_neutral_two_phase_eos_result(
         mixture._native,
@@ -1031,7 +971,81 @@ def _native_neutral_tp_flash(
         chemical_potential_tolerance,
         phase_distance_tolerance,
     )
-    return neutral_two_phase_payload_to_result(result_payload)
+    return neutral_two_phase_payload_to_result(
+        result_payload,
+        problem_kind=problem_kind,
+        phase_labels=phase_labels,
+    )
+
+
+def _native_neutral_tp_flash(
+    mixture: Any,
+    *,
+    T: float,
+    P: float,
+    feed: np.ndarray,
+    options: EquilibriumOptions,
+) -> EquilibriumResult:
+    from . import _core
+
+    tolerances = _neutral_two_phase_eos_tolerances(P, options)
+    route = _core._native_neutral_tp_flash_eos_route_result(
+        mixture._native,
+        T,
+        P,
+        feed.tolist(),
+        options.max_iterations,
+        options.tolerance,
+        *tolerances,
+    )
+    if str(route.get("status", "")) == "requires_ipopt_build":
+        _raise_native_ipopt_tp_flash_required()
+    return _accepted_native_neutral_two_phase_result(
+        mixture,
+        T=T,
+        P=P,
+        feed=feed,
+        route=route,
+        tolerances=tolerances,
+        route_label="TP flash",
+        problem_kind="neutral_tp_flash",
+        phase_labels=("phase_0", "phase_1"),
+    )
+
+
+def _native_neutral_lle_flash(
+    mixture: Any,
+    *,
+    T: float,
+    P: float,
+    feed: np.ndarray,
+    options: EquilibriumOptions,
+) -> EquilibriumResult:
+    from . import _core
+
+    tolerances = _neutral_two_phase_eos_tolerances(P, options)
+    route = _core._native_neutral_lle_eos_route_result(
+        mixture._native,
+        T,
+        P,
+        feed.tolist(),
+        options.max_iterations,
+        options.tolerance,
+        *tolerances,
+    )
+    if str(route.get("status", "")) == "requires_ipopt_build":
+        _raise_native_ipopt_lle_required("lle_flash")
+    return _accepted_native_neutral_two_phase_result(
+        mixture,
+        T=T,
+        P=P,
+        feed=feed,
+        route=route,
+        tolerances=tolerances,
+        route_label="LLE",
+        problem_kind="neutral_lle",
+        phase_labels=("liq1", "liq2"),
+    )
 
 
 def _normalize_parent_phases(parent_phase: Any) -> tuple[str, ...]:
@@ -1371,11 +1385,11 @@ def lle_flash(
     opts = _normalize_options(options)
     feed = _normalize_feed(z, mixture.ncomp, opts.min_composition, "lle_flash")
     _reject_ion_containing_mixture(mixture)
-    _positive_scalar(T, "T", "lle_flash")
-    _positive_scalar(P, "P", "lle_flash")
+    temperature = _positive_scalar(T, "T", "lle_flash")
+    pressure = _positive_scalar(P, "P", "lle_flash")
     if initial_phases is not None:
         _normalize_neutral_initial_phases(initial_phases, feed.size, opts.min_composition)
-    _raise_native_ipopt_lle_required("lle_flash")
+    return _native_neutral_lle_flash(mixture, T=temperature, P=pressure, feed=feed, options=opts)
 
 
 def neutral_stability(

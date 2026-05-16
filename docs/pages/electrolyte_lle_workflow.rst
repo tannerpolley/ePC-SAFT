@@ -8,36 +8,20 @@ Recommended workflow
 --------------------
 
 1. Run ``kind="electrolyte_stability"`` to confirm whether the feed is unstable.
-2. If ``min_tpd`` is negative and ``kind="electrolyte_lle"`` collapses, provide
-   explicit charge-neutral ``initial_phases``.
-3. Check ``diagnostics["seed_attempts"]`` to see which seed families were tried.
-4. For curves, solve one point with strong initial phases and use continuation
-   through ``equilibrium_curve``.
+2. If ``min_tpd`` is negative, provide explicit charge-neutral
+   ``initial_phases`` so the future native Ipopt route has a well-defined
+   request payload.
+3. For curves, solve one point with accepted phase data and use continuation
+   only after the native route builder owns that production path.
 
 Bounded diagnostic runs
 -----------------------
 
-Long downstream sweeps should bound hard fixed-species LLE attempts with
-``EquilibriumOptions`` rather than relying on an outer process timeout. The
-default values are ``None`` and keep the existing robust solve behavior. When a
-budget is provided and exhausted, strict mode raises ``SolutionError`` with
-structured diagnostics instead of hanging indefinitely.
-
-Useful budget controls are:
-
-- ``timeout_seconds`` for native wall-clock budget checks inside the LLE route.
-- ``max_seed_attempts`` to stop after a bounded number of seed families.
-- ``max_density_failures`` to stop density-heavy diagnostics when repeated
-  phase-state construction fails.
-- ``max_total_objective_evaluations`` to bound transformed Gibbs objective
-  work in exploratory matrices.
-
-On budget stop, diagnostics include ``acceptance_gate =
-"predictive_budget_exhausted"``, ``budget_exceeded``, ``budget_trigger``,
-``elapsed_seconds``, ``objective_evaluation_count``, and the requested budget
-values. Use these fields to distinguish "the case is physically hard or
-unaccepted" from "the calling script killed the process before the package
-could report diagnostics."
+Long downstream sweeps should keep strict package failures visible. The public
+facade no longer accepts old electrolyte LLE seed-family or density-budget
+controls. ``timeout_seconds`` remains available as the wall-clock option for
+the native Ipopt route, while unsupported route requests raise typed package
+errors instead of running Python-side search logic.
 
 Strict failure results
 ----------------------
@@ -57,13 +41,11 @@ than asking the package to return an unaccepted phase result.
            z=feed,
            options=epcsaft.EquilibriumOptions(
                timeout_seconds=8.0,
-               max_seed_attempts=4,
            ),
        )
    except epcsaft.SolutionError as exc:
        diagnostics = exc.args[1]
        gate = diagnostics["acceptance_gate"]
-       seed_attempts = diagnostics["seed_attempts"]
 
 Native IPOPT plan
 -----------------
@@ -119,7 +101,6 @@ Hubach-style example
            max_iterations=180,
            tolerance=1.0e-8,
            timeout_seconds=15.0,
-           max_total_objective_evaluations=5000,
        ),
    )
 

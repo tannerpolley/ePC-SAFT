@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 import epcsaft
-from epcsaft import ePCSAFTMixture
+from epcsaft import _core, ePCSAFTMixture
 
 
 def _methanol_cyclohexane_mixture() -> ePCSAFTMixture:
@@ -83,17 +83,176 @@ def test_lle_flash_without_initial_phases_requires_native_ipopt_after_validation
     _assert_neutral_lle_route_pending(excinfo)
 
 
+def test_lle_flash_builds_one_native_route_request_before_ipopt_gate(monkeypatch: pytest.MonkeyPatch) -> None:
+    mix = _methanol_cyclohexane_mixture()
+    feed, initial_phases = _methanol_cyclohexane_lle_benchmark()
+    calls: list[dict[str, object]] = []
+
+    def fake_route(
+        _native,
+        temperature,
+        pressure,
+        feed_amounts,
+        max_iterations,
+        tolerance,
+        material_tolerance,
+        pressure_tolerance,
+        chemical_potential_tolerance,
+        phase_distance_tolerance,
+    ):
+        calls.append(
+            {
+                "temperature": temperature,
+                "pressure": pressure,
+                "feed_amounts": feed_amounts,
+                "max_iterations": max_iterations,
+                "tolerance": tolerance,
+                "material_tolerance": material_tolerance,
+                "pressure_tolerance": pressure_tolerance,
+                "chemical_potential_tolerance": chemical_potential_tolerance,
+                "phase_distance_tolerance": phase_distance_tolerance,
+            }
+        )
+        return {
+            "backend": "ipopt",
+            "compiled": False,
+            "ran": False,
+            "accepted": False,
+            "status": "requires_ipopt_build",
+            "postsolve": {"accepted": False},
+        }
+
+    monkeypatch.setattr(_core, "_native_neutral_lle_eos_route_result", fake_route)
+
+    with pytest.raises(epcsaft.InputError) as excinfo:
+        mix.equilibrium(
+            kind="lle_flash",
+            T=298.15,
+            P=1.013e5,
+            z=feed,
+            initial_phases=initial_phases,
+            options=epcsaft.EquilibriumOptions(max_iterations=19, tolerance=3.0e-8),
+        )
+
+    _assert_neutral_lle_route_pending(excinfo)
+    assert len(calls) == 1
+    call = calls[0]
+    assert call["feed_amounts"] == pytest.approx(feed.tolist())
+    assert call["max_iterations"] == 19
+    assert call["tolerance"] == pytest.approx(3.0e-8)
+
+
+def test_lle_flash_converts_accepted_native_route_payload(monkeypatch: pytest.MonkeyPatch) -> None:
+    mix = _methanol_cyclohexane_mixture()
+    feed, _initial_phases = _methanol_cyclohexane_lle_benchmark()
+    route_amounts = [[0.03, 0.47], [0.42, 0.08]]
+    route_volumes = [0.001, 0.002]
+
+    def fake_route(
+        _native,
+        temperature,
+        pressure,
+        feed_amounts,
+        max_iterations,
+        tolerance,
+        material_tolerance,
+        pressure_tolerance,
+        chemical_potential_tolerance,
+        phase_distance_tolerance,
+    ):
+        assert temperature == pytest.approx(298.15)
+        assert pressure == pytest.approx(1.013e5)
+        assert feed_amounts == pytest.approx(feed.tolist())
+        assert max_iterations > 0
+        assert tolerance > 0.0
+        assert material_tolerance > 0.0
+        assert pressure_tolerance > 0.0
+        assert chemical_potential_tolerance > 0.0
+        assert phase_distance_tolerance > 0.0
+        return {
+            "backend": "ipopt",
+            "compiled": True,
+            "ran": True,
+            "accepted": True,
+            "status": "accepted",
+            "phase_amounts": route_amounts,
+            "phase_volumes": route_volumes,
+            "postsolve": {"accepted": True},
+        }
+
+    def fake_result(
+        _native,
+        temperature,
+        pressure,
+        phase_amounts,
+        phase_volumes,
+        feed_amounts,
+        material_tolerance,
+        pressure_tolerance,
+        chemical_potential_tolerance,
+        phase_distance_tolerance,
+    ):
+        assert temperature == pytest.approx(298.15)
+        assert pressure == pytest.approx(1.013e5)
+        assert phase_amounts == route_amounts
+        assert phase_volumes == route_volumes
+        assert feed_amounts == pytest.approx(feed.tolist())
+        assert material_tolerance > 0.0
+        assert pressure_tolerance > 0.0
+        assert chemical_potential_tolerance > 0.0
+        assert phase_distance_tolerance > 0.0
+        return {
+            "accepted": True,
+            "backend": "native_equilibrium_nlp",
+            "problem_kind": "neutral_two_phase_eos",
+            "stable": False,
+            "split_detected": True,
+            "phases": [
+                {
+                    "label": "phase_0",
+                    "composition": [0.06, 0.94],
+                    "density": 800.0,
+                    "temperature": 298.15,
+                    "pressure": 1.013e5,
+                    "phase_fraction": 0.5,
+                    "ln_fugacity_coefficient": [0.0, 0.1],
+                    "fugacity_coefficient": [1.0, float(np.exp(0.1))],
+                },
+                {
+                    "label": "phase_1",
+                    "composition": [0.84, 0.16],
+                    "density": 900.0,
+                    "temperature": 298.15,
+                    "pressure": 1.013e5,
+                    "phase_fraction": 0.5,
+                    "ln_fugacity_coefficient": [0.2, 0.0],
+                    "fugacity_coefficient": [float(np.exp(0.2)), 1.0],
+                },
+            ],
+        }
+
+    monkeypatch.setattr(_core, "_native_neutral_lle_eos_route_result", fake_route)
+    monkeypatch.setattr(_core, "_native_neutral_two_phase_eos_result", fake_result)
+
+    result = mix.equilibrium(kind="lle_flash", T=298.15, P=1.013e5, z=feed)
+
+    assert result.backend == "native_equilibrium_nlp"
+    assert result.problem_kind == "neutral_lle"
+    assert result.split_detected is True
+    assert [phase.label for phase in result.phases] == ["liq1", "liq2"]
+    assert result.phases[1].fugacity_coefficient == pytest.approx(np.exp(result.phases[1].ln_fugacity_coefficient))
+
+
 def test_equilibrium_options_expose_explicit_solver_backend_controls() -> None:
     option_fields = {field.name for field in fields(epcsaft.EquilibriumOptions)}
 
     assert "solver_backend" in option_fields
     assert "timeout_seconds" in option_fields
-    assert "max_seed_attempts" in option_fields
-    assert "max_density_failures" in option_fields
-    assert "max_total_objective_evaluations" in option_fields
+    assert "max_seed_attempts" not in option_fields
+    assert "max_density_failures" not in option_fields
+    assert "max_total_objective_evaluations" not in option_fields
     assert epcsaft.EquilibriumOptions().solver_backend == "auto"
     assert epcsaft.EquilibriumOptions().timeout_seconds is None
-    assert epcsaft.EquilibriumOptions().max_seed_attempts is None
 
 
 @pytest.mark.parametrize(
@@ -109,10 +268,6 @@ def test_equilibrium_options_expose_explicit_solver_backend_controls() -> None:
         (epcsaft.EquilibriumOptions(solver_backend="new" + "ton"), "solver_backend"),
         (epcsaft.EquilibriumOptions(timeout_seconds=0.0), "timeout_seconds"),
         (epcsaft.EquilibriumOptions(timeout_seconds=float("nan")), "timeout_seconds"),
-        (epcsaft.EquilibriumOptions(max_seed_attempts=0), "max_seed_attempts"),
-        (epcsaft.EquilibriumOptions(max_seed_attempts=1.5), "max_seed_attempts"),
-        (epcsaft.EquilibriumOptions(max_density_failures=0), "max_density_failures"),
-        (epcsaft.EquilibriumOptions(max_total_objective_evaluations=0), "max_total_objective_evaluations"),
     ],
 )
 def test_lle_flash_rejects_invalid_options_through_public_api(options, match) -> None:
@@ -127,6 +282,22 @@ def test_lle_flash_rejects_invalid_options_through_public_api(options, match) ->
             z=feed,
             initial_phases={"liq1": feed, "liq2": feed, "phase_fraction": 0.5},
             options=options,
+        )
+
+
+@pytest.mark.parametrize("removed_key", ["max_seed_attempts", "max_density_failures", "max_total_objective_evaluations"])
+def test_lle_flash_rejects_removed_solver_budget_option_dict_keys(removed_key: str) -> None:
+    mix = _methanol_cyclohexane_mixture()
+    feed, _initial_phases = _methanol_cyclohexane_lle_benchmark()
+
+    with pytest.raises(epcsaft.InputError, match=removed_key):
+        mix.equilibrium(
+            kind="lle_flash",
+            T=298.15,
+            P=1.013e5,
+            z=feed,
+            initial_phases={"liq1": feed, "liq2": feed, "phase_fraction": 0.5},
+            options={removed_key: 1},
         )
 
 

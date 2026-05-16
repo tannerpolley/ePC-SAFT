@@ -172,8 +172,9 @@ parameter fits.
 Electrolyte LLE
 ---------------
 
-Use stability first. If the native LLE solve collapses, provide explicit
-charge-neutral ``initial_phases`` and inspect ``diagnostics["seed_attempts"]``.
+Use stability first. Provide explicit charge-neutral ``initial_phases`` so the
+native Ipopt LLE route has a well-defined request payload once that production
+builder is wired.
 
 .. code-block:: python
 
@@ -197,21 +198,19 @@ charge-neutral ``initial_phases`` and inspect ``diagnostics["seed_attempts"]``.
        options=epcsaft.EquilibriumOptions(
            max_iterations=180,
            timeout_seconds=15.0,
-           max_total_objective_evaluations=5000,
        ),
    )
    print(result.diagnostics)
 
-For diagnostic matrices, use the budget diagnostics rather than killing a
-worker process:
+For diagnostic matrices, keep strict package diagnostics visible and bound the
+native route with ``timeout_seconds`` rather than reintroducing Python-side
+search controls:
 
 .. code-block:: python
 
    options = epcsaft.EquilibriumOptions(
        max_iterations=24,
        timeout_seconds=8.0,
-       max_seed_attempts=4,
-       max_total_objective_evaluations=8000,
    )
 
 Keep strict exceptions for single scientific claims. For broad downstream
@@ -227,12 +226,11 @@ store ``exc.args[1]`` diagnostics before moving to the next row:
            z=feed,
            options=epcsaft.EquilibriumOptions(
                timeout_seconds=8.0,
-               max_seed_attempts=4,
            ),
        )
    except epcsaft.SolutionError as exc:
        diagnostics = exc.args[1]
-       print(diagnostics["acceptance_gate"], diagnostics["seed_attempts"])
+       print(diagnostics["acceptance_gate"])
 
 Reactive speciation
 -------------------

@@ -479,6 +479,12 @@ deterministic two-phase TP-flash initial point and exposes a focused contract te
 still fail loudly with the native Ipopt ownership message. Python does not own solver iteration, retry, bracketing,
 residual packing, initialization, or route acceptance.
 
+Task 8 continuation note: public neutral `lle_flash` now follows the same native ownership boundary as neutral
+`tp_flash`. The native route builder exposes LLE-specific contract and route-result entry points, owns the deterministic
+two-liquid initial point from the feed, submits exactly one Ipopt route call, and the public facade converts accepted
+native two-phase payloads into `liq1`/`liq2` results. User-provided `initial_phases` remain validation input only, not a
+solver seed or retry mechanism. Local no-Ipopt builds still fail loudly with the native Ipopt ownership message.
+
 ### Task 9: Replace Electrolyte And Reactive Phase Equilibrium Routes
 
 **Files:**
@@ -652,6 +658,10 @@ Task 13 validation note: the `_core` pybind module now disables pybind11 release
 Task 14 continuation note: public and native regression no longer expose repeated-start Ceres controls. The Ceres routes now receive one canonical clipped initial point, stale repeated-start tests were simplified, and the tracked source/test/script text gate blocks reintroducing that control surface.
 
 Task 15 continuation note: the native homogeneous chemical-equilibrium solve entrypoint no longer contains the old scalar activity bracket, soft-start, or damped residual-loop implementations. The solve path validates the request and dispatches only to the native Ipopt ideal-speciation NLP; activity/concentration standard states remain route-gated until their EOS derivative NLP blocks exist. The residual evaluator remains available for analytic Jacobian diagnostics.
+
+Task 12 continuation note: public `EquilibriumOptions` no longer accepts the old electrolyte LLE seed-family,
+density-budget, or objective-evaluation budget controls. The facade keeps `timeout_seconds` as the wall-clock option
+for native Ipopt routes and rejects removed option dictionary keys before route dispatch.
 
 ### Task 13: Final Validation And Cleanup
 
