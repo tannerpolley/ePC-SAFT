@@ -48,7 +48,6 @@ def test_reactive_regression_benchmark_schema_for_one_case():
         "baseline_repeat",
         "baseline_warmup",
         "residual_count",
-        "fallback_used",
         "cache_hits",
         "cache_misses",
         "context_cache_hits",
@@ -58,8 +57,6 @@ def test_reactive_regression_benchmark_schema_for_one_case():
         "native_reference_state_cache_hits",
         "native_reference_state_cache_misses",
         "density_warm_start_hits",
-        "density_warm_start_fallbacks",
-        "unavailable_counters",
         "speciation_solves",
         "bubble_solves",
         "density_solves",
@@ -113,7 +110,6 @@ def test_reactive_regression_benchmark_excludes_failed_repeats_from_timing():
             raise RuntimeError("synthetic benchmark failure")
         return bench.BenchmarkObservation(
             fingerprint={"case": "synthetic"},
-            fallback_used=False,
             diagnostics={"diagnostics_keys": []},
             row_count=1,
             parameter_count=1,

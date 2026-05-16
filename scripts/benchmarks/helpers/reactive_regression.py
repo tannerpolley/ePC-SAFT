@@ -48,7 +48,6 @@ def _ionic_mix_params() -> dict[str, Any]:
 @dataclass(frozen=True)
 class BenchmarkObservation:
     fingerprint: dict[str, Any]
-    fallback_used: bool
     diagnostics: dict[str, Any]
     row_count: int
     parameter_count: int
@@ -93,7 +92,6 @@ def _runtime_cache_stats(mix: epcsaft.ePCSAFTMixture | None = None) -> dict[str,
             "reference_state_cache_hits": 0,
             "reference_state_cache_misses": 0,
             "density_warm_start_hits": 0,
-            "density_warm_start_fallbacks": 0,
         }
     try:
         payload = mix.runtime_cache_stats()
@@ -102,28 +100,16 @@ def _runtime_cache_stats(mix: epcsaft.ePCSAFTMixture | None = None) -> dict[str,
             "reference_state_cache_hits": 0,
             "reference_state_cache_misses": 0,
             "density_warm_start_hits": 0,
-            "density_warm_start_fallbacks": 0,
         }
     return {
         "reference_state_cache_hits": _to_int(payload.get("reference_state_cache_hits", 0)),
         "reference_state_cache_misses": _to_int(payload.get("reference_state_cache_misses", 0)),
         "density_warm_start_hits": _to_int(payload.get("density_warm_start_hits", 0)),
-        "density_warm_start_fallbacks": _to_int(payload.get("density_warm_start_fallbacks", 0)),
     }
 
 
 def _cache_delta(start: Mapping[str, int], end: Mapping[str, int], key: str) -> int:
     return int(end.get(key, 0) - start.get(key, 0))
-
-
-def _fallback_used_from_diagnostics(diagnostics: Mapping[str, Any] | None) -> bool:
-    diag = diagnostics or {}
-    return bool(
-        diag.get("jacobian_fallback_used", False)
-        or diag.get("hessian_fallback_used", False)
-        or diag.get("state_solver_fallback", False)
-        or diag.get("phase_handoff", False)
-    )
 
 
 def _extract_nested_diagnostics(diagnostics: Mapping[str, Any] | None) -> tuple[int, int, list[str]]:
@@ -177,7 +163,6 @@ def _run_solve_reactive_speciation(points: Sequence[Mapping[str, Any]]) -> Calla
         density_solves = 0
         activity_calls = 0
         fugacity_calls = 0
-        fallback_used = False
         row_fingerprints: list[dict[str, Any]] = []
         diagnostics_keys: list[str] = []
         residual_count = 0
@@ -198,7 +183,6 @@ def _run_solve_reactive_speciation(points: Sequence[Mapping[str, Any]]) -> Calla
                 speciation_solves += 1
                 success_count += 1 if result.success else 0
                 failure_count += 0 if result.success else 1
-                fallback_used = fallback_used or _fallback_used_from_diagnostics(result.diagnostics)
                 d_count, a_count, diag_keys = _extract_nested_diagnostics(result.diagnostics)
                 density_solves += d_count
                 activity_calls += a_count
@@ -223,7 +207,6 @@ def _run_solve_reactive_speciation(points: Sequence[Mapping[str, Any]]) -> Calla
                 "parameter_count": len(SPECIES),
                 "row_fingerprints": row_fingerprints,
             },
-            fallback_used=fallback_used,
             diagnostics={"diagnostics_keys": sorted(set(diagnostics_keys))},
             row_count=len(points),
             parameter_count=len(SPECIES),
@@ -245,7 +228,6 @@ def _run_solve_reactive_speciation(points: Sequence[Mapping[str, Any]]) -> Calla
                     cache_before, cache_after, "reference_state_cache_misses"
                 ),
                 "density_warm_start_hits": _cache_delta(cache_before, cache_after, "density_warm_start_hits"),
-                "density_warm_start_fallbacks": _cache_delta(cache_before, cache_after, "density_warm_start_fallbacks"),
             },
         )
 
@@ -264,7 +246,6 @@ def _run_solve_reactive_bubble(points: Sequence[Mapping[str, Any]]) -> Callable[
         density_solves = 0
         activity_calls = 0
         fugacity_calls = 0
-        fallback_used = False
         row_fingerprints: list[dict[str, Any]] = []
         diagnostics_keys: list[str] = []
         residual_count = 0
@@ -290,7 +271,6 @@ def _run_solve_reactive_bubble(points: Sequence[Mapping[str, Any]]) -> Callable[
             density_solves += d_count
             activity_calls += a_count
             fugacity_calls += len(_safe_mapping(result.partial_pressures))
-            fallback_used = fallback_used or _fallback_used_from_diagnostics(result.diagnostics.get("speciation"))
             diagnostics_keys.extend(diag_keys)
             residual_count += (
                 _to_int(result.diagnostics.get("speciation", {}).get("residual_count"))
@@ -314,7 +294,6 @@ def _run_solve_reactive_bubble(points: Sequence[Mapping[str, Any]]) -> Callable[
                 "vapor_species": list(VAPOR_SPECIES),
                 "row_fingerprints": row_fingerprints,
             },
-            fallback_used=fallback_used,
             diagnostics={"diagnostics_keys": sorted(set(diagnostics_keys))},
             row_count=len(points),
             parameter_count=len(SPECIES),
@@ -336,7 +315,6 @@ def _run_solve_reactive_bubble(points: Sequence[Mapping[str, Any]]) -> Callable[
                     cache_before, cache_after, "reference_state_cache_misses"
                 ),
                 "density_warm_start_hits": _cache_delta(cache_before, cache_after, "density_warm_start_hits"),
-                "density_warm_start_fallbacks": _cache_delta(cache_before, cache_after, "density_warm_start_fallbacks"),
             },
         )
 
@@ -401,7 +379,6 @@ def _run_objective_legacy(
     fugacity_calls = 0
     speciation_solves = 0
     bubble_solves = 0
-    fallback_used = False
     for row in result.record_results:
         row_diag = _mapping_value(dict(row), "diagnostics")
         d_count, a_count, diag_keys = _extract_nested_diagnostics(row_diag)
@@ -411,7 +388,6 @@ def _run_objective_legacy(
         speciation_solves += 1
         bubble_solves += 1
         diagnostics_keys.extend(diag_keys)
-        fallback_used = fallback_used or _fallback_used_from_diagnostics(row_diag)
 
     return BenchmarkObservation(
         fingerprint={
@@ -420,7 +396,6 @@ def _run_objective_legacy(
             "parameter_count": len(SPECIES),
             "residual_norm": _to_float(result.residual_norm),
         },
-        fallback_used=fallback_used,
         diagnostics={"diagnostics_keys": sorted(set(diagnostics_keys)), "residual_payload": result.to_dict()},
         row_count=len(rows),
         parameter_count=len(SPECIES),
@@ -438,7 +413,6 @@ def _run_objective_legacy(
             "native_reference_state_cache_hits": cache_hits,
             "native_reference_state_cache_misses": cache_misses,
             "density_warm_start_hits": _cache_delta(cache_before, cache_after, "density_warm_start_hits"),
-            "density_warm_start_fallbacks": _cache_delta(cache_before, cache_after, "density_warm_start_fallbacks"),
         },
     )
 
@@ -532,7 +506,6 @@ def _run_objective_compiled(
                 "objective": _to_float(result.objective),
                 "residual_norm": _to_float(np.linalg.norm(result.residuals)),
             },
-            fallback_used=bool(batch_result.failure_count),
             diagnostics={
                 "diagnostics_keys": sorted(batch_result.diagnostics.keys()),
                 "cache_stats": dict(batch_result.cache_stats),
@@ -558,13 +531,6 @@ def _run_objective_compiled(
                 "native_reference_state_cache_hits": None,
                 "native_reference_state_cache_misses": None,
                 "density_warm_start_hits": None,
-                "density_warm_start_fallbacks": None,
-                "unavailable_counters": [
-                    "native_reference_state_cache_hits",
-                    "native_reference_state_cache_misses",
-                    "density_warm_start_hits",
-                    "density_warm_start_fallbacks",
-                ],
             },
         )
 
@@ -764,7 +730,6 @@ def _run_speciation_surrogate_compiled(
                 "residual_norm": _to_float(np.linalg.norm(result.residuals)),
                 "surrogate_note": "Public synthetic rows; same compiled reactive-regression speciation workflow shape.",
             },
-            fallback_used=bool(batch_result.failure_count),
             diagnostics={
                 "diagnostics_keys": sorted(batch_result.diagnostics.keys()),
                 "cache_stats": dict(batch_result.cache_stats),
@@ -790,13 +755,6 @@ def _run_speciation_surrogate_compiled(
                 "native_reference_state_cache_hits": None,
                 "native_reference_state_cache_misses": None,
                 "density_warm_start_hits": None,
-                "density_warm_start_fallbacks": None,
-                "unavailable_counters": [
-                    "native_reference_state_cache_hits",
-                    "native_reference_state_cache_misses",
-                    "density_warm_start_hits",
-                    "density_warm_start_fallbacks",
-                ],
             },
         )
 
@@ -827,7 +785,6 @@ def _run_mixed_pressure_speciation_surrogate_compiled(
                 "surrogate_note": "Public synthetic rows with both bubble-pressure and speciation residual families.",
                 "target_family_counts": dict(target_counter),
             },
-            fallback_used=bool(batch_result.failure_count),
             diagnostics={
                 "diagnostics_keys": sorted(batch_result.diagnostics.keys()),
                 "cache_stats": dict(batch_result.cache_stats),
@@ -853,13 +810,6 @@ def _run_mixed_pressure_speciation_surrogate_compiled(
                 "native_reference_state_cache_hits": None,
                 "native_reference_state_cache_misses": None,
                 "density_warm_start_hits": None,
-                "density_warm_start_fallbacks": None,
-                "unavailable_counters": [
-                    "native_reference_state_cache_hits",
-                    "native_reference_state_cache_misses",
-                    "density_warm_start_hits",
-                    "density_warm_start_fallbacks",
-                ],
             },
         )
 
@@ -1022,7 +972,6 @@ def _benchmark_case(prepared: PreparedBenchmarkCase, *, warmup: int, repeat: int
     failure_messages: list[str] = []
     row_count = 0
     parameter_count = len(SPECIES)
-    fallback_used = False
     fingerprint: dict[str, Any] | None = None
     diagnostics_keys: list[str] = []
     target_family_counts: Counter[str] = Counter()
@@ -1034,8 +983,6 @@ def _benchmark_case(prepared: PreparedBenchmarkCase, *, warmup: int, repeat: int
         "native_reference_state_cache_hits": 0,
         "native_reference_state_cache_misses": 0,
         "density_warm_start_hits": 0,
-        "density_warm_start_fallbacks": 0,
-        "unavailable_counters": [],
     }
 
     for _ in range(max(1, repeat)):
@@ -1060,7 +1007,6 @@ def _benchmark_case(prepared: PreparedBenchmarkCase, *, warmup: int, repeat: int
         density_solves += observation.density_solves
         activity_calls += observation.activity_calls
         fugacity_calls += observation.fugacity_calls
-        fallback_used = fallback_used or bool(observation.fallback_used)
         row_count = observation.row_count
         parameter_count = observation.parameter_count
         diagnostics_keys.extend(observation.diagnostics.get("diagnostics_keys", []))
@@ -1072,15 +1018,7 @@ def _benchmark_case(prepared: PreparedBenchmarkCase, *, warmup: int, repeat: int
         )
         for key, value in observation.counter_details.items():
             if value is None:
-                unavailable = counter_details_totals.setdefault("unavailable_counters", [])
-                if key not in unavailable:
-                    unavailable.append(key)
                 counter_details_totals[key] = None
-            elif isinstance(value, list):
-                unavailable = counter_details_totals.setdefault("unavailable_counters", [])
-                for item in value:
-                    if item not in unavailable:
-                        unavailable.append(item)
             elif counter_details_totals.get(key) is not None:
                 counter_details_totals[key] = int(counter_details_totals.get(key, 0)) + int(value)
         if fingerprint is None:
@@ -1108,7 +1046,6 @@ def _benchmark_case(prepared: PreparedBenchmarkCase, *, warmup: int, repeat: int
         "max_ns": int(np.max(timings)),
         "p10_ns": int(np.percentile(timings, 10.0)),
         "p90_ns": int(np.percentile(timings, 90.0)),
-        "fallback_used": bool(fallback_used),
         "fingerprint": fingerprint or {},
         "diagnostics_keys": sorted(set(diagnostics_keys)),
         "target_family_counts": dict(target_family_counts),
@@ -1126,8 +1063,6 @@ def _benchmark_case(prepared: PreparedBenchmarkCase, *, warmup: int, repeat: int
         "native_reference_state_cache_hits": counter_details_totals["native_reference_state_cache_hits"],
         "native_reference_state_cache_misses": counter_details_totals["native_reference_state_cache_misses"],
         "density_warm_start_hits": counter_details_totals["density_warm_start_hits"],
-        "density_warm_start_fallbacks": counter_details_totals["density_warm_start_fallbacks"],
-        "unavailable_counters": sorted(set(counter_details_totals["unavailable_counters"])),
     }
     if prepared.baseline_runner is not None:
         baseline_timings_ns: list[int] = []
@@ -1206,7 +1141,6 @@ def render_benchmark_table(payload: dict[str, Any]) -> str:
         "p10_ms",
         "p90_ms",
         "success",
-        "fallback",
     ]
     if any("speedup_vs_baseline" in row for row in payload["cases"]):
         headers.append("speedup")
@@ -1222,7 +1156,6 @@ def render_benchmark_table(payload: dict[str, Any]) -> str:
             f"{row['p10_ns'] / 1.0e6:.3f}",
             f"{row['p90_ns'] / 1.0e6:.3f}",
             f"{row['success_count']}",
-            "yes" if row["fallback_used"] else "no",
         ]
         if "speedup_vs_baseline" in row:
             values.append(f"{row['speedup_vs_baseline']:.2f}x")
