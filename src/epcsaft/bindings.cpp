@@ -545,6 +545,7 @@ py::dict eos_phase_system_to_dict(const epcsaft::native::equilibrium_nlp::EosPha
     out["objective"] = result.objective;
     out["gradient"] = result.gradient;
     out["constraints"] = result.constraints;
+    out["phase_charge_residuals"] = result.phase_charge_residuals;
     out["constraint_jacobian_backend"] = result.constraint_jacobian_backend;
     out["constraint_jacobian_shape"] =
         py::make_tuple(result.constraint_jacobian_rows, result.constraint_jacobian_cols);
@@ -1245,7 +1246,8 @@ PYBIND11_MODULE(_core, m) {
         double target_pressure,
         const std::vector<std::vector<double>>& phase_amounts,
         const std::vector<double>& volumes,
-        const std::vector<double>& feed_amounts
+        const std::vector<double>& feed_amounts,
+        const std::vector<double>& charges
     ) {
         if (!mixture) {
             throw ValueError("EOS phase system requires a native mixture.");
@@ -1256,9 +1258,16 @@ PYBIND11_MODULE(_core, m) {
             target_pressure,
             phase_amounts,
             volumes,
-            feed_amounts
+            feed_amounts,
+            charges
         ));
-    });
+    }, py::arg("mixture"),
+       py::arg("temperature"),
+       py::arg("target_pressure"),
+       py::arg("phase_amounts"),
+       py::arg("volumes"),
+       py::arg("feed_amounts"),
+       py::arg("charges") = std::vector<double>{});
     m.def("_native_cppad_eos_contributions", [](double t, double rho, const std::vector<double>& x, const add_args& args) {
         return cppad_smoke_to_dict(cppad_eos_contribution_derivatives_cpp(t, rho, x, args));
     });

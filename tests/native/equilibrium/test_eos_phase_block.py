@@ -214,3 +214,28 @@ def test_eos_phase_system_reports_exact_material_and_pressure_jacobian_rows() ->
     assert jacobian[2, 3:] == pytest.approx([0.0, 0.0, 0.0], abs=0.0)
     assert jacobian[3, :3] == pytest.approx([0.0, 0.0, 0.0], abs=0.0)
     assert jacobian[3, 3:] == pytest.approx(phase_blocks[1]["pressure_jacobian"], rel=1.0e-12, abs=1.0e-8)
+
+
+def test_eos_phase_system_can_append_phase_charge_balance_rows() -> None:
+    mix, temperature, phase_amounts, volumes, feed_amounts, target_pressure = _two_phase_binary_case()
+    charges = np.asarray([1.0, -1.0], dtype=float)
+
+    payload = _core._native_eos_phase_system(
+        mix._native,
+        temperature,
+        target_pressure,
+        [phase.tolist() for phase in phase_amounts],
+        volumes,
+        feed_amounts.tolist(),
+        charges.tolist(),
+    )
+
+    assert payload["phase_charge_residuals"] == pytest.approx(
+        [float(phase @ charges) for phase in phase_amounts],
+        abs=1.0e-14,
+    )
+    assert payload["constraint_names"][-2:] == ["phase_0.charge_balance", "phase_1.charge_balance"]
+    assert payload["constraint_jacobian_shape"] == (6, 6)
+    jacobian = np.asarray(payload["constraint_jacobian_row_major"], dtype=float).reshape((6, 6))
+    assert jacobian[4, :] == pytest.approx([1.0, -1.0, 0.0, 0.0, 0.0, 0.0], abs=0.0)
+    assert jacobian[5, :] == pytest.approx([0.0, 0.0, 0.0, 1.0, -1.0, 0.0], abs=0.0)

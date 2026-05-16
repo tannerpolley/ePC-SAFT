@@ -57,6 +57,7 @@ struct EosPhaseSystemResult {
     double objective = 0.0;
     std::vector<double> gradient;
     std::vector<double> constraints;
+    std::vector<double> phase_charge_residuals;
     std::string constraint_jacobian_backend;
     int constraint_jacobian_rows = 0;
     int constraint_jacobian_cols = 0;
@@ -77,7 +78,8 @@ EosPhaseSystemResult evaluate_eos_phase_system(
     double target_pressure,
     const std::vector<std::vector<double>>& phase_amounts,
     const std::vector<double>& volumes,
-    const std::vector<double>& feed_amounts
+    const std::vector<double>& feed_amounts,
+    const std::vector<double>& charges
 );
 
 }  // namespace epcsaft::native::equilibrium_nlp

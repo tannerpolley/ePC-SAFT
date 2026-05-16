@@ -1,5 +1,6 @@
 #include "eos_phase_block.h"
 
+#include "electrolyte_block.h"
 #include "epcsaft_core_internal.h"
 
 #include <algorithm>
@@ -215,7 +216,8 @@ EosPhaseSystemResult evaluate_eos_phase_system(
     double target_pressure,
     const std::vector<std::vector<double>>& phase_amounts,
     const std::vector<double>& volumes,
-    const std::vector<double>& feed_amounts
+    const std::vector<double>& feed_amounts,
+    const std::vector<double>& charges
 ) {
     if (phase_amounts.empty()) {
         throw ValueError("EOS phase system requires at least one phase.");
@@ -262,7 +264,14 @@ EosPhaseSystemResult evaluate_eos_phase_system(
         result.gradient.insert(result.gradient.end(), block.gradient.begin(), block.gradient.end());
     }
 
-    const std::size_t constraint_count = species_count + phase_count;
+    if (!charges.empty() && charges.size() != species_count) {
+        throw ValueError("EOS phase system charge count must match feed species count.");
+    }
+    const PhaseChargeBlockResult charge_block = charges.empty()
+        ? PhaseChargeBlockResult{}
+        : evaluate_phase_charge_block(phase_amounts, charges, static_cast<int>(local_variable_count));
+    const std::size_t charge_constraint_count = charge_block.residuals.size();
+    const std::size_t constraint_count = species_count + phase_count + charge_constraint_count;
     const std::size_t variable_count = phase_count * local_variable_count;
     result.constraints.assign(constraint_count, 0.0);
     for (std::size_t species = 0; species < species_count; ++species) {
@@ -274,6 +283,11 @@ EosPhaseSystemResult evaluate_eos_phase_system(
     for (std::size_t phase = 0; phase < phase_count; ++phase) {
         result.constraints[species_count + phase] = result.phase_blocks[phase].pressure_consistency_residual;
     }
+    for (std::size_t row = 0; row < charge_constraint_count; ++row) {
+        result.constraint_names.push_back(charge_block.constraint_names[row]);
+        result.constraints[species_count + phase_count + row] = charge_block.residuals[row];
+    }
+    result.phase_charge_residuals = charge_block.residuals;
 
     result.constraint_jacobian_backend = "analytic_cppad";
     result.constraint_jacobian_rows = static_cast<int>(constraint_count);
@@ -296,6 +310,13 @@ EosPhaseSystemResult evaluate_eos_phase_system(
         for (std::size_t col = 0; col < local_variable_count; ++col) {
             result.constraint_jacobian_row_major[row * variable_count + col_offset + col] =
                 block.pressure_jacobian_row_major[col];
+        }
+    }
+    for (std::size_t row = 0; row < charge_constraint_count; ++row) {
+        const std::size_t target_row = species_count + phase_count + row;
+        for (std::size_t col = 0; col < variable_count; ++col) {
+            result.constraint_jacobian_row_major[target_row * variable_count + col] =
+                charge_block.jacobian_row_major[row * variable_count + col];
         }
     }
     return result;

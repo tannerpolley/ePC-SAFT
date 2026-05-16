@@ -401,7 +401,12 @@ phase amount/volume variables, sums the phase Helmholtz/pressure-work objective 
 constraints, and places each phase's CppAD pressure-consistency Jacobian row into the global constraint Jacobian.
 Focused tests prove material-balance assembly, objective/gradient composition, and exact pressure-row placement. This
 is still an NLP block assembly, not a production flash route; route builders, association variables, and electrolyte
-charge blocks remain open.
+contribution blocks remain open.
+
+Task 7/9 continuation note: the first electrolyte-coupled block is now a reusable native phase-charge block under
+`equilibrium_nlp/`. EOS phase-system assembly can append per-phase electroneutrality residuals and analytic charge
+Jacobian rows after the material-balance and pressure-consistency rows. This covers the charge-balance constraint
+mechanics only; Debye-Huckel/Born/electrolyte contribution blocks and production electrolyte Ipopt routes remain open.
 
 ### Task 8: Replace Neutral Equilibrium Routes
 
@@ -466,6 +471,11 @@ Task 9 continuation note: public coupled reactive LLE and reactive electrolyte L
 Task 9 continuation note: private tests that asserted accepted Ceres equilibrium solves for electrolyte LLE, neutral associating LLE, and coupled reactive phase equilibrium were deleted. Remaining native coverage for these transitional surfaces is limited to residual/Jacobian evaluators and public route-gate tests until native Ipopt NLP builders own accepted equilibrium solves.
 
 Task 9 continuation note: the unbound native coupled reactive phase Ceres solve implementation and pybind entrypoint were deleted. The retained native surface is residual/Jacobian evaluation only, with solver diagnostics labeled `residual_surface_only`.
+
+Task 9 continuation note: a first `electrolyte_block` slice adds a native phase charge-balance block with analytical
+residuals and Jacobian rows, and the EOS phase-system assembler can append one charge-balance row per phase when
+charges are supplied. This is block-level NLP wiring only; electrolyte contribution terms, association variables, and
+production electrolyte route builders remain open.
 
 ### Task 10: Make Regression Ceres-Only
 
