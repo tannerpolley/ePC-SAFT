@@ -8,7 +8,7 @@ from typing import Any
 
 import numpy as np
 
-from ._types import InputError
+from ._types import InputError, SolutionError
 
 
 @dataclass(frozen=True, slots=True)
@@ -69,7 +69,7 @@ def electrolyte_bubble_pressure(
     nonvolatile_species: Any = None,
     options: ElectrolyteBubbleOptions | None = None,
 ) -> ElectrolyteBubbleResult:
-    """Require the native Ipopt electrolyte bubble route builder before solving."""
+    """Solve fixed-liquid electrolyte bubble pressure through the native Ipopt route."""
     if options is None:
         options = ElectrolyteBubbleOptions()
     if not isinstance(options, ElectrolyteBubbleOptions):
@@ -95,9 +95,112 @@ def electrolyte_bubble_pressure(
     x_values = np.asarray(x_liq, dtype=float).flatten()
     if x_values.size != len(species):
         raise InputError("x_liq length must match mixture species count.")
+    if not np.all(np.isfinite(x_values)) or np.any(x_values <= 0.0):
+        raise InputError("x_liq values must be positive and finite.")
+    x_values = x_values / float(np.sum(x_values))
+    unknown_vapor = sorted(set(vapor_labels).difference(species))
+    if unknown_vapor:
+        raise InputError("Unknown vapor species: " + ", ".join(unknown_vapor))
+
+    from . import _core
+
+    route = _core._native_electrolyte_bubble_p_eos_route_result(
+        mixture._native,
+        float(T),
+        x_values.tolist(),
+        int(options.max_iterations),
+        float(options.tolerance),
+        float(options.tolerance),
+        max(abs(float(options.initial_pressure)) * float(options.tolerance), float(options.tolerance)),
+        float(options.charge_tolerance),
+        float(options.tolerance),
+        max(10.0 * float(options.min_composition), 1.0e-8),
+    )
+    if str(route.get("status", "")) == "requires_ipopt_build":
+        _raise_native_ipopt_electrolyte_bubble_required()
+    if not bool(route.get("accepted", False)):
+        postsolve = route.get("postsolve", {})
+        diagnostics = dict(postsolve) if isinstance(postsolve, Mapping) else {}
+        diagnostics["route_status"] = route.get("status", "rejected")
+        diagnostics["solver_status"] = route.get("solver_status", "not_started")
+        raise SolutionError("Native electrolyte bubble-pressure route was rejected.", diagnostics)
+    return _accepted_native_electrolyte_bubble_result(
+        mixture,
+        T=float(T),
+        x_liq=x_values,
+        vapor_labels=tuple(vapor_labels),
+        route=route,
+    )
+
+
+def _raise_native_ipopt_electrolyte_bubble_required() -> None:
     raise InputError(
         "electrolyte_bubble_pressure requires the native Ipopt equilibrium route builder; "
         "no package-owned alternate electrolyte bubble-pressure solver is available for this public route."
+    )
+
+
+def _accepted_native_electrolyte_bubble_result(
+    mixture: Any,
+    *,
+    T: float,
+    x_liq: np.ndarray,
+    vapor_labels: tuple[str, ...],
+    route: Mapping[str, Any],
+) -> ElectrolyteBubbleResult:
+    species = list(getattr(mixture, "species", []))
+    phase_amounts = np.asarray(route.get("phase_amounts"), dtype=float)
+    if phase_amounts.ndim != 2 or phase_amounts.shape != (2, len(species)):
+        raise SolutionError("Native electrolyte bubble-pressure route returned invalid phase amounts.")
+    phase_volumes = np.asarray(route.get("phase_volumes"), dtype=float)
+    if phase_volumes.shape != (2,):
+        raise SolutionError("Native electrolyte bubble-pressure route returned invalid phase volumes.")
+    variables = np.asarray(route.get("variables"), dtype=float).flatten()
+    if variables.size == 0:
+        raise SolutionError("Native electrolyte bubble-pressure route returned no solver variables.")
+    pressure = float(variables[-1])
+    if not np.isfinite(pressure) or pressure <= 0.0:
+        raise SolutionError("Native electrolyte bubble-pressure route returned invalid pressure.")
+
+    liquid = phase_amounts[0] / float(np.sum(phase_amounts[0]))
+    vapor = phase_amounts[1] / float(np.sum(phase_amounts[1]))
+    liquid_state = mixture.state(T=T, P=pressure, x=liquid, phase="liq")
+    vapor_state = mixture.state(T=T, P=pressure, x=vapor, phase="vap")
+    ln_phi_liq = np.asarray(liquid_state.fugacity_coefficient(), dtype=float)
+    ln_phi_vap = np.asarray(vapor_state.fugacity_coefficient(), dtype=float)
+
+    vapor_indices = [species.index(label) for label in vapor_labels]
+    y_vap = {species[index]: float(vapor[index]) for index in vapor_indices}
+    ln_liq = {species[index]: float(ln_phi_liq[index]) for index in vapor_indices}
+    ln_vap = {species[index]: float(ln_phi_vap[index]) for index in vapor_indices}
+    partial_pressures = {species[index]: float(pressure * vapor[index]) for index in vapor_indices}
+    fugacity_residual = {
+        species[index]: float(np.log(liquid[index]) + ln_phi_liq[index] - np.log(vapor[index]) - ln_phi_vap[index])
+        for index in vapor_indices
+    }
+    fugacity_residual_norm = max((abs(value) for value in fugacity_residual.values()), default=0.0)
+    diagnostics = dict(route.get("postsolve", {}) if isinstance(route.get("postsolve"), Mapping) else {})
+    diagnostics.update(
+        {
+            "backend": "ipopt",
+            "problem_name": route.get("problem_name", "electrolyte_bubble_p_eos"),
+            "route_status": route.get("status", "accepted"),
+            "derivative_backend": route.get("derivative_backend", "analytic_cppad"),
+        }
+    )
+    return ElectrolyteBubbleResult(
+        success=True,
+        message="converged",
+        P=pressure,
+        y_vap=y_vap,
+        x_liq=[float(value) for value in x_liq],
+        ln_phi_liq=ln_liq,
+        ln_phi_vap=ln_vap,
+        fugacity_residual=fugacity_residual,
+        fugacity_residual_norm=float(fugacity_residual_norm),
+        charge_residual=float(diagnostics.get("charge_balance_norm", 0.0)),
+        partial_pressures=partial_pressures,
+        diagnostics=diagnostics,
     )
 
 

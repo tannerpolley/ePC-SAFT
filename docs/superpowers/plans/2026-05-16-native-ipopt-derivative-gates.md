@@ -617,6 +617,11 @@ composition routes. The contract adds analytical phase charge-balance rows to th
 uses a deterministic charge-neutral vapor initial composition for charge-neutral liquid inputs. This is private route
 builder coverage only; the public electrolyte bubble-pressure API still requires the native Ipopt production route.
 
+Task 9 continuation note: the public fixed-liquid electrolyte bubble-pressure facade now dispatches to a native Ipopt
+route-result binding before failing loudly when Ipopt is not compiled. The native pressure route carries analytical
+phase charge-balance rows into the solve/postsolve contract, while Python remains a validation, serialization, and
+result-formatting layer only.
+
 ### Task 10: Make Regression Ceres-Only
 
 **Files:**

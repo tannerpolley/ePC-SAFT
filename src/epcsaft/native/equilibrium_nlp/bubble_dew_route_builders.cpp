@@ -202,6 +202,25 @@ double phase_total_norm(const std::vector<std::vector<double>>& phase_amounts) {
     return norm;
 }
 
+double phase_charge_norm(
+    const std::vector<std::vector<double>>& phase_amounts,
+    const std::vector<double>& charges
+) {
+    if (charges.empty()) {
+        return 0.0;
+    }
+    double norm = 0.0;
+    for (const auto& phase : phase_amounts) {
+        require_size(phase, charges.size(), "fixed-temperature pressure charge-balance phase amount");
+        double phase_charge = 0.0;
+        for (std::size_t species = 0; species < charges.size(); ++species) {
+            phase_charge += phase[species] * charges[species];
+        }
+        norm = std::max(norm, std::abs(phase_charge));
+    }
+    return norm;
+}
+
 class NeutralFixedTemperaturePressureProblem final : public NlpProblem {
 public:
     NeutralFixedTemperaturePressureProblem(
@@ -563,8 +582,10 @@ NeutralTwoPhaseEosPostsolve fixed_temperature_pressure_postsolve(
     const std::vector<double>& volumes,
     int fixed_phase_index,
     const std::vector<double>& fixed_composition,
+    const std::vector<double>& charges,
     double phase_total_tolerance,
     double pressure_tolerance,
+    double charge_tolerance,
     double chemical_potential_tolerance,
     double phase_distance_tolerance
 ) {
@@ -582,10 +603,14 @@ NeutralTwoPhaseEosPostsolve fixed_temperature_pressure_postsolve(
     );
     out.fixed_composition_norm = fixed_composition_norm(phase_amounts, fixed_phase_index, fixed_composition);
     out.phase_amount_total_norm = phase_total_norm(phase_amounts);
+    out.charge_balance_norm = phase_charge_norm(phase_amounts, charges);
     out.accepted = out.accepted
         && out.fixed_composition_norm <= phase_total_tolerance
-        && out.phase_amount_total_norm <= phase_total_tolerance;
-    if (!out.accepted && out.phase_amount_total_norm > phase_total_tolerance) {
+        && out.phase_amount_total_norm <= phase_total_tolerance
+        && (charges.empty() || out.charge_balance_norm <= charge_tolerance);
+    if (!charges.empty() && out.charge_balance_norm > charge_tolerance) {
+        out.rejection_reason = "charge_balance";
+    } else if (!out.accepted && out.phase_amount_total_norm > phase_total_tolerance) {
         out.rejection_reason = "phase_amount_total";
     } else if (!out.accepted && out.fixed_composition_norm > phase_total_tolerance) {
         out.rejection_reason = "fixed_composition";
@@ -599,9 +624,11 @@ NeutralTwoPhaseEosRouteResult solve_pressure_route(
     const std::vector<double>& fixed_composition,
     int fixed_phase_index,
     const std::string& problem_name,
+    const std::vector<double>& charges,
     const IpoptSolveOptions& options,
     double phase_total_tolerance,
     double pressure_tolerance,
+    double charge_tolerance,
     double chemical_potential_tolerance,
     double phase_distance_tolerance
 ) {
@@ -624,7 +651,8 @@ NeutralTwoPhaseEosRouteResult solve_pressure_route(
         temperature,
         fixed_composition,
         fixed_phase_index,
-        problem_name
+        problem_name,
+        charges
     );
     const IpoptSolveResult solve = solve_ipopt_nlp(problem, options);
     out.ran = solve.solver_ran;
@@ -651,8 +679,10 @@ NeutralTwoPhaseEosRouteResult solve_pressure_route(
         out.phase_volumes,
         fixed_phase_index,
         normalized_positive_values(fixed_composition, problem_name + " composition"),
+        charges,
         phase_total_tolerance,
         pressure_tolerance,
+        charge_tolerance,
         chemical_potential_tolerance,
         phase_distance_tolerance
     );
@@ -725,9 +755,38 @@ NeutralTwoPhaseEosRouteResult solve_neutral_bubble_p_eos_route(
         liquid_composition,
         0,
         "neutral_bubble_p_eos",
+        {},
         options,
         phase_total_tolerance,
         pressure_tolerance,
+        0.0,
+        chemical_potential_tolerance,
+        phase_distance_tolerance
+    );
+}
+
+NeutralTwoPhaseEosRouteResult solve_electrolyte_bubble_p_eos_route(
+    const add_args& args,
+    double temperature,
+    const std::vector<double>& liquid_composition,
+    const IpoptSolveOptions& options,
+    double phase_total_tolerance,
+    double pressure_tolerance,
+    double charge_tolerance,
+    double chemical_potential_tolerance,
+    double phase_distance_tolerance
+) {
+    return solve_pressure_route(
+        args,
+        temperature,
+        liquid_composition,
+        0,
+        "electrolyte_bubble_p_eos",
+        args.z,
+        options,
+        phase_total_tolerance,
+        pressure_tolerance,
+        charge_tolerance,
         chemical_potential_tolerance,
         phase_distance_tolerance
     );
@@ -749,9 +808,11 @@ NeutralTwoPhaseEosRouteResult solve_neutral_dew_p_eos_route(
         vapor_composition,
         1,
         "neutral_dew_p_eos",
+        {},
         options,
         phase_total_tolerance,
         pressure_tolerance,
+        0.0,
         chemical_potential_tolerance,
         phase_distance_tolerance
     );

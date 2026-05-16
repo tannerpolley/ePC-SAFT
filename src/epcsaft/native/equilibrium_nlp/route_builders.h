@@ -40,6 +40,7 @@ struct NeutralTwoPhaseEosPostsolve {
     double pressure_consistency_norm = 0.0;
     double chemical_potential_consistency_norm = 0.0;
     double ln_fugacity_consistency_norm = 0.0;
+    double charge_balance_norm = 0.0;
     double fixed_composition_norm = 0.0;
     double phase_amount_total_norm = 0.0;
     double phase_distance = 0.0;
@@ -190,6 +191,18 @@ NeutralTwoPhaseEosRouteResult solve_neutral_bubble_p_eos_route(
     const IpoptSolveOptions& options,
     double phase_total_tolerance,
     double pressure_tolerance,
+    double chemical_potential_tolerance,
+    double phase_distance_tolerance
+);
+
+NeutralTwoPhaseEosRouteResult solve_electrolyte_bubble_p_eos_route(
+    const add_args& args,
+    double temperature,
+    const std::vector<double>& liquid_composition,
+    const IpoptSolveOptions& options,
+    double phase_total_tolerance,
+    double pressure_tolerance,
+    double charge_tolerance,
     double chemical_potential_tolerance,
     double phase_distance_tolerance
 );
