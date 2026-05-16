@@ -503,6 +503,11 @@ Ipopt-enabled builds can submit the exact-gradient/exact-Jacobian NLP and then a
 composition, phase amount scaling, pressure consistency, chemical-potential consistency, and phase distance. Public
 bubble/dew methods remain route-gated until accepted result translation is implemented and proven.
 
+Task 8 continuation note: public fixed-temperature `bubble_p` and `dew_p` now validate inputs, submit exactly one
+native route-result call, preserve the local no-Ipopt route gate, and convert accepted native payloads through the
+native two-phase result converter using the pressure solved by the native NLP. Python does not own iterations, pressure
+search, retry logic, residual packing, or acceptance.
+
 ### Task 9: Replace Electrolyte And Reactive Phase Equilibrium Routes
 
 **Files:**
