@@ -41,11 +41,11 @@ def _toy_reactive_phase_case() -> tuple[
     return mix, feed, {"liq1": liq1, "liq2": liq2, "phase_fraction": beta2}, reaction
 
 
-def test_reactive_phase_equilibrium_problem_solves_with_native_coupled_route(monkeypatch) -> None:
+def test_reactive_phase_equilibrium_problem_requires_native_ipopt_route(monkeypatch) -> None:
     mix, feed, initial_phases, reaction = _toy_reactive_phase_case()
 
     def fail_if_staged(*_args, **_kwargs):
-        raise AssertionError("production ReactivePhaseEquilibriumProblem must not call the staged helper")
+        raise AssertionError("ReactivePhaseEquilibriumProblem must not call the staged helper")
 
     monkeypatch.setattr(mix, "reactive_staged_equilibrium", fail_if_staged)
     problem = epcsaft.ReactivePhaseEquilibriumProblem(
@@ -60,15 +60,8 @@ def test_reactive_phase_equilibrium_problem_solves_with_native_coupled_route(mon
         phase_kwargs={"initial_phases": initial_phases},
     )
 
-    result = mix.solve_equilibrium(problem)
-
-    assert isinstance(result, epcsaft.EquilibriumResult)
-    assert result.problem_kind == "reactive_phase_equilibrium"
-    assert result.diagnostics["reactive_workflow_class"] == "coupled_native"
-    assert result.diagnostics["staged_route_used"] is False
-    assert result.diagnostics["solver_method"] == "ceres_trust_region_coupled_reactive_phase_equilibrium"
-    assert result.diagnostics["jacobian_available"] is True
-    assert result.diagnostics["reaction_residual_norm"] <= 1.0e-8
+    with pytest.raises(epcsaft.InputError, match="native Ipopt reactive phase-equilibrium NLP route"):
+        mix.solve_equilibrium(problem)
 
 
 def test_reactive_phase_equilibrium_problem_rejects_non_lle_production_kind() -> None:

@@ -5,7 +5,6 @@ import pytest
 
 import epcsaft
 from epcsaft import ePCSAFTMixture
-from tests.helpers.numeric import assert_allclose
 
 
 def _neutral_reactive_lle_fixture() -> tuple[ePCSAFTMixture, np.ndarray, dict[str, object], epcsaft.ReactionDefinition]:
@@ -36,54 +35,26 @@ def _neutral_reactive_lle_fixture() -> tuple[ePCSAFTMixture, np.ndarray, dict[st
     return mix, feed, {"liq1": liq1, "liq2": liq2, "phase_fraction": beta2}, reaction
 
 
-def _assert_coupled_reactive_phase_diagnostics(diagnostics: dict[str, object]) -> None:
-    assert diagnostics["reactive_workflow_class"] == "coupled_native"
-    assert diagnostics["reactive_phase_method"] == "native_coupled_reactive_phase_equilibrium"
-    assert diagnostics["staged_route_used"] is False
-    assert diagnostics["solver_backend"] == "ceres"
-    assert diagnostics["selected_solver_backend"] == "ceres"
-    assert diagnostics["solver_method"] == "ceres_trust_region_coupled_reactive_phase_equilibrium"
-    assert diagnostics["jacobian_backend"] == "cppad_implicit"
-    assert diagnostics["derivative_backend"] == "cppad_implicit"
-    assert diagnostics["jacobian_available"] is True
-    assert diagnostics["derivative_available"] is True
-    assert diagnostics["solved_state_sensitivity_backend"] == "cppad_implicit"
-    assert diagnostics["reaction_and_phase_residuals_share_state"] is True
+def _assert_reactive_phase_route_pending(excinfo: pytest.ExceptionInfo[epcsaft.InputError]) -> None:
+    message = str(excinfo.value)
+    assert "native Ipopt reactive phase-equilibrium NLP route" in message
+    assert "previous Ceres coupled residual route is disabled" in message
 
 
-def test_neutral_reactive_lle_public_route_uses_coupled_native_solver() -> None:
+def test_neutral_reactive_lle_public_route_requires_native_ipopt() -> None:
     mix, feed, initial_phases, reaction = _neutral_reactive_lle_fixture()
 
-    result = mix.equilibrium(
-        kind="reactive_lle",
-        T=298.15,
-        P=1.013e5,
-        z=feed,
-        balances={"total": {"Methanol": 1.0, "Cyclohexane": 1.0}},
-        totals={"total": 1.0},
-        reactions=[reaction],
-        initial_phases=initial_phases,
-        phase_options=epcsaft.EquilibriumOptions(max_iterations=80, tolerance=1.0e-8, min_composition=1.0e-12),
-    )
-    diagnostics = result.diagnostics
+    with pytest.raises(epcsaft.InputError) as excinfo:
+        mix.equilibrium(
+            kind="reactive_lle",
+            T=298.15,
+            P=1.013e5,
+            z=feed,
+            balances={"total": {"Methanol": 1.0, "Cyclohexane": 1.0}},
+            totals={"total": 1.0},
+            reactions=[reaction],
+            initial_phases=initial_phases,
+            phase_options=epcsaft.EquilibriumOptions(max_iterations=80, tolerance=1.0e-8, min_composition=1.0e-12),
+        )
 
-    assert result.problem_kind == "reactive_phase_equilibrium"
-    assert result.split_detected is True
-    _assert_coupled_reactive_phase_diagnostics(diagnostics)
-    assert diagnostics["phase_kind"] == "lle_flash"
-    assert diagnostics["reaction_residual_norm"] <= 1.0e-8
-    assert diagnostics["phase_equilibrium_residual_norm"] <= 1.0e-8
-    assert diagnostics["material_balance_norm"] <= 1.0e-10
-    assert diagnostics["element_balance_norm"] <= 1.0e-10
-    assert diagnostics["phase_charge_balance_norm"] <= 1.0e-10
-    assert diagnostics["phase_distance"] > 0.6
-    assert set(diagnostics["phase_compositions"]) == {"liq1", "liq2"}
-    assert diagnostics["phase_fraction_sum"] == pytest.approx(1.0, abs=1.0e-12)
-    assert set(diagnostics["reaction_extents"]) == {"methanol_to_cyclohexane"}
-    assert "chemical_equilibrium_then_phase_equilibrium" not in diagnostics.values()
-
-    reconstructed = np.zeros_like(feed)
-    for phase in result.phases:
-        assert phase.composition.sum() == pytest.approx(1.0, abs=1.0e-12)
-        reconstructed += phase.phase_fraction * phase.composition
-    assert_allclose(reconstructed, feed, atol=1.0e-10)
+    _assert_reactive_phase_route_pending(excinfo)

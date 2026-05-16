@@ -44,12 +44,15 @@ def test_reactive_speciation_capabilities_include_activity_standard_states() -> 
 def test_reactive_phase_equilibrium_capabilities_state_reaction_scope() -> None:
     reactive = epcsaft.capabilities()["equilibrium"]["reactive_phase_equilibrium"]
 
-    assert reactive["available"] is True
+    assert reactive["available"] is False
+    assert reactive["status"] == "route_pending"
+    assert reactive["backend"] == "native_ipopt_equilibrium_nlp_required"
     assert {"reactive_lle", "reactive_electrolyte_lle"}.issubset(set(reactive["methods"]))
     assert reactive["problem_class"] == "ReactivePhaseEquilibriumProblem"
-    assert reactive["solver_dependency"] == "ceres"
+    assert reactive["previous_solver_disabled"] == "ceres_coupled_residual_route"
     assert "same_phase_activity_reaction" in reactive["supported_reaction_scopes"]
     assert "phase_tagged_cross_phase_quotient" in reactive["supported_reaction_scopes"]
     assert reactive["unsupported_reaction_scopes"] == []
     assert reactive["cross_phase_reaction_quotients"]["available"] is True
+    assert reactive["cross_phase_reaction_quotients"]["status"] == "validated_for_pending_ipopt_route"
     assert reactive["cross_phase_reaction_quotients"]["api"] == "ReactionDefinition.phase_stoichiometry"

@@ -441,6 +441,8 @@ Task 9 continuation note: stale electrolyte LLE contract tests that expected mis
 
 Task 9 continuation note: the Python reactive-phase diagnostics no longer call NumPy's least-squares convenience routine for reaction extent reporting. The helper uses a small direct linear solve of the stoichiometric normal system and remains diagnostic-only.
 
+Task 9 continuation note: public coupled reactive LLE and reactive electrolyte LLE no longer execute the transitional Ceres coupled residual route. Public `ReactivePhaseEquilibriumProblem` and `mixture.equilibrium(kind="reactive_lle" | "reactive_electrolyte_lle")` validate requests and raise until native Ipopt reactive phase-equilibrium route builders own those solves; the lower-level native residual surface remains diagnostic/private coverage.
+
 ### Task 10: Make Regression Ceres-Only
 
 **Files:**

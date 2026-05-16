@@ -34,6 +34,13 @@ def _raise_native_ipopt_equilibrium_required(route: str) -> None:
     )
 
 
+def _raise_native_ipopt_reactive_phase_required(route: str) -> None:
+    raise InputError(
+        f"{route} requires a native Ipopt reactive phase-equilibrium NLP route. "
+        "The previous Ceres coupled residual route is disabled by the solver gate."
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class EquilibriumOptions:
     """Numerical controls for equilibrium solvers."""
@@ -1332,8 +1339,7 @@ def reactive_phase_equilibrium(
     phase_options: EquilibriumOptions | Mapping[str, Any] | None = None,
     phase_kwargs: Mapping[str, Any] | None = None,
 ) -> EquilibriumResult:
-    """Run the native coupled two-liquid reactive phase-equilibrium solve."""
-    from . import _core
+    """Validate a reactive phase-equilibrium request and require the native Ipopt route."""
     from .reactive_speciation import (
         _normalize_balances as _normalize_reactive_balances,
     )
@@ -1350,13 +1356,13 @@ def reactive_phase_equilibrium(
     route = _normalize_reactive_phase_route(mixture, phase_kind, phase_kwargs)
     extra_phase_kwargs = dict(phase_kwargs or {})
     _reject_reactive_phase_kwargs(extra_phase_kwargs, route)
-    reactive_options, solver_options = _reactive_phase_option_pair(
+    _, solver_options = _reactive_phase_option_pair(
         options=options,
         phase_options=phase_options,
         normalize_reactive_options=_normalize_reactive_options,
     )
-    temperature = _positive_scalar(T, "T", "reactive_phase_equilibrium")
-    pressure = _positive_scalar(P, "P", "reactive_phase_equilibrium")
+    _positive_scalar(T, "T", "reactive_phase_equilibrium")
+    _positive_scalar(P, "P", "reactive_phase_equilibrium")
     if route == "electrolyte_lle":
         _require_ion_containing_mixture(mixture, "reactive_electrolyte_lle")
         charges = _mixture_charges(mixture)
@@ -1369,89 +1375,26 @@ def reactive_phase_equilibrium(
         )
         _require_charge_neutral(feed, charges, "reactive_electrolyte_lle feed")
         basis_payload = _electrolyte_formula_basis(mixture, feed, feed_diagnostics)
-        native_initial_phases = None
         if extra_phase_kwargs.get("initial_phases") is not None:
             initial_phases = extra_phase_kwargs["initial_phases"]
             _electrolyte_initial_phase_seed(mixture, feed, basis_payload, initial_phases, solver_options)
-            native_initial_phases = {
-                "aq": np.asarray(initial_phases["aq"], dtype=float).flatten().tolist(),
-                "org": np.asarray(initial_phases["org"], dtype=float).flatten().tolist(),
-                "phase_fraction": float(initial_phases["phase_fraction"]),
-            }
     else:
         if extra_phase_kwargs.get("solvent_feed") is not None or extra_phase_kwargs.get("salt_molality") is not None:
             raise InputError("solvent_feed and salt_molality require reactive_electrolyte_lle.")
         _reject_ion_containing_mixture(mixture)
-        charges = np.zeros(int(mixture.ncomp), dtype=float)
         feed_source = z if z is not None else initial_x
         feed = _normalize_feed(feed_source, int(mixture.ncomp), solver_options.min_composition, "reactive_lle")
-        feed_diagnostics = {"composition_basis": "mole_fraction"}
-        native_initial_phases = None
         if extra_phase_kwargs.get("initial_phases") is not None:
-            native_initial_phases = _normalize_neutral_initial_phases(
+            _normalize_neutral_initial_phases(
                 extra_phase_kwargs["initial_phases"],
                 feed.size,
                 solver_options.min_composition,
             )
 
-    balance_matrix, total_vector, balance_names = _normalize_reactive_balances(species, balances, totals)
+    _normalize_reactive_balances(species, balances, totals)
     reaction_defs = _normalize_reactions(species, reactions)
-    reaction_matrix = np.asarray(
-        [[float(reaction.stoichiometry.get(label, 0.0)) for label in species] for reaction in reaction_defs],
-        dtype=float,
-    )
-    reaction_phase_matrix, reaction_phase_scope = _reaction_phase_stoichiometry_matrix(
-        species,
-        reaction_defs,
-        route,
-    )
-    request = {
-        "T": temperature,
-        "P": pressure,
-        "z": feed.tolist(),
-        "initial_phases": native_initial_phases,
-        "balance_matrix": np.asarray(balance_matrix, dtype=float).reshape(-1).tolist(),
-        "balance_rows": int(balance_matrix.shape[0]),
-        "total_vector": np.asarray(total_vector, dtype=float).tolist(),
-        "reaction_stoichiometry": reaction_matrix.reshape(-1).tolist(),
-        "reaction_rows": int(reaction_matrix.shape[0]),
-        "log_equilibrium_constants": [float(reaction.log_equilibrium_constant) for reaction in reaction_defs],
-        "reaction_standard_states": [reaction.convention.native_standard_state_code for reaction in reaction_defs],
-        "reaction_phase_stoichiometry": None
-        if reaction_phase_matrix is None
-        else reaction_phase_matrix.reshape(-1).tolist(),
-        "options": _options_to_native_dict(solver_options),
-    }
-    try:
-        payload = _core._solve_reactive_phase_equilibrium_native(mixture._native, request)
-    except _core.NativeValueError as exc:
-        raise InputError(str(exc)) from exc
-    except _core.NativeSolutionError as exc:
-        message = str(exc.args[0]) if getattr(exc, "args", ()) else str(exc)
-        diagnostics = exc.args[1] if len(getattr(exc, "args", ())) > 1 and isinstance(exc.args[1], dict) else None
-        raise SolutionError(message, diagnostics) from exc
-    result = _native_result_from_payload(payload)
-    assert isinstance(result, EquilibriumResult)
-    diagnostics = _reactive_phase_result_diagnostics(
-        result,
-        route=route,
-        feed=feed,
-        feed_diagnostics=feed_diagnostics,
-        balance_names=balance_names,
-        reactions=reaction_defs,
-        reaction_matrix=reaction_matrix,
-        reaction_phase_scope=reaction_phase_scope,
-        reactive_options=reactive_options,
-        charges=charges,
-    )
-    return EquilibriumResult(
-        backend=result.backend,
-        problem_kind=result.problem_kind,
-        phases=result.phases,
-        stable=result.stable,
-        split_detected=result.split_detected,
-        diagnostics=diagnostics,
-    )
+    _reaction_phase_stoichiometry_matrix(species, reaction_defs, route)
+    _raise_native_ipopt_reactive_phase_required(route)
 
 
 def _normalize_reactive_phase_route(
@@ -1571,116 +1514,6 @@ def _reaction_phase_stoichiometry_matrix(
         if seen_phases != {0, 1}:
             raise InputError("phase-tagged reactions must include terms for both liquid phases.")
     return matrix, "phase_tagged_cross_phase"
-
-
-def _reactive_phase_result_diagnostics(
-    result: EquilibriumResult,
-    *,
-    route: str,
-    feed: np.ndarray,
-    feed_diagnostics: Mapping[str, Any],
-    balance_names: list[str],
-    reactions: list[Any],
-    reaction_matrix: np.ndarray,
-    reaction_phase_scope: str,
-    reactive_options: Any,
-    charges: np.ndarray | None,
-) -> dict[str, Any]:
-    diagnostics = dict(result.diagnostics)
-    reaction_names = [reaction.name or f"reaction_{index}" for index, reaction in enumerate(reactions)]
-    phase_compositions = {phase.label: phase.composition.tolist() for phase in result.phases}
-    phase_amounts = {phase.label: float(phase.phase_fraction) for phase in result.phases}
-    overall = np.zeros_like(feed, dtype=float)
-    for phase in result.phases:
-        overall += float(phase.phase_fraction) * np.asarray(phase.composition, dtype=float)
-    element_residual = list(diagnostics.get("element_balance_residual", []))
-    phase1_reaction = list(diagnostics.get("reaction_residual_phase1", []))
-    phase2_reaction = list(diagnostics.get("reaction_residual_phase2", []))
-    cross_phase_reaction = list(diagnostics.get("reaction_residual_cross_phase", []))
-    named_reaction_residuals: dict[str, float] = {}
-    for index, name in enumerate(reaction_names):
-        if index < len(cross_phase_reaction):
-            named_reaction_residuals[name] = abs(float(cross_phase_reaction[index]))
-        else:
-            values = []
-            if index < len(phase1_reaction):
-                values.append(float(phase1_reaction[index]))
-            if index < len(phase2_reaction):
-                values.append(float(phase2_reaction[index]))
-            named_reaction_residuals[name] = max((abs(value) for value in values), default=0.0)
-    ionic_residual = list(diagnostics.get("ionic_equilibrium_residual", []))
-    diagnostics.update(
-        {
-            "equilibrium_route": "reactive_phase_equilibrium",
-            "phase_kind": route,
-            "phase_problem_kind": route,
-            "reactive_phase_method": "native_coupled_reactive_phase_equilibrium",
-            "reactive_workflow_class": "coupled_native",
-            "coupling_level": "single_native_residual_state",
-            "production_route": "native_coupled_reactive_phase_equilibrium",
-            "staged_route_used": False,
-            "reaction_and_phase_residuals_share_state": True,
-            "reaction_phase_scope": str(diagnostics.get("reaction_phase_scope", reaction_phase_scope)),
-            "phase_tagged_reaction_stoichiometry": reaction_phase_scope == "phase_tagged_cross_phase",
-            "reaction_constant_policy": "fixed_literature_constants_first",
-            "reaction_constant_sources": {
-                name: str(reaction.metadata.get("constant_source", "unspecified"))
-                for name, reaction in zip(reaction_names, reactions)
-            },
-            "reaction_constant_conventions": {
-                name: reaction.convention.to_dict() for name, reaction in zip(reaction_names, reactions)
-            },
-            "reaction_coordinates": {
-                "status": "implicit_in_coupled_phase_amounts",
-                "reaction_count": len(reaction_names),
-                "named_reactions": reaction_names,
-            },
-            "element_balance_residuals": {name: float(value) for name, value in zip(balance_names, element_residual)},
-            "reaction_equilibrium_residuals": named_reaction_residuals,
-            "phase_compositions": phase_compositions,
-            "phase_amounts": phase_amounts,
-            "phase_fraction_sum": float(sum(phase_amounts.values())),
-            "overall_composition": overall.tolist(),
-            "feed_composition": feed.tolist(),
-            "reaction_extents": _named_reaction_extents(feed, overall, reaction_matrix, reaction_names),
-            "reactive_options": {
-                "max_iterations": int(reactive_options.max_iterations),
-                "tolerance": float(reactive_options.tolerance),
-                "min_mole_fraction": float(reactive_options.min_mole_fraction),
-            },
-        }
-    )
-    diagnostics.setdefault("material_balance_norm", float(diagnostics.get("element_balance_norm", 0.0)))
-    diagnostics.setdefault("ionic_equilibrium_residual_norm", _max_abs(ionic_residual))
-    if charges is not None:
-        diagnostics.setdefault("phase_charge_balance", _phase_charge_balance_from_phases(feed, result.phases, charges))
-    diagnostics.update(dict(feed_diagnostics))
-    return _json_like(diagnostics)
-
-
-def _named_reaction_extents(
-    feed: np.ndarray,
-    overall: np.ndarray,
-    reaction_matrix: np.ndarray,
-    reaction_names: list[str],
-) -> dict[str, float]:
-    if reaction_matrix.size == 0 or not reaction_names:
-        return {}
-    try:
-        delta = overall - feed
-        gram = reaction_matrix @ reaction_matrix.T
-        rhs = reaction_matrix @ delta
-        extents = np.linalg.solve(gram, rhs)
-    except np.linalg.LinAlgError:
-        return {name: float("nan") for name in reaction_names}
-    return {name: float(value) for name, value in zip(reaction_names, extents)}
-
-
-def _max_abs(values: Any) -> float:
-    try:
-        return max((abs(float(value)) for value in values), default=0.0)
-    except TypeError:
-        return 0.0
 
 
 def initial_phases_from_result(result: EquilibriumResult) -> dict[str, object]:
