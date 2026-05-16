@@ -169,11 +169,11 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert capabilities["regression"]["pure_neutral"]["backend"] == "native_ceres"
     reactive_regression = capabilities["regression"]["reactive_electrolyte_residuals"]
     assert reactive_regression["available"] is True
-    assert reactive_regression["backend"] == "python_orchestrated_native_solvers"
-    assert "downstream-owned" in reactive_regression["scope"]
+    assert reactive_regression["backend"] == "structured_residual_evaluation"
+    assert "not a production optimizer" in reactive_regression["scope"]
     batch_context = capabilities["regression"]["reactive_electrolyte_batch_context"]
     assert batch_context["available"] is True
-    assert batch_context["backend"] == "python_batched_native_solvers"
+    assert batch_context["backend"] == "batch_residual_evaluation_context"
     assert "ReactiveElectrolyteRegressionContext" in batch_context["classes"]
     assert batch_context["methods"] == ["evaluate_objective"]
     assert batch_context["fit_status_contract"]["statuses"] == ["failed_rows", "residual_evaluation_only"]

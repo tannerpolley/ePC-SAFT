@@ -620,7 +620,7 @@ def capabilities() -> dict[str, object]:
             },
             "problem_objects": {
                 "available": True,
-                "backend": "typed_python_dispatch_to_existing_native_methods",
+                "backend": "public_python_facade",
                 "classes": [
                     "TPFlash",
                     "StabilityAnalysis",
@@ -658,12 +658,12 @@ def capabilities() -> dict[str, object]:
             },
             "reactive_electrolyte_residuals": {
                 "available": True,
-                "backend": "python_orchestrated_native_solvers",
-                "scope": "fixed-shape residual evaluator for downstream-owned coupled reactive electrolyte regression loops",
+                "backend": "structured_residual_evaluation",
+                "scope": "fixed-shape residual evaluator for native thermodynamic calls, not a production optimizer",
             },
             "reactive_electrolyte_batch_context": {
                 "available": True,
-                "backend": "python_batched_native_solvers",
+                "backend": "batch_residual_evaluation_context",
                 "fit_status_contract": {
                     "available": True,
                     "statuses": [

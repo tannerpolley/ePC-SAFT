@@ -10,8 +10,8 @@ and package workflow status. The important backend labels are:
 * ``native``: production native runtime path.
 * ``native_ipopt_equilibrium_nlp_required``: public route name is declared, but
   execution is gated until the native Ipopt NLP route builder owns the solve.
-* ``python_batched_native_solvers``: Python batches rows and manages seeds;
-  native solvers evaluate thermodynamics and residuals.
+* ``batch_residual_evaluation_context``: Python batches rows and formats
+  diagnostics for a residual-only context; this is not a production optimizer.
 
 For reactive electrolyte regression, inspect
 ``capabilities()["regression"]["reactive_electrolyte_batch_context"]["fit_status_contract"]``.
@@ -20,8 +20,8 @@ It lists the public fit statuses, the top-level convergence fields, and the
 routed. The sibling
 ``mixed_pressure_speciation_residual_context`` capability advertises the
 diagnostic residual context, its supported target families, and the fact that
-it is not a production optimizer. Python still owns row orchestration and
-diagnostic formatting while the thermodynamic calculations remain native.
+it is not a production optimizer. Thermodynamic calculations remain native
+while row batching and diagnostic formatting stay outside the optimizer path.
 
 Reactive Speciation And Bubble Diagnostics
 ------------------------------------------
