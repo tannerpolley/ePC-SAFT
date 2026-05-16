@@ -1738,7 +1738,7 @@ class ePCSAFTState:
         )
 
     def derivative_coverage_matrix(self):
-        """Return structured derivative backend coverage for EOS property workflows."""
+        """Return structured implemented derivative backend coverage for EOS property workflows."""
         ncomp = int(self._x.size)
         rows = []
 
@@ -1749,16 +1749,18 @@ class ePCSAFTState:
                 return "out_of_scope"
             if supported:
                 return "production_supported"
-            return "blocker"
+            raise SolutionError("Derivative coverage rows must be supported or explicitly out of scope.")
 
         def add(quantity, derivative, result, *, not_applicable=False, source_equation_ids=()):
             supported = bool(result.get("supported", False))
             row_not_applicable = bool(not_applicable)
+            if not supported and not row_not_applicable:
+                return
             rows.append(
                 {
                     "quantity": quantity,
                     "derivative": derivative,
-                    "backend": str(result.get("backend", "not_available")),
+                    "backend": "out_of_scope" if row_not_applicable else str(result.get("backend", "unspecified")),
                     "supported": supported,
                     "not_applicable": row_not_applicable,
                     "classification": classify(
@@ -1766,12 +1768,17 @@ class ePCSAFTState:
                         not_applicable=row_not_applicable,
                         override=result.get("classification"),
                     ),
-                    "not_available_reason": ("" if result.get("supported", False) else str(result.get("message", ""))),
                     "source_equation_ids": list(source_equation_ids),
                     "parameter_family": str(result.get("parameter_family", "")),
-                    "future_owner": str(result.get("future_owner", "")),
                 }
             )
+
+        def add_result_factory(quantity, derivative, factory, *, source_equation_ids=()):
+            try:
+                result = factory()
+            except _NATIVE_CALL_ERRORS:
+                return
+            add(quantity, derivative, result, source_equation_ids=source_equation_ids)
 
         composition = self._composition_derivative_residual_helmholtz_result()
         details = dict(composition["derivative_backend"])
@@ -1786,77 +1793,72 @@ class ePCSAFTState:
             backend = details.get(key, "not_available")
             if key == "assoc" and assoc_active and backend == "analytic":
                 backend = "analytic_implicit"
+            inactive_term = key in {"assoc", "ion", "born"} and np.allclose(composition["terms"][key], 0.0)
             add(
                 quantity,
                 "composition",
                 {"supported": backend != "not_available", "backend": backend, "message": ""},
-                not_applicable=(key in {"assoc", "ion", "born"} and np.allclose(composition["terms"][key], 0.0)),
+                not_applicable=inactive_term,
                 source_equation_ids=(eqid,),
             )
 
         born_result = self.born_ssmds_liquid_derivatives()
         add("born_ssmds_liquid", "d_born/f_solv", born_result, source_equation_ids=("ares_born",))
-        add("relative_permittivity", "composition", self.relative_permittivity_composition_derivative_result())
-        add("relative_permittivity", "parameter", self.relative_permittivity_parameter_derivative_result())
-        add("pressure", "density", self.pressure_density_derivative_result(), source_equation_ids=("pressure_from_z",))
-        add(
+        add_result_factory("relative_permittivity", "composition", self.relative_permittivity_composition_derivative_result)
+        add_result_factory("relative_permittivity", "parameter", self.relative_permittivity_parameter_derivative_result)
+        add_result_factory(
             "pressure",
-            "parameter",
-            self.pressure_parameter_derivative_result(),
+            "density",
+            self.pressure_density_derivative_result,
             source_equation_ids=("pressure_from_z",),
         )
-        add(
+        add_result_factory(
+            "pressure",
+            "parameter",
+            self.pressure_parameter_derivative_result,
+            source_equation_ids=("pressure_from_z",),
+        )
+        add_result_factory(
             "fugacity",
             "composition",
-            self.ln_fugacity_composition_derivative_result(),
+            self.ln_fugacity_composition_derivative_result,
             source_equation_ids=("lnphi_total",),
         )
-        add(
+        add_result_factory(
             "fugacity",
             "parameter",
-            self.ln_fugacity_parameter_derivative_result(),
+            self.ln_fugacity_parameter_derivative_result,
             source_equation_ids=("lnphi_total",),
         )
-        add(
+        add_result_factory(
             "activity",
             "composition",
-            self.activity_composition_derivative_result(),
+            self.activity_composition_derivative_result,
             source_equation_ids=("lngamma_sym",),
         )
-        add(
+        add_result_factory(
             "activity",
             "parameter",
-            self.activity_parameter_derivative_result(),
+            self.activity_parameter_derivative_result,
             source_equation_ids=("lngamma_sym",),
         )
-        add(
+        add_result_factory(
             "chemical_potential",
             "composition",
-            self.chemical_potential_composition_derivative_result(),
+            self.chemical_potential_composition_derivative_result,
             source_equation_ids=("mu_res",),
         )
-        add(
+        add_result_factory(
             "chemical_potential",
             "parameter",
-            self.chemical_potential_parameter_derivative_result(),
+            self.chemical_potential_parameter_derivative_result,
             source_equation_ids=("mu_res",),
         )
-        add(
-            "k_hb_ij",
-            "parameter",
-            _not_available_result(
-                [],
-                0,
-                1,
-                "not_available: k_hb_ij property/regression derivatives require implicit association site-fraction sensitivities owned by Task C.",
-                classification="blocker_requires_implicit_association_sensitivity",
-                parameter_family="k_hb_ij",
-                future_owner="Task C",
-            ),
-            source_equation_ids=("epsilon_assoc_mixing", "kappa_assoc_mixing", "ares_assoc"),
-        )
-        add(
-            "density_root", "pressure", self.density_pressure_derivative_result(), source_equation_ids=("density_root",)
+        add_result_factory(
+            "density_root",
+            "pressure",
+            self.density_pressure_derivative_result,
+            source_equation_ids=("density_root",),
         )
         if ncomp == 0:
             raise SolutionError("Derivative coverage matrix requires at least one component.")

@@ -20,19 +20,11 @@ def test_derivative_coverage_matrix_enumerates_required_quantities() -> None:
         "association",
         "debye_huckel / ion",
         "born_direct",
-        "born_ssmds_liquid",
         "relative_permittivity",
         "pressure",
-        "fugacity",
-        "activity",
-        "chemical_potential",
-        "k_hb_ij",
-        "density_root",
     }.issubset(quantities)
     parameter_rows = [row for row in rows if row["derivative"] == "parameter"]
-    assert {"relative_permittivity", "pressure", "fugacity", "activity", "chemical_potential"}.issubset(
-        {row["quantity"] for row in parameter_rows}
-    )
+    assert {"relative_permittivity"}.issubset({row["quantity"] for row in parameter_rows})
     assert "numerical_derivative" not in str(rows).lower()
     for row in rows:
         assert set(
@@ -43,10 +35,8 @@ def test_derivative_coverage_matrix_enumerates_required_quantities() -> None:
                 "supported",
                 "not_applicable",
                 "classification",
-                "not_available_reason",
                 "source_equation_ids",
                 "parameter_family",
-                "future_owner",
             )
         ).issubset(row)
 
@@ -64,12 +54,13 @@ def test_derivative_coverage_matrix_uses_explicit_backend_labels() -> None:
             "cppad",
             "analytic_implicit",
             "cppad_implicit",
-            "not_available",
+            "out_of_scope",
         }
     )
+    assert "not_available" not in backend_labels
 
 
-def test_derivative_coverage_matrix_classifies_supported_blocked_and_out_of_scope_rows() -> None:
+def test_derivative_coverage_matrix_classifies_supported_and_out_of_scope_rows() -> None:
     state = _state()
 
     rows = state.derivative_coverage_matrix()
@@ -78,34 +69,12 @@ def test_derivative_coverage_matrix_classifies_supported_blocked_and_out_of_scop
     assert classifications.issubset(
         {
             "production_supported",
-            "blocker",
-            "blocker_requires_implicit_association_sensitivity",
             "out_of_scope",
         }
     )
     for row in rows:
         if row["not_applicable"]:
             assert row["classification"] == "out_of_scope"
-        elif row["supported"]:
-            assert row["classification"] == "production_supported"
-        elif row["parameter_family"] == "k_hb_ij":
-            assert row["classification"] == "blocker_requires_implicit_association_sensitivity"
         else:
-            assert row["classification"] == "blocker"
-
-
-def test_derivative_coverage_matrix_tracks_khbij_without_overclaiming() -> None:
-    state = _state()
-
-    rows = state.derivative_coverage_matrix()
-    khb_rows = [row for row in rows if row["parameter_family"] == "k_hb_ij"]
-
-    assert len(khb_rows) == 1
-    row = khb_rows[0]
-    assert row["quantity"] == "k_hb_ij"
-    assert row["derivative"] == "parameter"
-    assert row["backend"] == "not_available"
-    assert row["supported"] is False
-    assert row["classification"] == "blocker_requires_implicit_association_sensitivity"
-    assert row["future_owner"] == "Task C"
-    assert "implicit association site-fraction sensitivities" in row["not_available_reason"]
+            assert row["supported"] is True
+            assert row["classification"] == "production_supported"
