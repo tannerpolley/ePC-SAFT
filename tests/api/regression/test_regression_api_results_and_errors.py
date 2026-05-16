@@ -44,7 +44,6 @@ def _stub_native_generic_runner(monkeypatch, *, backend="ceres"):
         *,
         component=None,
         pair=None,
-        multistart=0,
         max_nfev=200,
     ):
         calls.append(
@@ -58,7 +57,6 @@ def _stub_native_generic_runner(monkeypatch, *, backend="ceres"):
                 "upper": np.asarray(upper, dtype=float),
                 "component": component,
                 "pair": pair,
-                "multistart": int(multistart),
                 "max_nfev": int(max_nfev),
             }
         )

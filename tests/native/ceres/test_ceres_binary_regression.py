@@ -52,7 +52,6 @@ def test_ceres_binary_kij_regression_uses_native_cppad_implicit_jacobian() -> No
         np.asarray([0.01], dtype=float),
         np.asarray([-0.15], dtype=float),
         np.asarray([0.10], dtype=float),
-        multistart=0,
     )
 
     assert result["success"] is True
@@ -98,7 +97,6 @@ def test_ceres_binary_kij_regression_accepts_associating_neutral_rows() -> None:
         np.asarray([0.01], dtype=float),
         np.asarray([-0.15], dtype=float),
         np.asarray([0.10], dtype=float),
-        multistart=0,
         max_nfev=1,
     )
 

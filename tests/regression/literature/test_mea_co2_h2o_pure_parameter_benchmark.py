@@ -123,7 +123,6 @@ def test_mea_co2_h2o_benchmark_smoke_fits_only_pure_parameters(tmp_path):
         dataset=fit_root,
         species=SPECIES,
         user_options=ADVANCED_USER_OPTIONS,
-        multistart=0,
     )
 
     assert set(results) == {"MEA", "MEAH+", "MEACOO-", "HCO3-"}
@@ -182,12 +181,11 @@ def test_mea_co2_h2o_benchmark_rejects_optimizer_without_derivative_path(tmp_pat
         "MEA_CO2_H2O_Fit",
     )
 
-    with pytest.raises(InputError, match=r"multistart optimization|native analytic/CppAD/implicit derivative path"):
+    with pytest.raises(InputError, match=r"native analytic/CppAD/implicit derivative path"):
         _fit_mea_co2_h2o_pure_parameter_benchmark(
             records,
             dataset=fit_root,
             species=SPECIES,
             user_options=ADVANCED_USER_OPTIONS,
-            multistart=1,
             max_nfev=2,
         )

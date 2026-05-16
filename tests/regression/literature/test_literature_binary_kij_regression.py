@@ -40,7 +40,6 @@ def test_literature_binary_kij_regression_matches_reference_band() -> None:
         dataset=fixture["dataset"],
         initial_guess={"k_ij": fixture["initial_k_ij"]},
         bounds={"k_ij": tuple(fixture["bounds"]["k_ij"])},
-        multistart=0,
     )
 
     assert result.success, result.message

@@ -579,6 +579,8 @@ Task 12 continuation note: unbound native neutral stability, electrolyte stabili
 
 Task 13 validation note: the `_core` pybind module now disables pybind11 release extras and MSVC optimization for `bindings.cpp`. Native objects still use the configured Release build, while the large binding translation unit avoids the MSVC heap exhaustion seen during rebuild.
 
+Task 14 continuation note: public and native regression no longer expose repeated-start Ceres controls. The Ceres routes now receive one canonical clipped initial point, stale repeated-start tests were simplified, and the tracked source/test/script text gate blocks reintroducing that control surface.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**

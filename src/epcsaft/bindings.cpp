@@ -923,8 +923,7 @@ py::dict fit_pure_neutral_native_ceres_binding(
     double pure_vle_scale,
     const py::array& x0,
     const py::array& lower,
-    const py::array& upper,
-    int multistart
+    const py::array& upper
 ) {
     auto density_records = density_records_from_arrays(density_t, density_p, density_rho_exp, density_phase);
     auto pure_vle_records = vle_records_from_arrays(vle_t, vle_p);
@@ -942,8 +941,7 @@ py::dict fit_pure_neutral_native_ceres_binding(
             pure_vle_scale,
             cpp_x0,
             cpp_lower,
-            cpp_upper,
-            multistart
+            cpp_upper
         );
     }
     return regression_result_to_dict(result);
@@ -988,7 +986,6 @@ py::dict fit_generic_native_ceres_binding(
     const py::array& x0,
     const py::array& lower,
     const py::array& upper,
-    int multistart,
     int max_nfev
 ) {
     auto cpp_args = native_args_from_list(args_by_record);
@@ -1011,7 +1008,6 @@ py::dict fit_generic_native_ceres_binding(
             cpp_x0,
             cpp_lower,
             cpp_upper,
-            multistart,
             max_nfev
         );
     }

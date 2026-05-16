@@ -495,8 +495,7 @@ PureNeutralRegressionResult fit_pure_neutral_ceres_cpp(
     double pure_vle_scale,
     const vector<double> &x0,
     const vector<double> &lower,
-    const vector<double> &upper,
-    int multistart
+    const vector<double> &upper
 );
 PureNeutralRegressionDebugResult evaluate_pure_neutral_objective_debug_cpp(
     const add_args &base_args,
@@ -523,7 +522,6 @@ GenericRegressionResult fit_generic_ceres_cpp(
     const vector<double> &x0,
     const vector<double> &lower,
     const vector<double> &upper,
-    int multistart,
     int max_nfev
 );
 

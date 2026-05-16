@@ -73,7 +73,6 @@ def test_literature_pure_parameter_regression_uses_local_benchmark_fixture(tmp_p
         dataset=fit_root,
         species=SPECIES,
         user_options=LITERATURE_USER_OPTIONS,
-        multistart=0,
     )
 
     assert set(results) == set(fixture["components"])

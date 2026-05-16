@@ -41,7 +41,6 @@ def _stub_native_generic_runner(monkeypatch, *, backend="ceres"):
         *,
         component=None,
         pair=None,
-        multistart=0,
         max_nfev=200,
     ):
         calls.append(
@@ -55,7 +54,6 @@ def _stub_native_generic_runner(monkeypatch, *, backend="ceres"):
                 "upper": np.asarray(upper, dtype=float),
                 "component": component,
                 "pair": pair,
-                "multistart": int(multistart),
                 "max_nfev": int(max_nfev),
             }
         )
@@ -189,7 +187,7 @@ def test_fit_pure_ion_requires_composition_and_supported_records():
             solvent="H2O",
         )
 
-def test_fit_pure_ion_default_s_e_bounds_and_multistart_contract(monkeypatch):
+def test_fit_pure_ion_default_s_e_bounds_contract(monkeypatch):
     calls = _stub_native_generic_runner(monkeypatch, backend="ceres")
     result = epcsaft.fit_pure_ion(
         _minimal_nacl_records(),
@@ -199,7 +197,6 @@ def test_fit_pure_ion_default_s_e_bounds_and_multistart_contract(monkeypatch):
         solvent="H2O",
         initial_guess={"s": 2.6, "e": 210.0},
         bounds={"s": (2.4, 3.2), "e": (150.0, 300.0)},
-        multistart=3,
     )
 
     assert result.success, result.message
@@ -218,7 +215,6 @@ def test_fit_pure_ion_default_s_e_bounds_and_multistart_contract(monkeypatch):
     assert calls[0]["optimization_names"] == ("s", "e")
     assert calls[0]["component"] == "Na+"
     assert calls[0]["species"] == ("H2O", "Na+", "Cl-")
-    assert calls[0]["multistart"] == 3
     assert {record["term_name"] for record in calls[0]["native_records"]} == {
         "osmotic_coefficient",
         "mean_ionic_activity",
@@ -294,7 +290,6 @@ def test_fit_binary_pair_vle_kij_default_and_rejects_temperature_models(monkeypa
         dataset="2026_Khudaida",
         initial_guess={"k_ij": -0.02},
         bounds={"k_ij": (-0.2, 0.2)},
-        multistart=2,
     )
 
     assert result.success, result.message
@@ -322,7 +317,6 @@ def test_fit_binary_pair_vle_kij_default_and_rejects_temperature_models(monkeypa
     assert len(calls) == 1
     assert calls[0]["optimization_names"] == ("k_ij",)
     assert calls[0]["pair"] == ("H2O", "Ethanol")
-    assert calls[0]["multistart"] == 2
 
     with pytest.raises(InputError, match="temperature_model"):
         epcsaft.fit_binary_pair(
@@ -347,7 +341,6 @@ def test_fit_binary_pair_rejects_unsupported_generic_binary_optimizer_targets(mo
             fit_targets=("k_ij", "l_ij", "k_hb_ij"),
             initial_guess={"k_ij": -0.02, "l_ij": 0.01, "k_hb_ij": 0.02},
             bounds={"k_ij": (-0.2, 0.2), "l_ij": (-0.2, 0.2), "k_hb_ij": (-0.2, 0.2)},
-            multistart=1,
         )
 
     assert calls == []

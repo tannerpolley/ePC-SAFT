@@ -2715,7 +2715,6 @@ def _fit_generic_native_ceres(
     x0,
     lower,
     upper,
-    multistart=0,
     max_nfev=200,
 ):
     result = _core._fit_generic_native_ceres(
@@ -2727,7 +2726,6 @@ def _fit_generic_native_ceres(
         np.asarray(x0, dtype=float),
         np.asarray(lower, dtype=float),
         np.asarray(upper, dtype=float),
-        int(multistart),
         int(max_nfev),
     )
     return {

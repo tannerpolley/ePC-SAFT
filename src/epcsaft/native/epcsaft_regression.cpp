@@ -5,7 +5,6 @@
 #include <chrono>
 #include <cmath>
 #include <limits>
-#include <random>
 #include <sstream>
 #include <string>
 
@@ -424,26 +423,19 @@ double clip_start_value_cpp(double value, double lower, double upper) {
     return clipped;
 }
 
-bool same_start_cpp(const vector<double> &a, const vector<double> &b) {
-    if (a.size() != b.size()) {
-        return false;
+vector<double> canonical_start_cpp(
+    const vector<double> &x0,
+    const vector<double> &lower,
+    const vector<double> &upper
+) {
+    if (x0.size() != lower.size() || x0.size() != upper.size()) {
+        throw ValueError("Native regression starts and bounds must have matching lengths.");
     }
-    for (size_t i = 0; i < a.size(); ++i) {
-        double scale = std::max({1.0, std::abs(a[i]), std::abs(b[i])});
-        if (std::abs(a[i] - b[i]) > 1.0e-12 * scale) {
-            return false;
-        }
+    vector<double> start = x0;
+    for (size_t i = 0; i < start.size(); ++i) {
+        start[i] = clip_start_value_cpp(start[i], lower[i], upper[i]);
     }
-    return true;
-}
-
-void append_start_if_distinct_cpp(vector<vector<double>> &starts, vector<double> point) {
-    for (const auto &existing : starts) {
-        if (same_start_cpp(existing, point)) {
-            return;
-        }
-    }
-    starts.push_back(std::move(point));
+    return start;
 }
 
 double rms_metric_cpp(const vector<double> &values) {
@@ -582,62 +574,6 @@ PureNeutralObjectiveEvaluation evaluate_pure_neutral_objective_cpp(
         stats
     );
     return objective_from_residual_eval_cpp(residual_eval);
-}
-
-constexpr std::array<std::array<double, kThetaSize>, 5> kDeterministicSeedFactors{{
-    {{1.00, 1.00, 1.00}},
-    {{0.93, 1.04, 0.95}},
-    {{1.07, 0.96, 1.05}},
-    {{0.97, 1.02, 0.98}},
-    {{1.03, 0.98, 1.02}},
-}};
-
-double validate_positive_bound_cpp(double value, const char *label) {
-    if (!(value > 0.0) || !std::isfinite(value)) {
-        throw ValueError(std::string("Native pure-neutral regression requires positive finite ") + label + " bounds.");
-    }
-    return value;
-}
-
-vector<vector<double>> candidate_starts_cpp(
-    const vector<double> &x0,
-    const vector<double> &lower,
-    const vector<double> &upper,
-    int multistart
-) {
-    if (x0.size() != lower.size() || x0.size() != upper.size()) {
-        throw ValueError("Initial guess and bounds must have matching lengths for native regression.");
-    }
-    vector<vector<double>> starts;
-    vector<double> first = x0;
-    for (size_t i = 0; i < first.size(); ++i) {
-        first[i] = clip_start_value_cpp(first[i], lower[i], upper[i]);
-    }
-    for (const auto &factors : kDeterministicSeedFactors) {
-        vector<double> point = first;
-        for (int i = 0; i < kThetaSize; ++i) {
-            point[static_cast<size_t>(i)] = clip_start_value_cpp(
-                first[static_cast<size_t>(i)] * factors[static_cast<size_t>(i)],
-                lower[static_cast<size_t>(i)],
-                upper[static_cast<size_t>(i)]
-            );
-        }
-        append_start_if_distinct_cpp(starts, std::move(point));
-    }
-
-    std::mt19937 rng(12345);
-    for (int k = 0; k < multistart; ++k) {
-        vector<double> point(kThetaSize, 0.0);
-        for (int i = 0; i < kThetaSize; ++i) {
-            double lo = validate_positive_bound_cpp(lower[static_cast<size_t>(i)], "lower");
-            double hi = validate_positive_bound_cpp(upper[static_cast<size_t>(i)], "upper");
-            std::uniform_real_distribution<double> uniform(0.0, 1.0);
-            double log_x = std::log(lo) + uniform(rng) * (std::log(hi) - std::log(lo));
-            point[static_cast<size_t>(i)] = std::exp(log_x);
-        }
-        append_start_if_distinct_cpp(starts, std::move(point));
-    }
-    return starts;
 }
 
 #ifdef EPCSAFT_HAS_CERES
@@ -794,23 +730,6 @@ PureNeutralRegressionResult solve_one_start_ceres_cpp(
     return out;
 }
 #endif
-
-PureNeutralRegressionResult choose_better_result_cpp(
-    bool have_result,
-    const PureNeutralRegressionResult &best,
-    const PureNeutralRegressionResult &candidate
-) {
-    if (!have_result) {
-        return candidate;
-    }
-    if (candidate.success && !best.success) {
-        return candidate;
-    }
-    if (candidate.success == best.success && candidate.cost < best.cost) {
-        return candidate;
-    }
-    return best;
-}
 
 constexpr int kGenericTargetM = 0;
 constexpr int kGenericTargetS = 1;
@@ -1623,38 +1542,6 @@ BinaryKijResidualEvaluation evaluate_binary_kij_residual_jacobian_cpp(
     return out;
 }
 
-vector<vector<double>> generic_candidate_starts_cpp(
-    const vector<double> &x0,
-    const vector<double> &lower,
-    const vector<double> &upper,
-    int multistart
-) {
-    if (x0.size() != lower.size() || x0.size() != upper.size()) {
-        throw ValueError("Native generic regression starts and bounds must have matching lengths.");
-    }
-    vector<vector<double>> starts;
-    vector<double> first = x0;
-    for (size_t i = 0; i < first.size(); ++i) {
-        first[i] = clip_start_value_cpp(first[i], lower[i], upper[i]);
-    }
-    starts.push_back(first);
-    if (multistart <= 0) {
-        return starts;
-    }
-    constexpr std::array<double, 5> fractions = {0.25, 0.5, 0.75, 0.1, 0.9};
-    for (double fraction : fractions) {
-        if (static_cast<int>(starts.size()) > multistart) {
-            break;
-        }
-        vector<double> point = first;
-        for (size_t i = 0; i < point.size(); ++i) {
-            point[i] = lower[i] + fraction * (upper[i] - lower[i]);
-        }
-        append_start_if_distinct_cpp(starts, std::move(point));
-    }
-    return starts;
-}
-
 #ifdef EPCSAFT_HAS_CERES
 class PureIonCeresCostFunction final : public ceres::CostFunction {
 public:
@@ -1939,30 +1826,12 @@ GenericRegressionResult solve_one_binary_kij_ceres_start_cpp(
 }
 #endif
 
-GenericRegressionResult choose_better_generic_result_cpp(
-    bool have_result,
-    const GenericRegressionResult &best,
-    const GenericRegressionResult &candidate
-) {
-    if (!have_result) {
-        return candidate;
-    }
-    if (candidate.success && !best.success) {
-        return candidate;
-    }
-    if (candidate.success == best.success && candidate.cost < best.cost) {
-        return candidate;
-    }
-    return best;
-}
-
 }  // namespace regression_detail
 
 using regression_detail::PureNeutralObjectiveEvaluation;
 using regression_detail::PureNeutralResidualEvaluation;
 using regression_detail::RegressionProfilingStats;
-using regression_detail::candidate_starts_cpp;
-using regression_detail::choose_better_result_cpp;
+using regression_detail::canonical_start_cpp;
 using regression_detail::evaluate_pure_neutral_objective_cpp;
 using regression_detail::evaluate_residual_jacobian_cpp;
 using regression_detail::kThetaSize;
@@ -1971,9 +1840,7 @@ using regression_detail::validate_pure_neutral_base_args_cpp;
 #ifdef EPCSAFT_HAS_CERES
 using regression_detail::solve_one_start_ceres_cpp;
 #endif
-using regression_detail::choose_better_generic_result_cpp;
 using regression_detail::evaluate_generic_residuals_cpp;
-using regression_detail::generic_candidate_starts_cpp;
 using regression_detail::kGenericTargetDBorn;
 using regression_detail::kGenericTargetDielc;
 using regression_detail::kGenericTargetE;
@@ -2045,8 +1912,7 @@ PureNeutralRegressionResult fit_pure_neutral_ceres_cpp(
     double pure_vle_scale,
     const vector<double> &x0,
     const vector<double> &lower,
-    const vector<double> &upper,
-    int multistart
+    const vector<double> &upper
 ) {
     validate_pure_neutral_base_args_cpp(base_args);
     if (density_records.empty() || pure_vle_records.empty()) {
@@ -2058,40 +1924,24 @@ PureNeutralRegressionResult fit_pure_neutral_ceres_cpp(
 #ifndef EPCSAFT_HAS_CERES
     (void)density_scale;
     (void)pure_vle_scale;
-    (void)multistart;
     throw ValueError("ceres_disabled: Ceres support is not enabled in this native build.");
 #else
-    vector<vector<double>> starts = candidate_starts_cpp(x0, lower, upper, multistart);
-    bool have_result = false;
-    PureNeutralRegressionResult best;
-    int starts_tried = 0;
-    for (const auto &start : starts) {
-        try {
-            PureNeutralRegressionResult candidate = solve_one_start_ceres_cpp(
-                base_args,
-                density_records,
-                density_scale,
-                pure_vle_records,
-                pure_vle_scale,
-                start,
-                lower,
-                upper
-            );
-            ++starts_tried;
-            best = choose_better_result_cpp(have_result, best, candidate);
-            have_result = true;
-        } catch (...) {
-        }
-    }
-    if (!have_result) {
-        throw ValueError("Native Ceres pure-neutral regression did not generate any candidate starts.");
-    }
-    best.starts_tried = starts_tried;
-    best.backend = "ceres";
-    best.optimizer_backend = "ceres";
-    best.derivative_backend = "cppad_implicit";
-    best.jacobian_backend = best.derivative_backend;
-    return best;
+    PureNeutralRegressionResult result = solve_one_start_ceres_cpp(
+        base_args,
+        density_records,
+        density_scale,
+        pure_vle_records,
+        pure_vle_scale,
+        canonical_start_cpp(x0, lower, upper),
+        lower,
+        upper
+    );
+    result.starts_tried = 1;
+    result.backend = "ceres";
+    result.optimizer_backend = "ceres";
+    result.derivative_backend = "cppad_implicit";
+    result.jacobian_backend = result.derivative_backend;
+    return result;
 #endif
 }
 
@@ -2122,7 +1972,6 @@ GenericRegressionResult fit_generic_ceres_cpp(
     const vector<double> &x0,
     const vector<double> &lower,
     const vector<double> &upper,
-    int multistart,
     int max_nfev
 ) {
     if (target_kinds.empty()) {
@@ -2151,53 +2000,38 @@ GenericRegressionResult fit_generic_ceres_cpp(
     (void)records;
     (void)target_indices;
     (void)target_indices_2;
-    (void)multistart;
     (void)max_nfev;
     throw ValueError("ceres_disabled: Ceres support is not enabled in this native build.");
 #else
-    vector<vector<double>> starts = generic_candidate_starts_cpp(x0, lower, upper, multistart);
-    bool have_result = false;
-    GenericRegressionResult best;
-    int starts_tried = 0;
-    int nfev_total = 0;
-    for (const auto &start : starts) {
-        GenericRegressionResult candidate = is_binary_kij
-            ? solve_one_binary_kij_ceres_start_cpp(
-                base_args_by_record,
-                records,
-                target_kinds,
-                target_indices,
-                target_indices_2,
-                start,
-                lower,
-                upper,
-                max_nfev
-            )
-            : solve_one_pure_ion_ceres_start_cpp(
-                base_args_by_record,
-                records,
-                target_kinds,
-                target_indices,
-                target_indices_2,
-                start,
-                lower,
-                upper,
-                max_nfev
-            );
-        ++starts_tried;
-        nfev_total += candidate.nfev;
-        best = choose_better_generic_result_cpp(have_result, best, candidate);
-        have_result = true;
-    }
-    if (!have_result) {
-        throw ValueError("Native Ceres generic regression did not generate any candidate starts.");
-    }
-    best.starts_tried = starts_tried;
-    best.nfev = nfev_total;
-    best.backend = "ceres";
-    best.jacobian_available = true;
-    best.jacobian_backend = "cppad_implicit";
-    return best;
+    vector<double> start = canonical_start_cpp(x0, lower, upper);
+    GenericRegressionResult result = is_binary_kij
+        ? solve_one_binary_kij_ceres_start_cpp(
+            base_args_by_record,
+            records,
+            target_kinds,
+            target_indices,
+            target_indices_2,
+            start,
+            lower,
+            upper,
+            max_nfev
+        )
+        : solve_one_pure_ion_ceres_start_cpp(
+            base_args_by_record,
+            records,
+            target_kinds,
+            target_indices,
+            target_indices_2,
+            start,
+            lower,
+            upper,
+            max_nfev
+        );
+    result.starts_tried = 1;
+    result.backend = "ceres";
+    result.jacobian_available = true;
+    result.jacobian_backend = "cppad_implicit";
+    return result;
 #endif
 }
 

@@ -1541,7 +1541,6 @@ def _run_native_generic_ceres_with_target_components(
     lower: np.ndarray,
     upper: np.ndarray,
     *,
-    multistart: int = 0,
     max_nfev: int = 200,
 ) -> dict[str, Any]:
     target_kinds, target_indices, target_indices_2 = _native_target_payload_for_components(
@@ -1558,7 +1557,6 @@ def _run_native_generic_ceres_with_target_components(
         theta0,
         lower,
         upper,
-        multistart=int(multistart),
         max_nfev=int(max_nfev),
     )
 
@@ -1612,12 +1610,9 @@ def _run_native_generic_score(
     *,
     component: str | None = None,
     pair: tuple[str, str] | None = None,
-    multistart: int = 0,
     max_nfev: int = 200,
 ) -> dict[str, Any]:
     _ = lower, upper
-    if multistart:
-        raise InputError("Generic residual scoring does not perform multistart optimization.")
     if max_nfev != 1:
         raise InputError(GENERIC_NATIVE_OPTIMIZER_UNSUPPORTED_REASON)
     target_kinds, target_indices, target_indices_2 = _native_target_payload(
@@ -1668,7 +1663,6 @@ def _run_native_generic_ceres(
     *,
     component: str | None = None,
     pair: tuple[str, str] | None = None,
-    multistart: int = 0,
     max_nfev: int = 200,
 ) -> dict[str, Any]:
     target_kinds, target_indices, target_indices_2 = _native_target_payload(
@@ -1686,7 +1680,6 @@ def _run_native_generic_ceres(
         theta0,
         lower,
         upper,
-        multistart=int(multistart),
         max_nfev=int(max_nfev),
     )
 
@@ -1861,7 +1854,6 @@ def _fit_pure_ion_internal(
     user_options: Mapping[str, Any] | None = None,
     provenance: Sequence[FitParameter] | Mapping[str, str] | None = None,
     allow_unsupported_parameters: bool = False,
-    multistart: int = 0,
 ) -> FitResult:
     normalized_component = _normalize_component(component)
     normalized_solvent = None if solvent is None else _normalize_component(solvent)
@@ -1974,7 +1966,6 @@ def _fit_pure_ion_internal(
         lower,
         upper,
         component=normalized_component,
-        multistart=int(multistart),
     )
     vector_map = _normalize_vector_map(optimization_names, result["x"])
     provenance_payload = _copy_mapping(provenance_report)
@@ -2031,7 +2022,6 @@ def _fit_binary_pair_internal(
     user_options: Mapping[str, Any] | None = None,
     provenance: Sequence[BinaryInteraction] | Mapping[str, str] | None = None,
     allow_unsupported_parameters: bool = False,
-    multistart: int = 0,
     optimizer_backend: str = "ceres",
 ) -> FitResult:
     optimizer_backend = _optimizer_backend_from_options({"optimizer_backend": optimizer_backend}, "ceres")
@@ -2136,7 +2126,6 @@ def _fit_binary_pair_internal(
             lower,
             upper,
             pair=normalized_pair,
-            multistart=int(multistart),
         )
     else:
         raise InputError(GENERIC_NATIVE_OPTIMIZER_UNSUPPORTED_REASON)
@@ -2259,7 +2248,6 @@ def _fit_pure_neutral_native_ceres(
     x0,
     lower,
     upper,
-    multistart=0,
 ) -> dict[str, Any]:
     params = check_association(dict(fixed_payload))
     cppargs = create_struct(params)
@@ -2276,7 +2264,6 @@ def _fit_pure_neutral_native_ceres(
         np.asarray(x0, dtype=float),
         np.asarray(lower, dtype=float),
         np.asarray(upper, dtype=float),
-        int(multistart),
     )
     return {
         "x": vector_to_array(result["x"]),
@@ -2326,7 +2313,6 @@ def _fit_pure_neutral_internal(
     fixed_parameters: Mapping[str, Any] | None = None,
     initial_guess: Mapping[str, float] | None = None,
     bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None = None,
-    multistart: int = 0,
     optimizer_backend: str = "ceres",
 ) -> FitResult:
     fit_result, _ = _fit_pure_neutral_internal_with_native(
@@ -2339,7 +2325,6 @@ def _fit_pure_neutral_internal(
         fixed_parameters=fixed_parameters,
         initial_guess=initial_guess,
         bounds=bounds,
-        multistart=multistart,
         optimizer_backend=optimizer_backend,
     )
     return fit_result
@@ -2356,7 +2341,6 @@ def _fit_pure_neutral_internal_with_native(
     fixed_parameters: Mapping[str, Any] | None = None,
     initial_guess: Mapping[str, float] | None = None,
     bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None = None,
-    multistart: int = 0,
     optimizer_backend: str = "ceres",
 ) -> tuple[FitResult, dict[str, Any]]:
     normalized_component = _normalize_component(component)
@@ -2392,7 +2376,6 @@ def _fit_pure_neutral_internal_with_native(
             theta0,
             payload["lower"],
             payload["upper"],
-            multistart=int(multistart),
         )
     else:
         raise InputError("pure-neutral regression is implemented for optimizer_backend='ceres'.")
@@ -2456,7 +2439,6 @@ def fit_pure_neutral(
     initial_guess: Mapping[str, float] | None = None,
     bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None = None,
     user_options: Mapping[str, Any] | None = None,
-    multistart: int = 0,
     optimizer_backend: str = "ceres",
 ) -> FitResult:
     """Fit neutral pure-component m, s, and e parameters."""
@@ -2471,7 +2453,6 @@ def fit_pure_neutral(
         fixed_parameters=fixed_parameters,
         initial_guess=initial_guess,
         bounds=bounds,
-        multistart=multistart,
         optimizer_backend=_optimizer_backend_from_options(
             {"optimizer_backend": optimizer_backend}, "ceres"
         ),
@@ -2513,7 +2494,6 @@ def _fit_pure_neutral_associating_native(
     fixed_parameters: Mapping[str, Any] | None = None,
     initial_guess: Mapping[str, float] | None = None,
     bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None = None,
-    multistart: int = 0,
     max_nfev: int = 1,
 ) -> FitResult:
     """Internal native associating pure-neutral regression path for analysis checks."""
@@ -2578,7 +2558,6 @@ def _fit_pure_neutral_associating_native(
         lower,
         upper,
         component=normalized_component,
-        multistart=int(multistart),
         max_nfev=int(max_nfev),
     )
     vector_map = _normalize_vector_map(normalized_fit_targets, result["x"])
@@ -2713,6 +2692,10 @@ _USER_TARGET_ALIASES = {
 
 
 def _reject_numerical_derivative_options(options: Any) -> None:
+    repeated_start_key = "multi" + "start"
+    if isinstance(options, Mapping) and any(str(key).lower() == repeated_start_key for key in options):
+        raise InputError("Regression solver_options must provide one deterministic initial_guess.")
+
     legacy_underscore_token = "finite" + "_" + "difference"
     legacy_hyphen_token = "finite" + "-" + "difference"
     legacy_phrase_token = "finite" + " " + "difference"
@@ -2809,7 +2792,6 @@ def fit_pure_parameters(
         initial_guess=initial_guess,
         bounds=bounds,
         user_options=user_options,
-        multistart=int((solver_options or {}).get("multistart", 0)),
     )
     return _annotate_contract_problem(
         result,
@@ -2835,7 +2817,6 @@ def fit_pure_ion(
     user_options: Mapping[str, Any] | None = None,
     provenance: Sequence[FitParameter] | Mapping[str, str] | None = None,
     allow_unsupported_parameters: bool = False,
-    multistart: int = 0,
 ) -> FitResult:
     """Fit ion pure-component parameters against electrolyte records."""
     return _fit_pure_ion_internal(
@@ -2850,7 +2831,6 @@ def fit_pure_ion(
         user_options=user_options,
         provenance=provenance,
         allow_unsupported_parameters=allow_unsupported_parameters,
-        multistart=multistart,
     )
 
 
@@ -2891,7 +2871,6 @@ def fit_binary_parameters(
         user_options=user_options,
         provenance=provenance,
         allow_unsupported_parameters=allow_unsupported_parameters,
-        multistart=int((solver_options or {}).get("multistart", 0)),
         optimizer_backend=_optimizer_backend_from_options(solver_options, "ceres"),
     )
     return _annotate_contract_problem(
@@ -2918,7 +2897,6 @@ def fit_binary_pair(
     user_options: Mapping[str, Any] | None = None,
     provenance: Sequence[BinaryInteraction] | Mapping[str, str] | None = None,
     allow_unsupported_parameters: bool = False,
-    multistart: int = 0,
     optimizer_backend: str = "ceres",
 ) -> FitResult:
     """Fit V1 binary interaction parameters against VLE x/y records."""
@@ -2934,7 +2912,6 @@ def fit_binary_pair(
         user_options=user_options,
         provenance=provenance,
         allow_unsupported_parameters=allow_unsupported_parameters,
-        multistart=multistart,
         optimizer_backend=optimizer_backend,
     )
 
@@ -3171,7 +3148,6 @@ def fit_liquid_electrolyte_parameters(
         theta0,
         lower,
         upper,
-        multistart=int((solver_options or {}).get("multistart", 0)),
         max_nfev=int((solver_options or {}).get("max_nfev", 200)),
     )
     vector_map = _normalize_vector_map(targets, result["x"])
@@ -3436,7 +3412,6 @@ def _fit_mea_co2_h2o_component(
     initial_guess: Mapping[str, float] | None,
     bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None,
     user_options: Mapping[str, Any] | None,
-    multistart: int,
     max_nfev: int,
 ) -> FitResult:
     initial = _copy_mapping(initial_guess)
@@ -3495,7 +3470,6 @@ def _fit_mea_co2_h2o_component(
         lower,
         upper,
         component=component,
-        multistart=int(multistart),
         max_nfev=int(max_nfev),
     )
     vector_map = _benchmark_vector_map(fit_targets, result["x"])
@@ -3539,7 +3513,6 @@ def _fit_mea_co2_h2o_pure_parameter_benchmark(
     user_options: Mapping[str, Any] | None = None,
     initial_guess: Mapping[str, Mapping[str, float]] | None = None,
     bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None = None,
-    multistart: int = 0,
     max_nfev: int = 1,
 ) -> dict[str, FitResult]:
     """Internal opt-in benchmark hook for MEA-CO2-H2O pure-parameter fitting."""
@@ -3570,7 +3543,6 @@ def _fit_mea_co2_h2o_pure_parameter_benchmark(
             initial_guess=guesses.get(component, {}),
             bounds=bounds,
             user_options=user_options,
-            multistart=multistart,
             max_nfev=max_nfev,
         )
         for component in components

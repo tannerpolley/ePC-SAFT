@@ -35,7 +35,6 @@ def test_native_binary_kij_regression_matches_real_ethanol_water_vle_reference_b
         dataset="2012_Held",
         initial_guess={"k_ij": ETHANOL_WATER_HELD_2012_KIJ},
         bounds={"k_ij": (-0.15, 0.10)},
-        multistart=0,
     )
 
     assert result.success, result.message
