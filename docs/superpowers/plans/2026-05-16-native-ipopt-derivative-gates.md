@@ -541,6 +541,8 @@ Task 12 continuation note: the duplicate reactive-speciation best-effort option 
 
 Task 12 continuation note: the tracked source/test/script text gate now blocks reintroducing best-effort option tokens and the deleted electrolyte bubble private native binding/solver labels in active executable surfaces.
 
+Task 12 continuation note: the tracked source/test/script text gate now also blocks the removed Hessian-backend diagnostic token so approximate solver-internal Hessian behavior cannot be reintroduced as a package derivative backend label.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**

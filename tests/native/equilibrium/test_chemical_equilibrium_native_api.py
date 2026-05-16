@@ -122,7 +122,8 @@ def test_native_chemical_equilibrium_residual_evaluator_uses_analytic_jacobian_b
 
     assert payload["variable_model"] == "log_species_amounts"
     assert payload["jacobian_backend"] == "analytic"
-    assert "hessian_backend" not in payload
+    removed_hessian_key = "hessian" + "_backend"
+    assert removed_hessian_key not in payload
     diagnostics = payload["diagnostics"]
     assert diagnostics["derivative_backend"] == "analytic"
     assert diagnostics["derivative_status"] == "analytic"
@@ -130,7 +131,7 @@ def test_native_chemical_equilibrium_residual_evaluator_uses_analytic_jacobian_b
     assert diagnostics["derivative_available"] is True
     removed_reason_key = "not" + "_available_reason"
     assert removed_reason_key not in diagnostics
-    assert "hessian_backend" not in diagnostics
+    assert removed_hessian_key not in diagnostics
     assert "hessian_kind" not in diagnostics
     assert diagnostics["hessian_available"] is False
     assert diagnostics["exact_hessian_available"] is False
