@@ -565,6 +565,8 @@ Task 12 continuation note: reactive-regression runtime capability labels now des
 
 Task 12 continuation note: the unreferenced tracked LaTeX backup `docs/latex/equations_old.tex` was deleted. The current source of truth remains `docs/latex/equations.tex`, with generated equation navigation kept in `docs/equations.md` and `docs/equations_registry.yaml`.
 
+Task 12 continuation note: completed, unreferenced JetBrains cleanup plan artifacts under `docs/plans/` were removed. The implemented script remains `scripts/dev/configure_jetbrains_project.py`, and local agent routing continues to point there.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**
