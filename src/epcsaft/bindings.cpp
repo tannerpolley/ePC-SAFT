@@ -1390,44 +1390,6 @@ py::dict solve_equilibrium_native_binding(
     throw ValueError("Native equilibrium kind is not implemented: " + kind);
 }
 
-py::dict fit_pure_neutral_native_least_squares_binding(
-    const add_args& args,
-    const py::array& density_t,
-    const py::array& density_p,
-    const py::array& density_rho_exp,
-    const py::array& density_phase,
-    double density_scale,
-    const py::array& vle_t,
-    const py::array& vle_p,
-    double pure_vle_scale,
-    const py::array& x0,
-    const py::array& lower,
-    const py::array& upper,
-    int multistart
-) {
-    auto density_records = density_records_from_arrays(density_t, density_p, density_rho_exp, density_phase);
-    auto pure_vle_records = vle_records_from_arrays(vle_t, vle_p);
-    auto cpp_x0 = array_to_double_vector(x0);
-    auto cpp_lower = array_to_double_vector(lower);
-    auto cpp_upper = array_to_double_vector(upper);
-    PureNeutralRegressionResult result;
-    {
-        py::gil_scoped_release release;
-        result = fit_pure_neutral_least_squares_cpp(
-            args,
-            density_records,
-            density_scale,
-            pure_vle_records,
-            pure_vle_scale,
-            cpp_x0,
-            cpp_lower,
-            cpp_upper,
-            multistart
-        );
-    }
-    return regression_result_to_dict(result);
-}
-
 py::dict fit_pure_neutral_native_ceres_binding(
     const add_args& args,
     const py::array& density_t,
@@ -1916,7 +1878,6 @@ PYBIND11_MODULE(_core, m) {
             py::arg("solvent_override_index") = -1
         );
 
-    m.def("_fit_pure_neutral_native_least_squares", &fit_pure_neutral_native_least_squares_binding);
     m.def("_fit_pure_neutral_native_ceres", &fit_pure_neutral_native_ceres_binding);
     m.def("_fit_pure_neutral_native_debug", &evaluate_pure_neutral_objective_debug_binding);
     m.def("_fit_generic_native_least_squares", &fit_generic_native_least_squares_binding);

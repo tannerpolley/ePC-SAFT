@@ -342,7 +342,7 @@ Task 5 note: the convex coverage is deliberately limited to homogeneous ideal re
 - [ ] Add tests for ideal, nonideal, charged, and failure diagnostics.
 - [ ] Commit as `Route reactive speciation through native Ipopt`.
 
-Task 6 progress note: the first route slice adds explicit `solver_backend="ipopt"` support for homogeneous `ideal_mole_fraction` reactive speciation through a new native `equilibrium_nlp` ideal-speciation problem and the generic Ipopt adapter. The route uses species amounts as variables, material balances as equality constraints, a reduced ideal Gibbs objective, analytical gradients/Jacobians, one deterministic initial point, and Ipopt limited-memory Hessian behavior as solver-internal behavior only. Local proof covered both the no-Ipopt dependency gate and the Ipopt-enabled MSVC build at `C:\ProgramData\miniconda3\envs\ePC-SAFT\Library`. The broader Task 6 checkbox remains open because activity/concentration, charged acceptance coverage, and EOS/CppAD derivative-coupled routes still need the later EOS derivative NLP blocks before the old accepted custom residual paths can be deleted.
+Task 6 progress note: the first route slice adds explicit `solver_backend="ipopt"` support for homogeneous `ideal_mole_fraction` reactive speciation through a new native `equilibrium_nlp` ideal-speciation problem and the generic Ipopt adapter. The route uses species amounts as variables, material balances as equality constraints, a reduced ideal Gibbs objective, analytical gradients/Jacobians, one deterministic initial point, and Ipopt limited-memory Hessian behavior as solver-internal behavior only. Local proof covered both the no-Ipopt dependency gate and the Ipopt-enabled MSVC build at `C:\ProgramData\miniconda3\envs\ePC-SAFT\Library`. A second slice added exact charge-balance constraints when the charge row is independent of material balances and proved a charged ideal association case through the native Ipopt route. The broader Task 6 checkbox remains open because activity/concentration and EOS/CppAD derivative-coupled routes still need the later EOS derivative NLP blocks before the old accepted custom residual paths can be deleted.
 
 ### Task 7: Build EOS Phase Blocks For Equilibrium
 
@@ -406,6 +406,8 @@ Task 6 progress note: the first route slice adds explicit `solver_backend="ipopt
 - [ ] Use analytical/CppAD Jacobians where residuals depend on implicit EOS/state derivatives.
 - [ ] Add tests proving no numeric-diff Ceres route exists.
 - [ ] Commit as `Make regression Ceres-only`.
+
+Task 10 progress note: the first regression slice moves public nonassociating pure-neutral regression to the native Ceres route by default, rejects the old native least-squares backend from that public path, removes the Python and pybind private pure-neutral least-squares entry points, and updates capability metadata so Ceres is a production optimizer when compiled. Generic/associating benchmark least-squares cleanup remains open because those target families still need Ceres derivative coverage before their old analysis hooks can be deleted.
 
 ### Task 11: Internal Extension Boundaries
 

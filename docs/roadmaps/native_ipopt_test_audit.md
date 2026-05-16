@@ -87,7 +87,7 @@ The last two failures were caused or exposed by this cleanup slice and were fixe
 - The third Task 3 slice made Ceres and CppAD mandatory native dependencies for dev-script, package-backend, and CMake builds, excluded vendored Ceres install rules from package artifacts, and validated the actual local extension with Ceres enabled.
 - Public `EquilibriumOptions` still expose `newton` and `ipopt` through Python-side routing; `ReactiveSpeciationOptions` now accepts only `auto` and explicit `ipopt`.
 - Native and Python equilibrium paths still contain custom bracketing, bisection, golden-section, retry, and fallback behavior.
-- Regression still exposes native least-squares compatibility paths that must be replaced by Ceres-only production routes.
+- Regression public pure-neutral fitting now defaults to Ceres and rejects the old native least-squares backend. Generic and associating benchmark hooks still expose native least-squares compatibility paths that must be replaced by Ceres-only routes before Task 10 is complete.
 
 ## Required Cleanup Still Open
 

@@ -11,7 +11,7 @@ GENERIC_TEST_TARGETS = (
     "tests/api/runtime/test_runtime_neutral_methods.py::test_neutral_scalar_methods_return_expected_values",
     "tests/api/runtime/test_runtime_ionic_methods.py::test_ionic_activity_and_solution_methods_return_expected_values",
     "tests/api/parameters/test_parameter_templates.py::test_runtime_options_accept_autodiff_modes_and_preserve_explicit_overrides",
-    "tests/api/regression/test_regression_api_native_backends.py::test_internal_native_least_squares_backend_matches_methane_reference_band",
+    "tests/api/regression/test_regression_api_native_backends.py::test_public_pure_neutral_regression_is_robust_to_distinct_initial_guesses",
     "tests/regression/core/test_hydrocarbon.py::test_methane_reference_parameters_keep_native_objective_pinned",
     "tests/equilibrium/core/test_api.py::test_tp_flash_returns_structured_result_and_json_like_dict",
     "tests/equilibrium/core/test_vle.py::test_ternary_hydrocarbon_basis_tp_flash_closes_material_and_fugacity_balance",
@@ -35,7 +35,8 @@ GENERIC_TEST_TARGETS = (
     "tests/workflows/repo/test_workflow_entrypoints.py::test_docs_make_confidence_suite_the_default_runtime_check",
 )
 FAST_TEST_TARGETS = GENERIC_TEST_TARGETS
-CONFIDENCE_TEST_TARGETS = GENERIC_TEST_TARGETS + (
+CONFIDENCE_TEST_TARGETS = (
+    *GENERIC_TEST_TARGETS,
     "tests/native/runtime/test_runtime_density_closure.py::test_pressure_based_and_density_based_states_match_for_ionic_system",
     "tests/native/runtime/test_runtime_contribution_contracts.py::test_native_residual_helmholtz_and_compressibility_contributions_match_neutral_contract",
     "tests/native/contracts/test_equilibrium_native_contracts.py::test_public_equilibrium_result_comes_from_native_backend",

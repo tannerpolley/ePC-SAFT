@@ -88,6 +88,8 @@ def test_validate_project_modes_route_to_standard_validation_bundles():
 def test_doctor_tracks_native_symbols_added_by_recent_workflows():
     required = set(doctor.REQUIRED_CORE_SYMBOLS)
 
+    assert "_fit_pure_neutral_native_ceres" in required
+    assert "_fit_pure_neutral_native_least_squares" not in required
     assert "_fit_generic_native_least_squares" in required
     assert "_evaluate_generic_native_debug" in required
     assert "_solve_equilibrium_native" in required

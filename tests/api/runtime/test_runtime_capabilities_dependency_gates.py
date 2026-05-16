@@ -24,7 +24,8 @@ def test_default_build_reports_cppad_and_ceres_capabilities_honestly() -> None:
         assert capabilities["optimizers"]["ceres"]["available"] is False
         assert capabilities["optimizers"]["ceres"]["production"] is False
         assert capabilities["optimizers"]["ceres"]["reason"] == "dependency_not_compiled"
-    assert capabilities["optimizers"]["ceres"]["native_hot_loop"] is False
+    assert capabilities["optimizers"]["ceres"]["production"] is ceres["available"]
+    assert capabilities["optimizers"]["ceres"]["native_hot_loop"] is ceres["available"]
     assert capabilities["optimizers"]["ipopt"]["production"] is ipopt["available"]
     assert capabilities["optimizers"]["ipopt"]["adapter_available"] is ipopt["adapter_available"]
     assert capabilities["optimizers"]["ipopt"]["adapter_source_available"] is True

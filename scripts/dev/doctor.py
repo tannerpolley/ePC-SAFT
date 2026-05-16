@@ -11,7 +11,7 @@ SRC_ROOT = REPO_ROOT / "src"
 DEV_BUILD_CACHE = REPO_ROOT / "build" / "dev" / "CMakeCache.txt"
 STALE_TRACKED_REPORTS: tuple[Path, ...] = ()
 REQUIRED_CORE_SYMBOLS = (
-    "_fit_pure_neutral_native_least_squares",
+    "_fit_pure_neutral_native_ceres",
     "_fit_generic_native_least_squares",
     "_evaluate_generic_native_debug",
     "_solve_equilibrium_native",

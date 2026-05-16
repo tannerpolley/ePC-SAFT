@@ -22,7 +22,7 @@ Supported workflows
   mean-ionic activity coefficient, and relative permittivity. The path is
   liquid-only and reports ``cppad_implicit`` Jacobian metadata; it does not
   imply vapor electrolyte Born support.
-- ``fit_pure_neutral(...)`` fits nonassociating neutral pure-component ``m``, ``s``, and ``e`` against density and vapor-pressure records with the native least-squares backend.
+- ``fit_pure_neutral(...)`` fits nonassociating neutral pure-component ``m``, ``s``, and ``e`` against density and vapor-pressure records with the native Ceres backend.
 - ``fit_pure_ion(...)`` fits ion ``s``, ``e``, and ``d_born`` declarations with native provenance guardrails through the Ceres backend and ``cppad_implicit`` density-root sensitivities for density, osmotic-coefficient, and mean-ionic-activity rows.
 - ``fit_binary_pair(...)`` fits supported constant ``k_ij`` binary interaction values from direct VLE x/y records with the native Ceres backend and provenance guardrails. Constant ``l_ij`` and ``k_hb_ij`` declarations are validated, then report ``not_available`` until native analytic or autodiff derivatives are implemented for those targets.
 

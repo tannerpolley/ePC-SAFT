@@ -17,8 +17,8 @@ def test_runtime_reports_ceres_build_contract() -> None:
     capabilities = epcsaft.capabilities()
     assert capabilities["optimizers"]["ceres"]["status"] == ceres["status"]
     assert capabilities["optimizers"]["ceres"]["compiled"] is ceres["compiled"]
-    assert capabilities["optimizers"]["ceres"]["production"] is False
-    assert capabilities["optimizers"]["ceres"]["native_hot_loop"] is False
+    assert capabilities["optimizers"]["ceres"]["production"] is ceres["available"]
+    assert capabilities["optimizers"]["ceres"]["native_hot_loop"] is ceres["available"]
 
 
 def test_ceres_cppad_capability_claims_are_dependency_gated() -> None:

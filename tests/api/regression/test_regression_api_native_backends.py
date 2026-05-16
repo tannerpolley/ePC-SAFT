@@ -9,10 +9,7 @@ import epcsaft
 import epcsaft.regression as regression_module
 from epcsaft import fit_pure_neutral
 from epcsaft._types import InputError
-from epcsaft.regression import (
-    _debug_native_pure_neutral_objective,
-    _fit_pure_neutral_least_squares_internal,
-)
+from epcsaft.regression import _debug_native_pure_neutral_objective
 from tests.helpers.regression_cases import _methane_like_records, _minimal_neutral_metadata
 
 
@@ -142,27 +139,21 @@ def test_native_pure_neutral_debug_gradient_reports_autodiff_backend():
     assert tuple(debug["hessian_shape"]) == (0, 0)
     assert np.asarray(debug["hessian_row_major"], dtype=float).size == 0
 
-def test_internal_native_least_squares_backend_matches_methane_reference_band():
-    result = _fit_pure_neutral_least_squares_internal(
-        _methane_like_records(),
-        "Methane",
-        assoc_scheme="",
-        fixed_parameters=_minimal_neutral_metadata(16.043e-3),
-        initial_guess={"m": 1.08, "s": 3.55, "e": 155.0},
-        bounds={
-            "m": (0.5, 3.5),
-            "s": (2.0, 5.0),
-            "e": (50.0, 400.0),
-        },
-    )
-
-    assert result.success, result.message
-    assert result.backend == "least_squares_native"
-    assert result.metrics_by_term["density"] < 0.02
-    assert result.metrics_by_term["pure_vle_fugacity_balance"] < 0.02
-    assert result.fitted_values["m"] == pytest.approx(1.0, rel=0.0, abs=0.05)
-    assert result.fitted_values["s"] == pytest.approx(3.7039, rel=0.0, abs=0.08)
-    assert result.fitted_values["e"] == pytest.approx(150.03, rel=0.0, abs=3.0)
+def test_fit_pure_neutral_rejects_native_least_squares_backend():
+    with pytest.raises(InputError, match="optimizer_backend='ceres'"):
+        fit_pure_neutral(
+            _methane_like_records(),
+            "Methane",
+            assoc_scheme="",
+            fixed_parameters=_minimal_neutral_metadata(16.043e-3),
+            initial_guess={"m": 1.08, "s": 3.55, "e": 155.0},
+            bounds={
+                "m": (0.5, 3.5),
+                "s": (2.0, 5.0),
+                "e": (50.0, 400.0),
+            },
+            optimizer_backend="least_squares_native",
+        )
 
 @pytest.mark.parametrize(
     "initial_guess",
@@ -186,6 +177,8 @@ def test_public_pure_neutral_regression_is_robust_to_distinct_initial_guesses(in
         },
     )
     assert result.success, result.message
+    assert result.backend == "ceres"
+    assert result.optimizer_backend == "ceres"
     assert result.metrics_by_term["density"] < 0.02
     assert result.metrics_by_term["pure_vle_fugacity_balance"] < 0.02
     assert result.fitted_values["m"] == pytest.approx(1.0, rel=0.0, abs=0.06)

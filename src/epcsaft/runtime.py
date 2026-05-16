@@ -449,9 +449,10 @@ def capabilities() -> dict[str, object]:
     )
     ceres_capability = _dependency_capability(
         ceres,
-        production=False,
+        production=bool(ceres.get("available", False)),
         scope="native optimizer backend for explicitly supported regression paths",
-        native_hot_loop=False,
+        native_hot_loop=bool(ceres.get("available", False)),
+        production_routes=["regression:pure_neutral", "regression:pure_ion", "regression:binary_pair"],
     )
     derivative_coverage = _derivative_coverage_capabilities(cppad, ceres)
     return {
@@ -691,9 +692,9 @@ def capabilities() -> dict[str, object]:
             },
         },
         "regression": {
-            "pure_neutral": {"available": True, "backend": "native"},
-            "pure_ion": {"available": True, "backend": "native"},
-            "binary_pair": {"available": True, "backend": "native"},
+            "pure_neutral": {"available": True, "backend": "native_ceres"},
+            "pure_ion": {"available": True, "backend": "native_ceres"},
+            "binary_pair": {"available": True, "backend": "native_ceres"},
             "mea_co2_h2o_electrolyte_benchmark": {
                 "available": True,
                 "backend": "native",

@@ -18,7 +18,6 @@ from .epcsaft import (
     _fit_generic_native_ceres,
     _fit_generic_native_least_squares,
     _fit_pure_neutral_native_debug,
-    _fit_pure_neutral_native_least_squares,
     check_association,
     create_struct,
     vector_to_array,
@@ -740,8 +739,8 @@ class FitResult:
     status: int = 0
     message: str = ""
     nfev: int = 0
-    backend: str = "least_squares_native"
-    optimizer_backend: str = "least_squares_native"
+    backend: str = "ceres"
+    optimizer_backend: str = "ceres"
     derivative_backend: str = "not_available"
     objective_initial: float = float("nan")
     objective_final: float = float("nan")
@@ -2335,7 +2334,7 @@ def _fit_pure_neutral_internal(
     initial_guess: Mapping[str, float] | None = None,
     bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None = None,
     multistart: int = 0,
-    optimizer_backend: str = "least_squares_native",
+    optimizer_backend: str = "ceres",
 ) -> FitResult:
     fit_result, _ = _fit_pure_neutral_internal_with_native(
         records,
@@ -2365,7 +2364,7 @@ def _fit_pure_neutral_internal_with_native(
     initial_guess: Mapping[str, float] | None = None,
     bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None = None,
     multistart: int = 0,
-    optimizer_backend: str = "least_squares_native",
+    optimizer_backend: str = "ceres",
 ) -> tuple[FitResult, dict[str, Any]]:
     normalized_component = _normalize_component(component)
     normalized_records = _normalize_records(records)
@@ -2386,23 +2385,7 @@ def _fit_pure_neutral_internal_with_native(
         bounds,
     )
     theta0 = np.asarray([payload["initial_map"][name] for name in payload["optimization_names"]], dtype=float)
-    if optimizer_backend == "least_squares_native":
-        native_result = _fit_pure_neutral_native_least_squares(
-            payload["fixed_payload"],
-            payload["density_T"],
-            payload["density_P"],
-            payload["density_rho_exp"],
-            payload["density_phase"],
-            payload["density_scale"],
-            payload["vle_T"],
-            payload["vle_P"],
-            payload["pure_vle_scale"],
-            theta0,
-            payload["lower"],
-            payload["upper"],
-            multistart=int(multistart),
-        )
-    elif optimizer_backend == "ceres":
+    if optimizer_backend == "ceres":
         native_result = _fit_pure_neutral_native_ceres(
             payload["fixed_payload"],
             payload["density_T"],
@@ -2419,7 +2402,7 @@ def _fit_pure_neutral_internal_with_native(
             multistart=int(multistart),
         )
     else:
-        raise InputError(f"Unsupported pure-neutral optimizer backend: {optimizer_backend}")
+        raise InputError("pure-neutral regression is implemented for optimizer_backend='ceres'.")
 
     vector_map = _normalize_vector_map(payload["optimization_names"], native_result["x"])
     problem = FitProblem(
@@ -2481,7 +2464,7 @@ def fit_pure_neutral(
     bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None = None,
     user_options: Mapping[str, Any] | None = None,
     multistart: int = 0,
-    optimizer_backend: str = "least_squares_native",
+    optimizer_backend: str = "ceres",
 ) -> FitResult:
     """Fit neutral pure-component m, s, and e parameters."""
     _ = user_options
@@ -2497,37 +2480,8 @@ def fit_pure_neutral(
         bounds=bounds,
         multistart=multistart,
         optimizer_backend=_optimizer_backend_from_options(
-            {"optimizer_backend": optimizer_backend}, "least_squares_native"
+            {"optimizer_backend": optimizer_backend}, "ceres"
         ),
-    )
-
-
-def _fit_pure_neutral_least_squares_internal(
-    records: Any,
-    component: str,
-    *,
-    assoc_scheme: str = "",
-    dataset: str | Path | None = None,
-    pure_set: str | None = None,
-    fit_targets: Iterable[str] | None = None,
-    fixed_parameters: Mapping[str, Any] | None = None,
-    initial_guess: Mapping[str, float] | None = None,
-    bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None = None,
-    multistart: int = 0,
-) -> FitResult:
-    """Internal native least-squares comparison hook for pure-neutral regression."""
-    return _fit_pure_neutral_internal(
-        records,
-        component,
-        assoc_scheme=assoc_scheme,
-        dataset=dataset,
-        pure_set=pure_set,
-        fit_targets=fit_targets,
-        fixed_parameters=fixed_parameters,
-        initial_guess=initial_guess,
-        bounds=bounds,
-        multistart=multistart,
-        optimizer_backend="least_squares_native",
     )
 
 

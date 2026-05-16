@@ -93,7 +93,8 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert ceres["status"] in {"disabled", "enabled_available", "not_configured"}
     assert ceres["compiled"] is (ceres["status"] == "enabled_available")
     assert capabilities["optimizers"]["ceres"]["available"] is ceres["available"]
-    assert capabilities["optimizers"]["ceres"]["production"] is False
+    assert capabilities["optimizers"]["ceres"]["production"] is ceres["available"]
+    assert capabilities["optimizers"]["ceres"]["native_hot_loop"] is ceres["available"]
     assert capabilities["equilibrium"]["neutral_tp_flash"]["available"] is True
     assert capabilities["equilibrium"]["neutral_bubble_dew"] == {
         "available": True,
@@ -132,7 +133,7 @@ def test_runtime_build_info_and_capabilities_are_json_like():
         == "implicit_sensitivity_available_for_reaction_constant_response"
     )
     assert capabilities["equilibrium"]["reactive_speciation"]["explicit_autodiff_raises_when_unavailable"] is True
-    assert capabilities["regression"]["pure_neutral"]["backend"] == "native"
+    assert capabilities["regression"]["pure_neutral"]["backend"] == "native_ceres"
     reactive_regression = capabilities["regression"]["reactive_electrolyte_residuals"]
     assert reactive_regression["available"] is True
     assert reactive_regression["backend"] == "python_orchestrated_native_solvers"

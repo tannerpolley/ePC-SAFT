@@ -1,9 +1,7 @@
 r"""Opt-in runtime profiling for native pure-neutral regression.
 
-This compares:
-
-- the current public native least-squares workflow
-- the internal native least-squares path
+This compares the public default native Ceres workflow with an explicit Ceres
+selection for parity timing.
 
 Run directly with:
 
@@ -26,10 +24,11 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from epcsaft import fit_pure_neutral
-from epcsaft.regression import _fit_pure_neutral_least_squares_internal
-from tests.helpers.regression_cases import _load_workbook_reference_rows
-from tests.helpers.regression_cases import _neutral_fixed_parameters
-from tests.helpers.regression_cases import _real_saturation_records
+from tests.helpers.regression_cases import (
+    _load_workbook_reference_rows,
+    _neutral_fixed_parameters,
+    _real_saturation_records,
+)
 
 REPORT_DIR = REPO_ROOT / "build" / "runtime_profile"
 REPORT_CSV = REPORT_DIR / "regression_runtime_profile.csv"
@@ -65,8 +64,8 @@ def _benchmark_current_case(component: str, backend: str) -> dict[str, Any]:
     kwargs = _benchmark_kwargs(component)
     if backend == "public_default":
         solve = fit_pure_neutral
-    elif backend == "least_squares_native":
-        solve = _fit_pure_neutral_least_squares_internal
+    elif backend == "ceres":
+        solve = lambda **call_kwargs: fit_pure_neutral(**call_kwargs, optimizer_backend="ceres")
     else:
         raise ValueError(f"Unsupported benchmark backend {backend!r}")
 
@@ -195,9 +194,9 @@ def _write_reports(rows: list[dict[str, Any]]) -> None:
 def run_regression_runtime_profile() -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     rows.append(_benchmark_current_case("Methane", "public_default"))
-    rows.append(_benchmark_current_case("Methane", "least_squares_native"))
+    rows.append(_benchmark_current_case("Methane", "ceres"))
     rows.append(_benchmark_current_suite("public_default"))
-    rows.append(_benchmark_current_suite("least_squares_native"))
+    rows.append(_benchmark_current_suite("ceres"))
 
     _write_reports(rows)
     return rows
