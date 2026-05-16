@@ -48,7 +48,7 @@ def test_associating_neutral_lle_solves_with_cppad_implicit_derivatives() -> Non
     assert result.diagnostics["derivative_status"] == "residual_jacobian_available"
     assert result.diagnostics["jacobian_available"] is True
     payload = json.dumps(result.to_dict(), default=str).lower()
-    assert "not_available" not in payload
+    assert "unsupported" not in payload
     assert "numerical_derivative" not in payload
 
 

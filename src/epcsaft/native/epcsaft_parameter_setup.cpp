@@ -653,7 +653,7 @@ vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x,
         return deps_dx;
     }
     if (rule == 8) {
-        throw ValueError("not_available: analytic dielectric derivative is unavailable for dielc_rule=8.");
+        throw ValueError("unsupported: analytic dielectric derivative is unavailable for dielc_rule=8.");
     }
     if (rule == 2) {
         double mw_bar = 0.0;
@@ -800,7 +800,7 @@ DielectricState dielectric_state_cpp(const vector<double> &x, const add_args &cp
     } else if (cppargs.dielc_diff_mode == 2 || cppargs.dielc_diff_mode == 3) {
         state.deps_dx = dielectric_derivative_rule_cppad_cpp(cppargs.dielc_rule, x, cppargs);
     } else {
-        throw ValueError("not_available: requested dielectric derivative backend is unavailable.");
+        throw ValueError("unsupported: requested dielectric derivative backend is unavailable.");
     }
     return state;
 }

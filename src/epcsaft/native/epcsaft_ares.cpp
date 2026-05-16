@@ -447,7 +447,7 @@ static Scalar ares_assoc_scalar_cpp(const vector<Scalar> &x, const add_args &cpp
     if (!cppargs.assoc_num.empty()) {
         for (int sites : cppargs.assoc_num) {
             if (sites > 0) {
-                throw ValueError("not_available: CppAD association recording is unavailable because site fractions require an iterative solve.");
+                throw ValueError("unsupported: CppAD association recording requires implicit site-fraction sensitivities.");
             }
         }
     }
@@ -809,7 +809,7 @@ static Scalar ares_ion_scalar_cpp(
     Scalar eps = scalar_constant<Scalar>(0.0);
     if (cppargs.dielc_rule == 0) {
         if (component_target_kind == kGenericTargetDielcLocal) {
-            throw ValueError("not_available: CppAD ionic dielectric-parameter recording requires dielc_rule=1.");
+            throw ValueError("unsupported: CppAD ionic dielectric-parameter recording requires dielc_rule=1.");
         }
         eps = scalar_constant<Scalar>(*std::max_element(cppargs.dielc.begin(), cppargs.dielc.end()));
     } else if (cppargs.dielc_rule == 1) {
@@ -824,7 +824,7 @@ static Scalar ares_ion_scalar_cpp(
         }
     } else {
         if (component_target_kind == kGenericTargetDielcLocal) {
-            throw ValueError("not_available: CppAD ionic dielectric-parameter recording requires dielc_rule=1.");
+            throw ValueError("unsupported: CppAD ionic dielectric-parameter recording requires dielc_rule=1.");
         }
 #ifdef EPCSAFT_HAS_CPPAD
         eps = dielectric_constant_rule_cppad_cpp(cppargs.dielc_rule, x, cppargs);
@@ -882,7 +882,7 @@ static Scalar ares_born_scalar_cpp(
     Scalar eps = scalar_constant<Scalar>(0.0);
     if (cppargs.dielc_rule == 0) {
         if (component_target_kind == kGenericTargetDielcLocal) {
-            throw ValueError("not_available: CppAD Born dielectric-parameter recording requires dielc_rule=1.");
+            throw ValueError("unsupported: CppAD Born dielectric-parameter recording requires dielc_rule=1.");
         }
         eps = scalar_constant<Scalar>(*std::max_element(cppargs.dielc.begin(), cppargs.dielc.end()));
     } else if (cppargs.dielc_rule == 1) {
@@ -897,7 +897,7 @@ static Scalar ares_born_scalar_cpp(
         }
     } else {
         if (component_target_kind == kGenericTargetDielcLocal) {
-            throw ValueError("not_available: CppAD Born dielectric-parameter recording requires dielc_rule=1.");
+            throw ValueError("unsupported: CppAD Born dielectric-parameter recording requires dielc_rule=1.");
         }
 #ifdef EPCSAFT_HAS_CPPAD
         eps = dielectric_constant_rule_cppad_cpp(cppargs.dielc_rule, x, cppargs);
@@ -906,7 +906,7 @@ static Scalar ares_born_scalar_cpp(
 #endif
     }
     if (cppargs.born_eps_mode == 1) {
-        throw ValueError("not_available: CppAD Born reference-solvent dielectric routing is not implemented.");
+        throw ValueError("unsupported: CppAD Born reference-solvent dielectric routing is not implemented.");
     }
     if (cppargs.born_model == 1) {
         Scalar charge_radius_sum = scalar_constant<Scalar>(0.0);
@@ -1072,7 +1072,7 @@ namespace {
 
 std::string contribution_backend_name(int mode) {
     if (mode == 0) return "analytic";
-    if (mode == 1) return "not_available";
+    if (mode == 1) return "unsupported";
     if (mode == 2) return "cppad";
     if (mode == 3 || mode == 5) {
         return "analytic";
@@ -1097,7 +1097,7 @@ std::string association_backend_name(const add_args &cppargs) {
     if (cppargs.assoc_dadx_diff_mode == 0 || cppargs.assoc_dadx_diff_mode == 3 || cppargs.assoc_dadx_diff_mode == 5) {
         return "analytic_implicit";
     }
-    return "not_available";
+    return "unsupported";
 }
 
 std::map<std::string, std::string> composition_derivative_backend_map(const add_args &cppargs) {
@@ -1406,12 +1406,12 @@ epcsaft::native::cppad_support::CppADDerivativeResult cppad_eos_contribution_der
     if (!cppargs.assoc_num.empty()) {
         for (int sites : cppargs.assoc_num) {
             if (sites > 0) {
-                throw ValueError("not_available: CppAD association recording is unavailable because site fractions require an iterative solve.");
+                throw ValueError("unsupported: CppAD association recording requires implicit site-fraction sensitivities.");
             }
         }
     }
     if (!cppargs.z.empty() && cppargs.born_model > 1) {
-        throw ValueError("not_available: CppAD Born recording supports direct Born model=1 formulas only.");
+        throw ValueError("unsupported: CppAD Born recording supports direct Born model=1 formulas only.");
     }
     int ncomp = static_cast<int>(x.size());
     std::vector<CppADScalar> ax(ncomp);
@@ -1456,7 +1456,7 @@ epcsaft::native::cppad_support::CppADDerivativeResult cppad_eos_contribution_der
     (void)cppargs;
     epcsaft::native::cppad_support::CppADDerivativeResult result;
     result.supported = false;
-    result.backend = "not_available";
+    result.backend = "cppad_disabled";
     result.message = "CppAD support is disabled in this native build";
     return result;
 #endif
@@ -1671,12 +1671,12 @@ NeutralBinaryKijPhaseDerivatives neutral_binary_pair_parameter_phase_derivatives
     using CppADScalar = CppAD::AD<double>;
     const int ncomp = static_cast<int>(x.size());
     if (ncomp != 2 || cppargs.m.size() != 2 || cppargs.s.size() != 2 || cppargs.e.size() != 2) {
-        throw ValueError("not_available: native binary pair-parameter CppAD derivatives require exactly two neutral components.");
+        throw ValueError("unsupported: native binary pair-parameter CppAD derivatives require exactly two neutral components.");
     }
     if (!cppargs.z.empty()) {
         for (double charge : cppargs.z) {
             if (std::abs(charge) > 1.0e-12) {
-                throw ValueError("not_available: native binary pair-parameter CppAD derivatives do not support ionic components.");
+                throw ValueError("unsupported: native binary pair-parameter CppAD derivatives do not support ionic components.");
             }
         }
     }
@@ -1687,11 +1687,11 @@ NeutralBinaryKijPhaseDerivatives neutral_binary_pair_parameter_phase_derivatives
     }
     const bool active_association = has_association_sites(cppargs);
     if (active_association && !is_kij) {
-        throw ValueError("not_available: associating binary pair-parameter derivatives support k_ij only until l_ij association-size sensitivities are implemented.");
+        throw ValueError("unsupported: associating binary pair-parameter derivatives support k_ij only until l_ij association-size sensitivities are implemented.");
     }
     const vector<double> &parameter_matrix = is_kij ? cppargs.k_ij : cppargs.l_ij;
     if (parameter_matrix.size() != static_cast<size_t>(ncomp * ncomp)) {
-        throw ValueError("not_available: native binary pair-parameter CppAD derivatives require a dense parameter matrix.");
+        throw ValueError("unsupported: native binary pair-parameter CppAD derivatives require a dense parameter matrix.");
     }
     if (parameter_index < 0 || static_cast<size_t>(parameter_index) >= parameter_matrix.size()) {
         throw ValueError("Native binary pair-parameter derivative index is out of range.");
@@ -1833,7 +1833,7 @@ NeutralBinaryKijPhaseDerivatives neutral_binary_pair_parameter_phase_derivatives
     (void)cppargs;
     (void)parameter_index;
     (void)parameter_name;
-    throw ValueError("not_available: CppAD support is not enabled in this native build.");
+    throw ValueError("unsupported: CppAD support is not enabled in this native build.");
 #endif
 }
 
@@ -1849,40 +1849,40 @@ NeutralBinaryKijPhaseDerivatives generic_component_parameter_phase_derivatives_c
     using CppADScalar = CppAD::AD<double>;
     const int ncomp = static_cast<int>(x.size());
     if (ncomp <= 0 || cppargs.s.size() != x.size() || cppargs.e.size() != x.size()) {
-        throw ValueError("not_available: generic component-parameter CppAD derivatives require aligned component parameters.");
+        throw ValueError("unsupported: generic component-parameter CppAD derivatives require aligned component parameters.");
     }
     if (target_kind != ares_detail::kGenericTargetSLocal
         && target_kind != ares_detail::kGenericTargetELocal
         && target_kind != ares_detail::kGenericTargetDBornLocal
         && target_kind != ares_detail::kGenericTargetFSolvLocal
         && target_kind != ares_detail::kGenericTargetDielcLocal) {
-        throw ValueError("not_available: generic component-parameter CppAD derivatives support s, e, d_born, f_solv, and dielc only.");
+        throw ValueError("unsupported: generic component-parameter CppAD derivatives support s, e, d_born, f_solv, and dielc only.");
     }
     if (target_index < 0 || target_index >= ncomp) {
         throw ValueError("Native generic component-parameter derivative target index is out of range.");
     }
     if (target_kind == ares_detail::kGenericTargetDBornLocal) {
         if (cppargs.d_born.size() != x.size()) {
-            throw ValueError("not_available: d_born CppAD derivatives require aligned d_born values.");
+            throw ValueError("unsupported: d_born CppAD derivatives require aligned d_born values.");
         }
         if (cppargs.born_model != 1 && cppargs.born_model != 2) {
-            throw ValueError("not_available: d_born CppAD derivatives require a direct or SSM/DS Born model.");
+            throw ValueError("unsupported: d_born CppAD derivatives require a direct or SSM/DS Born model.");
         }
     }
     if (target_kind == ares_detail::kGenericTargetFSolvLocal) {
         if (cppargs.f_solv.size() != x.size()) {
-            throw ValueError("not_available: f_solv CppAD derivatives require aligned f_solv values.");
+            throw ValueError("unsupported: f_solv CppAD derivatives require aligned f_solv values.");
         }
         if (cppargs.born_model != 2) {
-            throw ValueError("not_available: f_solv CppAD derivatives require the SSM/DS Born model.");
+            throw ValueError("unsupported: f_solv CppAD derivatives require the SSM/DS Born model.");
         }
     }
     if (target_kind == ares_detail::kGenericTargetDielcLocal) {
         if (cppargs.dielc.size() != x.size()) {
-            throw ValueError("not_available: dielc CppAD derivatives require aligned relative-permittivity values.");
+            throw ValueError("unsupported: dielc CppAD derivatives require aligned relative-permittivity values.");
         }
         if (cppargs.dielc_rule != 1) {
-            throw ValueError("not_available: dielc CppAD derivatives require linear mole-fraction relative-permittivity mixing.");
+            throw ValueError("unsupported: dielc CppAD derivatives require linear mole-fraction relative-permittivity mixing.");
         }
     }
     if (!(t > 0.0) || !(rho > 0.0)) {
@@ -2019,7 +2019,7 @@ NeutralBinaryKijPhaseDerivatives generic_component_parameter_phase_derivatives_c
     (void)cppargs;
     (void)target_kind;
     (void)target_index;
-    throw ValueError("not_available: CppAD support is not enabled in this native build.");
+    throw ValueError("unsupported: CppAD support is not enabled in this native build.");
 #endif
 }
 
@@ -2105,7 +2105,7 @@ CompositionContributionResult composition_derivative_residual_helmholtz_result_c
     result.derivative_backend = composition_derivative_backend_map(cppargs);
     result.derivative_available = true;
     for (const auto& item : result.derivative_backend) {
-        if (item.second == "not_available") {
+        if (item.second == "unsupported") {
             result.derivative_available = false;
             break;
         }

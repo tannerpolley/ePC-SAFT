@@ -319,8 +319,8 @@ struct NeutralBinaryKijPhaseDerivatives {
 
 struct PhaseStateCompositionSensitivityResult {
     bool supported = false;
-    std::string backend = "not_available";
-    std::string density_backend = "not_available";
+    std::string backend = "unspecified";
+    std::string density_backend = "unspecified";
     std::string message;
     double temperature = 0.0;
     double pressure = 0.0;

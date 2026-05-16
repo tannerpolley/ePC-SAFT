@@ -302,7 +302,7 @@ ContributionDadxResult dadx_hc_cpp(const MixtureState &thermo, const HardChainSt
     }
 
     if (cppargs.hc_dadx_diff_mode == 1) {
-        throw ValueError("not_available: hard-chain composition derivative backend is unavailable.");
+        throw ValueError("unsupported: hard-chain composition derivative backend is unavailable.");
     } else if (cppargs.hc_dadx_diff_mode == 2) {
         result.dadx = contribution_dadx_cppad_cpp(AresContributionKind::HC, t, rho, x, cppargs);
     }

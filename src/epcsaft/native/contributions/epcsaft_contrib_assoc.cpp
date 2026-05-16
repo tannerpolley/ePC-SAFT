@@ -442,7 +442,7 @@ ContributionDadxResult dadx_assoc_cpp(const MixtureState &thermo, const HardChai
     }
 
     if (cppargs.assoc_dadx_diff_mode == 1) {
-        throw ValueError("not_available: association composition derivative backend is unavailable.");
+        throw ValueError("unsupported: association composition derivative backend is unavailable.");
     } else if (cppargs.assoc_dadx_diff_mode == 2) {
         result.dadx = contribution_dadx_cppad_cpp(AresContributionKind::ASSOC, t, rho, x, cppargs);
     }

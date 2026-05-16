@@ -118,7 +118,7 @@ epcsaft::native::cppad_support::CppADDerivativeResult cppad_pressure_density_der
     (void)rho;
     epcsaft::native::cppad_support::CppADDerivativeResult result;
     result.supported = false;
-    result.backend = "not_available";
+    result.backend = "cppad_disabled";
     result.message = "CppAD support is disabled in this native build";
     return result;
 #endif

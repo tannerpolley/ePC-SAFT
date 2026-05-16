@@ -168,7 +168,7 @@ def _backend_from_contribution_details(details, *, available=True, reason=""):
     if not available:
         _unsupported_derivative(reason or "composition derivative contribution backend is unsupported")
     labels = {str(v) for v in dict(details).values()}
-    if "not_available" in labels:
+    if "unsupported" in labels:
         _unsupported_derivative(reason or "composition derivative contribution backend is unsupported")
     if "cppad" in labels:
         return "cppad", "mixed CppAD/analytic derivative contributions"
@@ -180,7 +180,7 @@ def _backend_from_contribution_details(details, *, available=True, reason=""):
 
 
 def _unsupported_derivative(message):
-    text = str(message).replace("not_available:", "unsupported:").replace("not_available", "unsupported")
+    text = str(message)
     if not text.startswith("unsupported:"):
         text = f"unsupported: {text}"
     raise InputError(text)
@@ -1351,7 +1351,7 @@ class ePCSAFTState:
             available=bool(result["derivative_available"]),
         )
         return _derivative_result_payload(
-            supported=backend != "not_available",
+            supported=backend != "unsupported",
             backend=backend,
             message=message,
             value=[self.residual_helmholtz()],
@@ -1659,14 +1659,14 @@ class ePCSAFTState:
             ("ion", "debye_huckel / ion", "ares_dh"),
             ("born", "born_direct", "ares_born"),
         ):
-            backend = details.get(key, "not_available")
+            backend = details.get(key, "unsupported")
             if key == "assoc" and assoc_active and backend == "analytic":
                 backend = "analytic_implicit"
             inactive_term = key in {"assoc", "ion", "born"} and np.allclose(composition["terms"][key], 0.0)
             add(
                 quantity,
                 "composition",
-                {"supported": backend != "not_available", "backend": backend, "message": ""},
+                {"supported": backend != "unsupported", "backend": backend, "message": ""},
                 not_applicable=inactive_term,
                 source_equation_ids=(eqid,),
             )

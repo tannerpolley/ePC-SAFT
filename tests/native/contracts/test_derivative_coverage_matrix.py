@@ -57,7 +57,7 @@ def test_derivative_coverage_matrix_uses_explicit_backend_labels() -> None:
             "out_of_scope",
         }
     )
-    assert "not_available" not in backend_labels
+    assert "unsupported" not in backend_labels
 
 
 def test_derivative_coverage_matrix_classifies_supported_and_out_of_scope_rows() -> None:

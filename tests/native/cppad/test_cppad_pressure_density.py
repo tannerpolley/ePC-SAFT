@@ -19,7 +19,7 @@ def test_cppad_pressure_density_closure_records_density_dependence() -> None:
     result = _core._native_cppad_pressure_density(t, rho, [1.0], args)
 
     if not result["cppad_compiled"]:
-        assert result["derivative_backend"] == "not_available"
+        assert result["derivative_backend"] == "cppad_disabled"
         return
 
     assert result["cppad_used"] is True

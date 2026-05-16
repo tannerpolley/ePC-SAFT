@@ -42,7 +42,7 @@ def test_pressure_density_derivative_result_reports_backend_contract() -> None:
     result = state.pressure_density_derivative_result()
 
     assert set(("supported", "backend", "message", "value", "jacobian", "shape")).issubset(result)
-    assert result["backend"] in {"cppad", "not_available"}
+    assert result["backend"] == "cppad"
     assert result["shape"] == [1, 1]
     assert "numerical_derivative" not in str(result).lower()
     if result["supported"]:

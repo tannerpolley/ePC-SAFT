@@ -62,5 +62,5 @@ def test_direct_cppad_eos_contribution_recording_rejects_active_association() ->
     if not _core._native_cppad_smoke()["cppad_compiled"]:
         return
 
-    with pytest.raises(_core.NativeValueError, match="not_available"):
+    with pytest.raises(_core.NativeValueError, match="unsupported"):
         _core._native_cppad_eos_contributions(temperature, density, composition.tolist(), args)

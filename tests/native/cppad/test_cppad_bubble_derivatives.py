@@ -13,7 +13,7 @@ def test_cppad_pressure_derivative_api_underpins_bubble_policy() -> None:
 
     pressure_density = state.pressure_density_derivative_result()
 
-    assert pressure_density["backend"] in {"cppad", "not_available"}
+    assert pressure_density["backend"] == "cppad"
     assert pressure_density["shape"] == [1, 1]
     assert "numerical_derivative" not in str(pressure_density).lower()
 
