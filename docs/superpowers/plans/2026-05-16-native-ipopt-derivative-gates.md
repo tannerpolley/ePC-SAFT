@@ -275,7 +275,7 @@ Task 2 continuation note: the stale full-duration failure list in the tracked te
 
 Task 2 continuation note: after the reactive-speciation diagnostic and MIAC fixture cleanup slices, `uv run python run_pytest.py --all -q` passed with 524 tests and 21 skips in 164.09 seconds.
 
-Task 2 continuation note: electrolyte LLE tests that still named the current Ceres equilibrium route as production coverage were rewritten to call it transitional/current Ceres coverage. The reactive-phase residual-surface evaluator now computes the exact CppAD-implicit Jacobian by default for `auto`, `analytic`, and `cppad` requests instead of emitting an empty derivative payload.
+Task 2 continuation note: electrolyte LLE tests that named the Ceres equilibrium route as production coverage were first narrowed to transitional coverage. The reactive-phase residual-surface evaluator now computes the exact CppAD-implicit Jacobian by default for `auto`, `analytic`, and `cppad` requests instead of emitting an empty derivative payload.
 
 Task 2 continuation note: neutral equilibrium and native chemical-equilibrium diagnostics no longer manufacture missing-status reason fields on successful routes. Routes without a derivative payload now use `not_applicable`, and successful native chemical-equilibrium payloads omit the old empty reason field.
 
@@ -546,6 +546,8 @@ Task 12 continuation note: the tracked source/test/script text gate now blocks r
 Task 12 continuation note: the tracked source/test/script text gate now also blocks the removed Hessian-backend diagnostic token so approximate solver-internal Hessian behavior cannot be reintroduced as a package derivative backend label.
 
 Task 12 continuation note: public neutral LLE no longer executes the transitional Ceres residual route from `lle_flash` or `lle_tp`. The public adapter validates feed, mixture, scalar inputs, and optional phase seeds, then raises until a native Ipopt constrained NLP route owns production neutral LLE; lower-level native residual-surface coverage remains private diagnostic coverage.
+
+Task 12 continuation note: public electrolyte LLE no longer executes the transitional Ceres residual route from `electrolyte_lle` or `electrolyte_lle_tp`. The public adapter validates ion-containing mixtures, charge-neutral feeds, electrolyte formula bases, molality/direct-feed inputs, and optional `aq`/`org` phase seeds, then raises until a native Ipopt constrained NLP route owns production electrolyte LLE; lower-level native residual-surface coverage remains private diagnostic coverage.
 
 ### Task 13: Final Validation And Cleanup
 

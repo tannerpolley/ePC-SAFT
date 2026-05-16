@@ -41,10 +41,10 @@ def _raise_native_ipopt_reactive_phase_required(route: str) -> None:
     )
 
 
-def _raise_native_ipopt_lle_required(route: str) -> None:
+def _raise_native_ipopt_lle_required(route: str, *, previous_route: str = "Ceres residual LLE route") -> None:
     raise InputError(
         f"{route} requires a native Ipopt equilibrium NLP route. "
-        "The previous Ceres residual LLE route is disabled by the solver gate."
+        f"The previous {previous_route} is disabled by the solver gate."
     )
 
 
@@ -1699,11 +1699,11 @@ def electrolyte_lle_flash_native(
     initial_phases: Any = None,
     options: EquilibriumOptions | None = None,
 ) -> EquilibriumResult:
-    """Run native C++ electrolyte LLE for native-ready request forms."""
+    """Validate an electrolyte LLE request and require the native Ipopt route."""
     opts = _normalize_options(options)
     _require_ion_containing_mixture(mixture, "electrolyte_lle")
-    temperature = _positive_scalar(T, "T", "electrolyte_lle")
-    pressure = _positive_scalar(P, "P", "electrolyte_lle")
+    _positive_scalar(T, "T", "electrolyte_lle")
+    _positive_scalar(P, "P", "electrolyte_lle")
     feed, feed_diagnostics = _normalize_electrolyte_feed(
         mixture,
         z=z,
@@ -1714,90 +1714,9 @@ def electrolyte_lle_flash_native(
     charges = _mixture_charges(mixture)
     _require_charge_neutral(feed, charges, "electrolyte_lle feed")
     basis_payload = _electrolyte_formula_basis(mixture, feed, feed_diagnostics)
-    native_initial_phases = None
     if initial_phases is not None:
-        seed = _electrolyte_initial_phase_seed(mixture, feed, basis_payload, initial_phases, opts)
-        native_initial_phases = {
-            "aq": np.asarray(initial_phases["aq"], dtype=float).flatten().tolist(),
-            "org": np.asarray(initial_phases["org"], dtype=float).flatten().tolist(),
-            "phase_fraction": float(initial_phases["phase_fraction"]),
-        }
-        _ = seed
-    if opts.solver_backend == "ipopt":
-        _raise_native_ipopt_not_routed("electrolyte_lle")
-    try:
-        result = _call_native_equilibrium(
-            mixture,
-            kind="electrolyte_lle",
-            T=temperature,
-            P=pressure,
-            z=feed,
-            options=opts,
-            initial_phases=native_initial_phases,
-        )
-    except SolutionError as exc:
-        if isinstance(getattr(exc, "diagnostics", None), dict):
-            diagnostics = dict(exc.diagnostics)
-            diagnostics.setdefault("algorithm_reference", dict(_ASCANI_2022_REFERENCE))
-            diagnostics.setdefault("basis_rank", int(basis_payload["basis_rank"]))
-            diagnostics.setdefault("e_matrix", np.asarray(basis_payload["e_matrix"], dtype=float).tolist())
-            diagnostics.setdefault("salt_pairs", [dict(pair) for pair in basis_payload["salt_pairs"]])
-            diagnostics.update(feed_diagnostics)
-            raise SolutionError(exc.message, _json_like(diagnostics)) from exc
-        diagnostics = {
-            "phase_equilibrium_model": "electrolyte_lle_v5_native_charge_constrained_solve",
-            "equilibrium_route": "electrolyte_lle",
-            "route_reason": "ion-containing mixture",
-            "variable_model": "ascani_transformed_salt_pairs",
-            "basis_rank": int(basis_payload["basis_rank"]),
-            "e_matrix": np.asarray(basis_payload["e_matrix"], dtype=float).tolist(),
-            "salt_pairs": [dict(pair) for pair in basis_payload["salt_pairs"]],
-            "algorithm_reference": dict(_ASCANI_2022_REFERENCE),
-            "feed_composition": feed.tolist(),
-            "stability_analysis": "electrolyte_tpd",
-            "stability_checked": True,
-            "solver_backend": "ceres",
-            "selected_solver_backend": "ceres",
-            "solver_method": "ceres_trust_region_residual_solve",
-            "solver_language": "c++",
-            "native_entrypoint": "_solve_equilibrium_native",
-            "jacobian_backend": "cppad_implicit",
-            "derivative_backend": "cppad_implicit",
-            "jacobian_available": True,
-            "derivative_available": True,
-            "tpd_method": "native_tpd_global_search",
-            "gibbs_seed_method": "native_golden_section",
-            "acceptance_gate": "predictive_solve_failed",
-            "solver_residual_norm": 1.0,
-            "best_failure_reason": str(exc),
-        }
-        diagnostics.update(feed_diagnostics)
-        diagnostics = _diagnostics_with_options(options=opts, diagnostics=diagnostics)
-        if diagnostics is not None:
-            diagnostics = _normalize_derivative_diagnostics(
-                diagnostics,
-                problem_kind="electrolyte_lle",
-                phase_count=0,
-            )
-        raise SolutionError("electrolyte LLE flash did not converge", _json_like(diagnostics)) from exc
-    assert isinstance(result, EquilibriumResult)
-    diagnostics = dict(result.diagnostics)
-    diagnostics.setdefault("algorithm_reference", dict(_ASCANI_2022_REFERENCE))
-    diagnostics.setdefault("basis_rank", int(basis_payload["basis_rank"]))
-    diagnostics.setdefault("e_matrix", np.asarray(basis_payload["e_matrix"], dtype=float).tolist())
-    diagnostics.setdefault("salt_pairs", [dict(pair) for pair in basis_payload["salt_pairs"]])
-    diagnostics.setdefault("phase_charge_balance", _phase_charge_balance_from_phases(feed, result.phases, charges))
-    diagnostics.update(feed_diagnostics)
-    diagnostics = _normalize_derivative_diagnostics(
-        diagnostics,
-        problem_kind=result.problem_kind,
-        phase_count=len(result.phases),
-    )
-    return EquilibriumResult(
-        backend=result.backend,
-        problem_kind=result.problem_kind,
-        phases=result.phases,
-        stable=result.stable,
-        split_detected=result.split_detected,
-        diagnostics=diagnostics,
+        _electrolyte_initial_phase_seed(mixture, feed, basis_payload, initial_phases, opts)
+    _raise_native_ipopt_lle_required(
+        "electrolyte_lle",
+        previous_route="Ceres residual electrolyte LLE route",
     )

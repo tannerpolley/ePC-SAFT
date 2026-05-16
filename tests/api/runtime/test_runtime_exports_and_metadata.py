@@ -117,8 +117,14 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert electrolyte_bubble["backend"] == "native_ipopt_equilibrium_nlp_required"
     assert electrolyte_bubble["status"] == "route_pending"
     assert electrolyte_bubble["scope"] == "fixed liquid composition with neutral vapor species; ions remain liquid-only"
-    assert capabilities["equilibrium"]["electrolyte_lle"]["default_auto_uses_ipopt"] is False
-    assert capabilities["equilibrium"]["electrolyte_lle"]["full_constrained_nlp_available"] is False
+    electrolyte_lle = capabilities["equilibrium"]["electrolyte_lle"]
+    assert electrolyte_lle["available"] is False
+    assert electrolyte_lle["backend"] == "native_ipopt_equilibrium_nlp_required"
+    assert electrolyte_lle["methods"] == ["electrolyte_lle", "electrolyte_lle_tp"]
+    assert electrolyte_lle["status"] == "route_pending"
+    assert electrolyte_lle["previous_solver_disabled"] == "ceres_residual_electrolyte_lle_route"
+    assert electrolyte_lle["default_auto_uses_ipopt"] is False
+    assert electrolyte_lle["full_constrained_nlp_available"] is False
     reactive_bubble = capabilities["equilibrium"]["reactive_electrolyte_bubble"]
     assert reactive_bubble["available"] is False
     assert reactive_bubble["backend"] == "native_ipopt_equilibrium_nlp_required"

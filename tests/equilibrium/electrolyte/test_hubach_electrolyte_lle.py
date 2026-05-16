@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import csv
-import json
 import os
 from pathlib import Path
 
@@ -11,6 +10,7 @@ import pytest
 import epcsaft
 from epcsaft import ePCSAFTMixture
 from epcsaft.equilibrium_core.electrolyte_seeds import charge_neutral_lle_seed_from_org_phase
+from tests.equilibrium.electrolyte.test_electrolyte_lle_smokes import _assert_electrolyte_lle_route_pending
 from tests.helpers.numeric import assert_allclose
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -89,50 +89,31 @@ def test_hubach_seed_helper_constructs_charge_neutral_material_balanced_guess() 
 @pytest.mark.skipif(
     os.environ.get("EPCSAFT_RUN_HUBACH_LLE") != "1", reason="Hubach native LLE solve is an opt-in hard-case regression."
 )
-def test_hubach_row0_explicit_seed_converges_to_distinct_fixed_species_lle() -> None:
+def test_hubach_row0_explicit_seed_requires_native_ipopt_route() -> None:
     feed = _row0_feed()
     mix = _hubach_mixture(feed)
 
-    result = mix.equilibrium(
-        kind="electrolyte_lle",
-        T=T_K,
-        P=P_PA,
-        z=feed,
-        initial_phases=_row0_initial_phases(),
-        options=epcsaft.EquilibriumOptions(max_iterations=180, tolerance=1.0e-8),
-    )
+    with pytest.raises(epcsaft.InputError) as excinfo:
+        mix.equilibrium(
+            kind="electrolyte_lle",
+            T=T_K,
+            P=P_PA,
+            z=feed,
+            initial_phases=_row0_initial_phases(),
+            options=epcsaft.EquilibriumOptions(max_iterations=180, tolerance=1.0e-8),
+        )
 
-    diagnostics = result.diagnostics
-    phases = {phase.label: phase for phase in result.phases}
-    reconstructed = sum(phase.phase_fraction * phase.composition for phase in result.phases)
-
-    assert result.split_detected is True
-    assert len(result.phases) == 2
-    assert diagnostics["phase_equilibrium_model"] == "electrolyte_lle_v5_native_charge_constrained_solve"
-    assert diagnostics["acceptance_gate"] == "predictive_nonlinear_solve"
-    assert diagnostics["solver_residual_norm"] <= 1.0e-6
-    assert diagnostics["material_balance_error"] <= 1.0e-10
-    assert diagnostics["charge_balance_error"] <= 1.0e-8
-    assert diagnostics["phase_distance"] > 1.0e-4
-    assert diagnostics["seed_attempt_count"] >= 1
-    assert diagnostics["seed_attempts"]
-    assert phases["aq"].composition[0] > phases["org"].composition[0]
-    assert (
-        phases["org"].composition[1] + phases["org"].composition[2]
-        > phases["aq"].composition[1] + phases["aq"].composition[2]
-    )
-    assert_allclose(reconstructed, feed, atol=1.0e-10)
-    json.dumps(result.to_dict(), allow_nan=False)
+    _assert_electrolyte_lle_route_pending(excinfo)
 
 
 @pytest.mark.skipif(
     os.environ.get("EPCSAFT_RUN_HUBACH_LLE") != "1", reason="Hubach native LLE solve is an opt-in hard-case regression."
 )
-def test_hubach_cold_start_failure_reports_seed_attempts_before_error() -> None:
+def test_hubach_cold_start_requires_native_ipopt_route() -> None:
     feed = _row0_feed()
     mix = _hubach_mixture(feed)
 
-    try:
+    with pytest.raises(epcsaft.InputError) as excinfo:
         mix.equilibrium(
             kind="electrolyte_lle",
             T=T_K,
@@ -140,28 +121,19 @@ def test_hubach_cold_start_failure_reports_seed_attempts_before_error() -> None:
             z=feed,
             options=epcsaft.EquilibriumOptions(max_iterations=2, tolerance=1.0e-12),
         )
-    except epcsaft.SolutionError as exc:
-        diagnostics = exc.args[1]
-    else:
-        return
 
-    seed_names = [attempt["seed_name"] for attempt in diagnostics["seed_attempts"]]
-    assert any(name.startswith("native_tpd_trial") or name.startswith("native_gibbs_tpd_trial") for name in seed_names)
-    assert any("org_endpoint" in name for name in seed_names)
-    assert any("_b5" in name or "_b10" in name for name in seed_names)
-    assert diagnostics["seed_attempt_count"] == len(seed_names)
-    assert diagnostics["seed_attempt_count"] > 4
+    _assert_electrolyte_lle_route_pending(excinfo)
 
 
 @pytest.mark.skipif(
     os.environ.get("EPCSAFT_RUN_HUBACH_LLE") != "1",
     reason="Hubach cold-start failure is an opt-in hard-case regression.",
 )
-def test_hubach_cold_start_reports_strict_failure_without_removed_candidate_flags() -> None:
+def test_hubach_cold_start_ignored_options_require_native_ipopt_route() -> None:
     feed = _row0_feed()
     mix = _hubach_mixture(feed)
 
-    try:
+    with pytest.raises(epcsaft.InputError) as excinfo:
         mix.equilibrium(
             kind="electrolyte_lle",
             T=T_K,
@@ -176,32 +148,19 @@ def test_hubach_cold_start_reports_strict_failure_without_removed_candidate_flag
                 "force_seed_solve": True,
             },
         )
-    except epcsaft.SolutionError as exc:
-        diagnostics = exc.args[1]
-    else:
-        return
 
-    assert diagnostics["acceptance_gate"] == "predictive_solve_failed"
-    removed_prefix = "legacy" + "_candidate"
-    assert f"{removed_prefix}_found" not in diagnostics
-    assert f"{removed_prefix}_message" not in diagnostics
-    assert diagnostics["density_failure_count"] >= 0
-    assert diagnostics["density_diagnostics_mode"] == "auto"
-    assert diagnostics["density_validity_gate"] in {"passed", "failed", "not_evaluated"}
-    assert "tpdf_global_trials" in diagnostics["ignored_legacy_options"]
-    assert "force_seed_solve" in diagnostics["ignored_legacy_options"]
-    json.dumps(diagnostics, allow_nan=False)
+    _assert_electrolyte_lle_route_pending(excinfo)
 
 
 @pytest.mark.skipif(
     os.environ.get("EPCSAFT_RUN_HUBACH_LLE") != "1",
     reason="Hubach density diagnostics are an opt-in hard-case regression.",
 )
-def test_hubach_cold_start_density_failure_payload_is_json_safe() -> None:
+def test_hubach_density_diagnostics_option_requires_native_ipopt_route() -> None:
     feed = _row0_feed()
     mix = _hubach_mixture(feed)
 
-    try:
+    with pytest.raises(epcsaft.InputError) as excinfo:
         mix.equilibrium(
             kind="electrolyte_lle",
             T=T_K,
@@ -209,17 +168,5 @@ def test_hubach_cold_start_density_failure_payload_is_json_safe() -> None:
             z=feed,
             options=epcsaft.EquilibriumOptions(max_iterations=2, tolerance=1.0e-12, density_diagnostics="full"),
         )
-    except epcsaft.SolutionError as exc:
-        diagnostics = exc.args[1]
-    else:
-        return
 
-    assert diagnostics["density_diagnostics_mode"] == "full"
-    assert diagnostics["density_failure_count"] >= 0
-    assert isinstance(diagnostics["density_failure_contexts"], list)
-    for context in diagnostics["density_failure_contexts"]:
-        assert {"phase_label", "phase_kind", "T", "P", "composition", "scan_point_count", "rejection_reason"} <= set(
-            context
-        )
-        assert len(context["composition"]) == mix.ncomp
-    json.dumps(diagnostics, allow_nan=False)
+    _assert_electrolyte_lle_route_pending(excinfo)

@@ -7,6 +7,7 @@ import pytest
 
 import epcsaft
 from epcsaft import _core, ePCSAFTMixture
+from tests.equilibrium.electrolyte.test_electrolyte_lle_smokes import _assert_electrolyte_lle_route_pending
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -116,32 +117,25 @@ def test_public_electrolyte_stability_uses_native_backend() -> None:
     assert result.diagnostics["native_entrypoint"] == "_solve_equilibrium_native"
 
 
-def test_public_electrolyte_lle_reports_current_ceres_derivatives() -> None:
+def test_public_electrolyte_lle_requires_native_ipopt_route() -> None:
     mix = _electrolyte_mixture()
     aq = np.asarray([0.798324680201737, 0.016320352824141723, 0.09267748348706063, 0.09267748348706063], dtype=float)
     org = np.asarray([0.37006036048879404, 0.6214918588210971, 0.004223890345054407, 0.004223890345054407], dtype=float)
     beta_org = 0.613766575013417
     feed = (1.0 - beta_org) * aq + beta_org * org
 
-    result = mix.equilibrium(
-        kind="electrolyte_lle",
-        T=298.15,
-        P=1.013e5,
-        z=feed,
-        backend="native",
-        initial_phases={"aq": aq, "org": org, "phase_fraction": beta_org},
-        options=epcsaft.EquilibriumOptions(max_iterations=80, tolerance=1.0e-8),
-    )
+    with pytest.raises(epcsaft.InputError) as excinfo:
+        mix.equilibrium(
+            kind="electrolyte_lle",
+            T=298.15,
+            P=1.013e5,
+            z=feed,
+            backend="native",
+            initial_phases={"aq": aq, "org": org, "phase_fraction": beta_org},
+            options=epcsaft.EquilibriumOptions(max_iterations=80, tolerance=1.0e-8),
+        )
 
-    assert result.backend == "electrolyte_lle"
-    assert result.split_detected is True
-    assert result.diagnostics["solver_backend"] == "ceres"
-    assert result.diagnostics["jacobian_backend"] == "cppad_implicit"
-    assert result.diagnostics["derivative_backend"] == "cppad_implicit"
-    assert result.diagnostics["jacobian_available"] is True
-    assert result.diagnostics["derivative_available"] is True
-    assert result.diagnostics["material_balance_error"] <= 1.0e-10
-    assert result.diagnostics["charge_balance_error"] <= 1.0e-8
+    _assert_electrolyte_lle_route_pending(excinfo)
 
 
 def test_native_electrolyte_lle_residual_evaluator_reports_cppad_implicit_derivatives() -> None:

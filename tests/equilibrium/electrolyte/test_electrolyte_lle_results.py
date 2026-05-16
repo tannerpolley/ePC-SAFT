@@ -11,6 +11,7 @@ import epcsaft
 from epcsaft import ePCSAFTMixture
 from epcsaft.equilibrium import _explicit_to_formula_composition, _formula_to_explicit_composition
 from epcsaft.equilibrium_core.electrolyte_basis import build_electrolyte_basis
+from tests.equilibrium.electrolyte.test_electrolyte_lle_smokes import _assert_electrolyte_lle_route_pending
 from tests.helpers.numeric import assert_allclose
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -144,27 +145,16 @@ def test_electrolyte_stability_payload_is_json_serializable() -> None:
     assert result.diagnostics["phase_charge_balance"]["trial"] == pytest.approx(0.0, abs=1.0e-8)
     json.dumps(result.to_dict(), allow_nan=False)
 
-def test_mixed_electrolyte_lle_reports_phase_charge_balance_for_distributed_ions() -> None:
+def test_mixed_electrolyte_lle_requires_native_ipopt_route_for_distributed_ions() -> None:
     mix = _case2_mixture()
-    result = mix.equilibrium(
-        kind="electrolyte_lle",
-        T=298.15,
-        P=1.0e5,
-        z=_case2_feed(),
-        options=epcsaft.EquilibriumOptions(max_iterations=180, tolerance=1.0e-8),
-    )
 
-    charge_balance = result.diagnostics["phase_charge_balance"]
-    assert set(charge_balance) == {"feed", "aq", "org", "max_abs"}
-    assert charge_balance["feed"] == pytest.approx(0.0, abs=1.0e-12)
-    assert charge_balance["aq"] == pytest.approx(0.0, abs=1.0e-8)
-    assert charge_balance["org"] == pytest.approx(0.0, abs=1.0e-8)
-    assert charge_balance["max_abs"] == pytest.approx(result.diagnostics["charge_balance_error"], abs=1.0e-12)
+    with pytest.raises(epcsaft.InputError) as excinfo:
+        mix.equilibrium(
+            kind="electrolyte_lle",
+            T=298.15,
+            P=1.0e5,
+            z=_case2_feed(),
+            options=epcsaft.EquilibriumOptions(max_iterations=180, tolerance=1.0e-8),
+        )
 
-    salt_pairs = result.diagnostics["salt_pairs"]
-    assert [pair["label"] for pair in salt_pairs] == ["NaCl", "KCl"]
-    assert [(pair["cation"], pair["anion"]) for pair in salt_pairs] == [(2, 4), (3, 4)]
-    aq, org = result.phases
-    for ion_index in (2, 3, 4):
-        assert aq.composition[ion_index] > 0.0
-        assert org.composition[ion_index] > 0.0
+    _assert_electrolyte_lle_route_pending(excinfo)

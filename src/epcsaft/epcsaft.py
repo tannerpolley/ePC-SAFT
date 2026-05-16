@@ -407,7 +407,7 @@ class ePCSAFTMixture:
         return dew_t(self, P=P, y=y, options=options)
 
     def lle_tp(self, T, P, z, *, options=None, initial_phases=None):
-        """Solve a neutral liquid-liquid TP flash."""
+        """Validate a neutral liquid-liquid TP flash request."""
         from .equilibrium import lle_flash
 
         return lle_flash(self, T=T, P=P, z=z, options=options, initial_phases=initial_phases)
@@ -451,7 +451,7 @@ class ePCSAFTMixture:
         initial_phases=None,
         options=None,
     ):
-        """Solve charge-constrained electrolyte LLE at fixed temperature and pressure."""
+        """Validate a charge-constrained electrolyte LLE request."""
         from .equilibrium import electrolyte_lle_flash_native
 
         return electrolyte_lle_flash_native(

@@ -11,7 +11,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 import epcsaft
-from epcsaft import initial_phases_from_result
+from tests.equilibrium.electrolyte.test_electrolyte_lle_smokes import _assert_electrolyte_lle_route_pending
 from tests.equilibrium.electrolyte.test_hubach_electrolyte_lle import (
     P_PA,
     T_K,
@@ -21,25 +21,23 @@ from tests.equilibrium.electrolyte.test_hubach_electrolyte_lle import (
 )
 
 
-def test_initial_phases_from_result_round_trips_hubach_split() -> None:
+def test_hubach_initial_phase_seed_requires_native_ipopt_route() -> None:
     feed = _row0_feed()
     mix = _hubach_mixture(feed)
-    result = mix.equilibrium(
-        kind="electrolyte_lle",
-        T=T_K,
-        P=P_PA,
-        z=feed,
-        initial_phases=_row0_initial_phases(),
-        options=epcsaft.EquilibriumOptions(max_iterations=180, tolerance=1.0e-8),
-    )
+    with pytest.raises(epcsaft.InputError) as excinfo:
+        mix.equilibrium(
+            kind="electrolyte_lle",
+            T=T_K,
+            P=P_PA,
+            z=feed,
+            initial_phases=_row0_initial_phases(),
+            options=epcsaft.EquilibriumOptions(max_iterations=180, tolerance=1.0e-8),
+        )
 
-    seed = initial_phases_from_result(result)
-
-    assert set(seed) == {"aq", "org", "phase_fraction"}
-    assert seed["phase_fraction"] == result.phases[1].phase_fraction
+    _assert_electrolyte_lle_route_pending(excinfo)
 
 
-def test_equilibrium_curve_uses_previous_hubach_split_as_seed() -> None:
+def test_equilibrium_curve_requires_native_ipopt_route_for_hubach_lle() -> None:
     feed0 = _row0_feed()
     feed1 = feed0.copy()
     feed1[0] -= 0.002
@@ -48,15 +46,14 @@ def test_equilibrium_curve_uses_previous_hubach_split_as_seed() -> None:
     feed1 = feed1 / float(np.sum(feed1))
     mix = _hubach_mixture(feed0)
 
-    results = mix.equilibrium_curve(
-        [{"z": feed0}, {"z": feed1}],
-        kind="electrolyte_lle",
-        T=T_K,
-        P=P_PA,
-        initial_phases=_row0_initial_phases(),
-        options=epcsaft.EquilibriumOptions(max_iterations=180, tolerance=1.0e-8),
-    )
+    with pytest.raises(epcsaft.InputError) as excinfo:
+        mix.equilibrium_curve(
+            [{"z": feed0}, {"z": feed1}],
+            kind="electrolyte_lle",
+            T=T_K,
+            P=P_PA,
+            initial_phases=_row0_initial_phases(),
+            options=epcsaft.EquilibriumOptions(max_iterations=180, tolerance=1.0e-8),
+        )
 
-    assert len(results) == 2
-    assert all(result.split_detected for result in results)
-    assert results[1].diagnostics["solver_seed_name"] == "initial_phases"
+    _assert_electrolyte_lle_route_pending(excinfo)
