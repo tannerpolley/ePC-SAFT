@@ -178,8 +178,15 @@ public:
                 out.variable_lower.push_back(1.0e-14);
                 out.variable_upper.push_back(10.0);
             }
-            out.variable_lower.push_back(1.0e-14);
-            out.variable_upper.push_back(1.0e6);
+            if (phase == liquid_phase_index()) {
+                out.variable_lower.push_back(minimum_liquid_volume_);
+                out.variable_upper.push_back(maximum_liquid_volume_);
+            } else if (phase == vapor_phase_index()) {
+                out.variable_lower.push_back(minimum_vapor_volume_);
+                out.variable_upper.push_back(maximum_vapor_volume_);
+            } else {
+                throw ValueError(problem_name_ + " phase role is out of range.");
+            }
         }
         out.variable_lower.push_back(1.0);
         out.variable_upper.push_back(1.0e9);
@@ -400,6 +407,10 @@ private:
     double temperature_ = 0.0;
     double initial_pressure_ = 1.0e5;
     double initial_liquid_density_ = 8000.0;
+    double minimum_liquid_volume_ = 1.0e-6;
+    double maximum_liquid_volume_ = 5.0e-4;
+    double minimum_vapor_volume_ = 1.0e-3;
+    double maximum_vapor_volume_ = 1.0e6;
     double minimum_phase_volume_gap_ = 1.0e-7;
     std::vector<double> fixed_composition_;
     int fixed_phase_index_ = 0;

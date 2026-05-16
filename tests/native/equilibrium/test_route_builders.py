@@ -166,6 +166,10 @@ def test_neutral_fixed_temperature_pressure_route_contract_pins_specified_phase(
     first_amounts = initial[: composition.size]
     second_amounts = initial[local_variable_count : local_variable_count + composition.size]
     fixed_amounts = first_amounts if "bubble" in problem_name else second_amounts
+    liquid_volume_col = local_variable_count - 1
+    vapor_volume_col = 2 * local_variable_count - 1
+    lower_bounds = np.asarray(payload["variable_lower_bounds"], dtype=float)
+    upper_bounds = np.asarray(payload["variable_upper_bounds"], dtype=float)
 
     assert payload["problem_name"] == problem_name
     assert payload["derivative_backend"] == "analytic_cppad"
@@ -185,6 +189,9 @@ def test_neutral_fixed_temperature_pressure_route_contract_pins_specified_phase(
     assert payload["constraints_at_initial"][-1] >= payload["constraint_lower_bounds"][-1]
     assert jacobian[-1, local_variable_count - 1] == pytest.approx(-1.0)
     assert jacobian[-1, 2 * local_variable_count - 1] == pytest.approx(1.0)
+    assert lower_bounds[liquid_volume_col] <= initial[liquid_volume_col] <= upper_bounds[liquid_volume_col]
+    assert lower_bounds[vapor_volume_col] <= initial[vapor_volume_col] <= upper_bounds[vapor_volume_col]
+    assert upper_bounds[liquid_volume_col] < lower_bounds[vapor_volume_col]
 
 
 @pytest.mark.parametrize(

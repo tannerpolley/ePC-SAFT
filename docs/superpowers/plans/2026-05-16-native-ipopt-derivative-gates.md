@@ -520,6 +520,12 @@ a volume-separation inequality and phase-role initial point. Ipopt-enabled proof
 contract, and public bubble/dew wrappers; arbitrary states may still fail loudly when no accepted vapor-liquid split is
 found, and no public fallback search is allowed.
 
+Task 8 continuation note: fixed-temperature pressure route contracts now impose explicit liquid/vapor phase-role volume
+bounds in addition to the phase-distance inequality, so the private Ipopt problem no longer admits the identical-phase
+root as a valid route region. A direct Ipopt probe on an arbitrary hydrocarbon state still failed with local
+infeasibility rather than an accepted vapor-liquid split, so public capabilities remain unexpanded and no fallback search
+has been added.
+
 ### Task 9: Replace Electrolyte And Reactive Phase Equilibrium Routes
 
 **Files:**
