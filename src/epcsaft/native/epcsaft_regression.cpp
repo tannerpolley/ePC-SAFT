@@ -625,11 +625,6 @@ PureNeutralObjectiveEvaluation evaluate_pure_neutral_objective_cpp(
     return objective_from_residual_eval_cpp(residual_eval);
 }
 
-struct BoundedTransformResult {
-    vector<double> x;
-    std::array<double, kThetaSize> dxdy{1.0, 1.0, 1.0};
-};
-
 constexpr std::array<std::array<double, kThetaSize>, 5> kDeterministicSeedFactors{{
     {{1.00, 1.00, 1.00}},
     {{0.93, 1.04, 0.95}},
@@ -656,55 +651,6 @@ double validate_positive_bound_cpp(double value, const char *label) {
         throw ValueError(std::string("Native pure-neutral regression requires positive finite ") + label + " bounds.");
     }
     return value;
-}
-
-BoundedTransformResult unconstrained_to_bounded_cpp(
-    const LMInputVector &y,
-    const vector<double> &lower,
-    const vector<double> &upper
-) {
-    BoundedTransformResult out;
-    out.x.resize(kThetaSize, 0.0);
-    for (int i = 0; i < kThetaSize; ++i) {
-        double lo = validate_positive_bound_cpp(lower[static_cast<size_t>(i)], "lower");
-        double hi = validate_positive_bound_cpp(upper[static_cast<size_t>(i)], "upper");
-        if (!(hi > lo)) {
-            throw ValueError("Native pure-neutral regression requires strictly increasing bounds for transformed variables.");
-        }
-        double log_lo = std::log(lo);
-        double log_hi = std::log(hi);
-        double sigma = logistic_cpp(y[i]);
-        double log_x = log_lo + (log_hi - log_lo) * sigma;
-        out.x[static_cast<size_t>(i)] = std::exp(log_x);
-        out.dxdy[static_cast<size_t>(i)] = out.x[static_cast<size_t>(i)] * (log_hi - log_lo) * sigma * (1.0 - sigma);
-    }
-    return out;
-}
-
-LMInputVector bounded_to_unconstrained_cpp(
-    const vector<double> &x,
-    const vector<double> &lower,
-    const vector<double> &upper
-) {
-    LMInputVector y(kThetaSize);
-    for (int i = 0; i < kThetaSize; ++i) {
-        double lo = validate_positive_bound_cpp(lower[static_cast<size_t>(i)], "lower");
-        double hi = validate_positive_bound_cpp(upper[static_cast<size_t>(i)], "upper");
-        if (!(hi > lo)) {
-            throw ValueError("Native pure-neutral regression requires strictly increasing bounds for transformed variables.");
-        }
-        double clipped = clip_start_value_cpp(x[static_cast<size_t>(i)], lo, hi);
-        double log_lo = std::log(lo);
-        double log_hi = std::log(hi);
-        double p = (std::log(clipped) - log_lo) / (log_hi - log_lo);
-        if (p < 1.0e-12) {
-            p = 1.0e-12;
-        } else if (p > 1.0 - 1.0e-12) {
-            p = 1.0 - 1.0e-12;
-        }
-        y[i] = logit_cpp(p);
-    }
-    return y;
 }
 
 vector<vector<double>> candidate_starts_cpp(
@@ -746,170 +692,6 @@ vector<vector<double>> candidate_starts_cpp(
         append_start_if_distinct_cpp(starts, std::move(point));
     }
     return starts;
-}
-
-struct PureNeutralLeastSquaresFunctor : Eigen::DenseFunctor<double> {
-    PureNeutralLeastSquaresFunctor(
-        add_args base_args,
-        vector<PureNeutralRegressionDensityRecord> density_records,
-        double density_scale,
-        vector<PureNeutralRegressionVLERecord> pure_vle_records,
-        double pure_vle_scale,
-        vector<double> lower,
-        vector<double> upper
-    )
-        : Eigen::DenseFunctor<double>(
-              kThetaSize,
-              static_cast<int>(density_records.size() + pure_vle_records.size())
-          ),
-          base_args(std::move(base_args)),
-          density_records(std::move(density_records)),
-          density_scale(density_scale),
-          pure_vle_records(std::move(pure_vle_records)),
-          pure_vle_scale(pure_vle_scale),
-          lower(std::move(lower)),
-          upper(std::move(upper)) {}
-
-    int operator()(const LMInputVector &y, ResidualVector &fvec) {
-        if (!ensure_cache(y)) {
-            return -1;
-        }
-        fvec = cache_eval.residuals;
-        return 0;
-    }
-
-    int df(const LMInputVector &y, ResidualJacobian &fjac) {
-        if (!ensure_cache(y)) {
-            return -1;
-        }
-        fjac = cache_eval.jacobian;
-        for (int j = 0; j < kThetaSize; ++j) {
-            fjac.col(j) *= cache_transform.dxdy[static_cast<size_t>(j)];
-        }
-        return 0;
-    }
-
-    RegressionProfilingStats profiling;
-    BoundedTransformResult cache_transform;
-    PureNeutralResidualEvaluation cache_eval;
-    bool cache_valid = false;
-    LMInputVector last_y = LMInputVector::Zero(kThetaSize);
-
-private:
-    bool ensure_cache(const LMInputVector &y) {
-        if (!cache_valid || !y.isApprox(last_y, 0.0)) {
-            try {
-                cache_transform = unconstrained_to_bounded_cpp(y, lower, upper);
-                cache_eval = evaluate_residual_jacobian_cpp(
-                    base_args,
-                    density_records,
-                    density_scale,
-                    pure_vle_records,
-                    pure_vle_scale,
-                    cache_transform.x,
-                    &profiling
-                );
-            } catch (...) {
-                return false;
-            }
-            cache_valid = true;
-            last_y = y;
-        }
-        return true;
-    }
-
-    add_args base_args;
-    vector<PureNeutralRegressionDensityRecord> density_records;
-    double density_scale = 1.0;
-    vector<PureNeutralRegressionVLERecord> pure_vle_records;
-    double pure_vle_scale = 1.0;
-    vector<double> lower;
-    vector<double> upper;
-};
-
-PureNeutralRegressionResult solve_one_start_least_squares_cpp(
-    const add_args &base_args,
-    const vector<PureNeutralRegressionDensityRecord> &density_records,
-    double density_scale,
-    const vector<PureNeutralRegressionVLERecord> &pure_vle_records,
-    double pure_vle_scale,
-    const vector<double> &start,
-    const vector<double> &lower,
-    const vector<double> &upper
-) {
-    auto solve_start = std::chrono::steady_clock::now();
-    PureNeutralObjectiveEvaluation initial_eval = evaluate_pure_neutral_objective_cpp(
-        base_args,
-        density_records,
-        density_scale,
-        pure_vle_records,
-        pure_vle_scale,
-        start,
-        nullptr
-    );
-    PureNeutralLeastSquaresFunctor functor(
-        base_args,
-        density_records,
-        density_scale,
-        pure_vle_records,
-        pure_vle_scale,
-        lower,
-        upper
-    );
-    Eigen::LevenbergMarquardt<PureNeutralLeastSquaresFunctor> lm(functor);
-    lm.setFtol(1.0e-6);
-    lm.setXtol(1.0e-6);
-    lm.setGtol(0.0);
-    lm.setFactor(10.0);
-    lm.setMaxfev(200);
-
-    LMInputVector y = bounded_to_unconstrained_cpp(start, lower, upper);
-    Eigen::LevenbergMarquardtSpace::Status status = lm.minimize(y);
-    BoundedTransformResult final_transform = unconstrained_to_bounded_cpp(y, lower, upper);
-
-    PureNeutralRegressionResult out;
-    out.x = final_transform.x;
-    out.initial_cost = initial_eval.objective;
-    out.initial_density_metric = rms_metric_cpp(initial_eval.density_raw_residuals);
-    out.initial_pure_vle_metric = rms_metric_cpp(initial_eval.pure_vle_raw_residuals);
-    out.success = least_squares_status_success_cpp(status);
-    out.status = static_cast<int>(status);
-    out.message = least_squares_status_message_cpp(status);
-    out.nfev = static_cast<int>(lm.nfev() + lm.njev());
-    out.iterations = static_cast<int>(lm.iterations());
-    out.objective_evaluations = static_cast<int>(lm.nfev());
-    out.gradient_evaluations = static_cast<int>(lm.njev());
-    out.residual_evaluations = functor.profiling.residual_evaluations;
-    out.density_solves = functor.profiling.density_solves;
-    out.fused_state_evaluations = functor.profiling.fused_state_evaluations;
-    out.callback_wall_time_s = functor.profiling.callback_wall_time_s;
-    out.backend = "least_squares_native";
-    out.optimizer_backend = "eigen_levenberg_marquardt";
-    out.derivative_backend = "cppad_implicit";
-    out.jacobian_backend = out.derivative_backend;
-    out.solve_wall_time_s = std::chrono::duration<double>(std::chrono::steady_clock::now() - solve_start).count();
-
-    PureNeutralResidualEvaluation final_eval = evaluate_residual_jacobian_cpp(
-        base_args,
-        density_records,
-        density_scale,
-        pure_vle_records,
-        pure_vle_scale,
-        out.x,
-        &functor.profiling
-    );
-    PureNeutralObjectiveEvaluation final_objective = objective_from_residual_eval_cpp(final_eval);
-    out.cost = final_objective.objective;
-    out.residual_norm = std::sqrt(std::max(0.0, 2.0 * final_objective.objective));
-    out.gradient_norm = pure_neutral_gradient_norm_cpp(final_objective);
-    out.step_norm = 0.0;
-    out.density_metric = rms_metric_cpp(final_objective.density_raw_residuals);
-    out.pure_vle_metric = rms_metric_cpp(final_objective.pure_vle_raw_residuals);
-    out.residual_evaluations = functor.profiling.residual_evaluations;
-    out.density_solves = functor.profiling.density_solves;
-    out.fused_state_evaluations = functor.profiling.fused_state_evaluations;
-    out.callback_wall_time_s = functor.profiling.callback_wall_time_s;
-    return out;
 }
 
 #ifdef EPCSAFT_HAS_CERES
@@ -2509,7 +2291,6 @@ using regression_detail::evaluate_pure_neutral_objective_cpp;
 using regression_detail::evaluate_residual_jacobian_cpp;
 using regression_detail::kThetaSize;
 using regression_detail::objective_from_residual_eval_cpp;
-using regression_detail::solve_one_start_least_squares_cpp;
 using regression_detail::validate_pure_neutral_base_args_cpp;
 #ifdef EPCSAFT_HAS_CERES
 using regression_detail::solve_one_start_ceres_cpp;
@@ -2607,54 +2388,6 @@ PureNeutralRegressionDebugResult evaluate_pure_neutral_objective_debug_cpp(
     out.fused_state_evaluations = profiling.fused_state_evaluations;
     out.callback_wall_time_s = profiling.callback_wall_time_s;
     return out;
-}
-
-PureNeutralRegressionResult fit_pure_neutral_least_squares_cpp(
-    const add_args &base_args,
-    const vector<PureNeutralRegressionDensityRecord> &density_records,
-    double density_scale,
-    const vector<PureNeutralRegressionVLERecord> &pure_vle_records,
-    double pure_vle_scale,
-    const vector<double> &x0,
-    const vector<double> &lower,
-    const vector<double> &upper,
-    int multistart
-) {
-    validate_pure_neutral_base_args_cpp(base_args);
-    if (density_records.empty() || pure_vle_records.empty()) {
-        throw ValueError("Native pure-neutral regression requires both density and pure-VLE record families.");
-    }
-    if (x0.size() != kThetaSize || lower.size() != kThetaSize || upper.size() != kThetaSize) {
-        throw ValueError("Native pure-neutral regression requires 3-variable starts and bounds for m, s, and e.");
-    }
-
-    vector<vector<double>> starts = candidate_starts_cpp(x0, lower, upper, multistart);
-    bool have_result = false;
-    PureNeutralRegressionResult best;
-    int starts_tried = 0;
-    for (const auto &start : starts) {
-        try {
-            PureNeutralRegressionResult candidate = solve_one_start_least_squares_cpp(
-                base_args,
-                density_records,
-                density_scale,
-                pure_vle_records,
-                pure_vle_scale,
-                start,
-                lower,
-                upper
-            );
-            ++starts_tried;
-            best = choose_better_result_cpp(have_result, best, candidate);
-            have_result = true;
-        } catch (...) {
-        }
-    }
-    if (!have_result) {
-        throw ValueError("Native pure-neutral least-squares regression did not generate any candidate starts.");
-    }
-    best.starts_tried = starts_tried;
-    return best;
 }
 
 PureNeutralRegressionResult fit_pure_neutral_ceres_cpp(

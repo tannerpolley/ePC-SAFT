@@ -520,17 +520,6 @@ vector<double> dXAdt_find(vector<double> delta_ij, double den,
 
 double dielectric_eps_cpp(vector<double> x, const add_args &cppargs);
 vector<double> dielectric_diff_cpp(vector<double> x, const add_args &cppargs);
-PureNeutralRegressionResult fit_pure_neutral_least_squares_cpp(
-    const add_args &base_args,
-    const vector<PureNeutralRegressionDensityRecord> &density_records,
-    double density_scale,
-    const vector<PureNeutralRegressionVLERecord> &pure_vle_records,
-    double pure_vle_scale,
-    const vector<double> &x0,
-    const vector<double> &lower,
-    const vector<double> &upper,
-    int multistart
-);
 PureNeutralRegressionResult fit_pure_neutral_ceres_cpp(
     const add_args &base_args,
     const vector<PureNeutralRegressionDensityRecord> &density_records,
