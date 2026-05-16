@@ -71,7 +71,7 @@ def test_neutral_two_phase_eos_result_builder_translates_accepted_candidate() ->
         assert phase["amount_total"] == pytest.approx(float(phase_amounts[index].sum()))
         assert phase["volume"] == pytest.approx(volumes[index])
         assert len(phase["ln_fugacity_coefficient"]) == 2
-        assert phase["fugacity_coefficient"] == pytest.approx(phase["ln_fugacity_coefficient"])
+        assert phase["fugacity_coefficient"] == pytest.approx(np.exp(phase["ln_fugacity_coefficient"]))
         assert np.all(np.isfinite(np.asarray(phase["ln_fugacity_coefficient"], dtype=float)))
         assert phase["diagnostics"]["volume"] == pytest.approx(volumes[index])
 

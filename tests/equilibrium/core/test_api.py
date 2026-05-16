@@ -184,7 +184,8 @@ def test_explicit_chemical_equilibrium_matches_dispatch_route_pending_policy() -
     _assert_reactive_speciation_route_pending(dispatched_exc)
 
 
-def test_equilibrium_phase_exposes_explicit_ln_fugacity_alias() -> None:
+def test_equilibrium_phase_exposes_ln_and_coefficient_fugacity_fields() -> None:
+    ln_phi = np.asarray([0.0, 0.1, 0.2])
     phase = epcsaft.EquilibriumPhase(
         "liq",
         composition=np.asarray([0.1, 0.3, 0.6]),
@@ -192,13 +193,15 @@ def test_equilibrium_phase_exposes_explicit_ln_fugacity_alias() -> None:
         temperature=220.0,
         pressure=1.0e5,
         phase_fraction=1.0,
-        ln_fugacity_coefficient=np.asarray([0.0, 0.1, 0.2]),
+        ln_fugacity_coefficient=ln_phi,
     )
-    assert_allclose(phase.ln_fugacity_coefficient, phase.fugacity_coefficient)
+    assert_allclose(phase.ln_fugacity_coefficient, ln_phi)
+    assert_allclose(phase.fugacity_coefficient, np.exp(ln_phi))
     payload = phase.to_dict()
     assert "ln_fugacity_coefficient" in payload
     assert "fugacity_coefficient" in payload
-    assert_allclose(payload["ln_fugacity_coefficient"], payload["fugacity_coefficient"])
+    assert_allclose(payload["ln_fugacity_coefficient"], ln_phi)
+    assert_allclose(payload["fugacity_coefficient"], np.exp(ln_phi))
     json.dumps(payload, allow_nan=False)
 
 

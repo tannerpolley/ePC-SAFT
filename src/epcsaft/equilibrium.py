@@ -333,12 +333,15 @@ class EquilibriumPhase:
         """Create a phase payload.
 
         ``ln_fugacity_coefficient`` is the explicit natural-log fugacity
-        coefficient field. ``fugacity_coefficient`` remains accepted as a
-        compatibility alias for older callers and carries the same ln(phi)
-        values, not coefficient-form phi values.
+        coefficient field. ``fugacity_coefficient`` accepts coefficient-form
+        phi values and is converted to ``ln(phi)`` when the log field is not
+        supplied.
         """
         if ln_fugacity_coefficient is None:
-            ln_fugacity_coefficient = fugacity_coefficient
+            if fugacity_coefficient is None:
+                ln_fugacity_coefficient = None
+            else:
+                ln_fugacity_coefficient = np.log(np.asarray(fugacity_coefficient, dtype=float))
         object.__setattr__(self, "label", str(label))
         object.__setattr__(self, "composition", np.asarray(composition, dtype=float))
         object.__setattr__(self, "density", float(density))
@@ -352,8 +355,10 @@ class EquilibriumPhase:
 
     @property
     def fugacity_coefficient(self) -> np.ndarray | None:
-        """Backward-compatible alias for natural-log fugacity coefficients."""
-        return self.ln_fugacity_coefficient
+        """Return coefficient-form fugacity coefficients."""
+        if self.ln_fugacity_coefficient is None:
+            return None
+        return np.exp(self.ln_fugacity_coefficient)
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-like phase payload."""
@@ -366,7 +371,7 @@ class EquilibriumPhase:
             "pressure": self.pressure,
             "phase_fraction": self.phase_fraction,
             "ln_fugacity_coefficient": ln_fugacity,
-            "fugacity_coefficient": ln_fugacity,
+            "fugacity_coefficient": None if self.fugacity_coefficient is None else self.fugacity_coefficient.tolist(),
             "diagnostics": _json_like(self.diagnostics),
         }
 

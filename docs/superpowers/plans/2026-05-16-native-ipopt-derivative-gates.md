@@ -464,9 +464,14 @@ Task 8 continuation note: native neutral two-phase EOS result translation now ex
 The private route-result path combines one Ipopt adapter solve with exact postsolve acceptance, translates solver
 variables into phase amounts and volumes, and exposes the translated postsolve payload without adding Python solver
 orchestration. The separate accepted-candidate result builder produces phase payloads with composition, density,
-volume, phase fraction, EOS pressure diagnostics, log fugacity coefficients, and the existing log-value fugacity
-compatibility alias. Public neutral routes remain gated until canonical route-specific dispatch is wired to this native
-result layer.
+volume, phase fraction, EOS pressure diagnostics, log fugacity coefficients, and exponentiated fugacity coefficients.
+Public neutral routes remain gated until canonical route-specific dispatch is wired to this native result layer.
+
+Task 8 continuation note: a thin `equilibrium_core.native_results` converter now maps accepted native neutral
+two-phase payloads into the public `EquilibriumResult`/`EquilibriumPhase` dataclasses and raises a typed solution error
+for rejected native payloads. Public equilibrium phase payloads now keep `ln_fugacity_coefficient` as `ln(phi)` and
+`fugacity_coefficient` as coefficient-form `phi`. The converter does not own initialization, iteration, retry, or
+solver orchestration.
 
 ### Task 9: Replace Electrolyte And Reactive Phase Equilibrium Routes
 

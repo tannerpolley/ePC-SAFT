@@ -33,6 +33,15 @@ std::vector<double> ln_fugacity_coefficients_for_block(
     return fugacity.lnfugcoef.total;
 }
 
+std::vector<double> exp_values(const std::vector<double>& values) {
+    std::vector<double> out;
+    out.reserve(values.size());
+    for (double value : values) {
+        out.push_back(std::exp(value));
+    }
+    return out;
+}
+
 NeutralTwoPhaseEosPhasePayload phase_payload(
     const add_args& args,
     const EosPhaseBlockResult& block,
@@ -44,7 +53,7 @@ NeutralTwoPhaseEosPhasePayload phase_payload(
     out.label = "phase_" + std::to_string(phase_index);
     out.composition = block.composition;
     out.ln_fugacity_coefficient = ln_fugacity_coefficients_for_block(args, block);
-    out.fugacity_coefficient = out.ln_fugacity_coefficient;
+    out.fugacity_coefficient = exp_values(out.ln_fugacity_coefficient);
     out.density = block.density;
     out.temperature = block.temperature;
     out.pressure = block.target_pressure;
