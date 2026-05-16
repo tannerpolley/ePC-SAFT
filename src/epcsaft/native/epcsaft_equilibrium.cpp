@@ -2966,7 +2966,7 @@ struct ElectrolyteCeresAttemptNative {
     std::string budget_trigger;
     std::string termination_type;
     std::string message;
-    std::string trust_region_strategy = "levenberg_marquardt";
+    std::string trust_region_strategy = "ceres_internal_trust_region";
     std::string linear_solver = "dense_qr";
     double initial_cost = std::numeric_limits<double>::infinity();
     double final_cost = std::numeric_limits<double>::infinity();
@@ -3156,7 +3156,6 @@ ElectrolyteCeresAttemptNative solve_predictive_electrolyte_ceres_attempt(
         }
 
         ceres::Solver::Options ceres_options;
-        ceres_options.trust_region_strategy_type = ceres::LEVENBERG_MARQUARDT;
         ceres_options.linear_solver_type = ceres::DENSE_QR;
         ceres_options.max_num_iterations = options.max_iterations;
         ceres_options.minimizer_progress_to_stdout = false;

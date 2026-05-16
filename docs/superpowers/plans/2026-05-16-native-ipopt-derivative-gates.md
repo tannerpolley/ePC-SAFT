@@ -279,6 +279,8 @@ Task 2 continuation note: electrolyte LLE tests that still named the current Cer
 
 Task 2 continuation note: neutral equilibrium and native chemical-equilibrium diagnostics no longer manufacture missing-status reason fields on successful routes. Routes without a derivative payload now use `not_applicable`, and successful native chemical-equilibrium payloads omit the old empty reason field.
 
+Task 2 continuation note: the strict text gate now blocks explicit Ceres trust-region strategy names. Transitional equilibrium Ceres routes rely on solver defaults and report only an internal trust-region label.
+
 ### Task 3: Build Dependency Boundary
 
 **Files:**

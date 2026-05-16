@@ -64,7 +64,7 @@ def _blocked_terms() -> tuple[str, ...]:
     sixth = "source" + "_" + "perturbation"
     seventh = "perturbation" + "_" + "derivative"
     eighth = "numerical" + "diff"
-    ninth = "levenberg" + "marquardt"
+    ninth = "levenberg" + "_" + "marquardt"
     return (first, second, third, fourth, fifth, sixth, seventh, eighth, ninth)
 
 

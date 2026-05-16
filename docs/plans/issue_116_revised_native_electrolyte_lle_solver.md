@@ -408,7 +408,6 @@ Required Ceres options:
 
 ```cpp
 ceres::Solver::Options options;
-options.trust_region_strategy_type = ceres::LEVENBERG_MARQUARDT;
 options.linear_solver_type = ceres::DENSE_QR;
 options.max_num_iterations = equilibrium_options.max_iterations;
 options.function_tolerance = equilibrium_options.tolerance;

@@ -57,7 +57,7 @@ def test_reactive_phase_native_ceres_solver_reports_coupled_jacobian_route() -> 
     assert diagnostics["solver_backend"] == "ceres"
     assert diagnostics["selected_solver_backend"] == "ceres"
     assert diagnostics["solver_method"] == "ceres_trust_region_coupled_reactive_phase_equilibrium"
-    assert diagnostics["ceres_trust_region_strategy"] == "levenberg_marquardt"
+    assert diagnostics["ceres_trust_region_strategy"] == "ceres_internal_trust_region"
     assert diagnostics["ceres_linear_solver"] == "dense_qr"
     assert diagnostics["jacobian_backend"] == "cppad_implicit"
     assert diagnostics["derivative_backend"] == "cppad_implicit"

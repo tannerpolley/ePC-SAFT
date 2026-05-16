@@ -124,7 +124,6 @@ NativeResidualSolveResult solve_native_residual_problem(
     }
 
     ceres::Solver::Options ceres_options;
-    ceres_options.trust_region_strategy_type = ceres::LEVENBERG_MARQUARDT;
     ceres_options.linear_solver_type = ceres::DENSE_QR;
     ceres_options.max_num_iterations = options.max_iterations;
     ceres_options.minimizer_progress_to_stdout = false;

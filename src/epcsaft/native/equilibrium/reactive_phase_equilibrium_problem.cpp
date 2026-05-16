@@ -1087,7 +1087,6 @@ EquilibriumResultNative reactive_phase_equilibrium_native(
     );
     problem.AddResidualBlock(cost, nullptr, variables.data());
     ceres::Solver::Options ceres_options;
-    ceres_options.trust_region_strategy_type = ceres::LEVENBERG_MARQUARDT;
     ceres_options.linear_solver_type = ceres::DENSE_QR;
     ceres_options.max_num_iterations = options.max_iterations;
     ceres_options.minimizer_progress_to_stdout = false;
@@ -1189,7 +1188,7 @@ EquilibriumResultNative reactive_phase_equilibrium_native(
         failed.diagnostics_string["acceptance_gate"] = "reactive_solve_failed";
         failed.diagnostics_string["rejection_reason"] = message.str();
         failed.diagnostics_string["message"] = "reactive phase equilibrium did not converge to an accepted two-phase state";
-        failed.diagnostics_string["ceres_trust_region_strategy"] = "levenberg_marquardt";
+        failed.diagnostics_string["ceres_trust_region_strategy"] = "ceres_internal_trust_region";
         failed.diagnostics_string["ceres_linear_solver"] = "dense_qr";
         failed.diagnostics_string["ceres_termination_type"] = ceres_termination_type_name_reactive(summary.termination_type);
         failed.diagnostics_string["ceres_summary"] = summary.BriefReport();
@@ -1260,7 +1259,7 @@ EquilibriumResultNative reactive_phase_equilibrium_native(
     result.diagnostics_string["solver_backend"] = "ceres";
     result.diagnostics_string["selected_solver_backend"] = "ceres";
     result.diagnostics_string["solver_method"] = "ceres_trust_region_coupled_reactive_phase_equilibrium";
-    result.diagnostics_string["ceres_trust_region_strategy"] = "levenberg_marquardt";
+    result.diagnostics_string["ceres_trust_region_strategy"] = "ceres_internal_trust_region";
     result.diagnostics_string["ceres_linear_solver"] = "dense_qr";
     result.diagnostics_string["ceres_termination_type"] = ceres_termination_type_name_reactive(summary.termination_type);
     result.diagnostics_string["ceres_summary"] = summary.BriefReport();
