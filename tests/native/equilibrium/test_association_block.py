@@ -19,10 +19,11 @@ def test_association_mass_action_block_reports_exact_residual_and_jacobians() ->
         delta.ravel().tolist(),
     )
 
-    expected_residuals = 1.0 / site_fractions - 1.0 - density * (delta @ (site_composition * site_fractions))
-    expected_site_jacobian = np.diag(-1.0 / site_fractions**2) - density * delta * site_composition
-    expected_composition_jacobian = -density * delta * site_fractions
-    expected_density_derivative = -(delta @ (site_composition * site_fractions))
+    association_sums = density * (delta @ (site_composition * site_fractions))
+    expected_residuals = site_fractions * (1.0 + association_sums) - 1.0
+    expected_site_jacobian = np.diag(1.0 + association_sums) + density * site_fractions[:, None] * delta * site_composition
+    expected_composition_jacobian = density * site_fractions[:, None] * delta * site_fractions
+    expected_density_derivative = site_fractions * (delta @ (site_composition * site_fractions))
 
     assert payload["block"] == "association_mass_action"
     assert payload["derivative_backend"] == "analytic"
