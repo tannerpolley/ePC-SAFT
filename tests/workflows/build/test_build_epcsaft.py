@@ -79,6 +79,8 @@ def test_package_and_dev_defaults_require_ceres_and_cppad() -> None:
     assert "derivative-capable package builds require CppAD" in cmake_text
     assert "GIT_SHALLOW TRUE" in cmake_text
     assert 'add_subdirectory("${ceres_solver_SOURCE_DIR}" "${ceres_solver_BINARY_DIR}" EXCLUDE_FROM_ALL)' in cmake_text
+    assert 'src/epcsaft/native/equilibrium_nlp/*.cpp' in cmake_text
+    assert 'src/epcsaft/native/equilibrium_nlp' in cmake_text
     assert "unset(Ceres_BINARY_DIR CACHE)" in cmake_text
     assert "unset(Ceres_SOURCE_DIR CACHE)" in cmake_text
     assert "EPCSAFT_ENABLE_CERES" not in pyproject_text

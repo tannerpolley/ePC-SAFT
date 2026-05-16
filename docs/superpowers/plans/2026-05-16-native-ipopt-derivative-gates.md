@@ -298,12 +298,14 @@ Task 3 note: the first dependency-boundary slice removed the external numerical 
 - Modify: `CMakeLists.txt`
 - Modify: `src/epcsaft/bindings.cpp`
 
-- [ ] Add native C++ abstraction for NLP variables, constraints, objective, gradients, Jacobians, scaling, and result unpacking.
-- [ ] Implement one Ipopt adapter and keep all direct Ipopt calls there.
-- [ ] Add a tiny ideal quadratic/linear-constraint smoke problem to prove callback wiring.
-- [ ] Bind a private smoke entry point only if needed for tests.
-- [ ] Add tests proving Ipopt availability and adapter callback behavior.
-- [ ] Commit as `Add native Ipopt adapter`.
+- [x] Add native C++ abstraction for NLP variables, constraints, objective, gradients, Jacobians, scaling, and result unpacking.
+- [x] Implement one Ipopt adapter and keep all direct Ipopt calls there.
+- [x] Add a tiny ideal quadratic/linear-constraint smoke problem to prove callback wiring.
+- [x] Bind a private smoke entry point only if needed for tests.
+- [x] Add tests proving Ipopt availability and adapter callback behavior.
+- [x] Commit as `Add native Ipopt adapter`.
+
+Task 4 note: the adapter boundary now lives under `src/epcsaft/native/equilibrium_nlp/`. The local fast build intentionally reports Ipopt disabled, so the quadratic smoke is dependency-gated locally and will execute only in an Ipopt-enabled build.
 
 ### Task 5: Add Gibbs And Reaction Blocks
 

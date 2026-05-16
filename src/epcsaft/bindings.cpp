@@ -10,6 +10,7 @@
 #include "epcsaft_chemical_equilibrium.h"
 #include "epcsaft_equilibrium.h"
 #include "cppad_smoke_checks.h"
+#include "ipopt_adapter.h"
 
 epcsaft::native::cppad_support::CppADDerivativeResult cppad_eos_contribution_derivatives_cpp(
     double t,
@@ -1621,19 +1622,50 @@ PYBIND11_MODULE(_core, m) {
     });
     m.def("_native_ipopt_smoke", []() {
         py::dict out;
-#ifdef EPCSAFT_HAS_IPOPT
-        const bool compiled = true;
-#else
-        const bool compiled = false;
-#endif
+        const auto adapter = epcsaft::native::equilibrium_nlp::native_ipopt_adapter_info();
+        const bool compiled = adapter.compiled;
         out["backend"] = "ipopt";
         out["compiled"] = compiled;
         out["available"] = compiled;
+        out["adapter_available"] = adapter.adapter_available;
+        out["adapter_kind"] = adapter.adapter_kind;
+        out["adapter_source_available"] = true;
+        out["hessian_strategy"] = adapter.hessian_strategy;
+        out["requires_exact_gradient"] = adapter.exact_gradient_required;
+        out["requires_exact_jacobian"] = adapter.exact_jacobian_required;
+        out["requires_exact_hessian"] = adapter.exact_hessian_required;
 #ifdef EPCSAFT_IPOPT_STATUS
         out["status"] = EPCSAFT_IPOPT_STATUS;
 #else
-        out["status"] = compiled ? "enabled_available" : "disabled";
+        out["status"] = adapter.status;
 #endif
+        return out;
+    });
+    m.def("_native_ipopt_quadratic_smoke", []() {
+        py::dict out;
+        const auto adapter = epcsaft::native::equilibrium_nlp::native_ipopt_adapter_info();
+        out["backend"] = "ipopt";
+        out["compiled"] = adapter.compiled;
+        out["adapter_available"] = adapter.adapter_available;
+        out["adapter_kind"] = adapter.adapter_kind;
+        out["problem"] = "quadratic_linear_constraint_smoke";
+        out["ran"] = false;
+        out["accepted"] = false;
+        if (!adapter.compiled) {
+            out["status"] = "requires_ipopt_build";
+            return out;
+        }
+        const auto result = epcsaft::native::equilibrium_nlp::solve_ipopt_quadratic_smoke();
+        out["ran"] = result.solver_ran;
+        out["accepted"] = result.accepted;
+        out["status"] = result.solver_status;
+        out["application_status"] = result.application_status;
+        out["objective"] = result.objective;
+        out["variables"] = result.variables;
+        out["constraints"] = result.constraints;
+        out["hessian_strategy"] = result.hessian_strategy;
+        out["exact_gradient_required"] = adapter.exact_gradient_required;
+        out["exact_jacobian_required"] = adapter.exact_jacobian_required;
         return out;
     });
     m.def("_native_cppad_eos_contributions", [](double t, double rho, const std::vector<double>& x, const add_args& args) {

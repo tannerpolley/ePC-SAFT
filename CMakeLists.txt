@@ -224,6 +224,7 @@ file(GLOB EPCSAFT_NATIVE_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/cppad/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/contributions/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/equilibrium/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/equilibrium_nlp/*.cpp"
 )
 if(EPCSAFT_CPPAD_SOURCE_FILE)
     list(APPEND EPCSAFT_NATIVE_SOURCES "${EPCSAFT_CPPAD_SOURCE_FILE}")
@@ -236,6 +237,7 @@ target_include_directories(epcsaft_native
         "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/cppad"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/contributions"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/equilibrium"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/equilibrium_nlp"
         "${EPCSAFT_EIGEN_INCLUDE}"
 )
 target_compile_features(epcsaft_native PUBLIC cxx_std_17)
@@ -261,6 +263,7 @@ target_include_directories(_core
         "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/cppad"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/contributions"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/equilibrium"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/epcsaft/native/equilibrium_nlp"
         "${EPCSAFT_EIGEN_INCLUDE}"
 )
 target_compile_features(_core PRIVATE cxx_std_17)

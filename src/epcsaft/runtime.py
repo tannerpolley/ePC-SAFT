@@ -184,6 +184,13 @@ def _native_ipopt_backend_info() -> dict[str, object]:
             "status": "not_configured",
             "compiled": False,
             "available": False,
+            "adapter_available": False,
+            "adapter_kind": "native_tnlp_adapter",
+            "adapter_source_available": False,
+            "hessian_strategy": "limited_memory",
+            "requires_exact_gradient": True,
+            "requires_exact_jacobian": True,
+            "requires_exact_hessian": False,
         }
     try:
         smoke = _core._native_ipopt_smoke()
@@ -193,6 +200,13 @@ def _native_ipopt_backend_info() -> dict[str, object]:
             "status": "not_configured",
             "compiled": False,
             "available": False,
+            "adapter_available": False,
+            "adapter_kind": "native_tnlp_adapter",
+            "adapter_source_available": False,
+            "hessian_strategy": "limited_memory",
+            "requires_exact_gradient": True,
+            "requires_exact_jacobian": True,
+            "requires_exact_hessian": False,
         }
     status = str(smoke.get("status", "not_configured"))
     compiled = bool(smoke.get("compiled", False))
@@ -201,6 +215,13 @@ def _native_ipopt_backend_info() -> dict[str, object]:
         "status": status,
         "compiled": compiled,
         "available": status == "enabled_available" and compiled,
+        "adapter_available": bool(smoke.get("adapter_available", False)),
+        "adapter_kind": str(smoke.get("adapter_kind", "native_tnlp_adapter")),
+        "adapter_source_available": bool(smoke.get("adapter_source_available", False)),
+        "hessian_strategy": str(smoke.get("hessian_strategy", "limited_memory")),
+        "requires_exact_gradient": bool(smoke.get("requires_exact_gradient", True)),
+        "requires_exact_jacobian": bool(smoke.get("requires_exact_jacobian", True)),
+        "requires_exact_hessian": bool(smoke.get("requires_exact_hessian", False)),
     }
 
 
@@ -513,7 +534,9 @@ def capabilities() -> dict[str, object]:
                 "scope": "native Ipopt dependency for production equilibrium NLP routes",
                 "hessian_strategies": ["limited_memory"],
                 "formulations": ["thermodynamic_constrained_nlp"],
-                "adapter_available": False,
+                "adapter_available": bool(ipopt.get("adapter_available", False)),
+                "adapter_source_available": bool(ipopt.get("adapter_source_available", False)),
+                "adapter_kind": ipopt.get("adapter_kind", "native_tnlp_adapter"),
                 "public_routes": [],
                 "full_constrained_nlp_available": False,
                 "default_auto_uses_ipopt": False,
