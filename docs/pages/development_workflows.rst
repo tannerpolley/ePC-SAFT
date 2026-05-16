@@ -71,7 +71,7 @@ Command matrix
      - Comprehensive runtime, MIAC, and regression profiling before making broad speed claims. This can take about a minute locally; allow at least 120 seconds.
    * - Package boundary
      - ``uv run python scripts/dev/build_dist.py``
-     - Wheel/sdist and smoke-import validation.
+     - Wheel/sdist and smoke-import validation. Isolated package builds default to serial native compilation to avoid Windows Ceres memory spikes; use ``--parallel N`` only when the machine has enough headroom.
    * - Installed/source diagnostic
      - ``uv run python -m epcsaft``
      - Confirm package and ``epcsaft._core`` paths.
@@ -197,7 +197,7 @@ Use the smallest relevant test first, then run ``uv run python scripts/dev/valid
 - Plot asset changes: run the owning ``analyses/<category>/<short_id>/scripts`` coordinator or the figure-local ``analyses/<category>/<short_id>/figures/<figure_id>/scripts`` entrypoint, plus any targeted opt-in test under ``analyses/package_validation/package_plot_smokes/tests``, only when regenerating local plot outputs is explicitly part of the task.
 
 ``--profile`` is the quick runtime-only profile. ``--profile-full`` runs runtime, MIAC, and regression profiles and is the preferred evidence path for comprehensive speed reviews; use a timeout of at least 120 seconds.
-- Packaging changes: ``uv run python scripts/dev/build_dist.py``.
+- Packaging changes: ``uv run python scripts/dev/build_dist.py``. The command defaults to ``--parallel 1`` for isolated PEP 517 builds; raise it only after confirming Ceres builds are not memory-bound.
 
 Keep generated plot assets and generated CSV workflows out of normal validation unless the task explicitly asks for them. There is no named plot validation slice; target the owning script or test file directly when plot output work is in scope.
 

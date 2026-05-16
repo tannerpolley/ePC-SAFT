@@ -643,16 +643,16 @@ Derivative availability
    * - Runtime ``dadt()``, ``dadx()``, ``z(return_contribution_terms=True)``, ``mures(return_contribution_terms=True)``
      - Analytical where available, CppAD where implemented; unsupported derivative paths raise clearly
      - Not exposed
-  * - Pure-neutral regression
+   * - Pure-neutral regression
      - Native CppAD/implicit Jacobian through ``evaluate_pure_neutral_derivatives(...)``
      - Solver-internal only; exact Hessian callbacks are not exposed
-  * - Generic ion/binary regression
+   * - Generic ion/binary regression
      - Binary ``k_ij`` fitting uses native Ceres ``cppad_implicit`` Jacobians; other generic residual families raise until analytic or CppAD coverage is implemented
      - Solver-internal only; exact Hessian callbacks are not exposed
-  * - Neutral LLE
+   * - Neutral LLE
      - Native stability and seed checks remain available; solve derivative callbacks raise until residual coverage is implemented
      - Route pending
-  * - Chemical equilibrium / reactive speciation
+   * - Chemical equilibrium / reactive speciation
      - Explicit native Ipopt ideal-mole-fraction route uses analytic derivatives when Ipopt is compiled; activity/concentration paths raise until EOS derivative NLP blocks exist
      - Ipopt limited-memory Hessian handling is solver-internal
 

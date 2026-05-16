@@ -18,7 +18,7 @@ def _run(cmd: list[str], *, env: dict[str, str] | None = None) -> None:
     subprocess.run(cmd, cwd=str(REPO_ROOT), env=env, check=True)
 
 
-def _env() -> dict[str, str]:
+def _env(parallel: str | None = None) -> dict[str, str]:
     temp_root = REPO_ROOT / "build" / "dist-temp"
     temp_root.mkdir(parents=True, exist_ok=True)
     env = os.environ.copy()
@@ -29,6 +29,8 @@ def _env() -> dict[str, str]:
     existing_pythonpath = env.get("PYTHONPATH")
     site_path = str(TEMPFILE_SITE.resolve())
     env["PYTHONPATH"] = site_path if not existing_pythonpath else os.pathsep.join([site_path, existing_pythonpath])
+    if parallel:
+        env["CMAKE_BUILD_PARALLEL_LEVEL"] = str(parallel)
     return env
 
 
@@ -91,10 +93,15 @@ print("wheel smoke ok", epcsaft.__file__, state.compressibility_factor())
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--skip-smoke", action="store_true")
+    parser.add_argument(
+        "--parallel",
+        default=os.environ.get("EPCSAFT_BUILD_DIST_PARALLEL", "1"),
+        help="CMake build parallelism for isolated PEP 517 builds. Defaults to 1 to avoid Windows Ceres OOMs.",
+    )
     args = parser.parse_args()
 
     _clean_dist()
-    _run(["uv", "build"], env=_env())
+    _run(["uv", "build"], env=_env(args.parallel))
     wheel = _newest_wheel()
     _assert_wheel_has_no_solver_dev_artifacts(wheel)
     if not args.skip_smoke:

@@ -33,3 +33,12 @@ def test_dist_wheel_audit_rejects_ceres_development_artifacts(tmp_path) -> None:
 
     with pytest.raises(RuntimeError, match="Ceres development artifacts"):
         build_dist._assert_wheel_has_no_solver_dev_artifacts(wheel)
+
+
+def test_dist_build_env_sets_conservative_parallel_level(monkeypatch) -> None:
+    monkeypatch.delenv("PYTHONPATH", raising=False)
+
+    env = build_dist._env("1")
+
+    assert env["CMAKE_BUILD_PARALLEL_LEVEL"] == "1"
+    assert env["EPCSAFT_SANDBOX_SAFE_TEMPFILE"] == "1"
