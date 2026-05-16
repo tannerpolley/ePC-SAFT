@@ -77,3 +77,49 @@ def test_neutral_two_phase_eos_nlp_contract_uses_phase_system_blocks() -> None:
     assert np.all(np.asarray(payload["variable_lower_bounds"], dtype=float) > 0.0)
     assert payload["constraint_lower_bounds"] == pytest.approx([0.0, 0.0, 0.0, 0.0])
     assert payload["constraint_upper_bounds"] == pytest.approx([0.0, 0.0, 0.0, 0.0])
+
+
+def test_neutral_two_phase_eos_ipopt_solve_is_native_and_dependency_gated() -> None:
+    mix = _neutral_binary_mixture()
+    temperature = 300.0
+    phase_amounts = [
+        np.asarray([0.4, 0.6], dtype=float),
+        np.asarray([0.4, 0.6], dtype=float),
+    ]
+    density = 100.0
+    volumes = [float(phase.sum() / density) for phase in phase_amounts]
+    feed_amounts = phase_amounts[0] + phase_amounts[1]
+    target_pressure = mix.state(
+        T=temperature,
+        rho=density,
+        x=phase_amounts[0] / phase_amounts[0].sum(),
+        phase="liquid",
+    ).pressure()
+
+    payload = _core._native_neutral_two_phase_eos_ipopt_solve(
+        mix._native,
+        temperature,
+        target_pressure,
+        [phase.tolist() for phase in phase_amounts],
+        volumes,
+        feed_amounts.tolist(),
+        30,
+        1.0e-8,
+    )
+
+    assert payload["backend"] == "ipopt"
+    assert payload["problem_name"] == "neutral_two_phase_eos"
+    assert payload["derivative_backend"] == "analytic_cppad"
+    assert payload["exact_gradient_required"] is True
+    assert payload["exact_jacobian_required"] is True
+    if not payload["compiled"]:
+        assert payload["ran"] is False
+        assert payload["accepted"] is False
+        assert payload["status"] == "requires_ipopt_build"
+        return
+
+    assert payload["ran"] is True
+    assert payload["accepted"] is True
+    assert payload["material_balance_norm"] <= 1.0e-7
+    assert payload["pressure_consistency_norm"] <= 1.0e-3
+    assert np.asarray(payload["variables"], dtype=float).shape == (6,)

@@ -448,6 +448,12 @@ bounds, zero-valued material/pressure constraints, scaling, and exact analytical
 derivatives. This is a contract scaffold for Ipopt wiring only; production neutral TP flash/VLE/LLE/bubble/dew route
 replacement remains open.
 
+Task 8 continuation note: the neutral two-phase EOS route builder can now be submitted to the generic native Ipopt
+adapter through a private native solve entrypoint. Local no-Ipopt builds return the explicit `requires_ipopt_build`
+gate, while Ipopt-enabled builds run the adapter with exact objective gradients and constraint Jacobians. This is still
+private route-builder plumbing; public neutral equilibrium dispatch remains route-gated until route-specific postsolve
+acceptance and result translation are implemented.
+
 ### Task 9: Replace Electrolyte And Reactive Phase Equilibrium Routes
 
 **Files:**

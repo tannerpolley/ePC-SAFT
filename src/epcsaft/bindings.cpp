@@ -1348,6 +1348,71 @@ PYBIND11_MODULE(_core, m) {
             )
         );
     });
+    m.def("_native_neutral_two_phase_eos_ipopt_solve", [](
+        const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+        double temperature,
+        double target_pressure,
+        const std::vector<std::vector<double>>& phase_amounts,
+        const std::vector<double>& volumes,
+        const std::vector<double>& feed_amounts,
+        int max_iterations,
+        double tolerance
+    ) {
+        if (!mixture) {
+            throw ValueError("Neutral two-phase EOS Ipopt solve requires a native mixture.");
+        }
+        py::dict out;
+        const auto adapter = epcsaft::native::equilibrium_nlp::native_ipopt_adapter_info();
+        out["backend"] = "ipopt";
+        out["compiled"] = adapter.compiled;
+        out["adapter_available"] = adapter.adapter_available;
+        out["adapter_kind"] = adapter.adapter_kind;
+        out["problem_name"] = "neutral_two_phase_eos";
+        out["derivative_backend"] = "analytic_cppad";
+        out["ran"] = false;
+        out["accepted"] = false;
+        out["exact_gradient_required"] = adapter.exact_gradient_required;
+        out["exact_jacobian_required"] = adapter.exact_jacobian_required;
+        if (!adapter.compiled) {
+            out["status"] = "requires_ipopt_build";
+            return out;
+        }
+        epcsaft::native::equilibrium_nlp::IpoptSolveOptions options;
+        options.max_iterations = max_iterations;
+        options.tolerance = tolerance;
+        options.acceptable_tolerance = std::max(tolerance * 100.0, 1.0e-10);
+        const auto result = epcsaft::native::equilibrium_nlp::solve_neutral_two_phase_eos_ipopt(
+            mixture->args(),
+            temperature,
+            target_pressure,
+            phase_amounts,
+            volumes,
+            feed_amounts,
+            options
+        );
+        out["ran"] = result.solver_ran;
+        out["accepted"] = result.accepted;
+        out["status"] = result.solver_status;
+        out["solver_status"] = result.solver_status;
+        out["application_status"] = result.application_status;
+        out["objective"] = result.objective;
+        out["variables"] = result.variables;
+        out["constraints"] = result.constraints;
+        out["hessian_strategy"] = result.hessian_strategy;
+        double material_norm = 0.0;
+        double pressure_norm = 0.0;
+        const std::size_t species_count = feed_amounts.size();
+        for (std::size_t index = 0; index < result.constraints.size(); ++index) {
+            if (index < species_count) {
+                material_norm = std::max(material_norm, std::abs(result.constraints[index]));
+            } else {
+                pressure_norm = std::max(pressure_norm, std::abs(result.constraints[index]));
+            }
+        }
+        out["material_balance_norm"] = material_norm;
+        out["pressure_consistency_norm"] = pressure_norm;
+        return out;
+    });
     m.def("_native_cppad_eos_contributions", [](double t, double rho, const std::vector<double>& x, const add_args& args) {
         return cppad_smoke_to_dict(cppad_eos_contribution_derivatives_cpp(t, rho, x, args));
     });

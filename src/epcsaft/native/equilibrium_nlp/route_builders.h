@@ -1,5 +1,7 @@
 #pragma once
 
+#include "ipopt_adapter.h"
+
 #include <string>
 #include <vector>
 
@@ -35,6 +37,16 @@ NeutralTwoPhaseEosNlpContract evaluate_neutral_two_phase_eos_nlp_contract(
     const std::vector<std::vector<double>>& phase_amounts,
     const std::vector<double>& volumes,
     const std::vector<double>& feed_amounts
+);
+
+IpoptSolveResult solve_neutral_two_phase_eos_ipopt(
+    const add_args& args,
+    double temperature,
+    double target_pressure,
+    const std::vector<std::vector<double>>& phase_amounts,
+    const std::vector<double>& volumes,
+    const std::vector<double>& feed_amounts,
+    const IpoptSolveOptions& options
 );
 
 }  // namespace epcsaft::native::equilibrium_nlp

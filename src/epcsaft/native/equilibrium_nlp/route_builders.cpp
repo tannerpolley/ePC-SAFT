@@ -2,6 +2,7 @@
 
 #include "eos_phase_block.h"
 #include "epcsaft_electrolyte.h"
+#include "ipopt_adapter.h"
 #include "nlp_problem.h"
 
 #include <algorithm>
@@ -244,6 +245,19 @@ NeutralTwoPhaseEosNlpContract evaluate_neutral_two_phase_eos_nlp_contract(
     out.jacobian_cols = structure.cols;
     out.jacobian_values_at_initial = problem.jacobian_values(initial);
     return out;
+}
+
+IpoptSolveResult solve_neutral_two_phase_eos_ipopt(
+    const add_args& args,
+    double temperature,
+    double target_pressure,
+    const std::vector<std::vector<double>>& phase_amounts,
+    const std::vector<double>& volumes,
+    const std::vector<double>& feed_amounts,
+    const IpoptSolveOptions& options
+) {
+    NeutralTwoPhaseEosProblem problem(args, temperature, target_pressure, phase_amounts, volumes, feed_amounts);
+    return solve_ipopt_nlp(problem, options);
 }
 
 }  // namespace epcsaft::native::equilibrium_nlp
