@@ -619,6 +619,8 @@ Task 10 continuation note: the public generic native-record derivative helper wa
 
 Task 10 continuation note: internal residual-score-only regression hooks no longer report themselves as optimizer backends or emit placeholder derivative backend labels. They now use the `diagnostic_residual_score` backend with `not_applicable` optimizer and derivative metadata, and the source/test/script text gate blocks reintroducing the retired residual-score backend label.
 
+Task 10 continuation note: pure-neutral regression debug Jacobian payloads now report `cppad_implicit`, matching the actual CppAD property derivatives plus implicit density sensitivities used by the native objective. The Python wrapper no longer defaults missing native Jacobian metadata to a generic autodiff label.
+
 ### Task 11: Internal Extension Boundaries
 
 **Files:**

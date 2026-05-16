@@ -213,7 +213,7 @@ struct PureNeutralRegressionDebugResult {
     int jacobian_rows = 0;
     int jacobian_cols = 0;
     bool jacobian_available = true;
-    std::string jacobian_backend = "autodiff";
+    std::string jacobian_backend = "cppad_implicit";
     vector<double> density_raw_residuals;
     vector<double> pure_vle_raw_residuals;
     int residual_evaluations = 0;
@@ -250,7 +250,7 @@ struct PureNeutralRegressionResult {
     double gradient_norm = 0.0;
     double step_norm = 0.0;
     bool jacobian_available = true;
-    std::string jacobian_backend = "autodiff";
+    std::string jacobian_backend = "cppad_implicit";
 };
 
 struct GenericRegressionRecord {

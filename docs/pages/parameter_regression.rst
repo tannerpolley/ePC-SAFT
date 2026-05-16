@@ -562,7 +562,7 @@ Normal ``FitResult`` payloads report compact derivative metadata:
 - ``jacobian_available``
 - ``jacobian_backend``
 
-Large matrices are exposed only through explicit derivative-evaluation helpers. Use ``evaluate_pure_neutral_derivatives(...)`` for the native pure-neutral objective. It returns residuals, gradient, ``jacobian_row_major``, and ``jacobian_shape``. Pure-neutral Jacobians use the Ceres-owned autodiff path.
+Large matrices are exposed only through explicit derivative-evaluation helpers. Use ``evaluate_pure_neutral_derivatives(...)`` for the native pure-neutral objective. It returns residuals, gradient, ``jacobian_row_major``, and ``jacobian_shape``. Pure-neutral Jacobians use CppAD derivatives plus implicit density sensitivities.
 
 Generic native-record derivative helpers are exposed only after the target family returns exact analytical, CppAD, or implicit derivative matrices from the native Ceres route. Public generic fitting does not route through non-native optimizer loops.
 

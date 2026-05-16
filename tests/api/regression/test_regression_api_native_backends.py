@@ -102,7 +102,7 @@ def test_fit_pure_neutral_rejects_non_phase1_targets():
             initial_guess={"m": 2.8, "s": 3.7, "e_assoc": 1000.0},
         )
 
-def test_native_pure_neutral_debug_gradient_reports_autodiff_backend():
+def test_native_pure_neutral_debug_gradient_reports_cppad_implicit_backend():
     theta = {"m": 1.05, "s": 3.68, "e": 151.0}
     debug = _debug_native_pure_neutral_objective(
         _methane_like_records(),
@@ -114,13 +114,13 @@ def test_native_pure_neutral_debug_gradient_reports_autodiff_backend():
     )
     exact = np.asarray(debug["gradient"], dtype=float)
     assert np.all(np.isfinite(exact))
-    assert debug["jacobian_backend"] == "autodiff"
+    assert debug["jacobian_backend"] == "cppad_implicit"
     assert debug["residual_evaluations"] >= 1
     assert debug["density_solves"] >= 2
     assert debug["fused_state_evaluations"] >= 2
     assert debug["callback_wall_time_s"] >= 0.0
     assert debug["jacobian_available"] is True
-    assert debug["jacobian_backend"] == "autodiff"
+    assert debug["jacobian_backend"] == "cppad_implicit"
     assert tuple(debug["jacobian_shape"]) == (len(debug["residuals"]), 3)
     assert np.asarray(debug["jacobian_row_major"], dtype=float).shape == (len(debug["residuals"]) * 3,)
 

@@ -2692,7 +2692,7 @@ def _fit_pure_neutral_native_debug(
         "jacobian_row_major": vector_to_array(result["jacobian_row_major"]),
         "jacobian_shape": (result["jacobian_shape"]),
         "jacobian_available": bool(result.get("jacobian_available", True)),
-        "jacobian_backend": str(result.get("jacobian_backend", "autodiff")),
+        "jacobian_backend": str(result.get("jacobian_backend", "unspecified")),
         "density_raw_residuals": vector_to_array(result["density_raw_residuals"]),
         "pure_vle_raw_residuals": vector_to_array(result["pure_vle_raw_residuals"]),
         "residual_evaluations": int(result["residual_evaluations"]),
