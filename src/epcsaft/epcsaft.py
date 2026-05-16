@@ -1671,8 +1671,12 @@ class ePCSAFTState:
                 source_equation_ids=(eqid,),
             )
 
-        born_result = self.born_ssmds_liquid_derivatives()
-        add("born_ssmds_liquid", "d_born/f_solv", born_result, source_equation_ids=("ares_born",))
+        add_result_factory(
+            "born_ssmds_liquid",
+            "d_born/f_solv",
+            self.born_ssmds_liquid_derivatives,
+            source_equation_ids=("ares_born",),
+        )
         add_result_factory("relative_permittivity", "composition", self.relative_permittivity_composition_derivative_result)
         add_result_factory("relative_permittivity", "parameter", self.relative_permittivity_parameter_derivative_result)
         add_result_factory(
@@ -2023,7 +2027,12 @@ class ePCSAFTState:
 
     def born_ssmds_liquid_derivatives(self):
         """Return analytic liquid-electrolyte SSM+DS Born parameter derivatives."""
-        payload = dict(self._native.born_ssmds_liquid_derivatives())
+        if self._phase != 0:
+            raise InputError("unsupported: SSM+DS Born derivatives are liquid-electrolyte only.")
+        try:
+            payload = dict(self._native.born_ssmds_liquid_derivatives())
+        except _NATIVE_CALL_ERRORS as exc:
+            _unsupported_derivative(str(exc))
         ncomp = int(payload.get("ncomp", self._x.size))
         for key in (
             "a_born_d_d_born",

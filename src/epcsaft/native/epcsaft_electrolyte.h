@@ -128,7 +128,7 @@ struct FugacityContributionResult {
 
 struct BornSSMDSDerivativeResult {
     bool supported = false;
-    std::string backend = "not_available";
+    std::string backend = "unspecified";
     std::string message;
     vector<double> a_born_d_d_born;
     vector<double> a_born_d_f_solv;

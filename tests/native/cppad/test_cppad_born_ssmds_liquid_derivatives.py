@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 
 from analyses.data_validation.miac_fits.scripts import validate_miac_fits as vmf
+from epcsaft import InputError
 from scripts._epcsaft_oop import as_mixture
 from tests.helpers.numeric import assert_allclose
 
@@ -67,11 +68,8 @@ def test_liquid_ssmds_born_derivatives_are_supported_for_figiel_d_born_and_f_sol
     assert_allclose(payload["lnfug_d_f_solv"], payload["mu_res_d_f_solv"])
 
 
-def test_vapor_ssmds_born_derivatives_report_not_available() -> None:
+def test_vapor_ssmds_born_derivatives_raise_out_of_scope() -> None:
     _, state = _figiel_nabr_water_state("vap")
 
-    payload = state.born_ssmds_liquid_derivatives()
-
-    assert payload["supported"] is False
-    assert payload["backend"] == "not_available"
-    assert payload["message"] == "SSM+DS Born derivatives are liquid-electrolyte only"
+    with pytest.raises(InputError, match="liquid-electrolyte only"):
+        state.born_ssmds_liquid_derivatives()

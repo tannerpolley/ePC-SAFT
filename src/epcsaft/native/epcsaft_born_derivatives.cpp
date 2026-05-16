@@ -12,22 +12,6 @@ static double born_prefactor_cpp(double t)
     return E_CHRG * E_CHRG / (4.0 * PI * kb * t * perm_vac);
 }
 
-static void assign_not_available(BornSSMDSDerivativeResult& result, int ncomp, const std::string& message)
-{
-    result.supported = false;
-    result.backend = "not_available";
-    result.message = message;
-    result.ncomp = ncomp;
-    result.a_born_d_d_born.assign(ncomp, 0.0);
-    result.a_born_d_f_solv.assign(ncomp, 0.0);
-    result.mu_res_d_d_born_row_major.assign(ncomp * ncomp, 0.0);
-    result.mu_res_d_f_solv_row_major.assign(ncomp * ncomp, 0.0);
-    result.lnfug_d_d_born_row_major.assign(ncomp * ncomp, 0.0);
-    result.lnfug_d_f_solv_row_major.assign(ncomp * ncomp, 0.0);
-    result.lngamma_d_d_born_row_major.assign(ncomp * ncomp, 0.0);
-    result.lngamma_d_f_solv_row_major.assign(ncomp * ncomp, 0.0);
-}
-
 static void initialize_supported_result(BornSSMDSDerivativeResult& result, int ncomp)
 {
     result.supported = true;
@@ -222,16 +206,13 @@ BornSSMDSDerivativeResult born_ssmds_liquid_derivatives_cpp(
     BornSSMDSDerivativeResult result;
 
     if (phase != 0) {
-        assign_not_available(result, ncomp, "SSM+DS Born derivatives are liquid-electrolyte only");
-        return result;
+        throw ValueError("unsupported: SSM+DS Born derivatives are liquid-electrolyte only.");
     }
     if (cppargs.z.empty() || cppargs.born_model != 2) {
-        assign_not_available(result, ncomp, "not_available: SSM+DS Born derivatives require the liquid SSM/DS Born model.");
-        return result;
+        throw ValueError("unsupported: SSM+DS Born derivatives require the liquid SSM/DS Born model.");
     }
     if (cppargs.born_eps_mode == 1) {
-        assign_not_available(result, ncomp, "not_available: SSM+DS Born parameter derivatives currently use mixture dielectric routing.");
-        return result;
+        throw ValueError("unsupported: SSM+DS Born parameter derivatives currently use mixture dielectric routing.");
     }
 
     BornIntermediateState born_state = born_intermediate_state_cpp(t, x, cppargs, false);
