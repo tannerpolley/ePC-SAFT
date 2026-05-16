@@ -125,7 +125,6 @@ result diagnostics report the derivative status explicitly:
 - ``solver_backend``
 - ``derivative_backend``
 - ``derivative_status``
-- ``not_available_reason``
 - ``solved_internal_states``
 - ``derivative_backend_by_block``
 - ``implicit_sensitivity_blocks``

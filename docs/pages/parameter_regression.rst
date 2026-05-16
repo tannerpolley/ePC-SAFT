@@ -592,11 +592,10 @@ Normal ``FitResult`` payloads report compact derivative metadata:
 - ``residual_block_norms``
 - ``jacobian_available``
 - ``jacobian_backend``
-- ``not_available_reason``
 - ``hessian_available``
 - ``hessian_backend``
 
-Large matrices are exposed only through explicit derivative-evaluation helpers. Use ``evaluate_pure_neutral_derivatives(...)`` for the native pure-neutral objective. It returns residuals, gradient, ``jacobian_row_major``, ``jacobian_shape``, and Hessian skeleton fields. Pure-neutral Jacobians use the Ceres-owned autodiff path.
+Large matrices are exposed only through explicit derivative-evaluation helpers. Use ``evaluate_pure_neutral_derivatives(...)`` for the native pure-neutral objective. It returns residuals, gradient, ``jacobian_row_major``, ``jacobian_shape``, and Hessian metadata fields. Pure-neutral Jacobians use the Ceres-owned autodiff path.
 
 For lower-level generic native records, ``evaluate_generic_regression_derivatives(...)`` raises until the requested residual state calls have analytic, CppAD, or implicit derivative coverage. Public generic fitting does not route through non-native optimizer loops.
 
@@ -661,14 +660,13 @@ Derivative availability
      - Skeleton metadata only
    * - Generic ion/binary regression
      - Binary ``k_ij`` fitting uses native Ceres ``cppad_implicit`` Jacobians; other generic residual families raise until analytic or CppAD coverage is implemented
-     - Skeleton metadata only
+     - Metadata only
    * - Neutral LLE
      - Native stability and seed checks remain available; solve derivative callbacks raise until residual coverage is implemented
-     - Skeleton metadata only
+     - Metadata only
    * - Chemical equilibrium / reactive speciation
      - Analytic log-amount Jacobian for ideal-mole-fraction reactions under ``auto``; activity/concentration paths raise until derivative coverage is implemented
      - Native Ipopt adapter work remains open
 
-The Hessian fields are deliberately a contract skeleton for future
-IPOPT-compatible optimizer integration. They do not mean exact second-derivative
-evaluation is implemented.
+The Hessian fields are reserved metadata for native optimizer integration. They
+do not mean exact second-derivative evaluation is implemented.

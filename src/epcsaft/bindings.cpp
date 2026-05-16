@@ -714,7 +714,7 @@ py::dict native_chemical_residual_evaluation_to_dict(const ChemicalResidualEvalu
     out["jacobian_shape"] = py::make_tuple(result.jacobian_rows, result.jacobian_cols);
     out["jacobian_backend"] = result.diagnostics_string.count("jacobian_backend")
         ? result.diagnostics_string.at("jacobian_backend")
-        : "not_available";
+        : "unspecified";
     out["hessian_backend"] = result.diagnostics_string.count("hessian_backend")
         ? result.diagnostics_string.at("hessian_backend")
         : "gauss_newton";
@@ -746,7 +746,7 @@ py::dict native_electrolyte_lle_residual_evaluation_to_dict(const ElectrolyteLLE
     out["jacobian_shape"] = py::make_tuple(result.jacobian_rows, result.jacobian_cols);
     out["jacobian_backend"] = result.diagnostics_string.count("jacobian_backend")
         ? result.diagnostics_string.at("jacobian_backend")
-        : "not_available";
+        : "unspecified";
     out["hessian_backend"] = result.diagnostics_string.count("hessian_backend")
         ? result.diagnostics_string.at("hessian_backend")
         : "gauss_newton";
@@ -784,7 +784,7 @@ py::dict native_reactive_phase_residual_evaluation_to_dict(const ReactivePhaseRe
     out["jacobian_shape"] = py::make_tuple(result.jacobian_rows, result.jacobian_cols);
     out["jacobian_backend"] = result.diagnostics_string.count("jacobian_backend")
         ? result.diagnostics_string.at("jacobian_backend")
-        : "not_available";
+        : "unspecified";
     out["phase1_composition"] = result.phase1_composition;
     out["phase2_composition"] = result.phase2_composition;
     out["phase1_amounts"] = result.phase1_amounts;

@@ -67,8 +67,8 @@ The derivative default is native-owned and diagnostic-friendly:
 ``standard_state="ideal_mole_fraction"``. Activity- or concentration-coupled
 standard states raise until analytic, CppAD, or implicit residual derivatives
 are implemented. Diagnostics report
-``requested_jacobian_backend``, ``derivative_backend``, ``derivative_status``,
-and ``not_available_reason`` for strict route-boundary failures. Numerical
+``requested_jacobian_backend``, ``derivative_backend``, and ``derivative_status``
+for strict route-boundary failures. Numerical
 perturbation Jacobians are not a supported substitute.
 
 .. code-block:: python
