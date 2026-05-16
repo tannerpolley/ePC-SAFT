@@ -376,6 +376,8 @@ Task 6 progress note: the first route slice adds explicit `solver_backend="ipopt
 - [ ] Delete or rewrite legacy tests that assert old diagnostics.
 - [ ] Commit as `Replace neutral equilibrium with native Ipopt NLPs`.
 
+Task 8 progress note: the public `EquilibriumOptions.solver_backend` contract no longer accepts explicit `newton`; public selection is limited to `auto` for the still-existing internal native routes and `ipopt` for explicit native-Ipopt requests while the route builders are being replaced.
+
 ### Task 9: Replace Electrolyte And Reactive Phase Equilibrium Routes
 
 **Files:**

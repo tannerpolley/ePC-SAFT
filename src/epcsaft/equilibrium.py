@@ -53,7 +53,7 @@ class EquilibriumOptions:
     density_diagnostics: Literal["auto", "off", "full"] = "auto"
     experimental_coupled_density_lle: bool = False
     jacobian_backend: Literal["auto", "autodiff", "analytic", "cppad"] = "auto"
-    solver_backend: Literal["auto", "newton", "ipopt"] = "auto"
+    solver_backend: Literal["auto", "ipopt"] = "auto"
     hessian_strategy: Literal["gauss_newton", "lbfgs"] = "gauss_newton"
     timeout_seconds: float | None = None
     max_seed_attempts: int | None = None
@@ -637,8 +637,8 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
     if jacobian_backend not in {"auto", "autodiff", "analytic", "cppad"}:
         raise InputError("options.jacobian_backend must be 'auto', 'autodiff', 'analytic', or 'cppad'.")
     solver_backend = str(options.solver_backend).strip().lower()
-    if solver_backend not in {"auto", "newton", "ipopt"}:
-        raise InputError("options.solver_backend must be 'auto', 'newton', or 'ipopt'.")
+    if solver_backend not in {"auto", "ipopt"}:
+        raise InputError("options.solver_backend must be 'auto' or 'ipopt'.")
     hessian_strategy = str(options.hessian_strategy).strip().lower()
     hessian_aliases = {"gn": "gauss_newton", "gauss-newton": "gauss_newton", "bfgs": "lbfgs"}
     hessian_strategy = hessian_aliases.get(hessian_strategy, hessian_strategy)

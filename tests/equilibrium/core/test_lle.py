@@ -241,6 +241,7 @@ def test_lle_flash_distinct_poor_seed_fails_loudly_without_forced_pass() -> None
         (epcsaft.EquilibriumOptions(include_phase_diagnostics="yes"), "include_phase_diagnostics"),
         (epcsaft.EquilibriumOptions(stability_precheck="yes"), "stability_precheck"),
         (epcsaft.EquilibriumOptions(solver_backend="python_ipopt"), "solver_backend"),
+        (epcsaft.EquilibriumOptions(solver_backend="newton"), "solver_backend"),
         (epcsaft.EquilibriumOptions(hessian_strategy="exact"), "hessian_strategy"),
         (epcsaft.EquilibriumOptions(timeout_seconds=0.0), "timeout_seconds"),
         (epcsaft.EquilibriumOptions(timeout_seconds=float("nan")), "timeout_seconds"),
