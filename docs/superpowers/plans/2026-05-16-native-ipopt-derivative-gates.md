@@ -275,6 +275,8 @@ Task 2 continuation note: the stale full-duration failure list in the tracked te
 
 Task 2 continuation note: after the reactive-speciation diagnostic and MIAC fixture cleanup slices, `uv run python run_pytest.py --all -q` passed with 524 tests and 21 skips in 164.09 seconds.
 
+Task 2 continuation note: electrolyte LLE tests that still named the current Ceres equilibrium route as production coverage were rewritten to call it transitional/current Ceres coverage. The reactive-phase residual-surface evaluator now computes the exact CppAD-implicit Jacobian by default for `auto`, `analytic`, and `cppad` requests instead of emitting an empty derivative payload.
+
 ### Task 3: Build Dependency Boundary
 
 **Files:**

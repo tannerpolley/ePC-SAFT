@@ -7,7 +7,7 @@ import pytest
 
 import epcsaft
 from epcsaft import ePCSAFTMixture
-from tests.equilibrium.electrolyte.test_electrolyte_lle_solver_contracts import _assert_ceres_production_diagnostics
+from tests.equilibrium.electrolyte.test_electrolyte_lle_solver_contracts import _assert_transitional_ceres_diagnostics
 from tests.helpers.numeric import assert_allclose
 
 
@@ -22,7 +22,7 @@ def _salting_out_fixture() -> tuple[ePCSAFTMixture, np.ndarray, dict[str, object
     return mix, feed, initial_phases
 
 
-def test_quaternary_salting_out_lle_benchmark_uses_production_solver() -> None:
+def test_quaternary_salting_out_lle_benchmark_uses_current_ceres_route() -> None:
     mix, feed, initial_phases = _salting_out_fixture()
 
     result = mix.equilibrium(
@@ -37,7 +37,7 @@ def test_quaternary_salting_out_lle_benchmark_uses_production_solver() -> None:
 
     assert result.split_detected is True
     assert len(result.phases) == 2
-    _assert_ceres_production_diagnostics(diagnostics)
+    _assert_transitional_ceres_diagnostics(diagnostics)
     assert diagnostics["neutral_fugacity_residual_norm"] <= 1.0e-8
     assert diagnostics["ionic_equilibrium_residual_norm"] <= 1.0e-8
     assert diagnostics["material_balance_norm"] <= 1.0e-10

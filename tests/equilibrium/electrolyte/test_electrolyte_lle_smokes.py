@@ -53,7 +53,7 @@ def _case2_mixture(feed=None) -> ePCSAFTMixture:
         feed = _case2_feed()
     return ePCSAFTMixture.from_dataset("2022_Ascani", ["H2O", "Butanol", "Na+", "K+", "Cl-"], feed, 298.15)
 
-def _assert_ceres_solver_diagnostics(result) -> None:
+def _assert_transitional_ceres_solver_diagnostics(result) -> None:
     assert result.split_detected is True
     assert result.diagnostics["solver_backend"] == "ceres"
     assert result.diagnostics["solver_method"] == "ceres_trust_region_residual_solve"
@@ -62,7 +62,7 @@ def _assert_ceres_solver_diagnostics(result) -> None:
     assert result.diagnostics["jacobian_available"] is True
     assert result.diagnostics["derivative_available"] is True
 
-def test_electrolyte_lle_direct_feed_reports_production_solver_derivatives() -> None:
+def test_electrolyte_lle_direct_feed_reports_current_ceres_derivatives() -> None:
     feed = np.asarray([0.55, 0.40, 0.025, 0.025], dtype=float)
     mix = _ascani_water_butanol_nacl_mixture(feed)
 
@@ -74,7 +74,7 @@ def test_electrolyte_lle_direct_feed_reports_production_solver_derivatives() -> 
         options=epcsaft.EquilibriumOptions(include_phase_diagnostics=True),
     )
 
-    _assert_ceres_solver_diagnostics(result)
+    _assert_transitional_ceres_solver_diagnostics(result)
 
 def test_electrolyte_lle_direct_feed_requested_ipopt_requires_native_adapter() -> None:
     feed = np.asarray([0.55, 0.40, 0.025, 0.025], dtype=float)
@@ -93,7 +93,7 @@ def test_electrolyte_lle_direct_feed_requested_ipopt_requires_native_adapter() -
             ),
         )
 
-def test_electrolyte_lle_molality_feed_reports_production_solver_derivatives() -> None:
+def test_electrolyte_lle_molality_feed_reports_current_ceres_derivatives() -> None:
     mix = _ascani_water_butanol_nacl_mixture()
 
     result = mix.equilibrium(
@@ -105,7 +105,7 @@ def test_electrolyte_lle_molality_feed_reports_production_solver_derivatives() -
         options=epcsaft.EquilibriumOptions(include_phase_diagnostics=True),
     )
 
-    _assert_ceres_solver_diagnostics(result)
+    _assert_transitional_ceres_solver_diagnostics(result)
 
 def test_electrolyte_lle_accepts_strict_aq_org_initial_phases() -> None:
     mix = _ascani_water_butanol_nacl_mixture()
@@ -125,7 +125,7 @@ def test_electrolyte_lle_accepts_strict_aq_org_initial_phases() -> None:
 
     assert result.split_detected is True
     assert result.diagnostics["solver_seed_name"] == "initial_phases"
-    _assert_ceres_solver_diagnostics(result)
+    _assert_transitional_ceres_solver_diagnostics(result)
 
 def test_electrolyte_lle_rejects_neutral_lle_initial_phase_labels() -> None:
     mix = _ascani_water_butanol_nacl_mixture()
@@ -154,7 +154,7 @@ def test_equilibrium_options_expose_density_robustness_controls() -> None:
     assert options.density_diagnostics == "full"
     assert options.experimental_coupled_density_lle is True
 
-def test_one_salt_smoke_reports_production_solver_derivatives() -> None:
+def test_one_salt_smoke_reports_current_ceres_derivatives() -> None:
     feed = np.asarray([0.55, 0.40, 0.025, 0.025], dtype=float)
     mix = _ascani_water_butanol_nacl_mixture(feed)
 
@@ -166,7 +166,7 @@ def test_one_salt_smoke_reports_production_solver_derivatives() -> None:
         options=epcsaft.EquilibriumOptions(max_iterations=80, tolerance=1.0e-6),
     )
 
-    _assert_ceres_solver_diagnostics(result)
+    _assert_transitional_ceres_solver_diagnostics(result)
 
 def test_electrolyte_lle_rejects_non_neutral_direct_feed() -> None:
     mix = _ascani_water_butanol_nacl_mixture()

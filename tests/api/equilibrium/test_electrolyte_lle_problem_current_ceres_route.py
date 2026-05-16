@@ -7,7 +7,7 @@ from tests.equilibrium.electrolyte.test_salting_out_lle_benchmark import _saltin
 from tests.helpers.numeric import assert_allclose
 
 
-def test_electrolyte_lle_problem_routes_to_native_ceres_production_solver() -> None:
+def test_electrolyte_lle_problem_routes_to_current_native_ceres_solver() -> None:
     mix, feed, initial_phases = _salting_out_fixture()
     problem = epcsaft.ElectrolyteLLEProblem(
         T=298.15,

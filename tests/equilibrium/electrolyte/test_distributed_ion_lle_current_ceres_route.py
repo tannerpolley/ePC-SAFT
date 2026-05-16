@@ -7,14 +7,14 @@ import pytest
 
 import epcsaft
 from tests.equilibrium.electrolyte.test_electrolyte_lle_solver_contracts import (
-    _assert_ceres_production_diagnostics,
+    _assert_transitional_ceres_diagnostics,
     _case2_feed,
     _case2_mixture,
 )
 from tests.helpers.numeric import assert_allclose
 
 
-def test_distributed_ion_lle_production_solver_reports_residual_proof() -> None:
+def test_distributed_ion_lle_current_ceres_route_reports_residual_proof() -> None:
     feed = _case2_feed()
     mix = _case2_mixture(feed)
 
@@ -29,7 +29,7 @@ def test_distributed_ion_lle_production_solver_reports_residual_proof() -> None:
 
     assert result.split_detected is True
     assert len(result.phases) == 2
-    _assert_ceres_production_diagnostics(diagnostics)
+    _assert_transitional_ceres_diagnostics(diagnostics)
     assert diagnostics["acceptance_gate"] == "ceres_residual_solve"
     assert diagnostics["neutral_fugacity_residual_norm"] <= 1.0e-8
     assert diagnostics["ionic_equilibrium_residual_norm"] <= 1.0e-8

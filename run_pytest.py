@@ -18,7 +18,7 @@ GENERIC_TEST_TARGETS = (
     "tests/equilibrium/core/test_lle.py::test_methanol_cyclohexane_lle_flash_solves_seeded_phase_split",
     "tests/equilibrium/core/test_lle.py::test_lle_flash_requested_ipopt_requires_native_adapter",
     "tests/equilibrium/core/test_stability.py::test_stability_returns_structured_result_and_json_like_dict",
-    "tests/equilibrium/electrolyte/test_electrolyte_lle_smokes.py::test_one_salt_smoke_reports_production_solver_derivatives",
+    "tests/equilibrium/electrolyte/test_electrolyte_lle_smokes.py::test_one_salt_smoke_reports_current_ceres_derivatives",
     (
         "tests/equilibrium/electrolyte/test_electrolyte_lle_smokes.py::"
         "test_electrolyte_lle_direct_feed_requested_ipopt_requires_native_adapter"
@@ -55,7 +55,7 @@ EQUILIBRIUM_API_TEST_TARGETS = (
     "tests/equilibrium/core/test_api.py::test_tp_flash_returns_structured_result_and_json_like_dict",
     "tests/equilibrium/core/test_lle.py::test_methanol_cyclohexane_lle_flash_solves_seeded_phase_split",
     "tests/equilibrium/core/test_stability.py::test_stability_returns_structured_result_and_json_like_dict",
-    "tests/equilibrium/electrolyte/test_electrolyte_lle_smokes.py::test_one_salt_smoke_reports_production_solver_derivatives",
+    "tests/equilibrium/electrolyte/test_electrolyte_lle_smokes.py::test_one_salt_smoke_reports_current_ceres_derivatives",
     "tests/api/runtime/test_runtime_exports_and_metadata.py::test_runtime_build_info_and_capabilities_are_json_like",
     (
         "tests/api/reactive/test_reactive_speciation_results.py::"

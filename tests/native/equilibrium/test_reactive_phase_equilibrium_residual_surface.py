@@ -55,9 +55,10 @@ def test_reactive_phase_residual_surface_exposes_single_coupled_state() -> None:
     assert payload["variable_model"] == "log_phase_species_amounts"
     assert len(payload["variables"]) == 2 * mix.ncomp
     assert payload["jacobian_shape"] == (len(payload["residual"]), len(payload["variables"]))
-    assert payload["jacobian_row_major"] == []
-    assert payload["jacobian_backend"] == "not_available"
-    assert diagnostics["jacobian_available"] is False
+    assert len(payload["jacobian_row_major"]) == len(payload["residual"]) * len(payload["variables"])
+    assert payload["jacobian_backend"] == "cppad_implicit"
+    assert diagnostics["jacobian_available"] is True
+    assert diagnostics["derivative_available"] is True
     assert diagnostics["ceres_accepted_solve"] is False
     assert diagnostics["residual_surface"] == "native_reactive_phase_equilibrium_coupled_state"
     assert diagnostics["coupling_level"] == "single_native_residual_state"

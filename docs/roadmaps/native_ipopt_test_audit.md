@@ -43,21 +43,15 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 ## Slow Or Opt-In Areas
 
 - Slowest observed tests from the full duration run:
-  - `23.21s` `tests/equilibrium/electrolyte/test_electrolyte_lle_smokes.py::test_electrolyte_lle_direct_feed_reports_production_solver_derivatives`
+  - `23.21s` `tests/equilibrium/electrolyte/test_electrolyte_lle_smokes.py::test_electrolyte_lle_direct_feed_reports_current_ceres_derivatives`
   - `20.99s` `tests/api/reactive/test_staged_reactive_route_not_production.py::test_explicit_staged_kind_remains_separate_from_production_reactive_lle`
-  - `17.82s` `tests/equilibrium/electrolyte/test_electrolyte_lle_smokes.py::test_one_salt_smoke_reports_production_solver_derivatives`
+  - `17.82s` `tests/equilibrium/electrolyte/test_electrolyte_lle_smokes.py::test_one_salt_smoke_reports_current_ceres_derivatives`
   - `15.10s` `tests/workflows/paper_validation/test_rezaee_2026_paper_validation.py::test_rezaee_source_backed_paper_validation_generates_pre_surrogate_rows`
   - `10.06s` `tests/workflows/benchmarks/test_benchmark_reactive_regression.py::test_reactive_regression_benchmark_schema_for_one_case`
-  - `9.45s` `tests/equilibrium/electrolyte/test_electrolyte_lle_solver_contracts.py::test_electrolyte_lle_accepts_legacy_option_dict_before_production_failure`
-  - `9.33s` `tests/equilibrium/electrolyte/test_electrolyte_lle_solver_contracts.py::test_electrolyte_lle_solver_failure_reports_production_derivatives`
-  - `9.00s` `tests/equilibrium/electrolyte/test_electrolyte_lle_solver_contracts.py::test_experimental_coupled_density_lle_option_is_reported_without_changing_default_gate`
-  - `8.53s` `tests/equilibrium/electrolyte/test_electrolyte_lle_solver_contracts.py::test_electrolyte_lle_best_effort_reports_production_derivatives`
-  - `5.35s` `tests/workflows/benchmarks/test_benchmark_literature_suite.py::test_literature_benchmark_script_runs_and_writes_json`
 - `tests/profile/**` is opt-in through `EPCSAFT_RUN_PERF`.
 - MEA regression literature tests are opt-in through `EPCSAFT_RUN_MEA_TABLE2_REGRESSION` or `EPCSAFT_RUN_MEA_REGRESSION`.
 - Khudaida matrix and digitized-data validation tests use explicit skip gates for unavailable local validation assets.
 - Hubach hard-case electrolyte LLE tests use opt-in legacy-candidate gating.
-- Full-suite duration evidence is being collected separately; keep this audit updated with the slowest individual tests before Task 2 is considered complete.
 
 ## Unnecessary Or Weak Coverage Found
 
@@ -70,7 +64,7 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - The public implicit-sensitivity placeholder helper was removed. Reactive speciation tests now require real analytical/CppAD-backed implicit solve payloads and raising behavior for unsupported implicit derivative requests.
 - The legacy reactive-speciation `jacobian_backend="autodiff"` selector was removed; option tests now reject it and explicit derivative requests are limited to analytical/CppAD semantics.
 - The public `EquilibriumOptions.jacobian_backend` selector now rejects the same legacy backend spelling, keeping phase-equilibrium derivative requests aligned to analytical/CppAD semantics.
-- Stale native electrolyte LLE contract tests were rewritten from missing-derivative assertions to the implemented Ceres plus CppAD-implicit residual/Jacobian surface.
+- Stale native electrolyte LLE contract tests now describe the existing Ceres route as transitional current coverage, not final production equilibrium ownership.
 - The reactive phase diagnostic extent helper no longer uses NumPy's least-squares convenience path; it uses a direct library linear solve for the small stoichiometric normal system.
 - No-reaction, failed, and best-effort reactive speciation paths now omit implicit-sensitivity payloads when the native route has no reaction-constant sensitivity matrix instead of returning placeholders or raising during diagnostic normalization.
 - The MIAC electrolyte fixture check now uses a strict approximate comparison instead of exact binary float equality.

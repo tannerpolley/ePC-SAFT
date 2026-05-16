@@ -118,7 +118,7 @@ def test_public_electrolyte_stability_uses_native_backend() -> None:
     assert result.diagnostics["native_entrypoint"] == "_solve_equilibrium_native"
 
 
-def test_public_electrolyte_lle_reports_production_solver_derivatives() -> None:
+def test_public_electrolyte_lle_reports_current_ceres_derivatives() -> None:
     mix = _electrolyte_mixture()
     aq = np.asarray([0.798324680201737, 0.016320352824141723, 0.09267748348706063, 0.09267748348706063], dtype=float)
     org = np.asarray([0.37006036048879404, 0.6214918588210971, 0.004223890345054407, 0.004223890345054407], dtype=float)

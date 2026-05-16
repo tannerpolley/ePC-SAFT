@@ -651,8 +651,13 @@ std::vector<double> reactive_phase_residual_jacobian_row_major(
     return jacobian;
 }
 
-bool should_compute_jacobian(const EquilibriumOptionsNative& options) {
-    return options.jacobian_backend != "auto";
+void validate_jacobian_backend(const EquilibriumOptionsNative& options) {
+    if (options.jacobian_backend == "auto"
+        || options.jacobian_backend == "analytic"
+        || options.jacobian_backend == "cppad") {
+        return;
+    }
+    throw ValueError("reactive phase jacobian_backend must be auto, analytic, or cppad.");
 }
 
 #ifdef EPCSAFT_HAS_CERES
@@ -907,30 +912,27 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
     out.jacobian_rows = static_cast<int>(out.residual.size());
     out.jacobian_cols = static_cast<int>(eval_variables.size());
     out.phase_distance = phase_distance(phase1.composition, phase2.composition);
-    if (should_compute_jacobian(options)) {
-        out.jacobian_row_major = reactive_phase_residual_jacobian_row_major(
-            mixture,
-            t,
-            p,
-            balance_matrix_row_major,
-            balance_rows,
-            reaction_stoichiometry_row_major,
-            reaction_rows,
-            reaction_standard_states,
-            reaction_phase_stoichiometry_row_major,
-            phase1,
-            phase2,
-            charges,
-            out
-        );
-        out.gradient.assign(eval_variables.size(), 0.0);
-        for (std::size_t row = 0; row < out.residual.size(); ++row) {
-            for (std::size_t col = 0; col < eval_variables.size(); ++col) {
-                out.gradient[col] += out.jacobian_row_major[row * eval_variables.size() + col] * out.residual[row];
-            }
+    validate_jacobian_backend(options);
+    out.jacobian_row_major = reactive_phase_residual_jacobian_row_major(
+        mixture,
+        t,
+        p,
+        balance_matrix_row_major,
+        balance_rows,
+        reaction_stoichiometry_row_major,
+        reaction_rows,
+        reaction_standard_states,
+        reaction_phase_stoichiometry_row_major,
+        phase1,
+        phase2,
+        charges,
+        out
+    );
+    out.gradient.assign(eval_variables.size(), 0.0);
+    for (std::size_t row = 0; row < out.residual.size(); ++row) {
+        for (std::size_t col = 0; col < eval_variables.size(); ++col) {
+            out.gradient[col] += out.jacobian_row_major[row * eval_variables.size() + col] * out.residual[row];
         }
-    } else {
-        out.gradient.assign(eval_variables.size(), 0.0);
     }
 
     out.diagnostics_string["residual_surface"] = "native_reactive_phase_equilibrium_coupled_state";
@@ -940,17 +942,17 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
         : "element_balance,reaction_equilibrium,neutral_phase_equilibrium,ionic_equilibrium,phase_charge";
     out.diagnostics_string["solver_backend"] = "residual_surface_only";
     out.diagnostics_string["solver_method"] = "not_started_until_ceres_slice";
-    out.diagnostics_string["jacobian_backend"] = should_compute_jacobian(options) ? "cppad_implicit" : "not_available";
-    out.diagnostics_string["derivative_backend"] = should_compute_jacobian(options) ? "cppad_implicit" : "not_available";
+    out.diagnostics_string["jacobian_backend"] = "cppad_implicit";
+    out.diagnostics_string["derivative_backend"] = "cppad_implicit";
     out.diagnostics_string["coupling_level"] = "single_native_residual_state";
     out.diagnostics_string["phase_model"] = "two_liquid_phases";
     out.diagnostics_string["reaction_residual_basis"] = reaction_standard_state_summary(reaction_standard_states);
     out.diagnostics_string["reaction_phase_scope"] = phase_tagged_reactions
         ? "phase_tagged_cross_phase"
         : "per_phase_same_stoichiometry";
-    out.diagnostics_bool["jacobian_available"] = should_compute_jacobian(options);
-    out.diagnostics_bool["derivative_available"] = should_compute_jacobian(options);
-    out.diagnostics_bool["solved_state_sensitivity_available"] = should_compute_jacobian(options);
+    out.diagnostics_bool["jacobian_available"] = true;
+    out.diagnostics_bool["derivative_available"] = true;
+    out.diagnostics_bool["solved_state_sensitivity_available"] = true;
     out.diagnostics_bool["reaction_and_phase_residuals_share_state"] = true;
     out.diagnostics_bool["reaction_residual_standard_state_applied"] = true;
     out.diagnostics_bool["phase_tagged_reaction_stoichiometry"] = phase_tagged_reactions;
