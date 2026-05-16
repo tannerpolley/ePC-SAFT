@@ -449,6 +449,8 @@ Task 10 continuation note: the second regression slice removes the private gener
 
 Task 10 continuation note: a tracked repo gate now scans native C++ sources and blocks Ceres numeric-diff APIs and legacy perturbation tokens. This closes the explicit test-gate item, while templated Ceres autodiff and broader implicit derivative coverage remain open.
 
+Task 10 continuation note: regression public/native result payloads no longer expose placeholder fallback booleans, empty missing-derivative reason fields, or Hessian skeleton metadata. The retained regression derivative surface reports optimizer backend, derivative backend, objective/evaluation counters, gradient/step norms, and implemented Jacobian availability/backend only.
+
 ### Task 11: Internal Extension Boundaries
 
 **Files:**
@@ -490,6 +492,8 @@ blocker rows. Reactive electrolyte batch regression is no longer described as a 
 is documented as a diagnostic residual context until native Ceres owns that route. README and docs now describe native
 Ipopt as an explicit constrained-NLP backend with current public wiring limited to homogeneous ideal reactive speciation,
 and they state the convex formulation scope as homogeneous ideal subkernels only.
+
+Task 12 continuation note: reactive electrolyte fit status metadata no longer carries an empty placeholder-status list; the active diagnostic route is labeled `diagnostic_only`. EOS derivative coverage matrices now report implemented or out-of-scope rows only instead of acting as a missing-derivative backlog. Unsupported public property-derivative methods raise `InputError` directly rather than returning placeholder derivative result objects.
 
 ### Task 13: Final Validation And Cleanup
 
