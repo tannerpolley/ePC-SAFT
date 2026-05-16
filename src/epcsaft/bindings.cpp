@@ -822,9 +822,6 @@ EquilibriumOptionsNative options_from_request(const py::dict& request) {
     if (input.contains("tolerance")) {
         options.tolerance = input["tolerance"].cast<double>();
     }
-    if (input.contains("damping")) {
-        options.damping = input["damping"].cast<double>();
-    }
     if (input.contains("min_composition")) {
         options.min_composition = input["min_composition"].cast<double>();
     }
@@ -869,9 +866,6 @@ ChemicalEquilibriumOptionsNative chemical_options_from_request(const py::dict& r
     }
     if (input.contains("tolerance")) {
         options.tolerance = input["tolerance"].cast<double>();
-    }
-    if (input.contains("damping")) {
-        options.damping = input["damping"].cast<double>();
     }
     if (input.contains("min_mole_fraction")) {
         options.min_mole_fraction = input["min_mole_fraction"].cast<double>();

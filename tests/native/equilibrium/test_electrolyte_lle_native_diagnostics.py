@@ -35,7 +35,6 @@ def test_native_electrolyte_lle_reports_basis_and_transform_diagnostics() -> Non
             "options": {
                 "max_iterations": 180,
                 "tolerance": 1.0e-8,
-                "damping": 0.5,
                 "min_composition": 1.0e-12,
                 "include_phase_diagnostics": False,
                 "stability_precheck": True,

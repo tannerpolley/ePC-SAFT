@@ -59,7 +59,6 @@ def test_native_electrolyte_stability_entrypoint_runs_in_cpp() -> None:
         "options": {
             "max_iterations": 60,
             "tolerance": 1.0e-8,
-            "damping": 0.5,
             "min_composition": 1.0e-12,
             "include_phase_diagnostics": False,
             "stability_precheck": True,
@@ -88,7 +87,6 @@ def test_native_electrolyte_stability_honors_explicit_max_iterations() -> None:
         "options": {
             "max_iterations": 2,
             "tolerance": 1.0e-8,
-            "damping": 0.5,
             "min_composition": 1.0e-12,
             "include_phase_diagnostics": False,
             "stability_precheck": True,

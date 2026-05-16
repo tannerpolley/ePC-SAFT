@@ -433,6 +433,8 @@ Task 9 continuation note: `ReactiveSpeciationOptions` no longer exposes a public
 
 Task 9 continuation note: chemical-equilibrium residual evaluation payloads no longer report Gauss-Newton as a public Hessian backend, and the ideal Ipopt speciation route reports limited-memory Hessian behavior only as a solver-internal mode. The residual evaluator exposes the implemented analytic Jacobian/gradient surface and explicitly marks Hessian callbacks unavailable until an exact solver-owned Hessian path exists.
 
+Task 9 continuation note: direct pybind native equilibrium and chemical-equilibrium request parsing no longer accepts a `damping` option. Remaining damping values are internal native defaults until the route implementations are replaced.
+
 Task 9 continuation note: stale electrolyte LLE contract tests that expected missing residual derivatives were rewritten to assert the implemented Ceres solve plus CppAD-implicit transformed-variable residual Jacobian surface.
 
 Task 9 continuation note: the Python reactive-phase diagnostics no longer call NumPy's least-squares convenience routine for reaction extent reporting. The helper uses a small direct linear solve of the stoichiometric normal system and remains diagnostic-only.
