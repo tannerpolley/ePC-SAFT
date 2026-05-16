@@ -454,8 +454,9 @@ Reporting helpers write those schemas without downstream column guessing:
    epcsaft.write_regression_row_table(result, "build/regression/rows.csv")
    epcsaft.write_regression_residual_table(result, "build/regression/residuals.csv")
 
-If you are fitting parameters instead of only evaluating an objective, pass the
-fit result directly to the same reporting helpers. ``write_regression_parameter_table(...)``
+Reactive-electrolyte fitting currently returns ``diagnostic_only`` until native
+Ceres derivative coverage owns the optimization. Pass that result directly to
+the same reporting helpers. ``write_regression_parameter_table(...)``
 accepts either a raw parameter map plus ``seed_map=...`` or the full
 ``ReactiveRegressionFitResult`` so seed values, parameter movement, bounds, and
 active-bound flags stay aligned with the solved fit payload.
