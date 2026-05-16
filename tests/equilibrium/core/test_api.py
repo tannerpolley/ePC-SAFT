@@ -145,7 +145,7 @@ def test_explicit_stability_tp_matches_legacy_equilibrium_dispatch() -> None:
     assert direct.min_tpd == pytest.approx(legacy.min_tpd)
 
 
-def test_explicit_lle_tp_matches_legacy_equilibrium_dispatch_policy() -> None:
+def test_explicit_lle_tp_matches_equilibrium_route_pending_policy() -> None:
     mix = ePCSAFTMixture.from_params(
         {
             "m": np.asarray([1.5255, 2.5303]),
@@ -160,13 +160,10 @@ def test_explicit_lle_tp_matches_legacy_equilibrium_dispatch_policy() -> None:
     )
     feed = np.asarray([0.5, 0.5])
 
-    direct = mix.lle_tp(T=298.15, P=1.013e5, z=feed)
-    dispatched = mix.equilibrium(kind="lle_flash", T=298.15, P=1.013e5, z=feed)
-
-    assert direct.problem_kind == "lle_flash"
-    assert dispatched.problem_kind == direct.problem_kind
-    assert dispatched.diagnostics["nonlinear_solver"] == direct.diagnostics["nonlinear_solver"]
-    assert dispatched.phases[0].composition.tolist() == pytest.approx(direct.phases[0].composition.tolist())
+    with pytest.raises(epcsaft.InputError, match=r"lle_flash requires a native Ipopt equilibrium NLP route"):
+        mix.lle_tp(T=298.15, P=1.013e5, z=feed)
+    with pytest.raises(epcsaft.InputError, match=r"lle_flash requires a native Ipopt equilibrium NLP route"):
+        mix.equilibrium(kind="lle_flash", T=298.15, P=1.013e5, z=feed)
 
 
 def test_explicit_chemical_equilibrium_matches_legacy_equilibrium_dispatch() -> None:

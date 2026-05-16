@@ -6,6 +6,7 @@ import numpy as np
 
 import epcsaft
 from epcsaft import _core
+from epcsaft.equilibrium import _call_native_equilibrium
 
 
 def _associating_lle_mixture() -> epcsaft.ePCSAFTMixture:
@@ -31,7 +32,9 @@ def _electrolyte_mixture() -> epcsaft.ePCSAFTMixture:
 def test_associating_neutral_lle_solves_with_cppad_implicit_derivatives() -> None:
     mix = _associating_lle_mixture()
 
-    result = mix.lle_tp(
+    result = _call_native_equilibrium(
+        mix,
+        kind="lle_flash",
         T=298.15,
         P=1.013e5,
         z=[0.5, 0.5],

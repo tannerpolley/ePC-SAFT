@@ -106,6 +106,12 @@ def test_runtime_build_info_and_capabilities_are_json_like():
         "methods": ["bubble_p", "bubble_t", "dew_p", "dew_t"],
         "status": "route_pending",
     }
+    neutral_lle = capabilities["equilibrium"]["neutral_lle_flash"]
+    assert neutral_lle["available"] is False
+    assert neutral_lle["backend"] == "native_ipopt_equilibrium_nlp_required"
+    assert neutral_lle["methods"] == ["lle_flash", "lle_tp"]
+    assert neutral_lle["status"] == "route_pending"
+    assert neutral_lle["previous_solver_disabled"] == "ceres_residual_lle_route"
     electrolyte_bubble = capabilities["equilibrium"]["electrolyte_bubble_pressure"]
     assert electrolyte_bubble["available"] is False
     assert electrolyte_bubble["backend"] == "native_ipopt_equilibrium_nlp_required"

@@ -41,6 +41,13 @@ def _raise_native_ipopt_reactive_phase_required(route: str) -> None:
     )
 
 
+def _raise_native_ipopt_lle_required(route: str) -> None:
+    raise InputError(
+        f"{route} requires a native Ipopt equilibrium NLP route. "
+        "The previous Ceres residual LLE route is disabled by the solver gate."
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class EquilibriumOptions:
     """Numerical controls for equilibrium solvers."""
@@ -1587,36 +1594,15 @@ def lle_flash(
     options: EquilibriumOptions | None = None,
     initial_phases: Any = None,
 ) -> EquilibriumResult:
-    """Solve a neutral LLE flash through the native C++ equilibrium backend."""
+    """Validate a neutral LLE flash request and require the native Ipopt route."""
     opts = _normalize_options(options)
     feed = _normalize_feed(z, mixture.ncomp, opts.min_composition, "lle_flash")
     _reject_ion_containing_mixture(mixture)
-    temperature = _positive_scalar(T, "T", "lle_flash")
-    pressure = _positive_scalar(P, "P", "lle_flash")
-    native_initial_phases = None
+    _positive_scalar(T, "T", "lle_flash")
+    _positive_scalar(P, "P", "lle_flash")
     if initial_phases is not None:
-        native_initial_phases = _normalize_neutral_initial_phases(initial_phases, feed.size, opts.min_composition)
-    result = _call_native_equilibrium(
-        mixture,
-        kind="lle_flash",
-        T=temperature,
-        P=pressure,
-        z=feed,
-        options=opts,
-        initial_phases=native_initial_phases,
-    )
-    assert isinstance(result, EquilibriumResult)
-    diagnostics = dict(result.diagnostics)
-    if (
-        result.split_detected is False
-        and diagnostics.get("solution_accepted") is False
-        and diagnostics.get("stability_stable") is False
-        and "initial liquid phases are compositionally identical" not in str(diagnostics.get("message", ""))
-    ):
-        seed = diagnostics.get("seed_name", "unknown")
-        reason = diagnostics.get("point_solver_message") or diagnostics.get("message") or "not accepted"
-        raise SolutionError(f"neutral LLE flash did not converge; best_seed={seed}; {reason}", _json_like(diagnostics))
-    return result
+        _normalize_neutral_initial_phases(initial_phases, feed.size, opts.min_composition)
+    _raise_native_ipopt_lle_required("lle_flash")
 
 
 def neutral_stability(

@@ -545,6 +545,8 @@ Task 12 continuation note: the tracked source/test/script text gate now blocks r
 
 Task 12 continuation note: the tracked source/test/script text gate now also blocks the removed Hessian-backend diagnostic token so approximate solver-internal Hessian behavior cannot be reintroduced as a package derivative backend label.
 
+Task 12 continuation note: public neutral LLE no longer executes the transitional Ceres residual route from `lle_flash` or `lle_tp`. The public adapter validates feed, mixture, scalar inputs, and optional phase seeds, then raises until a native Ipopt constrained NLP route owns production neutral LLE; lower-level native residual-surface coverage remains private diagnostic coverage.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**

@@ -213,11 +213,13 @@ def test_slice_targets_use_grouped_test_subpackages():
         "tests/equilibrium/core/test_vle.py::"
         "test_ternary_hydrocarbon_basis_tp_flash_closes_material_and_fugacity_balance"
     ) in run_pytest.GENERIC_TEST_TARGETS
-    assert "tests/equilibrium/core/test_lle.py::test_methanol_cyclohexane_lle_flash_solves_seeded_phase_split" in (
-        run_pytest.GENERIC_TEST_TARGETS
+    assert (
+        "tests/equilibrium/core/test_lle.py::test_methanol_cyclohexane_lle_flash_requires_native_ipopt_with_seed"
+        in run_pytest.GENERIC_TEST_TARGETS
     )
-    assert "tests/equilibrium/core/test_lle.py::test_lle_flash_requested_ipopt_requires_native_adapter" in (
-        run_pytest.GENERIC_TEST_TARGETS
+    assert (
+        "tests/equilibrium/core/test_lle.py::test_lle_flash_requested_ipopt_requires_native_ipopt_route"
+        in run_pytest.GENERIC_TEST_TARGETS
     )
     assert "tests/native/contracts/test_equation_registry.py::test_equation_registry_outputs_are_synced" in (
         run_pytest.GENERIC_TEST_TARGETS

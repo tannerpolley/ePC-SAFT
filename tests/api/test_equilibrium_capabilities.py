@@ -56,3 +56,13 @@ def test_reactive_phase_equilibrium_capabilities_state_reaction_scope() -> None:
     assert reactive["cross_phase_reaction_quotients"]["available"] is True
     assert reactive["cross_phase_reaction_quotients"]["status"] == "validated_for_pending_ipopt_route"
     assert reactive["cross_phase_reaction_quotients"]["api"] == "ReactionDefinition.phase_stoichiometry"
+
+
+def test_neutral_lle_capability_requires_native_ipopt_route() -> None:
+    neutral_lle = epcsaft.capabilities()["equilibrium"]["neutral_lle_flash"]
+
+    assert neutral_lle["available"] is False
+    assert neutral_lle["status"] == "route_pending"
+    assert neutral_lle["backend"] == "native_ipopt_equilibrium_nlp_required"
+    assert neutral_lle["methods"] == ["lle_flash", "lle_tp"]
+    assert neutral_lle["previous_solver_disabled"] == "ceres_residual_lle_route"
