@@ -153,7 +153,7 @@ Use ``capabilities()`` before wiring high-level downstream workflows:
    assert caps["equilibrium"]["electrolyte_bubble_pressure"]["available"]
    assert caps["equilibrium"]["reactive_electrolyte_bubble"]["available"]
 
-Native neutral TP flash, neutral LLE, electrolyte LLE, electrolyte bubble pressure, reactive speciation, reactive electrolyte bubble pressure, and native regression helpers are available. The electrolyte bubble-pressure workflow is scoped to fixed liquid composition with neutral vapor species; ions remain liquid-only. The reactive electrolyte bubble workflow performs native chemical speciation before the native fixed-liquid electrolyte bubble-pressure solve.
+Native neutral TP flash, neutral LLE, electrolyte LLE, electrolyte bubble pressure, reactive speciation, reactive electrolyte bubble pressure, and native regression helpers are available. Neutral bubble/dew methods are declared but require the native Ipopt route builders before use. The electrolyte bubble-pressure workflow is scoped to fixed liquid composition with neutral vapor species; ions remain liquid-only. The reactive electrolyte bubble workflow performs native chemical speciation before the native fixed-liquid electrolyte bubble-pressure solve.
 
 For routing examples and the production/opt-in solver table, see
 :doc:`equilibrium_cookbook`.

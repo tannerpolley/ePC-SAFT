@@ -97,10 +97,10 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert capabilities["optimizers"]["ceres"]["native_hot_loop"] is ceres["available"]
     assert capabilities["equilibrium"]["neutral_tp_flash"]["available"] is True
     assert capabilities["equilibrium"]["neutral_bubble_dew"] == {
-        "available": True,
-        "backend": "native_state_fugacity_with_python_scalar_root",
+        "available": False,
+        "backend": "native_ipopt_equilibrium_nlp_required",
         "methods": ["bubble_p", "bubble_t", "dew_p", "dew_t"],
-        "status": "production",
+        "status": "route_pending",
     }
     electrolyte_bubble = capabilities["equilibrium"]["electrolyte_bubble_pressure"]
     assert electrolyte_bubble["available"] is True

@@ -8,12 +8,10 @@ Runtime Capabilities
 and package workflow status. The important backend labels are:
 
 * ``native``: production native runtime path.
-* ``native_state_fugacity_with_python_scalar_root``: Python owns scalar
-  iteration while native states and fugacity calculations own thermodynamics.
+* ``native_ipopt_equilibrium_nlp_required``: public route name is declared, but
+  execution is gated until the native Ipopt NLP route builder owns the solve.
 * ``python_batched_native_solvers``: Python batches rows and manages seeds;
   native solvers evaluate thermodynamics and residuals.
-* ``legacy wrapper``: compatibility-shim path retained for older callers.
-* ``optional IPOPT bridge``: explicit opt-in residual-minimization refinement.
 
 For reactive electrolyte regression, inspect
 ``capabilities()["regression"]["reactive_electrolyte_batch_context"]["fit_status_contract"]``.

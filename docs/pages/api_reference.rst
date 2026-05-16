@@ -54,12 +54,16 @@ For runnable examples and solver-selection guidance, start with
 :doc:`equilibrium_cookbook`.
 
 Explicit mixture methods are preferred for new code: ``flash_tp(...)``,
-``lle_tp(...)``, ``stability_tp(...)``, ``bubble_p(...)``, ``bubble_t(...)``,
-``dew_p(...)``, ``dew_t(...)``, ``electrolyte_lle_tp(...)``,
+``lle_tp(...)``, ``stability_tp(...)``, ``electrolyte_lle_tp(...)``,
 ``electrolyte_stability_tp(...)``, ``electrolyte_bubble_p(...)``,
 ``chemical_equilibrium(...)``, and ``reactive_staged_equilibrium(...)``.
 The string-dispatched ``ePCSAFTMixture.equilibrium(kind=...)`` API remains
 supported and routes through the explicit methods.
+
+Neutral ``bubble_p(...)``, ``bubble_t(...)``, ``dew_p(...)``, and ``dew_t(...)``
+remain declared API names, but their previous Python scalar route has been
+removed. They raise ``InputError`` until native Ipopt route builders replace
+that path.
 
 ``ePCSAFTMixture.equilibrium(kind="electrolyte_bubble_pressure", ...)`` uses the
 native backend for fixed-liquid electrolyte bubble-pressure solves. Its current

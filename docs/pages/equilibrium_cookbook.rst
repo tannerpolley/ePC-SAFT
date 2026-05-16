@@ -115,11 +115,14 @@ scripts.
    assert lle.split_detected
    print(lle.phase_labels, lle.diagnostics)
 
-For neutral TP flash and neutral bubble/dew diagnostics, check these fields before concluding that a speedup changed solver semantics:
+For neutral TP flash diagnostics, check these fields before concluding that a speedup changed solver semantics:
 
 - ``diagnostics["neutral_fast_path"]``
 - ``diagnostics["neutral_fallback_used"]``
 - ``diagnostics["neutral_fallback_reason"]``
+
+Neutral bubble/dew public methods now raise until native Ipopt route builders
+replace the removed Python scalar route.
 
 The fast-path flag means the current native or local-first neutral route handled
 the solve directly. The ``neutral_fallback_*`` keys are legacy diagnostics:

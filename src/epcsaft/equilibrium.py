@@ -12,14 +12,6 @@ import numpy as np
 from ._types import InputError, SolutionError
 from .equilibrium_core.electrolyte_basis import build_electrolyte_basis
 
-_SOLVER_EVALUATION_ERRORS = (
-    InputError,
-    SolutionError,
-    ValueError,
-    RuntimeError,
-    ArithmeticError,
-)
-
 _ASCANI_2022_REFERENCE = {
     "authors": "Ascani, Sadowski, and Held",
     "year": 2022,
@@ -32,6 +24,13 @@ def _raise_native_ipopt_not_routed(route: str) -> None:
     raise InputError(
         f"solver_backend='ipopt' was requested, but the native Ipopt adapter for {route} is not wired to public "
         "equilibrium routes yet. Use the current native route until the Ipopt NLP adapter is implemented."
+    )
+
+
+def _raise_native_ipopt_equilibrium_required(route: str) -> None:
+    raise InputError(
+        f"{route} requires a native Ipopt equilibrium NLP route. The previous Python scalar solve route was removed "
+        "by the solver gate."
     )
 
 
@@ -1718,391 +1717,37 @@ def initial_phases_from_result(result: EquilibriumResult) -> dict[str, object]:
 def bubble_p(mixture: Any, *, T: float, x: Any, options: EquilibriumOptions | None = None) -> EquilibriumResult:
     """Solve a neutral bubble pressure at fixed liquid composition and temperature."""
     opts = _normalize_options(options)
-    liquid = _normalize_feed(x, mixture.ncomp, opts.min_composition, "bubble_p")
+    _normalize_feed(x, mixture.ncomp, opts.min_composition, "bubble_p")
     _reject_ion_containing_mixture(mixture)
-    temperature = _positive_scalar(T, "T", "bubble_p")
-    return _neutral_bubble_dew_outer(
-        mixture,
-        problem_kind="bubble_p",
-        fixed_name="P",
-        fixed_value=temperature,
-        source_composition=liquid,
-        source_phase="liq",
-        incipient_phase="vap",
-        options=opts,
-    )
+    _positive_scalar(T, "T", "bubble_p")
+    _raise_native_ipopt_equilibrium_required("bubble_p")
 
 
 def dew_p(mixture: Any, *, T: float, y: Any, options: EquilibriumOptions | None = None) -> EquilibriumResult:
     """Solve a neutral dew pressure at fixed vapor composition and temperature."""
     opts = _normalize_options(options)
-    vapor = _normalize_feed(y, mixture.ncomp, opts.min_composition, "dew_p")
+    _normalize_feed(y, mixture.ncomp, opts.min_composition, "dew_p")
     _reject_ion_containing_mixture(mixture)
-    temperature = _positive_scalar(T, "T", "dew_p")
-    return _neutral_bubble_dew_outer(
-        mixture,
-        problem_kind="dew_p",
-        fixed_name="P",
-        fixed_value=temperature,
-        source_composition=vapor,
-        source_phase="vap",
-        incipient_phase="liq",
-        options=opts,
-    )
+    _positive_scalar(T, "T", "dew_p")
+    _raise_native_ipopt_equilibrium_required("dew_p")
 
 
 def bubble_t(mixture: Any, *, P: float, x: Any, options: EquilibriumOptions | None = None) -> EquilibriumResult:
     """Solve a neutral bubble temperature at fixed liquid composition and pressure."""
     opts = _normalize_options(options)
-    liquid = _normalize_feed(x, mixture.ncomp, opts.min_composition, "bubble_t")
+    _normalize_feed(x, mixture.ncomp, opts.min_composition, "bubble_t")
     _reject_ion_containing_mixture(mixture)
-    pressure = _positive_scalar(P, "P", "bubble_t")
-    return _neutral_bubble_dew_outer(
-        mixture,
-        problem_kind="bubble_t",
-        fixed_name="T",
-        fixed_value=pressure,
-        source_composition=liquid,
-        source_phase="liq",
-        incipient_phase="vap",
-        options=opts,
-    )
+    _positive_scalar(P, "P", "bubble_t")
+    _raise_native_ipopt_equilibrium_required("bubble_t")
 
 
 def dew_t(mixture: Any, *, P: float, y: Any, options: EquilibriumOptions | None = None) -> EquilibriumResult:
     """Solve a neutral dew temperature at fixed vapor composition and pressure."""
     opts = _normalize_options(options)
-    vapor = _normalize_feed(y, mixture.ncomp, opts.min_composition, "dew_t")
+    _normalize_feed(y, mixture.ncomp, opts.min_composition, "dew_t")
     _reject_ion_containing_mixture(mixture)
-    pressure = _positive_scalar(P, "P", "dew_t")
-    return _neutral_bubble_dew_outer(
-        mixture,
-        problem_kind="dew_t",
-        fixed_name="T",
-        fixed_value=pressure,
-        source_composition=vapor,
-        source_phase="vap",
-        incipient_phase="liq",
-        options=opts,
-    )
-
-
-def _neutral_bubble_dew_outer(
-    mixture: Any,
-    *,
-    problem_kind: str,
-    fixed_name: str,
-    fixed_value: float,
-    source_composition: np.ndarray,
-    source_phase: str,
-    incipient_phase: str,
-    options: EquilibriumOptions,
-) -> EquilibriumResult:
-    solve_pressure = fixed_name == "P"
-    local_grid = _neutral_bubble_dew_local_grid(solve_pressure)
-    fallback_grid = np.geomspace(1.0, 1.0e8, 81) if solve_pressure else np.linspace(120.0, 700.0, 117)
-    evaluations: list[dict[str, Any]] = []
-    failures: list[dict[str, str]] = []
-    fallback_used = False
-    fallback_reason = ""
-    bracket: tuple[dict[str, Any], dict[str, Any]] | None = None
-    for candidate in local_grid:
-        try:
-            evaluation = _neutral_bubble_dew_evaluate(
-                mixture,
-                problem_kind=problem_kind,
-                variable=float(candidate),
-                fixed_value=fixed_value,
-                source_composition=source_composition,
-                source_phase=source_phase,
-                incipient_phase=incipient_phase,
-                options=options,
-            )
-        except _SOLVER_EVALUATION_ERRORS as exc:
-            failures.append({"variable": str(float(candidate)), "message": str(exc)})
-            continue
-        evaluations.append(evaluation)
-        if abs(float(evaluation["residual"])) <= options.tolerance:
-            return _neutral_bubble_dew_result(
-                mixture,
-                problem_kind,
-                evaluation,
-                options,
-                evaluations,
-                failures,
-                neutral_fast_path=True,
-                neutral_fallback_used=False,
-                neutral_fallback_reason="",
-            )
-        bracket = _neutral_bubble_dew_find_bracket(evaluations)
-        if bracket is not None:
-            break
-    if bracket is None:
-        fallback_used = True
-        fallback_reason = "local_bracket_not_found"
-        seen = {float(item["variable"]) for item in evaluations}
-        for candidate in fallback_grid:
-            if float(candidate) in seen:
-                continue
-            try:
-                evaluation = _neutral_bubble_dew_evaluate(
-                    mixture,
-                    problem_kind=problem_kind,
-                    variable=float(candidate),
-                    fixed_value=fixed_value,
-                    source_composition=source_composition,
-                    source_phase=source_phase,
-                    incipient_phase=incipient_phase,
-                    options=options,
-                )
-            except _SOLVER_EVALUATION_ERRORS as exc:
-                failures.append({"variable": str(float(candidate)), "message": str(exc)})
-                continue
-            evaluations.append(evaluation)
-            if abs(float(evaluation["residual"])) <= options.tolerance:
-                return _neutral_bubble_dew_result(
-                    mixture,
-                    problem_kind,
-                    evaluation,
-                    options,
-                    evaluations,
-                    failures,
-                    neutral_fast_path=True,
-                    neutral_fallback_used=True,
-                    neutral_fallback_reason=fallback_reason,
-                )
-            bracket = _neutral_bubble_dew_find_bracket(evaluations)
-            if bracket is not None:
-                break
-    if bracket is None:
-        diagnostics = {
-            "message": "failed to bracket neutral bubble/dew scalar residual",
-            "problem_kind": problem_kind,
-            "residual_samples": [{"variable": item["variable"], "residual": item["residual"]} for item in evaluations],
-            "state_failures": failures[:10],
-            "neutral_fast_path": True,
-            "neutral_fallback_used": fallback_used,
-            "neutral_fallback_reason": fallback_reason,
-        }
-        raise SolutionError(f"neutral {problem_kind} did not bracket a scalar root", diagnostics)
-    left, right = bracket
-    history = [left, right]
-    best = min((left, right), key=lambda item: abs(float(item["residual"])))
-    for _ in range(options.max_iterations):
-        if solve_pressure:
-            midpoint = float(np.exp(0.5 * (np.log(float(left["variable"])) + np.log(float(right["variable"])))))
-        else:
-            midpoint = 0.5 * (float(left["variable"]) + float(right["variable"]))
-        current = _neutral_bubble_dew_evaluate(
-            mixture,
-            problem_kind=problem_kind,
-            variable=midpoint,
-            fixed_value=fixed_value,
-            source_composition=source_composition,
-            source_phase=source_phase,
-            incipient_phase=incipient_phase,
-            options=options,
-        )
-        history.append(current)
-        if abs(float(current["residual"])) < abs(float(best["residual"])):
-            best = current
-        if abs(float(current["residual"])) <= options.tolerance:
-            return _neutral_bubble_dew_result(
-                mixture,
-                problem_kind,
-                current,
-                options,
-                history,
-                failures,
-                neutral_fast_path=True,
-                neutral_fallback_used=fallback_used,
-                neutral_fallback_reason=fallback_reason,
-            )
-        if float(left["residual"]) * float(current["residual"]) <= 0.0:
-            right = current
-        else:
-            left = current
-    if abs(float(best["residual"])) <= 10.0 * options.tolerance:
-        return _neutral_bubble_dew_result(
-            mixture,
-            problem_kind,
-            best,
-            options,
-            history,
-            failures,
-            neutral_fast_path=True,
-            neutral_fallback_used=fallback_used,
-            neutral_fallback_reason=fallback_reason,
-        )
-    diagnostics = {
-        "message": "neutral bubble/dew scalar solve reached max_iterations",
-        "problem_kind": problem_kind,
-        "best_variable": best["variable"],
-        "best_residual": best["residual"],
-        "residual_history": [{"variable": item["variable"], "residual": item["residual"]} for item in history],
-        "state_failures": failures[:10],
-        "neutral_fast_path": True,
-        "neutral_fallback_used": fallback_used,
-        "neutral_fallback_reason": fallback_reason,
-    }
-    raise SolutionError(f"neutral {problem_kind} did not converge", diagnostics)
-
-
-def _neutral_bubble_dew_local_grid(solve_pressure: bool) -> list[float]:
-    if solve_pressure:
-        center = 1.0e5
-        factors = [1.0]
-        for delta in (0.01, 0.02, 0.05, 0.1, 0.2, 0.4, 0.8):
-            factors.extend((1.0 - delta, 1.0 + delta))
-        return [center * factor for factor in factors if factor > 0.0]
-    return []
-
-
-def _neutral_bubble_dew_find_bracket(
-    evaluations: list[dict[str, Any]],
-) -> tuple[dict[str, Any], dict[str, Any]] | None:
-    ordered = sorted(evaluations, key=lambda item: float(item["variable"]))
-    for left, right in zip(ordered, ordered[1:]):
-        if float(left["residual"]) * float(right["residual"]) <= 0.0:
-            return left, right
-    return None
-
-
-def _neutral_bubble_dew_evaluate(
-    mixture: Any,
-    *,
-    problem_kind: str,
-    variable: float,
-    fixed_value: float,
-    source_composition: np.ndarray,
-    source_phase: str,
-    incipient_phase: str,
-    options: EquilibriumOptions,
-) -> dict[str, Any]:
-    if problem_kind.endswith("_p"):
-        temperature = fixed_value
-        pressure = variable
-    else:
-        temperature = variable
-        pressure = fixed_value
-    incipient = np.array(source_composition, dtype=float, copy=True)
-    source_state = _phase_state(mixture, temperature, pressure, source_composition, source_phase, options, problem_kind)
-    last_residual = float("inf")
-    inner_iterations = 0
-    for _inner_iteration in range(max(1, options.max_iterations)):
-        inner_iterations = _inner_iteration + 1
-        incipient_state = _phase_state(
-            mixture, temperature, pressure, incipient, incipient_phase, options, problem_kind
-        )
-        ln_k = np.asarray(source_state["ln_phi"], dtype=float) - np.asarray(incipient_state["ln_phi"], dtype=float)
-        k_values = np.exp(np.clip(ln_k, -100.0, 100.0))
-        raw = source_composition * k_values
-        residual = float(np.sum(raw) - 1.0)
-        total = float(np.sum(raw))
-        if not np.isfinite(total) or total <= 0.0:
-            raise SolutionError(f"neutral {problem_kind} produced a non-positive incipient composition sum")
-        updated = np.maximum(raw / total, options.min_composition)
-        updated = updated / float(np.sum(updated))
-        delta = float(np.max(np.abs(updated - incipient)))
-        incipient = updated
-        last_residual = residual
-        if delta <= max(options.tolerance, 1.0e-12):
-            break
-    incipient_state = _phase_state(mixture, temperature, pressure, incipient, incipient_phase, options, problem_kind)
-    fugacity_residual = (
-        np.log(np.maximum(incipient, options.min_composition))
-        + np.asarray(incipient_state["ln_phi"], dtype=float)
-        - np.log(np.maximum(source_composition, options.min_composition))
-        - np.asarray(source_state["ln_phi"], dtype=float)
-    )
-    return {
-        "variable": float(variable),
-        "T": float(temperature),
-        "P": float(pressure),
-        "residual": float(last_residual),
-        "source_composition": source_composition,
-        "incipient_composition": incipient,
-        "source_phase": source_phase,
-        "incipient_phase": incipient_phase,
-        "source_state": source_state,
-        "incipient_state": incipient_state,
-        "fugacity_residual": fugacity_residual,
-        "fugacity_residual_norm": float(np.max(np.abs(fugacity_residual))),
-        "inner_iterations": inner_iterations,
-    }
-
-
-def _neutral_bubble_dew_result(
-    mixture: Any,
-    problem_kind: str,
-    evaluation: dict[str, Any],
-    options: EquilibriumOptions,
-    history: list[dict[str, Any]],
-    failures: list[dict[str, str]],
-    *,
-    neutral_fast_path: bool,
-    neutral_fallback_used: bool,
-    neutral_fallback_reason: str,
-) -> EquilibriumResult:
-    source_phase = str(evaluation["source_phase"])
-    incipient_phase = str(evaluation["incipient_phase"])
-    source = EquilibriumPhase(
-        label=source_phase,
-        composition=evaluation["source_composition"],
-        density=evaluation["source_state"]["density"],
-        temperature=evaluation["T"],
-        pressure=evaluation["P"],
-        phase_fraction=1.0,
-        ln_fugacity_coefficient=evaluation["source_state"]["ln_phi"],
-        diagnostics=evaluation["source_state"]["diagnostics"],
-    )
-    incipient = EquilibriumPhase(
-        label=incipient_phase,
-        composition=evaluation["incipient_composition"],
-        density=evaluation["incipient_state"]["density"],
-        temperature=evaluation["T"],
-        pressure=evaluation["P"],
-        phase_fraction=0.0,
-        ln_fugacity_coefficient=evaluation["incipient_state"]["ln_phi"],
-        diagnostics=evaluation["incipient_state"]["diagnostics"],
-    )
-    phases = (source, incipient) if source_phase == "liq" else (incipient, source)
-    vapor = incipient if incipient_phase == "vap" else source
-    partial_pressure_vector = np.asarray(vapor.composition, dtype=float) * float(evaluation["P"])
-    species = list(getattr(mixture, "species", []))
-    diagnostics = {
-        "solver_method": "scalar_outer_composition_inner_update",
-        "problem_kind": problem_kind,
-        "T": float(evaluation["T"]),
-        "P": float(evaluation["P"]),
-        "scalar_residual": float(evaluation["residual"]),
-        "fugacity_residual_norm": float(evaluation["fugacity_residual_norm"]),
-        "fugacity_residual": np.asarray(evaluation["fugacity_residual"], dtype=float).tolist(),
-        "inner_iterations": int(evaluation["inner_iterations"]),
-        "outer_iterations": len(history),
-        "residual_history": [{"variable": item["variable"], "residual": item["residual"]} for item in history],
-        "state_failures": failures[:10],
-        "min_composition": float(options.min_composition),
-        "species": species,
-        "partial_pressures": {label: float(value) for label, value in zip(species, partial_pressure_vector)},
-        "partial_pressure_vector": partial_pressure_vector.tolist(),
-        "partial_pressure_route": "vapor_composition_times_total_pressure",
-        "volatile_partial_pressure_basis": (
-            "liquid_fugacity_equilibrium" if source_phase == "liq" else "dew_vapor_composition"
-        ),
-        "neutral_fast_path": bool(neutral_fast_path),
-        "neutral_fallback_used": bool(neutral_fallback_used),
-        "neutral_fallback_reason": str(neutral_fallback_reason),
-    }
-    diagnostics = _normalize_derivative_diagnostics(diagnostics, problem_kind=problem_kind, phase_count=len(phases))
-    return EquilibriumResult(
-        backend="neutral_bubble_dew",
-        problem_kind=problem_kind,
-        phases=phases,
-        stable=False,
-        split_detected=False,
-        diagnostics=diagnostics,
-    )
+    _positive_scalar(P, "P", "dew_t")
+    _raise_native_ipopt_equilibrium_required("dew_t")
 
 
 def tp_flash(

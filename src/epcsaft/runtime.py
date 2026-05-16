@@ -591,10 +591,10 @@ def capabilities() -> dict[str, object]:
             },
             "neutral_stability": {"available": True, "backend": "native"},
             "neutral_bubble_dew": {
-                "available": True,
-                "backend": "native_state_fugacity_with_python_scalar_root",
+                "available": False,
+                "backend": "native_ipopt_equilibrium_nlp_required",
                 "methods": ["bubble_p", "bubble_t", "dew_p", "dew_t"],
-                "status": "production",
+                "status": "route_pending",
             },
             "electrolyte_lle": {
                 "available": True,

@@ -11,8 +11,6 @@ def test_neutral_benchmark_module_exposes_required_cases():
     assert tuple(CASE_BUILDERS) == (
         "neutral_state",
         "tp_flash",
-        "bubble_p",
-        "dew_p",
         "lle_seeded",
     )
 

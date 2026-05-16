@@ -164,38 +164,6 @@ def _prepare_tp_flash() -> PreparedBenchmarkCase:
     )
 
 
-def _prepare_bubble_p() -> PreparedBenchmarkCase:
-    mix = _hydrocarbon_mixture()
-    flash = mix.flash_tp(T=220.0, P=1.0e5, z=np.asarray([0.1, 0.3, 0.6], dtype=float))
-    liquid = flash.phases[0]
-
-    def runner() -> BenchmarkObservation:
-        result = mix.bubble_p(T=220.0, x=liquid.composition)
-        return _equilibrium_observation(result)
-
-    return PreparedBenchmarkCase(
-        case="bubble_p",
-        description="Neutral bubble pressure from the ternary hydrocarbon TP-flash liquid endpoint.",
-        runner=runner,
-    )
-
-
-def _prepare_dew_p() -> PreparedBenchmarkCase:
-    mix = _hydrocarbon_mixture()
-    flash = mix.flash_tp(T=220.0, P=1.0e5, z=np.asarray([0.1, 0.3, 0.6], dtype=float))
-    vapor = flash.phases[1]
-
-    def runner() -> BenchmarkObservation:
-        result = mix.dew_p(T=220.0, y=vapor.composition)
-        return _equilibrium_observation(result)
-
-    return PreparedBenchmarkCase(
-        case="dew_p",
-        description="Neutral dew pressure from the ternary hydrocarbon TP-flash vapor endpoint.",
-        runner=runner,
-    )
-
-
 def _prepare_lle_seeded() -> PreparedBenchmarkCase:
     mix = _methanol_cyclohexane_mixture()
     methanol_poor = np.asarray([0.05, 0.95], dtype=float)
@@ -224,8 +192,6 @@ CASE_BUILDERS: OrderedDict[str, Callable[[], PreparedBenchmarkCase]] = OrderedDi
     (
         ("neutral_state", _prepare_neutral_state),
         ("tp_flash", _prepare_tp_flash),
-        ("bubble_p", _prepare_bubble_p),
-        ("dew_p", _prepare_dew_p),
         ("lle_seeded", _prepare_lle_seeded),
     )
 )
