@@ -278,11 +278,11 @@ The failure list from the initial full-duration run has been retired. Each liste
   that production route, its native Ipopt route-result dependency gate, and native postsolve checks for conserved
   balances, pressure consistency, reaction stationarity, and phase separation.
 
-## Required Cleanup Still Open
+## Cleanup Gate After Task 2 Closure
 
-- Delete or rewrite tests that only protect duplicate route-gate or status/debug behavior.
+- No identified Task 2 obsolete-test item remains in the tracked queue after the final duplicate absence-assertion prune.
 - Move any new slow scientific matrix coverage out of the quick gate as validation tests are added.
-- Continue replacing optional-backend skip behavior with required-backend validation as solver routes move to Ipopt and regression routes become Ceres-only.
+- Continue replacing optional-backend skip behavior with required-backend validation as future solver routes move to Ipopt and regression routes become Ceres-only.
 
 ## Task 2 Status
 
@@ -296,10 +296,12 @@ Completed in the first Task 2 slice:
 - Added this tracked audit artifact.
 - Removed NumPy testing import usage from the test tree to keep Windows validation deterministic.
 
-Still ongoing:
+Final Task 2 cleanup closure:
 
-- Continue pruning duplicate route-gate and status/debug tests when structured route or derivative coverage already
-  exists.
+- The final pass removed duplicate absence assertions for retired diagnostic/status/backend labels from reactive sweep,
+  implicit-sensitivity, CppAD runtime, Khudaida confidence, and reactive residual-surface tests. Structured positive
+  route, backend, derivative, and result-shape tests remain, while the executable text gates own retired-token
+  prevention.
 - The duplicate equilibrium-core activity-coupled reactive-speciation derivative-gate test was removed. Retained API
   reactive-speciation tests still cover implemented activity-coupled, concentration-standard-state, and result-mode
   native derivative routes or the real native Ipopt dependency gate.

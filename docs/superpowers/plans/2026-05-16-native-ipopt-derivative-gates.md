@@ -259,7 +259,7 @@ Task 1 continuation note: the CppAD disabled smoke/default derivative result no 
 - [x] Collect test inventory and durations with pytest collection and a duration-enabled run.
 - [x] Classify tests as fast gate, focused native, confidence, slow/scientific, docs, package-boundary, or obsolete.
 - [x] Identify tests that only protect legacy status/dodge behavior.
-- [ ] Delete or rewrite obsolete tests.
+- [x] Delete or rewrite obsolete tests.
 - [x] Move slow scientific matrix coverage out of the quick gate.
 - [x] Add strict tests for new gates:
   - no banned derivative/status concepts;
@@ -1247,6 +1247,11 @@ longer treat `backend` as a phase-route selector.
 Task 2 continuation note: the one-off reactive-electrolyte bubble no-reaction validation test was folded into the
 shared reactive-speciation invalid-input table. The owner path now rejects empty reaction sets before native route
 construction, and the wrapper-only duplicate file was deleted.
+
+Task 2 continuation note: the final tracked obsolete-test cleanup pass removed duplicate absence assertions for retired
+diagnostic/status/backend labels from reactive sweep, implicit-sensitivity, CppAD runtime, Khudaida confidence, and
+reactive residual-surface tests. The remaining tests assert positive current contracts, while repo text gates own the
+retired-token bans.
 
 ### Task 13: Final Validation And Cleanup
 

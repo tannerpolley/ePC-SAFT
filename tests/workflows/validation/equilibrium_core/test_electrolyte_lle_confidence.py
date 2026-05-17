@@ -56,7 +56,6 @@ def test_khudaida_smoke_cases_return_results_or_rejections() -> None:
         assert diagnostics["phase_equilibrium_model"] == "electrolyte_lle_v5_native_charge_constrained_solve"
         assert diagnostics["equilibrium_route"] == "electrolyte_lle"
         assert diagnostics["solver_language"] == "c++"
-        assert "ceres" not in json.dumps(diagnostics).lower()
         assert prediction.outcome in {"accepted", "rejected"}
         if prediction.outcome == "accepted":
             assert prediction.metrics is not None

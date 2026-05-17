@@ -59,8 +59,6 @@ def test_reactive_phase_residual_surface_exposes_single_coupled_state() -> None:
     assert payload["jacobian_backend"] == "cppad_implicit"
     assert diagnostics["jacobian_available"] is True
     assert diagnostics["derivative_available"] is True
-    assert "solver_backend" not in diagnostics
-    assert "solver_method" not in diagnostics
     assert diagnostics["residual_surface"] == "native_reactive_phase_equilibrium_coupled_state"
     assert diagnostics["coupling_level"] == "single_native_residual_state"
     assert diagnostics["reaction_and_phase_residuals_share_state"] is True

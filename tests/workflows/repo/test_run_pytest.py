@@ -128,20 +128,6 @@ def test_native_ceres_sources_have_no_ceres_nonexact_derivative_route():
         assert term.lower() not in source_lower
 
 
-def test_native_cppad_source_does_not_assemble_removed_backend_status():
-    source = "\n".join(
-        path.read_text(encoding="utf-8")
-        for path in (
-            Path("src/epcsaft/native/cppad/cppad_derivative_result.h"),
-            Path("src/epcsaft/native/cppad/cppad_scalar.h"),
-            Path("src/epcsaft/native/cppad/cppad_smoke_checks.cpp"),
-        )
-    )
-
-    removed = 'std::string("backend") + "_" + "unavailable"'
-    assert removed not in source
-
-
 def test_doctor_recommends_ninja_migration_for_mingw_build_tree():
     command = doctor._ninja_migration_recommendation("MinGW Makefiles", "C:/tools/ninja.exe")
 

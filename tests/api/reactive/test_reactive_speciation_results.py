@@ -172,5 +172,3 @@ def test_reactive_speciation_sweep_preserves_input_validation_failure_shape() ->
     assert results[0].success is False
     assert "Missing total" in results[0].message
     assert results[0].diagnostics["structured_failure"] is True
-    assert "backend" not in results[0].diagnostics
-    assert "selected_solver_backend" not in results[0].diagnostics
