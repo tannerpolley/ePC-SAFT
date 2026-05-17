@@ -121,8 +121,10 @@ def electrolyte_bubble_pressure(
     if not bool(route.get("accepted", False)):
         postsolve = route.get("postsolve", {})
         diagnostics = dict(postsolve) if isinstance(postsolve, Mapping) else {}
-        diagnostics["route_status"] = route.get("status", "rejected")
-        diagnostics["solver_status"] = route.get("solver_status", "not_started")
+        if "status" in route:
+            diagnostics["route_status"] = route["status"]
+        if "solver_status" in route:
+            diagnostics["solver_status"] = route["solver_status"]
         raise SolutionError("Native electrolyte bubble-pressure route was rejected.", diagnostics)
     return _accepted_native_electrolyte_bubble_result(
         mixture,
@@ -180,14 +182,11 @@ def _accepted_native_electrolyte_bubble_result(
     }
     fugacity_residual_norm = max((abs(value) for value in fugacity_residual.values()), default=0.0)
     diagnostics = dict(route.get("postsolve", {}) if isinstance(route.get("postsolve"), Mapping) else {})
-    diagnostics.update(
-        {
-            "backend": "ipopt",
-            "problem_name": route.get("problem_name", "electrolyte_bubble_p_eos"),
-            "route_status": route.get("status", "accepted"),
-            "derivative_backend": route.get("derivative_backend", "analytic_cppad"),
-        }
-    )
+    diagnostics["backend"] = "ipopt"
+    if "problem_name" in route:
+        diagnostics["problem_name"] = route["problem_name"]
+    if "derivative_backend" in route:
+        diagnostics["derivative_backend"] = route["derivative_backend"]
     return ElectrolyteBubbleResult(
         success=True,
         message="converged",

@@ -919,8 +919,10 @@ def _accepted_native_neutral_two_phase_result(
     if not bool(route.get("accepted", False)):
         postsolve = route.get("postsolve", {})
         diagnostics = dict(postsolve) if isinstance(postsolve, Mapping) else {}
-        diagnostics["route_status"] = route.get("status", "rejected")
-        diagnostics["solver_status"] = route.get("solver_status", "not_started")
+        if "status" in route:
+            diagnostics["route_status"] = route["status"]
+        if "solver_status" in route:
+            diagnostics["solver_status"] = route["solver_status"]
         raise SolutionError(f"Native {route_family} {route_label} route was rejected.", diagnostics)
 
     result_payload = _core._native_neutral_two_phase_eos_result(
