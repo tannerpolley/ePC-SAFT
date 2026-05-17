@@ -626,6 +626,9 @@ class ePCSAFTMixture:
         from .equilibrium_core.classify import classify_equilibrium_route
         from .reactive_speciation import ReactiveSpeciationOptions
 
+        if backend not in (None, "native"):
+            raise InputError("equilibrium backend must be None or 'native'; select routes with kind or phase_kind.")
+
         if kind in {"reactive_staged_equilibrium", "reactive_staged"}:
             if balances is None or totals is None or reactions is None:
                 raise InputError(f"{kind} requires balances, totals, and reactions.")
@@ -646,7 +649,7 @@ class ePCSAFTMixture:
                 reactions=reactions,
                 initial_x=initial_x,
                 z=z,
-                phase_kind=phase_kind if phase_kind is not None else ("auto" if backend is None else str(backend)),
+                phase_kind=phase_kind if phase_kind is not None else "auto",
                 options=options,
                 phase_options=phase_options,
                 phase_kwargs=phase_kwargs,
@@ -726,8 +729,6 @@ class ePCSAFTMixture:
                 if z is None:
                     raise InputError("chemical_equilibrium requires z or initial_x as the initial composition.")
                 initial_x = z
-            if backend not in (None, "native"):
-                raise InputError("chemical_equilibrium backend must be None or 'native'.")
             return self.chemical_equilibrium(
                 T=T,
                 P=P,
@@ -746,8 +747,6 @@ class ePCSAFTMixture:
                 if z is None:
                     raise InputError("reactive_stability requires z or initial_x as the initial composition.")
                 initial_x = z
-            if backend not in (None, "native"):
-                raise InputError("reactive_stability backend must be None or 'native'.")
             if (
                 x_liq is not None
                 or volatile_species is not None
@@ -780,7 +779,7 @@ class ePCSAFTMixture:
                 _raise_native_ipopt_stability_required("reactive_stability")
 
         if kind == "auto":
-            route = classify_equilibrium_route(self, kind, backend)
+            route = classify_equilibrium_route(self, kind)
             if route["route"] == "electrolyte_bubble":
                 return self.electrolyte_bubble_p(
                     T=T,
@@ -830,7 +829,7 @@ class ePCSAFTMixture:
             "dew_t",
             "neutral_dew_t",
         }:
-            route = classify_equilibrium_route(self, kind, backend)
+            route = classify_equilibrium_route(self, kind)
             if route["route"] != "neutral_vle":
                 raise InputError(f"kind='{kind}' is not a neutral vapor-liquid route.")
             if solvent_feed is not None or salt_molality is not None:
@@ -839,8 +838,6 @@ class ePCSAFTMixture:
                 raise InputError("vapor species controls are only supported for kind='electrolyte_bubble_pressure'.")
             if parent_phase is not None or trial_phases is not None:
                 raise InputError("parent_phase and trial_phases are only supported for kind='stability'.")
-            if backend not in (None, "native", "neutral_vle"):
-                raise InputError("Neutral bubble/dew backend must be None, 'native', or 'neutral_vle'.")
             if kind in {"bubble_p", "neutral_bubble_p"}:
                 if P is not None:
                     raise InputError("P is solved by kind='bubble_p'.")
@@ -875,8 +872,6 @@ class ePCSAFTMixture:
                 )
             if parent_phase is not None or trial_phases is not None:
                 raise InputError("parent_phase and trial_phases are only supported for kind='stability'.")
-            if backend not in (None, "native"):
-                raise InputError("Electrolyte bubble backend must be None or 'native'.")
             return self.electrolyte_bubble_p(
                 T=T,
                 x_liq=x_liq,
@@ -900,9 +895,7 @@ class ePCSAFTMixture:
                 )
             if parent_phase is not None or trial_phases is not None:
                 raise InputError("parent_phase and trial_phases are only supported for kind='stability'.")
-            if backend not in (None, "native", "neutral_vle"):
-                raise InputError("TP flash backend must be None, 'native', or 'neutral_vle'.")
-            route = classify_equilibrium_route(self, kind, backend)
+            route = classify_equilibrium_route(self, kind)
             return _result_with_route_diagnostics(self.flash_tp(T=T, P=P, z=z, options=options), route)
         if kind == "lle_flash":
             if solvent_feed is not None or salt_molality is not None:
@@ -918,8 +911,6 @@ class ePCSAFTMixture:
                 )
             if parent_phase is not None or trial_phases is not None:
                 raise InputError("parent_phase and trial_phases are only supported for kind='stability'.")
-            if backend not in (None, "native", "neutral_lle"):
-                raise InputError("LLE flash backend must be None, 'native', or 'neutral_lle'.")
             return self.lle_tp(T=T, P=P, z=z, options=options)
         if kind in {"electrolyte_lle", "electrolyte_lle_flash"}:
             if (
@@ -933,8 +924,6 @@ class ePCSAFTMixture:
                 )
             if parent_phase is not None or trial_phases is not None:
                 raise InputError("parent_phase and trial_phases are only supported for kind='stability'.")
-            if backend not in (None, "native", "electrolyte_lle"):
-                raise InputError("Electrolyte LLE backend must be None, 'native', or 'electrolyte_lle'.")
             return self.electrolyte_lle_tp(
                 T=T,
                 P=P,
@@ -955,8 +944,6 @@ class ePCSAFTMixture:
                 )
             if parent_phase is not None or trial_phases is not None:
                 raise InputError("parent_phase and trial_phases are not supported for kind='electrolyte_stability'.")
-            if backend not in (None, "native"):
-                raise InputError("Electrolyte stability backend must be None or 'native'.")
             return self.electrolyte_stability_tp(
                 T=T,
                 P=P,
@@ -977,8 +964,6 @@ class ePCSAFTMixture:
                 raise InputError(
                     "x_liq and vapor species controls are only supported for kind='electrolyte_bubble_pressure'."
                 )
-            if backend not in (None, "native"):
-                raise InputError("Stability backend must be None or 'native'.")
             return self.stability_tp(
                 T=T,
                 P=P,

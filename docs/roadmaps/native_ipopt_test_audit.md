@@ -206,6 +206,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
   of redundant pass/reported/split status strings.
 - Python equilibrium facades no longer fabricate rejected, empty-start, or accepted route-status defaults when a
   native route omits that metadata; diagnostics now preserve only non-empty route fields returned by native code.
+- Public `ePCSAFTMixture.equilibrium(...)` no longer accepts route names as `backend` aliases. The backend argument is
+  now limited to no backend or `native`, while `kind`/`phase_kind` owns route selection.
 - Reactive-regression objective-only summary payloads no longer add fit/covariance status placeholders;
   summaries keep objective metrics plus fit metadata only when a native fit result exists.
 - Reactive-speciation diagnostics no longer synthesize solved density, bubble-pressure, association-coupling, or

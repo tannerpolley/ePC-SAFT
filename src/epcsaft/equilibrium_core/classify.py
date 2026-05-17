@@ -7,7 +7,7 @@ from typing import Any
 import numpy as np
 
 
-def classify_equilibrium_route(mixture: Any, kind: str, backend: str | None = None) -> dict[str, str]:
+def classify_equilibrium_route(mixture: Any, kind: str) -> dict[str, str]:
     """Return the internal route for a public equilibrium request."""
     token = str(kind).strip().lower()
     charges = np.asarray(mixture.parameters.get("z", []), dtype=float).flatten()
@@ -39,7 +39,5 @@ def classify_equilibrium_route(mixture: Any, kind: str, backend: str | None = No
     if token == "auto":
         if has_ions:
             return {"route": "electrolyte_lle", "reason": "ion-containing mixture"}
-        if backend == "neutral_lle":
-            return {"route": "neutral_lle", "reason": "neutral liquid-only backend requested"}
         return {"route": "neutral_vle", "reason": "neutral mixture default"}
     return {"route": "unsupported", "reason": "unsupported equilibrium kind"}

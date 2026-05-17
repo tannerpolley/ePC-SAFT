@@ -124,6 +124,10 @@ def test_equilibrium_phase_exposes_ln_and_coefficient_fugacity_fields() -> None:
         ({"kind": "tp_flash", "T": 220.0, "P": 1.0e5}, "z"),
         ({"kind": "tp_flash", "T": 220.0, "P": 1.0e5, "z": [1.0]}, "length"),
         ({"kind": "tp_flash", "T": 220.0, "P": 1.0e5, "z": [0.1, 0.3, -0.4]}, "non-negative"),
+        ({"kind": "auto", "backend": "neutral_lle", "T": 220.0, "P": 1.0e5, "z": [0.1, 0.3, 0.6]}, "backend"),
+        ({"kind": "tp_flash", "backend": "neutral_vle", "T": 220.0, "P": 1.0e5, "z": [0.1, 0.3, 0.6]}, "backend"),
+        ({"kind": "lle_flash", "backend": "neutral_lle", "T": 298.15, "P": 1.0e5, "z": [0.4, 0.4, 0.2]}, "backend"),
+        ({"kind": "electrolyte_lle", "backend": "electrolyte_lle", "T": 298.15, "P": 1.0e5, "z": [0.1, 0.3, 0.6]}, "backend"),
     ],
 )
 def test_equilibrium_rejects_invalid_public_inputs(kwargs, match) -> None:

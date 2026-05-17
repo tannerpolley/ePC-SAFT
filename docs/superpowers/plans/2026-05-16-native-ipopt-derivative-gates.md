@@ -1143,6 +1143,11 @@ backend assertion were removed. Current-surface field-set tests, route-gate test
 Task 2 continuation note: the tracked test-audit cleanup queue now lists only still-open cleanup streams instead of
 mixing completed dependency, solver-loop, Eigen, and quick-gate work into the open item list.
 
+Task 8/9/12 continuation note: public `ePCSAFTMixture.equilibrium(...)` now accepts only no backend or
+`backend="native"` across all routes. Route names such as `neutral_vle`, `neutral_lle`, and `electrolyte_lle` are no
+longer accepted as backend aliases; callers select routes with `kind` or `phase_kind`, and staged reactive workflows no
+longer treat `backend` as a phase-route selector.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**
