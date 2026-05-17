@@ -17,4 +17,3 @@ def test_runtime_reports_cppad_build_contract() -> None:
     assert capabilities["derivatives"]["cppad"]["status"] == cppad["status"]
     assert capabilities["derivatives"]["cppad"]["compiled"] is cppad["compiled"]
     assert "production" not in capabilities["derivatives"]["cppad"]
-    assert "production_eos_coverage" not in capabilities["derivatives"]["cppad"]

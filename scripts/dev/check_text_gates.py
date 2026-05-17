@@ -268,6 +268,12 @@ def _source_blocked_terms(rel: str) -> tuple[str, ...]:
         "best" + "_failure" + "_reason",
         "native" + "_status",
         "derivative" + "_gap" + "_status",
+        "\"warm" + "_start" + "_source\"",
+        "objective" + "_seed" + "_hits",
+        "row" + "_seed" + "_hits",
+        "baseline" + "_repeat",
+        "baseline" + "_warmup",
+        "production" + "_eos" + "_coverage",
     )
     if rel.startswith(("src/", "scripts/")):
         terms += (
@@ -282,7 +288,6 @@ def _source_blocked_terms(rel: str) -> tuple[str, ...]:
         terms += ("fit" + "_route",)
         terms += ("activity" + "_coefficient" + "_term" + "_decomposition" + "_available",)
         terms += ("not" + "_validated" + "_for" + "_production",)
-        terms += ("production" + "_eos" + "_coverage",)
     if rel in {"src/epcsaft/reactive_regression.py", "scripts/benchmarks/helpers/reactive_regression.py"}:
         terms += (
             "warm" + "_start" + "_source",

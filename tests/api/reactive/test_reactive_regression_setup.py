@@ -264,9 +264,6 @@ def test_reactive_regression_context_evaluates_batch_with_explicit_row_inputs(mo
         "row2.x.A",
     )
     assert first.residuals.shape == (4,)
-    assert all("warm_start_source" not in row.to_dict() for row in first.row_results)
-    assert "objective_seed_hits" not in first.cache_stats
-    assert "row_seed_hits" not in first.cache_stats
     assert second.cache_stats["context_evaluations"] >= 2
     assert calls[1]["P"] == pytest.approx(95000.0)
     assert calls[1]["initial_x"] == pytest.approx([0.21, 0.79])

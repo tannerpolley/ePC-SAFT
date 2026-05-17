@@ -68,8 +68,6 @@ def test_reactive_regression_benchmark_schema_for_one_case():
     assert case_payload["failure_messages"] == []
     assert case_payload["context_evaluations"] >= 0
     assert case_payload["native_reference_state_cache_hits"] is None
-    assert "baseline_repeat" not in case_payload
-    assert "baseline_warmup" not in case_payload
 
 
 def test_reactive_regression_benchmark_baseline_merge(tmp_path):

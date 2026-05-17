@@ -221,6 +221,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
   current dataclass field surfaces directly, and the executable text gate blocks that removed adapter name.
 - Reactive electrolyte bubble sweeps now reject unknown point keys generically instead of carrying a special
   deleted-pressure-key branch, and the executable text gate blocks that removed key name.
+- Duplicate absence assertions for retired reactive-regression seed counters, benchmark timing baseline fields, and the
+  CppAD production-coverage flag were removed from tests. The executable text gate now owns those retired labels.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
 
