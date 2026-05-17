@@ -1367,7 +1367,6 @@ PYBIND11_MODULE(_core, m) {
         out["hessian_strategy"] = adapter.hessian_strategy;
         out["requires_exact_gradient"] = adapter.exact_gradient_required;
         out["requires_exact_jacobian"] = adapter.exact_jacobian_required;
-        out["requires_exact_hessian"] = adapter.exact_hessian_required;
 #ifdef EPCSAFT_IPOPT_STATUS
         out["status"] = EPCSAFT_IPOPT_STATUS;
 #else

@@ -564,7 +564,6 @@ ChemicalEquilibriumResultNative solve_ideal_speciation_chemical_equilibrium_ipop
     result.diagnostics_string["activity_derivative_policy"] = "not_required_for_ideal_mole_fraction";
     result.diagnostics_bool["derivative_available"] = true;
     result.diagnostics_bool["jacobian_available"] = true;
-    result.diagnostics_bool["hessian_available"] = false;
     result.diagnostics_bool["activity_fixed_point"] = false;
     result.diagnostics_bool["activity_or_fugacity_terms_in_residual"] = false;
     result.diagnostics_bool["activity_derivative_in_jacobian"] = false;

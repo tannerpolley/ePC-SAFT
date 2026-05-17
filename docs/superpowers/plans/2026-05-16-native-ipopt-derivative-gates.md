@@ -624,6 +624,10 @@ Task 9 continuation note: direct pybind native equilibrium and chemical-equilibr
 
 Task 9 continuation note: the unused native chemical-equilibrium `hessian_strategy` request field and parser branch were deleted. Hessian strategy reporting remains limited to the Ipopt adapter's solver-internal metadata.
 
+Task 9/12 continuation note: public Ipopt capabilities and chemical-equilibrium diagnostics no longer publish negative
+Hessian availability flags. Ipopt Hessian behavior remains adapter-internal; public contracts require exact gradients and
+Jacobians.
+
 Task 9 continuation note: stale electrolyte LLE contract tests that expected missing residual derivatives were rewritten to assert the implemented Ceres solve plus CppAD-implicit transformed-variable residual Jacobian surface.
 
 Task 9 continuation note: the Python reactive-phase diagnostics no longer call NumPy's least-squares convenience routine for reaction extent reporting. The helper uses a small direct linear solve of the stoichiometric normal system and remains diagnostic-only.

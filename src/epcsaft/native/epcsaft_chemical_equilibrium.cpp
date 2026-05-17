@@ -677,11 +677,6 @@ ChemicalResidualEvaluationNative evaluate_chemical_equilibrium_residual_native(
     out.diagnostics_string["derivative_capability_path"] = derivative_selection.capability_path;
     out.diagnostics_bool["derivative_available"] = derivative_selection.derivative_available;
     out.diagnostics_bool["jacobian_available"] = derivative_selection.derivative_available;
-    out.diagnostics_bool["hessian_available"] = false;
-    out.diagnostics_bool["exact_hessian_available"] = false;
-    out.diagnostics_bool["hessian_callback_available"] = false;
-    out.diagnostics_bool["hessian_includes_second_residual_derivatives"] = false;
-    out.diagnostics_bool["sparse_hessian_available"] = false;
     out.diagnostics_bool["activity_coefficients_evaluated"] = !current.gamma.empty();
     out.diagnostics_int["state_failure_count"] = state_failure_count;
     out.diagnostics_int["residual_evaluation_count"] = counters.residual_evaluations;

@@ -13,7 +13,8 @@ def test_native_ipopt_smoke_reports_generic_adapter_contract() -> None:
     assert smoke["hessian_strategy"] == "limited_memory"
     assert smoke["requires_exact_gradient"] is True
     assert smoke["requires_exact_jacobian"] is True
-    assert smoke["requires_exact_hessian"] is False
+    removed_hessian_requirement = "requires" + "_exact" + "_hessian"
+    assert removed_hessian_requirement not in smoke
     assert smoke["available"] is smoke["compiled"]
     assert smoke["adapter_available"] is smoke["compiled"]
 

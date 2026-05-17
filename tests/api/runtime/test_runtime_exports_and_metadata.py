@@ -100,7 +100,10 @@ def test_runtime_build_info_and_capabilities_are_json_like():
         "electrolyte_bubble_pressure",
     ]
     assert ipopt["full_constrained_nlp_available"] is ipopt["available"]
-    assert ipopt["exact_hessian_available"] is False
+    removed_exact_hessian = "exact" + "_hessian" + "_available"
+    removed_hessian_strategies = "hessian" + "_strategies"
+    assert removed_exact_hessian not in ipopt
+    assert removed_hessian_strategies not in ipopt
     assert info["native_dependencies"]["ipopt"]["available"] is ipopt["available"]
     cppad = info["native_dependencies"]["cppad"]
     assert cppad["backend"] == "cppad"

@@ -135,10 +135,13 @@ def test_native_chemical_equilibrium_residual_evaluator_uses_analytic_jacobian_b
     assert removed_reason_key not in diagnostics
     assert removed_hessian_key not in diagnostics
     assert "hessian_kind" not in diagnostics
-    assert diagnostics["hessian_available"] is False
-    assert diagnostics["exact_hessian_available"] is False
-    assert diagnostics["hessian_callback_available"] is False
-    assert diagnostics["hessian_includes_second_residual_derivatives"] is False
+    removed_hessian_flags = {
+        "hessian" + "_available",
+        "exact" + "_hessian" + "_available",
+        "hessian" + "_callback" + "_available",
+        "hessian" + "_includes" + "_second" + "_residual" + "_derivatives",
+    }
+    assert diagnostics.keys().isdisjoint(removed_hessian_flags)
     residual = np.asarray(payload["residual"], dtype=float)
     gradient = np.asarray(payload["gradient"], dtype=float)
     jacobian = np.asarray(payload["jacobian_row_major"], dtype=float).reshape(payload["jacobian_shape"])
