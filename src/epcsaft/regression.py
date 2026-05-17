@@ -794,6 +794,22 @@ def _fit_derivative_metadata(result: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def _residual_score_metadata(result: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "optimizer_backend": "",
+        "derivative_backend": "",
+        "objective_initial": float(result.get("initial_cost", result.get("cost", float("nan")))),
+        "objective_final": float(result.get("cost", float("nan"))),
+        "n_residual_evaluations": int(result.get("nfev", 1)),
+        "n_jacobian_evaluations": 0,
+        "gradient_norm": float("nan"),
+        "step_norm": float("nan"),
+        "python_objective_used": False,
+        "jacobian_available": bool(result.get("jacobian_available", False)),
+        "jacobian_backend": "",
+    }
+
+
 def _required_native_regression_metadata(result: Mapping[str, Any], key: str) -> str:
     if key not in result:
         raise RuntimeError(f"Native regression result missing required {key!r} metadata.")
@@ -1588,11 +1604,8 @@ def _run_native_generic_score(
         "iterations": 0,
         "starts_tried": 1,
         "message": "evaluated native generic residual score without optimization",
-        "backend": "diagnostic_residual_score",
-        "optimizer_backend": "diagnostic_residual_score",
-        "derivative_backend": "diagnostic_residual_score",
+        "backend": "native_residual_evaluator",
         "jacobian_available": False,
-        "jacobian_backend": "diagnostic_residual_score",
     }
 
 
@@ -2457,7 +2470,7 @@ def _fit_pure_neutral_associating_native(
         message=str(result["message"]),
         nfev=int(result["nfev"]),
         backend=str(result["backend"]),
-        **_fit_derivative_metadata(result),
+        **_residual_score_metadata(result),
     )
 
 
@@ -3371,7 +3384,7 @@ def _fit_mea_co2_h2o_component(
         message=str(result["message"]),
         nfev=int(result["nfev"]),
         backend=str(result["backend"]),
-        **_fit_derivative_metadata(result),
+        **_residual_score_metadata(result),
     )
 
 

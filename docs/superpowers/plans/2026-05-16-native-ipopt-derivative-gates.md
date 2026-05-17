@@ -709,7 +709,7 @@ Task 10 continuation note: reactive electrolyte batch capabilities now expose a 
 
 Task 10 continuation note: the public generic native-record derivative helper was deleted because it only advertised derivative backend selection and then raised without returning an exact derivative payload. Public derivative-matrix access now remains limited to implemented exact routes such as the native pure-neutral Ceres objective until each generic target family has analytical, CppAD, or implicit derivative matrices behind its Ceres path.
 
-Task 10 continuation note: internal residual-score-only regression hooks no longer report themselves as optimizer backends or emit placeholder derivative backend labels. They now use the `diagnostic_residual_score` backend for diagnostic-only optimizer and derivative metadata, and the source/test/script text gate blocks reintroducing the retired residual-score backend label.
+Task 10 continuation note: internal residual-score-only regression hooks no longer report themselves as optimizer backends or emit placeholder derivative backend labels. They now report only the native residual evaluator as the backend, leave optimizer/derivative/Jacobian backend fields empty, and the source/test/script text gate blocks reintroducing the retired residual-score backend label.
 
 Task 10 continuation note: pure-neutral regression debug Jacobian payloads now report `cppad_implicit`, matching the actual CppAD property derivatives plus implicit density sensitivities used by the native objective. The Python wrapper no longer defaults missing native Jacobian metadata to a generic autodiff label.
 
@@ -963,8 +963,8 @@ root/search solver tokens and allows them only in the evidence-gated density-clo
 density closure exception explicit while blocking new package-owned nonlinear solve algorithms outside that boundary.
 
 Task 10/12 continuation note: generic native residual-score benchmark paths no longer report optimizer, derivative, or
-Jacobian backends as out-of-scope placeholders. Residual-only diagnostics now use the positive
-`diagnostic_residual_score` label, and the executable text gate blocks reintroducing the old regression backend labels.
+Jacobian backends as out-of-scope placeholders. Residual-only diagnostics now report only the native residual evaluator,
+and the executable text gate blocks reintroducing the old regression backend labels.
 
 Task 7/12 continuation note: the generic staged reactive workflow no longer carries a benchmark-specific attempt
 diagnostic or a negative neutral-route status. The retained diagnostics describe the staged method, phase kind,

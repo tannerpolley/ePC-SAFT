@@ -60,9 +60,9 @@ def test_baygi_table2_mea_parameters_score_better_than_offset_seed(assoc_scheme)
     )
 
     assert table_score.problem.fit_targets == ("m", "s", "e", "e_assoc", "vol_a")
-    assert table_score.backend == "diagnostic_residual_score"
-    assert table_score.optimizer_backend == "diagnostic_residual_score"
-    assert table_score.derivative_backend == "diagnostic_residual_score"
+    assert table_score.backend == "native_residual_evaluator"
+    assert table_score.optimizer_backend == ""
+    assert table_score.derivative_backend == ""
     assert table_score.fitted_values == pytest.approx(table_values, rel=0.0, abs=1.0e-12)
     assert table_score.residual_norm < offset_score.residual_norm
 

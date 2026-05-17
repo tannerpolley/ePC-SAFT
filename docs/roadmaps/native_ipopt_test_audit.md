@@ -145,9 +145,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - Duplicate equilibrium capability tests that only repeated runtime metadata route-status checks were deleted. The
   retained capability tests cover derivative policy, reactive-speciation standard-state gates, and reactive
   phase-equilibrium reaction-scope metadata.
-- Generic native residual-score benchmark paths now use the positive `diagnostic_residual_score` label for optimizer,
-  derivative, and Jacobian backend metadata instead of out-of-scope placeholders; the executable text gate blocks the old
-  regression backend labels.
+- Generic native residual-score benchmark paths now report only the native residual evaluator backend; optimizer,
+  derivative, and Jacobian backend fields stay empty because no optimization or derivative evaluation is performed.
 - Generic staged reactive workflow diagnostics no longer include a benchmark-specific attempt field or negative
   neutral-route status. The retained diagnostics cover staged method metadata, residual audits, derivative policy, and
   phase-route diagnostics.
