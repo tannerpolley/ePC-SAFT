@@ -15,7 +15,6 @@ GENERIC_TEST_TARGETS = (
     "tests/regression/core/test_hydrocarbon.py::test_methane_reference_parameters_keep_native_objective_pinned",
     "tests/equilibrium/core/test_vle.py::test_tp_flash_builds_one_native_route_request_before_ipopt_gate",
     "tests/equilibrium/core/test_lle.py::test_lle_flash_builds_one_native_route_request_before_ipopt_gate",
-    "tests/equilibrium/core/test_lle.py::test_lle_flash_requested_ipopt_requires_native_ipopt_route",
     "tests/equilibrium/core/test_stability.py::test_stability_requires_native_ipopt_route_after_validation",
     (
         "tests/equilibrium/electrolyte/test_electrolyte_lle_smokes.py::"

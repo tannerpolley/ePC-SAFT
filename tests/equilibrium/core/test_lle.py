@@ -271,22 +271,6 @@ def test_lle_flash_rejects_unknown_option_dict_keys() -> None:
         )
 
 
-def test_lle_flash_requested_ipopt_requires_native_ipopt_route() -> None:
-    mix = _methanol_cyclohexane_mixture()
-    feed = _methanol_cyclohexane_lle_feed()
-
-    with pytest.raises(epcsaft.InputError) as excinfo:
-        mix.equilibrium(
-            kind="lle_flash",
-            T=298.15,
-            P=1.013e5,
-            z=feed,
-            options=epcsaft.EquilibriumOptions(solver_backend="ipopt"),
-        )
-
-    _assert_neutral_lle_route_pending(excinfo)
-
-
 @pytest.mark.parametrize(
     ("kwargs", "match"),
     [

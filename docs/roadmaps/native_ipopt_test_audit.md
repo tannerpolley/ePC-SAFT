@@ -184,6 +184,9 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - A duplicate staged reactive LLE test was folded into the stronger reaction-coordinate and split-diagnostic test.
 - Reactive-regression row/options/result surface checks now use one compact current-surface assertion instead of three
   separate removed-field tests.
+- Duplicate neutral LLE explicit-Ipopt and stability-option route-gate tests were removed. The quick gate keeps one
+  representative native route-request test per active public equilibrium route, while field-set and invalid-option
+  tests keep current option-surface coverage.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
 

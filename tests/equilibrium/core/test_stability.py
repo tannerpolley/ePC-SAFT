@@ -50,23 +50,6 @@ def test_stability_requires_native_ipopt_route_after_validation() -> None:
     _assert_stability_route_pending(excinfo)
 
 
-def test_explicit_stability_options_validate_before_route_gate() -> None:
-    mix = _hydrocarbon_mixture()
-
-    with pytest.raises(epcsaft.InputError) as excinfo:
-        mix.equilibrium(
-            kind="stability",
-            T=300.0,
-            P=1.0e5,
-            z=[0.1, 0.3, 0.6],
-            parent_phase="vap",
-            trial_phases=("vap",),
-            options=epcsaft.EquilibriumOptions(max_iterations=1, tolerance=1.0e-5, stability_precheck=False),
-        )
-
-    _assert_stability_route_pending(excinfo)
-
-
 @pytest.mark.parametrize(
     ("kwargs", "match"),
     [
