@@ -813,8 +813,6 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
     out.diagnostics_string["residual_blocks"] = phase_tagged_reactions
         ? "element_balance,phase_tagged_reaction_equilibrium,neutral_phase_equilibrium,ionic_equilibrium,phase_charge"
         : "element_balance,reaction_equilibrium,neutral_phase_equilibrium,ionic_equilibrium,phase_charge";
-    out.diagnostics_string["solver_backend"] = "residual_surface_only";
-    out.diagnostics_string["solver_method"] = "residual_surface_only";
     out.diagnostics_string["jacobian_backend"] = "cppad_implicit";
     out.diagnostics_string["derivative_backend"] = "cppad_implicit";
     out.diagnostics_string["coupling_level"] = "single_native_residual_state";

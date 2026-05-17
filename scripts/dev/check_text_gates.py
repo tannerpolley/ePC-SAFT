@@ -232,6 +232,7 @@ def _source_blocked_terms(rel: str) -> tuple[str, ...]:
         "include" + "_phase" + "_diagnostics",
         "python" + "_sweep",
         "selected" + "_solver" + "_backend" + "\": \"not" + "_run",
+        "residual" + "_surface" + "_only",
     )
     if rel.startswith(("src/", "scripts/")):
         terms += (

@@ -632,7 +632,7 @@ Task 9 continuation note: public coupled reactive LLE and reactive electrolyte L
 
 Task 9 continuation note: private tests that asserted accepted Ceres equilibrium solves for electrolyte LLE, neutral associating LLE, and coupled reactive phase equilibrium were deleted. Remaining native coverage for these transitional surfaces is limited to residual/Jacobian evaluators and public route-gate tests until native Ipopt NLP builders own accepted equilibrium solves.
 
-Task 9 continuation note: the unbound native coupled reactive phase Ceres solve implementation and pybind entrypoint were deleted. The retained native surface is residual/Jacobian evaluation only, with solver diagnostics labeled `residual_surface_only`.
+Task 9 continuation note: the unbound native coupled reactive phase Ceres solve implementation and pybind entrypoint were deleted. The retained native surface is residual/Jacobian evaluation only and does not report solver backend diagnostics.
 
 Task 9 continuation note: a first `electrolyte_block` slice adds a native phase charge-balance block with analytical
 residuals and Jacobian rows, and the EOS phase-system assembler can append one charge-balance row per phase when
