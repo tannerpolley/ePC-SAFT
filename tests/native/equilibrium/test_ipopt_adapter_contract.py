@@ -24,10 +24,16 @@ def test_runtime_capabilities_report_public_ipopt_routes() -> None:
     assert ipopt["adapter_kind"] == "native_tnlp_adapter"
     assert ipopt["public_routes"] == [
         "reactive_speciation:ideal_mole_fraction",
+        "reactive_speciation:mole_fraction_activity",
+        "reactive_speciation:concentration",
         "neutral_tp_flash",
+        "neutral_stability",
+        "electrolyte_stability",
         "neutral_lle_flash",
         "neutral_bubble_p",
+        "neutral_bubble_t",
         "neutral_dew_p",
+        "neutral_dew_t",
         "electrolyte_lle",
         "electrolyte_bubble_pressure",
     ]

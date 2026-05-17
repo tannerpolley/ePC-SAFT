@@ -49,10 +49,11 @@ Solver Selection
 default only where one exists, and otherwise raises at the route boundary.
 ``ipopt`` is the explicit native constrained-NLP backend for production
 equilibrium routes as they land. Current implemented native Ipopt capability
-entries cover homogeneous ideal reactive speciation, neutral TP/LLE, neutral
-bubble/dew pressure, electrolyte LLE, and fixed-liquid electrolyte bubble
-pressure when Ipopt is compiled. Stability, temperature bubble/dew, and
-reactive phase-equilibrium solves remain route-builder work. Use
+entries cover homogeneous ideal, activity, and concentration reactive
+speciation, neutral TP/LLE, neutral bubble/dew pressure, electrolyte LLE, and
+fixed-liquid electrolyte bubble pressure when Ipopt is compiled. Stability,
+temperature bubble/dew, and reactive phase-equilibrium solves remain
+route-builder work. Use
 ``epcsaft.capabilities()`` to check implemented solver paths in the current
 install.
 

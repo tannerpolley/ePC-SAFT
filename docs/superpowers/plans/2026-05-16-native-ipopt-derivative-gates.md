@@ -450,12 +450,12 @@ Task 5 note: the convex coverage is deliberately limited to homogeneous ideal re
 - Modify: `src/epcsaft/bindings.cpp`
 - Modify: reactive speciation tests.
 
-- [ ] Route homogeneous reactive speciation to native Ipopt for ideal and nonideal cases.
-- [ ] Remove package-owned Newton, scalar bracket, manual damping, and route retry behavior from accepted paths.
-- [ ] Feed activity/EOS terms through analytical/CppAD derivatives.
-- [ ] Keep Python as request/result facade only.
-- [ ] Add tests for ideal, nonideal, charged, and failure diagnostics.
-- [ ] Commit as `Route reactive speciation through native Ipopt`.
+- [x] Route homogeneous reactive speciation to native Ipopt for ideal and nonideal cases.
+- [x] Remove package-owned Newton, scalar bracket, manual damping, and route retry behavior from accepted paths.
+- [x] Feed activity/EOS terms through analytical/CppAD derivatives.
+- [x] Keep Python as request/result facade only.
+- [x] Add tests for ideal, nonideal, charged, and failure diagnostics.
+- [x] Commit route slices covering reactive speciation through native Ipopt.
 
 Task 6 progress note: the first route slice adds explicit `solver_backend="ipopt"` support for homogeneous `ideal_mole_fraction` reactive speciation through a new native `equilibrium_nlp` ideal-speciation problem and the generic Ipopt adapter. The route uses species amounts as variables, material balances as equality constraints, a reduced ideal Gibbs objective, analytical gradients/Jacobians, one deterministic initial point, and Ipopt limited-memory Hessian behavior as solver-internal behavior only. Local proof covered both the no-Ipopt dependency gate and the Ipopt-enabled MSVC build at `C:\ProgramData\miniconda3\envs\ePC-SAFT\Library`. A second slice added exact charge-balance constraints when the charge row is independent of material balances and proved a charged ideal association case through the native Ipopt route. A later slice routes homogeneous activity and concentration standard-state speciation through a nonideal Gibbs/activity NLP using exact CppAD-implicit phase-state sensitivities; mixed standard-state bases still fail loudly until their thermodynamic objective is specified.
 
@@ -878,7 +878,8 @@ equilibrium extension, and regression extension split.
 Task 12 note: runtime derivative capabilities now list implemented production coverage only instead of embedding open
 blocker rows. Reactive electrolyte batch regression is no longer described as a production optimizer in capabilities; it
 is documented as a diagnostic residual context until native Ceres owns that route. README and docs now describe native
-Ipopt as an explicit constrained-NLP backend with current public wiring limited to homogeneous ideal reactive speciation,
+Ipopt as an explicit constrained-NLP backend with current public wiring covering homogeneous ideal, activity, and
+concentration reactive speciation,
 and they state the convex formulation scope as homogeneous ideal subkernels only.
 
 Task 12 continuation note: reactive electrolyte fit metadata no longer reports a public placeholder-status contract. EOS derivative coverage matrices now report implemented or out-of-scope rows only instead of acting as a missing-derivative backlog. Unsupported public property-derivative methods raise `InputError` directly rather than returning placeholder derivative result objects.

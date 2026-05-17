@@ -90,6 +90,8 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert ipopt["production"] is ipopt["available"]
     assert ipopt["public_routes"] == [
         "reactive_speciation:ideal_mole_fraction",
+        "reactive_speciation:mole_fraction_activity",
+        "reactive_speciation:concentration",
         "neutral_tp_flash",
         "neutral_stability",
         "electrolyte_stability",
@@ -158,15 +160,30 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert reactive_speciation["backend"] == "native_ipopt_equilibrium_nlp"
     assert reactive_speciation["sweep_available"] is ipopt["available"]
     assert reactive_speciation["solver_backends"] == ["auto", "ipopt"]
-    assert reactive_speciation["ipopt_routes"] == ["reactive_speciation:ideal_mole_fraction"]
+    assert reactive_speciation["ipopt_routes"] == [
+        "reactive_speciation:ideal_mole_fraction",
+        "reactive_speciation:mole_fraction_activity",
+        "reactive_speciation:concentration",
+    ]
     assert reactive_speciation["ideal_speciation_nlp_available"] is ipopt["available"]
-    assert reactive_speciation["implemented_standard_states"] == ["ideal_mole_fraction"]
+    assert reactive_speciation["nonideal_speciation_nlp_available"] is ipopt["available"]
+    assert reactive_speciation["implemented_standard_states"] == [
+        "ideal_mole_fraction",
+        "mole_fraction_activity",
+        "concentration",
+    ]
     assert (
         reactive_speciation["jacobian_auto_policy"]
-        == "native_ipopt_ideal_mole_fraction_analytic_else_raise"
+        == "ideal_analytic_nonideal_cppad_implicit_else_raise"
     )
-    assert reactive_speciation["jacobian_auto_supported_standard_states"] == ["ideal_mole_fraction"]
-    assert reactive_speciation["auto_request"] == "ideal_mole_fraction_routes_to_native_ipopt"
+    assert reactive_speciation["jacobian_auto_supported_standard_states"] == [
+        "ideal_mole_fraction",
+        "mole_fraction_activity",
+        "concentration",
+    ]
+    assert reactive_speciation["auto_request"] == "implemented_standard_states_route_to_native_ipopt"
+    assert reactive_speciation["nonideal_derivative_backend"] == "cppad_implicit"
+    assert reactive_speciation["mixed_standard_state_policy"] == "raise_until_single_objective_is_specified"
     assert capabilities["regression"]["pure_neutral"]["backend"] == "native_ceres"
     reactive_regression = capabilities["regression"]["reactive_electrolyte_residuals"]
     assert reactive_regression["available"] is True

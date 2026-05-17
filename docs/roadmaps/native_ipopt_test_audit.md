@@ -164,8 +164,10 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - The ideal reactive-speciation Ipopt route now reports the positive analytical derivative backend without no-op activity
   derivative policy or Hessian-mode diagnostics.
 - The same ideal reactive-speciation route now honors explicit `jacobian_backend="cppad"` requests with CppAD residual
-  Jacobians, CppAD ideal-Gibbs objective gradients, and CppAD implicit-sensitivity diagnostics. Activity and
-  concentration routes still stop at the native EOS derivative-block gate.
+  Jacobians, CppAD ideal-Gibbs objective gradients, and CppAD implicit-sensitivity diagnostics. Shared activity and
+  concentration standard-state routes now dispatch to the native nonideal Gibbs/activity NLP and use CppAD-implicit
+  phase-state sensitivities; apparent and mixed-standard-state routes still fail loudly until their thermodynamic
+  objective is specified.
 - Native Ipopt smoke and route result payloads no longer expose Hessian-strategy or exact-Hessian-required fields; those
   choices stay inside the adapter while result payloads report exact gradient/Jacobian requirements.
 - Runtime reactive phase-equilibrium capabilities no longer emit an empty negative reaction-scope list. The retained
@@ -255,10 +257,10 @@ The failure list from the initial full-duration run has been retired. Each liste
 
 - The first Task 3 slice removed the legacy numerical package from the test dependency group.
 - The first Task 3 slice deleted the legacy Rezaee fitting script and its generated fit outputs.
-- The second Task 3 slice removed the Python IPOPT adapter, added native system Ipopt discovery, and added doctor/build status reporting. The native Ipopt adapter is present; public route wiring currently covers homogeneous ideal reactive speciation, neutral TP/LLE/bubble/dew pressure routes, electrolyte LLE, and fixed-liquid electrolyte bubble pressure when Ipopt is compiled.
+- The second Task 3 slice removed the Python IPOPT adapter, added native system Ipopt discovery, and added doctor/build status reporting. The native Ipopt adapter is present; public route wiring currently covers homogeneous ideal, activity, and concentration reactive speciation, neutral TP/LLE/bubble/dew pressure routes, electrolyte LLE, and fixed-liquid electrolyte bubble pressure when Ipopt is compiled.
 - The third Task 3 slice made Ceres and CppAD mandatory native dependencies for dev-script, package-backend, and CMake builds, excluded vendored Ceres install rules from package artifacts, and validated the actual local extension with Ceres enabled.
 - Public `EquilibriumOptions` now accepts only `auto` and explicit `ipopt`; `ReactiveSpeciationOptions` has the same public solver selector shape.
-- Native homogeneous chemical-equilibrium solves now dispatch only to the explicit Ipopt ideal-speciation NLP. Remaining known custom bracket/root behavior is in density closure diagnostics, which stay evidence-gated rather than accepted as a general equilibrium solver route.
+- Native homogeneous chemical-equilibrium solves now dispatch only to explicit Ipopt speciation NLPs for implemented ideal, activity, and concentration standard-state bases. Remaining known custom bracket/root behavior is in density closure diagnostics, which stay evidence-gated rather than accepted as a general equilibrium solver route.
 - A workflow gate now enforces that custom scalar root/search solver tokens are confined to the density-closure exception
   files and cannot appear in new active `src/epcsaft` solver surfaces.
 - Regression public pure-neutral fitting now defaults to Ceres and rejects the old native least-squares backend. The private generic Eigen least-squares binding, shifted-source Jacobian route, and repeated-start Ceres controls are removed; generic supported production fits go through one canonical Ceres start, while associating/MEA benchmark helpers are residual scorers until native Ceres derivative coverage exists.
@@ -289,8 +291,8 @@ Still ongoing:
 - Continue pruning duplicate route-gate and status/debug tests when structured route or derivative coverage already
   exists.
 - The duplicate equilibrium-core activity-coupled reactive-speciation derivative-gate test was removed. Retained API
-  reactive-speciation tests still cover activity-coupled, concentration-standard-state, and result-mode native derivative
-  gates.
+  reactive-speciation tests still cover implemented activity-coupled, concentration-standard-state, and result-mode
+  native derivative routes or the real native Ipopt dependency gate.
 - The broad public-equilibrium API test no longer repeats neutral `bubble_p`/`dew_p` route-gate assertions now owned by
   the route-specific bubble/dew tests; fixed-pressure `bubble_t`/`dew_t` now have route-specific native contract and
   public dispatch checks as well.

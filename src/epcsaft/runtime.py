@@ -331,7 +331,7 @@ def _derivative_coverage_capabilities(cppad: dict[str, object], ceres: dict[str,
         "speciation_implicit_sensitivities": {
             "available": True,
             "production": True,
-            "scope": "standard-state slices with analytic residual Jacobians",
+            "scope": "ideal analytic/CppAD and nonideal CppAD-implicit solved-state sensitivities",
         },
         "born_ssmds_liquid_derivatives": {
             "available": True,
@@ -359,6 +359,8 @@ def capabilities() -> dict[str, object]:
     ipopt = dict(native_dependencies["ipopt"])  # type: ignore[index]
     ipopt_public_routes = [
         "reactive_speciation:ideal_mole_fraction",
+        "reactive_speciation:mole_fraction_activity",
+        "reactive_speciation:concentration",
         "neutral_tp_flash",
         "neutral_stability",
         "electrolyte_stability",
@@ -371,6 +373,15 @@ def capabilities() -> dict[str, object]:
         "electrolyte_bubble_pressure",
     ]
     ipopt_route_available = bool(ipopt.get("available", False))
+    reactive_speciation_standard_states = [
+        "ideal_mole_fraction",
+        "mole_fraction_activity",
+        "concentration",
+    ]
+    reactive_speciation_routes = [
+        f"reactive_speciation:{standard_state}"
+        for standard_state in reactive_speciation_standard_states
+    ]
     ceres_available = bool(ceres.get("available", False))
     cppad_capability = {
         **cppad,
@@ -523,16 +534,19 @@ def capabilities() -> dict[str, object]:
                 "backend": "native_ipopt_equilibrium_nlp",
                 "sweep_available": ipopt_route_available,
                 "activity_output_modes": ["auto", "always", "never"],
-                "jacobian_auto_policy": "native_ipopt_ideal_mole_fraction_analytic_else_raise",
-                "jacobian_auto_supported_standard_states": ["ideal_mole_fraction"],
-                "implemented_standard_states": ["ideal_mole_fraction"],
-                "auto_request": "ideal_mole_fraction_routes_to_native_ipopt",
+                "jacobian_auto_policy": "ideal_analytic_nonideal_cppad_implicit_else_raise",
+                "jacobian_auto_supported_standard_states": reactive_speciation_standard_states,
+                "implemented_standard_states": reactive_speciation_standard_states,
+                "auto_request": "implemented_standard_states_route_to_native_ipopt",
                 "solver_backends": ["auto", "ipopt"],
                 "ipopt_available": bool(ipopt["available"]),
-                "explicit_ipopt_request": "ideal_mole_fraction_routes_to_native_ipopt_when_compiled",
-                "ipopt_routes": ["reactive_speciation:ideal_mole_fraction"],
+                "explicit_ipopt_request": "implemented_standard_states_route_to_native_ipopt_when_compiled",
+                "ipopt_routes": reactive_speciation_routes,
                 "ipopt_formulation": "thermodynamic_constrained_nlp",
                 "ideal_speciation_nlp_available": ipopt_route_available,
+                "nonideal_speciation_nlp_available": ipopt_route_available,
+                "nonideal_derivative_backend": "cppad_implicit",
+                "mixed_standard_state_policy": "raise_until_single_objective_is_specified",
             },
             "repeated_state_properties": {
                 "available": True,
