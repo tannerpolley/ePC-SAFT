@@ -219,6 +219,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
   source text gate already blocks those labels while the tests keep exact-gradient/Jacobian and classification coverage.
 - The public reactive-electrolyte row compatibility adapter was deleted. Regression setup coverage now asserts the
   current dataclass field surfaces directly, and the executable text gate blocks that removed adapter name.
+- Reactive electrolyte bubble sweeps now reject unknown point keys generically instead of carrying a special
+  deleted-pressure-key branch, and the executable text gate blocks that removed key name.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
 

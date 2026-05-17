@@ -14,6 +14,7 @@ from .reactive_speciation import ReactiveSpeciationOptions, ReactiveSpeciationRe
 _PHASE_HANDOFF_MASS_TOLERANCE = 1.0e-8
 _PHASE_HANDOFF_CHARGE_TOLERANCE = 1.0e-8
 _PHASE_HANDOFF_REACTION_TOLERANCE = 1.0e-5
+_SWEEP_POINT_KEYS = frozenset({"T", "P", "totals", "initial_x", "options"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -187,14 +188,14 @@ def solve_reactive_electrolyte_bubble_sweep(
         raise InputError("options must be a ReactiveElectrolyteBubbleOptions instance.")
     results: list[ReactiveElectrolyteBubbleResult] = []
     for point in points:
+        unknown_keys = sorted(set(point) - _SWEEP_POINT_KEYS)
+        if unknown_keys:
+            raise InputError(f"Unsupported reactive electrolyte bubble sweep point key(s): {unknown_keys}.")
         if "T" not in point or "totals" not in point:
             raise InputError("Each reactive electrolyte bubble sweep point requires T and totals.")
         point_options = point.get("options", options)
         if not isinstance(point_options, ReactiveElectrolyteBubbleOptions):
             raise InputError("Each point options entry must be a ReactiveElectrolyteBubbleOptions instance.")
-        removed_pressure_key = "P" + "_seed"
-        if removed_pressure_key in point:
-            raise InputError(f"Reactive electrolyte bubble sweep points use P, not {removed_pressure_key}.")
         pressure = float(point.get("P", 101325.0))
         result = solve_reactive_electrolyte_bubble(
             species=species,

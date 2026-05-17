@@ -167,17 +167,12 @@ def test_reactive_electrolyte_bubble_sweep_does_not_continue_bubble_seed_control
     assert results[1].P_total == pytest.approx(111000.0)
 
 
-def test_reactive_electrolyte_bubble_public_api_rejects_pressure_seed_key() -> None:
-    removed = "P" + "_seed"
-
-    assert removed not in inspect.signature(epcsaft.solve_reactive_electrolyte_bubble).parameters
-    assert removed not in inspect.signature(epcsaft.ePCSAFTMixture.reactive_electrolyte_bubble_p).parameters
-    assert removed not in epcsaft.ReactiveElectrolyteBubbleProblem.__dataclass_fields__
-    with pytest.raises(epcsaft.InputError, match=removed):
+def test_reactive_electrolyte_bubble_sweep_rejects_unknown_point_keys() -> None:
+    with pytest.raises(epcsaft.InputError, match="Unsupported reactive electrolyte bubble sweep point key"):
         epcsaft.solve_reactive_electrolyte_bubble_sweep(
             species=["H2O", "Na+", "Cl-"],
             mixture_factory=_salt_mixture,
-            points=[{"T": 298.15, removed: 101325.0, "totals": {"water": 0.98}}],
+            points=[{"T": 298.15, "unexpected": 101325.0, "totals": {"water": 0.98}}],
             balances={"water": {"H2O": 1.0}},
             reactions=[],
             vapor_species=["H2O"],
