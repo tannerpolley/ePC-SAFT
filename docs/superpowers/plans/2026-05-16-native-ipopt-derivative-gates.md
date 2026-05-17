@@ -919,7 +919,7 @@ Task 2/3/12 continuation note: `runtime_build_info()` now reports Ceres, CppAD, 
 required native dependencies, missing required dependency reasons now fail loud as `required_native_dependency_missing`,
 and the executable text gate blocks the retired dependency-status wording in source, tests, and scripts.
 
-Task 7/12 continuation note: the stale `reactive_flash_tp` alias guard and its duplicate staged-workflow route-pending
+Task 7/12 continuation note: the stale staged TP-reactive alias guard and its duplicate staged-workflow route-pending
 test were removed. The retained staged workflow tests cover the explicit `phase_kind` path, and the executable text gate
 now blocks reintroducing that alias in source, tests, or scripts.
 

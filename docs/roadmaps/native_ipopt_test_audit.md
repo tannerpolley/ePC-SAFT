@@ -138,7 +138,7 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - Runtime build metadata now uses `native_dependencies` instead of the retired optional-dependency label. Ceres and
   CppAD entries are marked as required native dependencies, and source/test/script gates block the old dependency-status
   wording.
-- The stale `reactive_flash_tp` staged-workflow alias guard and duplicate route-pending test were removed. Explicit
+- The stale staged TP-reactive alias guard and duplicate route-pending test were removed. Explicit
   `phase_kind` staged workflow coverage remains, and the executable text gate blocks the old alias token.
 - Duplicate equilibrium capability tests that only repeated runtime metadata route-status checks were deleted. The
   retained capability tests cover derivative policy, reactive-speciation standard-state gates, and reactive
