@@ -11,33 +11,6 @@ from tests.equilibrium.core.test_stability import _assert_stability_native_ipopt
 from tests.helpers.numeric import assert_allclose
 
 
-def _salt_speciation_mixture() -> epcsaft.ePCSAFTMixture:
-    params = {
-        "m": np.asarray([1.2047, 1.0, 1.0, 1.0]),
-        "s": np.asarray([2.7927, 3.0, 2.8232, 2.7560]),
-        "e": np.asarray([353.95, 200.0, 230.0, 170.0]),
-        "z": np.asarray([0.0, 0.0, 1.0, -1.0]),
-        "dielc": np.asarray([78.09, 8.0, 8.0, 8.0]),
-        "d_born": np.asarray([0.0, 0.0, 3.445, 4.1]),
-        "MW": np.asarray([18.01528e-3, 58.44e-3, 22.989e-3, 35.45e-3]),
-    }
-    return epcsaft.ePCSAFTMixture.from_params(params, species=["H2O", "NaCl", "Na+", "Cl-"])
-
-def _mea_like_mixture() -> epcsaft.ePCSAFTMixture:
-    params = {
-        "m": np.asarray([1.2047, 2.5, 1.0, 1.0, 2.2, 2.7, 1.0]),
-        "s": np.asarray([2.7927, 3.3, 3.0, 3.2, 3.5, 3.6, 2.0]),
-        "e": np.asarray([353.95, 260.0, 190.0, 230.0, 250.0, 245.0, 120.0]),
-        "z": np.asarray([0.0, 0.0, 0.0, -1.0, 1.0, -1.0, 1.0]),
-        "dielc": np.asarray([78.09, 35.0, 12.0, 20.0, 25.0, 22.0, 8.0]),
-        "d_born": np.asarray([0.0, 0.0, 0.0, 3.8, 3.4, 4.0, 2.0]),
-        "MW": np.asarray([18.01528e-3, 61.08e-3, 44.01e-3, 61.02e-3, 62.09e-3, 104.1e-3, 1.008e-3]),
-    }
-    return epcsaft.ePCSAFTMixture.from_params(
-        params,
-        species=["H2O", "MEA", "CO2", "HCO3-", "MEAH+", "MEACOO-", "H+"],
-    )
-
 def _methanol_cyclohexane_mixture(kij: float = 0.051) -> epcsaft.ePCSAFTMixture:
     params = {
         "MW": np.asarray([32.042e-3, 84.147e-3]),
@@ -52,45 +25,6 @@ def _methanol_cyclohexane_mixture(kij: float = 0.051) -> epcsaft.ePCSAFTMixture:
         "dielc": np.asarray([33.05, 2.02]),
     }
     return epcsaft.ePCSAFTMixture.from_params(params, species=["Methanol", "Cyclohexane"])
-
-def _log_k_from_state(
-    mix: epcsaft.ePCSAFTMixture,
-    T: float,
-    P: float,
-    x: np.ndarray,
-    stoichiometry: dict[str, float],
-) -> float:
-    state = mix.state(T=T, P=P, x=x, phase="liq")
-    gamma = state.activity_coefficient(species=mix.species)
-    return float(
-        sum(
-            nu * math.log(max(x[mix.species.index(label)] * gamma[label], 1.0e-300))
-            for label, nu in stoichiometry.items()
-        )
-    )
-
-def _neutral_log_k_from_fugacity_activity(
-    mix: epcsaft.ePCSAFTMixture,
-    T: float,
-    P: float,
-    x: np.ndarray,
-    stoichiometry: dict[str, float],
-) -> float:
-    state = mix.state(T=T, P=P, x=x, phase="liq")
-    ln_phi = state.fugacity_coefficient(natural_log=True)
-    ln_gamma = []
-    for idx in range(mix.ncomp):
-        x_ref = np.full(mix.ncomp, 1.0e-14, dtype=float)
-        x_ref[idx] = 1.0 - 1.0e-14 * float(mix.ncomp - 1)
-        ref = mix.state(T=T, P=P, x=x_ref, phase="liq")
-        ln_phi_ref = ref.fugacity_coefficient(natural_log=True)
-        ln_gamma.append(float(ln_phi[idx] - ln_phi_ref[idx]))
-    return float(
-        sum(
-            nu * (math.log(max(x[mix.species.index(label)], 1.0e-300)) + ln_gamma[mix.species.index(label)])
-            for label, nu in stoichiometry.items()
-        )
-    )
 
 def test_native_chemical_equilibrium_entrypoint_is_exposed() -> None:
     assert hasattr(_core, "_solve_chemical_equilibrium_native")

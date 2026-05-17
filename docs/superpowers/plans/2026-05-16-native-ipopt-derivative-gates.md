@@ -368,6 +368,10 @@ checks only the public delegation contract that problem objects provide a `solve
 Task 2 continuation note: unused electrolyte-LLE result-test helpers and their CSV/JSON/path imports were removed. The
 retained result tests keep only the live electrolyte-basis and electrolyte-stability coverage.
 
+Task 2 continuation note: unused native chemical-equilibrium API test helpers for older salt/MEA fixture setup and
+manual log-K reconstruction were removed. The retained tests keep the active residual-evaluator, Ipopt route, and
+reactive-stability gate coverage.
+
 ### Task 3: Build Dependency Boundary
 
 **Files:**

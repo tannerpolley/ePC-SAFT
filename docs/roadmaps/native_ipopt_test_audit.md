@@ -295,6 +295,8 @@ Still ongoing:
   instead of repeating TP-flash, stability, and dew-pressure native-Ipopt gate messages owned by route-specific tests.
 - Unused electrolyte-LLE result-test helpers and their CSV/JSON/path imports were removed; retained coverage is limited
   to live electrolyte-basis and electrolyte-stability behavior.
+- Unused native chemical-equilibrium API test helpers for older salt/MEA fixtures and manual log-K reconstruction were
+  removed; retained coverage stays on active residual-evaluator, Ipopt route, and reactive-stability gate behavior.
 - Duplicate public-export and reactive-electrolyte fit-route absence assertions were pruned where broader runtime API
   coverage already protects the same surface.
 - Runtime, reactive-speciation, and staged reactive diagnostics no longer emit the negative
