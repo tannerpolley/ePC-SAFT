@@ -54,13 +54,11 @@ def test_equilibrium_public_exports_are_available() -> None:
 @pytest.mark.parametrize(
     ("kind", "kwargs", "route"),
     [
-        ("bubble_p", {"T": 220.0, "x_liq": [0.2, 0.3, 0.5]}, "bubble_p"),
         ("bubble_t", {"P": 1.0e5, "z": [0.2, 0.3, 0.5]}, "bubble_t"),
-        ("dew_p", {"T": 220.0, "z": [0.1, 0.3, 0.6]}, "dew_p"),
         ("dew_t", {"P": 1.0e5, "z": [0.1, 0.3, 0.6]}, "dew_t"),
     ],
 )
-def test_equilibrium_dispatch_rejects_neutral_bubble_dew_until_native_ipopt_route(
+def test_equilibrium_dispatch_rejects_temperature_bubble_dew_until_native_ipopt_route(
     kind: str, kwargs: dict[str, object], route: str
 ) -> None:
     mix = _hydrocarbon_mixture()

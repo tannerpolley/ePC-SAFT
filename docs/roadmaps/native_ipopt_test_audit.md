@@ -289,6 +289,8 @@ Still ongoing:
 - The duplicate equilibrium-core activity-coupled reactive-speciation derivative-gate test was removed. Retained API
   reactive-speciation tests still cover activity-coupled, concentration-standard-state, and result-mode native derivative
   gates.
+- The broad public-equilibrium API test no longer repeats neutral `bubble_p`/`dew_p` route-gate assertions now owned by
+  the route-specific bubble/dew tests; it keeps the still route-gated `bubble_t`/`dew_t` temperature-route checks.
 - Duplicate public-export and reactive-electrolyte fit-route absence assertions were pruned where broader runtime API
   coverage already protects the same surface.
 - Runtime, reactive-speciation, and staged reactive diagnostics no longer emit the negative

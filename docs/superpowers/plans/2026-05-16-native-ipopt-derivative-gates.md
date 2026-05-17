@@ -357,6 +357,10 @@ focused runtime, CppAD, reactive-speciation, and Khudaida diagnostic tests. The 
 backend, Jacobian/gradient shape, route-gate, and JSON-safe diagnostic contracts, while the tracked text gate owns
 prevention of the retired labels.
 
+Task 2 continuation note: stale broad API route-gate coverage for neutral `bubble_p`/`dew_p` was pruned after those
+pressure routes gained dedicated one-native-route-request and accepted-payload conversion tests. The broad API test now
+keeps only the still route-gated fixed-pressure `bubble_t`/`dew_t` temperature routes.
+
 ### Task 3: Build Dependency Boundary
 
 **Files:**
