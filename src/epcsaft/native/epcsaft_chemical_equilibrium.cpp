@@ -294,10 +294,9 @@ ChemicalDerivativeSelection select_chemical_derivative_backend(
         selection.derivative_available = true;
         return selection;
     }
-    selection.backend = "analytic";
-    selection.capability_path = "chemical_equilibrium:activity_or_concentration:log_amounts";
-    selection.derivative_available = true;
-    return selection;
+    throw ValueError(
+        "activity and concentration chemical-equilibrium residual Jacobians require EOS derivative NLP blocks."
+    );
 }
 
 bool should_evaluate_activity_coefficients(

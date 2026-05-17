@@ -19,6 +19,7 @@ def _salt_speciation_mixture() -> epcsaft.ePCSAFTMixture:
     }
     return epcsaft.ePCSAFTMixture.from_params(params, species=["H2O", "NaCl", "Na+", "Cl-"])
 
+
 def test_solve_reactive_speciation_auto_requires_native_ipopt_route_before_legacy_failure_payload() -> None:
     species = ["H2O", "NaCl", "Na+", "Cl-"]
     mix = _salt_speciation_mixture()
@@ -40,7 +41,7 @@ def test_solve_reactive_speciation_auto_requires_native_ipopt_route_before_legac
                     stoichiometry={"NaCl": -1.0, "Na+": 1.0, "Cl-": 1.0},
                     log_equilibrium_constant=100.0,
                     name="salt_dissociation",
-                    standard_state="ideal_mole_fraction",
+                    standard_state="mole_fraction_activity",
                 )
             ],
             initial_x=[0.998, 0.001, 0.0005, 0.0005],
@@ -74,7 +75,7 @@ def test_solve_reactive_speciation_result_mode_does_not_mask_route_gate() -> Non
                     stoichiometry={"NaCl": -1.0, "Na+": 1.0, "Cl-": 1.0},
                     log_equilibrium_constant=100.0,
                     name="salt_dissociation",
-                    standard_state="ideal_mole_fraction",
+                    standard_state="mole_fraction_activity",
                 )
             ],
             initial_x=[0.998, 0.001, 0.0005, 0.0005],
@@ -86,6 +87,7 @@ def test_solve_reactive_speciation_result_mode_does_not_mask_route_gate() -> Non
         )
 
     _assert_reactive_speciation_route_pending(excinfo)
+
 
 @pytest.mark.parametrize(
     ("kwargs", "message"),

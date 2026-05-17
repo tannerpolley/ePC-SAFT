@@ -35,7 +35,7 @@ _REACTION_STANDARD_STATES = {
     "concentration": 2,
     "thermodynamic_activity": 0,
     "molality": None,
-    "apparent": 1,
+    "apparent": None,
 }
 
 _REACTION_STANDARD_STATE_DEFAULT_BASIS = {

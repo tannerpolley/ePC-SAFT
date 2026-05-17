@@ -7,7 +7,6 @@ import pytest
 
 import epcsaft
 from epcsaft import _core
-from tests.api.reactive.test_reactive_speciation_options import _assert_reactive_speciation_route_pending
 from tests.equilibrium.core.test_stability import _assert_stability_route_pending
 from tests.helpers.numeric import assert_allclose
 
@@ -163,7 +162,7 @@ def test_native_chemical_equilibrium_residual_evaluator_uses_analytic_jacobian_b
     assert payload["objective"] == pytest.approx(0.5 * float(residual @ residual))
     assert len(payload["lower_bounds"]) == len(payload["variables"]) == len(payload["upper_bounds"])
 
-def test_mixture_equilibrium_routes_chemical_equilibrium_to_native_ipopt_gate() -> None:
+def test_mixture_equilibrium_auto_routes_ideal_chemical_equilibrium_to_native_ipopt_when_compiled() -> None:
     mix = epcsaft.ePCSAFTMixture.from_params(
         {
             "m": np.asarray([1.0, 1.0]),
@@ -172,26 +171,33 @@ def test_mixture_equilibrium_routes_chemical_equilibrium_to_native_ipopt_gate() 
         },
         species=["A", "B"],
     )
+    kwargs = {
+        "kind": "chemical_equilibrium",
+        "T": 298.15,
+        "P": 1.0e5,
+        "z": [0.5, 0.5],
+        "balances": {"total": {"A": 1.0, "B": 1.0}},
+        "totals": {"total": 1.0},
+        "reactions": [
+            epcsaft.ReactionDefinition(
+                {"A": -1.0, "B": 1.0},
+                math.log(3.0),
+                standard_state="ideal_mole_fraction",
+            )
+        ],
+        "options": epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-10),
+    }
 
-    with pytest.raises(epcsaft.InputError) as excinfo:
-        mix.equilibrium(
-            kind="chemical_equilibrium",
-            T=298.15,
-            P=1.0e5,
-            z=[0.5, 0.5],
-            balances={"total": {"A": 1.0, "B": 1.0}},
-            totals={"total": 1.0},
-            reactions=[
-                epcsaft.ReactionDefinition(
-                    {"A": -1.0, "B": 1.0},
-                    math.log(3.0),
-                    standard_state="ideal_mole_fraction",
-                )
-            ],
-            options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-10),
-        )
+    if not _core._native_ipopt_smoke()["compiled"]:
+        with pytest.raises(epcsaft.SolutionError, match=r"EPCSAFT_ENABLE_IPOPT=ON"):
+            mix.equilibrium(**kwargs)
+        return
 
-    _assert_reactive_speciation_route_pending(excinfo)
+    result = mix.equilibrium(**kwargs)
+
+    assert result.success is True
+    assert result.diagnostics["requested_solver_backend"] == "auto"
+    assert result.diagnostics["selected_solver_backend"] == "native_ipopt"
 
 
 def test_reactive_stability_requires_native_ipopt_stability_route_after_speciation(monkeypatch) -> None:

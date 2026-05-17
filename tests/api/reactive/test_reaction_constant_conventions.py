@@ -91,7 +91,7 @@ def test_reactive_speciation_auto_validates_conventions_before_ipopt_route_gate(
         {"A": -1.0, "B": 1.0},
         log_equilibrium_constant=math.log(3.0),
         name="a_to_b",
-        standard_state="ideal_mole_fraction",
+        standard_state="mole_fraction_activity",
         source="generic fixed table",
     )
 
@@ -109,13 +109,13 @@ def test_reactive_speciation_auto_validates_conventions_before_ipopt_route_gate(
         )
 
     _assert_reactive_speciation_route_pending(excinfo)
-    assert reaction.metadata["constant_convention"]["standard_state"] == "ideal_mole_fraction"
+    assert reaction.metadata["constant_convention"]["standard_state"] == "mole_fraction_activity"
     assert reaction.metadata["constant_convention"]["basis"] == "mole_fraction"
     assert reaction.metadata["constant_convention"]["constant_kind"] == "thermodynamic"
     assert reaction.metadata["constant_convention"]["fitting_role"] == "fixed_input"
 
 
-def test_reactive_speciation_auto_preserves_apparent_and_fitted_metadata_before_route_gate() -> None:
+def test_reactive_speciation_gates_apparent_convention_before_native_ipopt_route() -> None:
     mix = _toy_mixture()
     reaction = epcsaft.ReactionDefinition.from_fitted_constant(
         {"A": -1.0, "B": 1.0},
@@ -128,7 +128,7 @@ def test_reactive_speciation_auto_preserves_apparent_and_fitted_metadata_before_
         ),
     )
 
-    with pytest.raises(epcsaft.InputError) as excinfo:
+    with pytest.raises(epcsaft.InputError, match="unsupported reaction constant convention 'apparent'"):
         epcsaft.solve_reactive_speciation(
             species=mix.species,
             mixture_factory=lambda x, T, P: mix,
@@ -138,10 +138,9 @@ def test_reactive_speciation_auto_preserves_apparent_and_fitted_metadata_before_
             totals={"total": 1.0},
             reactions=[reaction],
             initial_x=[0.5, 0.5],
-            options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-10),
+            options=epcsaft.ReactiveSpeciationOptions(solver_backend="ipopt", tolerance=1.0e-10),
         )
 
-    _assert_reactive_speciation_route_pending(excinfo)
     assert reaction.metadata["constant_convention"]["standard_state"] == "apparent"
     assert reaction.metadata["constant_convention"]["constant_kind"] == "fitted"
     assert reaction.metadata["constant_convention"]["fitting_role"] == "fitted_parameter"

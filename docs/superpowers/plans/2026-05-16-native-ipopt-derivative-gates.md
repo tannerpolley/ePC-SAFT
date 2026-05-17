@@ -410,6 +410,8 @@ Task 6 continuation note: public `solve_reactive_speciation`, `mixture.chemical_
 
 Task 6 continuation note: `solver_backend="auto"` now routes implemented homogeneous `ideal_mole_fraction` reactive speciation to native Ipopt, preserving the requested backend in diagnostics as `auto` and recording `auto_selected_native_ipopt` as the selection reason. Explicit CppAD Jacobian requests now fail before any solve because the implemented ideal Ipopt route uses analytical gradients/Jacobians; CppAD remains reserved for routes with registered CppAD derivative callbacks.
 
+Task 6 continuation note: the `apparent` reaction-constant convention no longer shares the native ideal-speciation standard-state code. It remains accepted as metadata, but any native speciation route request fails before Ipopt until apparent-constant semantics are implemented deliberately. The private chemical-equilibrium residual evaluator also stopped claiming analytical Jacobians for activity/concentration residuals; those residual-Jacobian requests now raise until EOS derivative NLP blocks provide exact derivatives.
+
 ### Task 7: Build EOS Phase Blocks For Equilibrium
 
 **Files:**
