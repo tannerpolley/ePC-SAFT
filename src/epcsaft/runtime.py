@@ -529,7 +529,7 @@ def capabilities() -> dict[str, object]:
             "repeated_state_properties": {
                 "available": True,
                 "helpers": ["evaluate_fugacity_coefficients", "evaluate_fugacity_coefficients_batch"],
-                "density_seed_aliases": ["rho_guess", "rho_seed"],
+                "density_seed_parameter": "rho_guess",
             },
             "problem_objects": {
                 "available": True,

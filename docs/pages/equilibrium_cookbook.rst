@@ -297,9 +297,9 @@ supported inputs.
 Repeated fugacity/property loops
 --------------------------------
 
-Use ``P`` when pressure closure matters. Pass ``rho_guess`` or ``rho_seed`` only
-as a density-solve hint. Use direct ``rho`` only when the supplied density is
-the physical closure and pressure mismatch is acceptable or separately audited.
+Use ``P`` when pressure closure matters. Pass ``rho_guess`` only as a
+density-solve hint. Use direct ``rho`` only when the supplied density is the
+physical closure and pressure mismatch is acceptable or separately audited.
 
 .. code-block:: python
 
@@ -314,7 +314,7 @@ the physical closure and pressure mismatch is acceptable or separately audited.
        T=301.15,
        P=101325.0,
        x=[1.0],
-       rho_seed=next_seed,
+       rho_guess=next_seed,
    )
 
 IPOPT route status

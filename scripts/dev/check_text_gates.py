@@ -231,6 +231,7 @@ def _source_blocked_terms(rel: str) -> tuple[str, ...]:
         "package" + "-owned alternate",
         "from" + "_legacy" + "_record",
         "p" + "_seed",
+        "density" + "_seed" + "_aliases",
         "stability" + "_precheck",
         "include" + "_phase" + "_diagnostics",
         "python" + "_sweep",

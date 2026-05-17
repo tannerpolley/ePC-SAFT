@@ -326,19 +326,14 @@ class ePCSAFTMixture:
             "density_warm_start_rejections": int(self._native.density_warm_start_rejections()),
         }
 
-    def state(self, T, x, P=None, rho=None, phase="liq", rho_guess=None, rho_seed=None):
+    def state(self, T, x, P=None, rho=None, phase="liq", rho_guess=None):
         """Create an immutable thermodynamic state for the mixture.
 
         States built from pressure resolve and cache density during construction.
-        ``rho_guess``/``rho_seed`` may seed that pressure-density solve but does not replace
-        pressure closure.
+        ``rho_guess`` may seed that pressure-density solve but does not replace pressure closure.
         """
         if (P is None) == (rho is None):
             raise InputError("Provide exactly one of P or rho when constructing a state.")
-        if rho_guess is not None and rho_seed is not None:
-            raise InputError("Provide only one of rho_guess or rho_seed.")
-        if rho_seed is not None:
-            rho_guess = rho_seed
         return ePCSAFTState(self, T, x, P=P, rho=rho, phase=phase, rho_guess=rho_guess)
 
     def check_density(self, T, x, P, rho, *, phase="liq", rtol=1.0e-6, atol=1.0e-3):

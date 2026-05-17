@@ -183,6 +183,7 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert "fit_route" not in batch_context
     assert equilibrium["problem_objects"]["entrypoint"] == "mixture.solve_equilibrium(problem)"
     assert "ReactivePhaseEquilibriumProblem" in equilibrium["problem_objects"]["classes"]
+    assert equilibrium["repeated_state_properties"]["density_seed_parameter"] == "rho_guess"
 
 def test_fast_fugacity_helper_matches_state_call_and_reports_density() -> None:
     state, _ = _ionic_state()
@@ -215,12 +216,19 @@ def test_batch_fugacity_helper_matches_scalar_rows() -> None:
         _assert_array(payload["ln_fugacity_coefficient"], state.fugacity_coefficient(natural_log=True))
         assert payload["density"] == pytest.approx(state.molar_density())
 
-def test_state_accepts_rho_seed_alias() -> None:
+def test_fugacity_helper_accepts_canonical_rho_guess() -> None:
     state, _ = _ionic_state()
     mix = state.mixture
-    seeded = mix.state(T=state.T, x=state.x, P=state.pressure(), phase="liq", rho_seed=state.molar_density())
+    seeded = epcsaft.evaluate_fugacity_coefficients(
+        mix,
+        T=state.T,
+        x=state.x,
+        P=state.pressure(),
+        phase="liq",
+        rho_guess=state.molar_density(),
+    )
 
-    assert seeded.molar_density() == pytest.approx(state.molar_density())
+    assert seeded["density"] == pytest.approx(state.molar_density())
 
 def test_validate_dataset_bundle_reports_reaction_and_charge_errors() -> None:
     report = epcsaft.validate_dataset_bundle(

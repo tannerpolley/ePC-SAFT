@@ -67,6 +67,5 @@ Repeated State Work
 -------------------
 
 For many property calls, keep the loop downstream-owned. Feed each successful
-state density into the next pressure-closed state as ``rho_guess`` or
-``rho_seed``. Use direct ``rho=...`` only when density is the closure variable,
+state density into the next pressure-closed state as ``rho_guess``. Use direct ``rho=...`` only when density is the closure variable,
 not when exact pressure closure is required.

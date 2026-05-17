@@ -19,7 +19,6 @@ def evaluate_fugacity_coefficients(
     P: float | None = None,
     rho: float | None = None,
     phase: str = "liq",
-    rho_seed: float | None = None,
     rho_guess: float | None = None,
     natural_log: bool = True,
 ) -> dict[str, Any]:
@@ -27,10 +26,7 @@ def evaluate_fugacity_coefficients(
 
     if not isinstance(mixture, ePCSAFTMixture):
         raise InputError("mixture must be an ePCSAFTMixture instance.")
-    if rho_seed is not None and rho_guess is not None:
-        raise InputError("Provide only one of rho_seed or rho_guess.")
-    seed = rho_guess if rho_guess is not None else rho_seed
-    state = mixture.state(T=T, x=x, P=P, rho=rho, phase=phase, rho_guess=seed)
+    state = mixture.state(T=T, x=x, P=P, rho=rho, phase=phase, rho_guess=rho_guess)
     ln_phi = np.asarray(state.fugacity_coefficient(natural_log=True), dtype=float)
     phi = np.exp(ln_phi)
     return {
@@ -60,7 +56,7 @@ def evaluate_fugacity_coefficients_batch(
     out: list[dict[str, Any]] = []
     last_density: float | None = None
     for row in rows:
-        seed = row.get("rho_seed", row.get("rho_guess"))
+        seed = row.get("rho_guess")
         if seed is None and mode == "auto" and "P" in row and last_density is not None:
             seed = last_density
         payload = evaluate_fugacity_coefficients(
@@ -70,7 +66,7 @@ def evaluate_fugacity_coefficients_batch(
             P=row.get("P"),
             rho=row.get("rho"),
             phase=str(row.get("phase", "liq")),
-            rho_seed=seed,
+            rho_guess=seed,
             natural_log=natural_log,
         )
         out.append(payload)
