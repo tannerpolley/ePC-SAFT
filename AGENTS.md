@@ -10,6 +10,20 @@
 - Always use the user-level `grill-me` skill when the user asks to be grilled, asks to stress-test a plan or design, or explicitly prompts for `grill-me`.
 - If the current thread has not loaded `grill-me`, say that briefly and follow the installed skill's behavior manually: interview the user one question at a time, walk decision branches in dependency order, and include a recommended answer with each question.
 
+## Agent skills
+
+### Issue tracker
+
+Issues and PRDs are tracked in GitHub Issues for `tannerpolley/ePC-SAFT`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Use the default five-label triage vocabulary. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context repo; read root `CONTEXT.md` and `docs/adr/` when present. See `docs/agents/domain.md`.
+
 ## Memory Policy
 - `user_preferences.md`: durable user preferences only.
 - Do not write memory for routine Q&A, small one-off edits, placeholder notes, or facts already recorded.
