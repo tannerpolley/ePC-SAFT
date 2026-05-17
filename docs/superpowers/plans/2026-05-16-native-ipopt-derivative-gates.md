@@ -1019,6 +1019,10 @@ exact field-set coverage instead of repeated missing-field assertions.
 Task 2/12 continuation note: reactive-regression row/options/result surface checks now use one compact current-surface
 assertion instead of three individual removed-field tests.
 
+Task 2/12 continuation note: reactive-speciation sweep input-validation failures no longer fabricate a Python sweep
+backend or selected-solver status. Structured failure payloads now carry validation context only, while native solves keep
+their explicit Ipopt diagnostics.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**

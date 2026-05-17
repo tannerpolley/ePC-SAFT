@@ -770,8 +770,6 @@ def _structured_failure_result(
         "sweep_index": int(index),
         "message": str(exc),
         "exception_type": type(exc).__name__,
-        "backend": "python_sweep",
-        "selected_solver_backend": "not_run",
         "initial_x_source": "failure_payload",
     }
     return ReactiveSpeciationResult(

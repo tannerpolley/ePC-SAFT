@@ -194,6 +194,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
   summaries keep success flags, termination reason, covariance availability, and objective metrics.
 - Reactive-speciation diagnostics no longer synthesize solved density, bubble-pressure, association-coupling, or
   best-state metadata for ideal native routes; those fields now appear only when a native route returns real evidence.
+- Reactive-speciation sweep input-validation failures no longer fabricate backend or selected-solver labels; those
+  structured failure payloads report failure context only, and the executable text gate blocks the retired fake label.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
 
