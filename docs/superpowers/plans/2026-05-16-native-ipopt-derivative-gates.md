@@ -1281,8 +1281,14 @@ focused route/test-prune slice with 71 passed and 4 expected opt-in skips,
 `uv run python scripts/dev/validate_project.py quick` with 40 passed,
 `uv run python scripts/dev/validate_project.py docs`, and `uv run python scripts/dev/build_dist.py`
 with source distribution, wheel build, wheel install, and wheel smoke import passing. The local fast native profile
-reported Ceres and CppAD enabled and Ipopt disabled, so this final local pass proves the dependency gate and package
-boundary but not an accepted Ipopt-enabled solve on this machine.
+reported Ceres and CppAD enabled with Ipopt disabled for the normal quick/package path.
+
+Task 13 validation note: the current branch was also rebuilt with the documented Ipopt profile:
+`uv run python scripts/dev/build_epcsaft.py --clean --profile ipopt --ipopt-root C:\ProgramData\miniconda3\envs\ePC-SAFT\Library --parallel 4`.
+With `C:\ProgramData\miniconda3\envs\ePC-SAFT\Library\bin` on `PATH` and in `EPCSAFT_RUNTIME_DLL_DIRS`, the focused
+Ipopt proof passed: native Ipopt smoke contract, accepted quadratic Ipopt adapter solve, explicit ideal reactive
+speciation, charged ideal reactive speciation, auto-selected ideal reactive speciation, public nonideal reactive
+speciation, and private nonideal chemical-equilibrium Ipopt route (`7 passed in 0.51s`).
 
 #### Checkpoint Handoff - 2026-05-17
 
@@ -1297,9 +1303,8 @@ Current checkpoint expectation for the next thread:
   cleanup hook, and commit the documentation-only checkpoint.
 - If package-boundary evidence is missing or contradicted by local state, rerun
   `uv run python scripts/dev/build_dist.py` before claiming final validation.
-- Keep the Ipopt caveat explicit: the default fast local build has `Ipopt=OFF`; do not claim accepted Ipopt-enabled
-  production solves unless the documented Ipopt profile is rerun or that earlier Ipopt proof is explicitly accepted as
-  sufficient for the current handoff.
+- Keep the build-mode distinction explicit: the default fast local build has `Ipopt=OFF`, while the documented
+  system-Ipopt profile above was rerun on the current branch and passed accepted Ipopt smoke/speciation route proof.
 - Preserve the strict gates: exact derivatives only, Ipopt owns production equilibrium routes, Ceres owns production
   regression routes, and public package workflows must not use custom Python/native solver loops.
 
