@@ -175,6 +175,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - Public neutral LLE and reactive LLE facades no longer accept user phase seeds. Direct LLE, typed LLE, reactive phase,
   and staged reactive LLE calls all use route-owned canonical initial points; public validation-script paths with
   explicit phase initializers were removed.
+- Retained analysis scripts no longer pass public equilibrium phase initializers or manual solve controls. The repo
+  workflow tests block those keywords while allowing private native residual/Jacobian evaluator phase data.
 - A duplicate staged reactive LLE test was folded into the stronger reaction-coordinate and split-diagnostic test.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:

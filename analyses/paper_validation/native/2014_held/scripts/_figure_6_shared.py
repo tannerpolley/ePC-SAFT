@@ -143,13 +143,10 @@ def _solve_lle(
             T=T_FIGURE,
             P=P_FIGURE,
             z=feed,
-            initial_phases={"liq1": aq0, "liq2": org0, "phase_fraction": beta},
             options=epcsaft.EquilibriumOptions(
                 max_iterations=400,
                 tolerance=1.0e-10,
-                damping=0.5,
                 include_phase_diagnostics=True,
-                return_best_effort=True,
             ),
         )
         if not result.split_detected or len(result.phases) != 2:
@@ -187,13 +184,10 @@ def _solve_lle(
             T=T_FIGURE,
             P=P_FIGURE,
             z=feed_x,
-            initial_phases={"aq": aq0, "org": org0, "phase_fraction": beta},
             options=epcsaft.EquilibriumOptions(
                 max_iterations=400,
                 tolerance=1.0e-8,
-                damping=0.5,
                 include_phase_diagnostics=True,
-                return_best_effort=True,
             ),
         )
     except epcsaft.SolutionError as exc:

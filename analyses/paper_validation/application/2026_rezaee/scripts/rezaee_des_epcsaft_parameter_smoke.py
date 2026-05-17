@@ -300,11 +300,6 @@ def _phase_smoke(fitted: dict[str, float]) -> dict[str, Any]:
         "source": SOURCE,
         "species": species,
         "feed_composition": _jsonable(feed),
-        "initial_phases": {
-            "aq": _jsonable(aq),
-            "org": _jsonable(org),
-            "phase_fraction_beta_org": beta_org,
-        },
     }
 
     try:
@@ -319,7 +314,6 @@ def _phase_smoke(fitted: dict[str, float]) -> dict[str, Any]:
             T=298.15,
             P=101325.0,
             z=feed,
-            initial_phases={"aq": aq, "org": org, "phase_fraction": beta_org},
             options=EquilibriumOptions(
                 timeout_seconds=8.0,
             ),

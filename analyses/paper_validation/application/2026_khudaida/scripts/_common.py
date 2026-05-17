@@ -49,7 +49,6 @@ import scripts._epcsaft_oop as pcs
 import epcsaft
 from scripts.validation.equilibrium_core.confidence import explicit_to_formula
 from scripts.validation.equilibrium_core.confidence import formula_to_explicit
-from scripts.validation.equilibrium_core.confidence import material_balanced_initial_phases
 from epcsaft.parameters import get_prop_dict
 
 P_REF = 1.0e5
@@ -1113,24 +1112,11 @@ def _candidate_formula_feeds(exp_row: dict, target_feed_formula: np.ndarray | No
     return unique
 
 
-def _solve_formula_feed(
-    temperature_k: float, feed_formula: np.ndarray, seed_formula_candidates: list[np.ndarray]
-) -> dict | None:
+def _solve_formula_feed(temperature_k: float, feed_formula: np.ndarray) -> dict | None:
     z_feed = formula_to_ion_basis(feed_formula)
-    unique_seed_candidates: list[np.ndarray] = []
-    for seed_formula in seed_formula_candidates:
-        seed_formula = np.asarray(seed_formula, dtype=float)
-        if not np.all(np.isfinite(seed_formula)):
-            continue
-        seed_formula = seed_formula / np.sum(seed_formula)
-        if not any(np.allclose(seed_formula, prior, atol=1e-10) for prior in unique_seed_candidates):
-            unique_seed_candidates.append(seed_formula)
-    if len(unique_seed_candidates) < 2:
+    if not np.all(np.isfinite(z_feed)):
         return None
 
-    org_hint = formula_to_explicit(unique_seed_candidates[0])
-    aq_hint = formula_to_explicit(unique_seed_candidates[1])
-    aq_seed, org_seed, beta_org = material_balanced_initial_phases(z_feed, org_hint, aq_hint)
     mixture = epcsaft.ePCSAFTMixture.from_dataset(PARAMETER_DATASET, SPECIES, z_feed, temperature_k)
     try:
         result = mixture.equilibrium(
@@ -1138,8 +1124,7 @@ def _solve_formula_feed(
             T=float(temperature_k),
             P=P_REF,
             z=z_feed,
-            initial_phases={"aq": aq_seed, "org": org_seed, "phase_fraction": beta_org},
-            options=epcsaft.EquilibriumOptions(max_iterations=180, tolerance=1.0e-8, damping=0.5),
+            options=epcsaft.EquilibriumOptions(max_iterations=180, tolerance=1.0e-8),
         )
     except epcsaft.SolutionError as exc:
         diagnostics = getattr(exc, "diagnostics", None) or (
@@ -1191,12 +1176,8 @@ def solve_model_rows(exp_rows: list[dict], feed_rows: list[dict] | None = None) 
     for exp_row in exp_rows:
         best = None
         target_feed_formula = feed_map.get(int(exp_row["tie_line"]))
-        midpoint = 0.5 * (exp_row["organic_formula"] + exp_row["aqueous_formula"])
-        seed_candidates = [exp_row["organic_formula"], exp_row["aqueous_formula"], midpoint]
-        if target_feed_formula is not None:
-            seed_candidates.append(target_feed_formula)
         for feed_idx, feed_formula in enumerate(_candidate_formula_feeds(exp_row, target_feed_formula)):
-            candidate = _solve_formula_feed(exp_row["temperature_K"], feed_formula, seed_candidates)
+            candidate = _solve_formula_feed(exp_row["temperature_K"], feed_formula)
             if candidate is None:
                 continue
             score = _model_objective(exp_row, candidate["organic_formula"], candidate["aqueous_formula"])

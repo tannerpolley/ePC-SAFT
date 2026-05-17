@@ -135,7 +135,7 @@ def test_equilibrium_lle_tie_line_plot_is_written_to_plot_set() -> None:
         T=298.15,
         P=1.013e5,
         z=feed,
-        options=epcsaft.EquilibriumOptions(max_iterations=240, tolerance=1.0e-10, damping=0.5),
+        options=epcsaft.EquilibriumOptions(max_iterations=240, tolerance=1.0e-10),
     )
     liq1, liq2 = result.phases
 
@@ -170,7 +170,7 @@ def test_equilibrium_lle_reference_comparison_plot() -> None:
         T=298.15,
         P=1.013e5,
         z=[0.45, 0.55],
-        options=epcsaft.EquilibriumOptions(max_iterations=240, tolerance=1.0e-10, damping=0.5),
+        options=epcsaft.EquilibriumOptions(max_iterations=240, tolerance=1.0e-10),
     )
     liq1, liq2 = result.phases
     expected_values = {
@@ -211,7 +211,7 @@ def test_equilibrium_lle_residual_closure_plot() -> None:
         T=298.15,
         P=1.013e5,
         z=[0.45, 0.55],
-        options=epcsaft.EquilibriumOptions(max_iterations=240, tolerance=1.0e-10, damping=0.5),
+        options=epcsaft.EquilibriumOptions(max_iterations=240, tolerance=1.0e-10),
     )
     labels = ["material balance", "fugacity residual"]
     save_comparison_plot(

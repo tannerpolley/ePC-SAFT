@@ -41,21 +41,6 @@
     0.0012000019879999603,
     0.19999800400004
   ],
-  "initial_phases": {
-    "aq": [
-      0.9969999900300002,
-      0.0014999999850000003,
-      0.0014999999850000003,
-      9.999999900000002e-09
-    ],
-    "org": [
-      9.999999800000004e-06,
-      9.999999800000003e-09,
-      9.999999800000003e-09,
-      0.9999899800002003
-    ],
-    "phase_fraction_beta_org": 0.2
-  },
   "source": {
     "boundary": "organic phase PC-SAFT plus aqueous phase ePC-SAFT; not a full reactive HBTA/TOPO ePC-SAFT model",
     "citation_key": "Rezaee2026",

@@ -1003,6 +1003,10 @@ Task 2/12 continuation note: the stale Khudaida public seeded-solver diagnostic 
 removed. The retained Khudaida solver-gate diagnostic calls the public electrolyte LLE route without explicit phase
 initializers, and the neutral equilibrium benchmark docs now describe only the active neutral-state runtime guardrail.
 
+Task 2/8/9/12 continuation note: retained analysis scripts no longer pass public equilibrium `initial_phases` or
+manual-damping/best-effort controls, and a repo test blocks those public-route keywords while leaving private native
+residual/Jacobian payloads untouched.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**

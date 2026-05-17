@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import json
 import os
 import subprocess
@@ -190,6 +191,46 @@ def test_public_python_solver_surfaces_do_not_own_optimizer_or_root_loops() -> N
         for term in blocked_terms:
             if term in text:
                 offenders.append(f"{path.relative_to(REPO_ROOT).as_posix()}: {term}")
+    assert offenders == []
+
+
+def test_public_equilibrium_callers_do_not_pass_removed_route_controls() -> None:
+    public_route_names = {
+        "equilibrium",
+        "equilibrium_curve",
+        "electrolyte_lle",
+        "electrolyte_lle_tp",
+        "lle_flash",
+        "lle_tp",
+        "reactive_lle",
+    }
+    blocked_route_keywords = {"initial" + "_phases"}
+    blocked_option_keywords = {"damp" + "ing", "return" + "_best" + "_effort"}
+
+    offenders: list[str] = []
+    for relpath in _tracked_files("src", "tests", "scripts", "analyses"):
+        rel = relpath.replace("\\", "/")
+        if not rel.endswith(".py"):
+            continue
+        path = REPO_ROOT / rel
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=rel)
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            func = node.func
+            name = ""
+            if isinstance(func, ast.Attribute):
+                name = func.attr
+            elif isinstance(func, ast.Name):
+                name = func.id
+            if name in public_route_names:
+                for keyword in node.keywords:
+                    if keyword.arg in blocked_route_keywords:
+                        offenders.append(f"{rel}:{node.lineno}: public route keyword {keyword.arg}")
+            if name == "EquilibriumOptions":
+                for keyword in node.keywords:
+                    if keyword.arg in blocked_option_keywords:
+                        offenders.append(f"{rel}:{node.lineno}: removed option keyword {keyword.arg}")
     assert offenders == []
 
 
