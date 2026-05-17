@@ -674,6 +674,11 @@ Task 10 continuation note: internal residual-score-only regression hooks no long
 
 Task 10 continuation note: pure-neutral regression debug Jacobian payloads now report `cppad_implicit`, matching the actual CppAD property derivatives plus implicit density sensitivities used by the native objective. The Python wrapper no longer defaults missing native Jacobian metadata to a generic autodiff label.
 
+Task 10 continuation note: generic native Ceres regression payloads for pure-ion and binary `k_ij` routes now report
+`optimizer_backend="ceres"` and `derivative_backend="cppad_implicit"` directly from the native result struct and pybind
+adapter. Python wrappers preserve that metadata and fail loudly if a native regression result omits required optimizer
+or derivative backend fields instead of inferring them from adjacent Jacobian labels.
+
 ### Task 11: Internal Extension Boundaries
 
 **Files:**
