@@ -257,6 +257,7 @@ The failure list from the initial full-duration run has been retired. Each liste
 - A workflow gate now enforces that custom scalar root/search solver tokens are confined to the density-closure exception
   files and cannot appear in new active `src/epcsaft` solver surfaces.
 - Regression public pure-neutral fitting now defaults to Ceres and rejects the old native least-squares backend. The private generic Eigen least-squares binding, shifted-source Jacobian route, and repeated-start Ceres controls are removed; generic supported production fits go through one canonical Ceres start, while associating/MEA benchmark helpers are residual scorers until native Ceres derivative coverage exists.
+- Task 10 derivative ownership is closed for the current accepted Ceres production surface. Pure-neutral, pure-ion/electrolyte, and binary `k_ij` routes use native Ceres cost functions with exact `cppad_implicit` Jacobians; no direct-template production residual exists today, so future templated Ceres residual families remain gated to Ceres autodiff when promoted.
 - Runtime derivative capabilities now list implemented production coverage only. Open derivative blockers remain in the roadmap and state-level coverage matrices, not in `epcsaft.capabilities()` as capability rows.
 - Reactive electrolyte batch regression is no longer described as a production optimizer in runtime capabilities; it is a diagnostic residual context until native Ceres owns that route.
 

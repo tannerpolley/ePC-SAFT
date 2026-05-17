@@ -715,10 +715,10 @@ longer convert row-result composition, pressure, or vapor data into later route 
 - [x] Delete Eigen unsupported nonlinear optimizer production paths.
 - [x] Delete old least-squares backend public aliases.
 - [x] Route pure-neutral, pure-ion, binary pair, and generic supported fits through Ceres.
-- [ ] Use Ceres autodiff where residuals can be templated.
-- [ ] Use analytical/CppAD Jacobians where residuals depend on implicit EOS/state derivatives.
+- [x] Use Ceres autodiff where residuals can be templated; no active production Ceres residual is direct-template-only at this checkpoint.
+- [x] Use analytical/CppAD Jacobians where residuals depend on implicit EOS/state derivatives.
 - [x] Add tests proving Ceres routes reject non-exact derivative APIs.
-- [ ] Commit as `Make regression Ceres-only`.
+- [x] Commit as `Make regression Ceres-only`.
 
 Task 10 progress note: the first regression slice moves public nonassociating pure-neutral regression to the native Ceres route by default, rejects the old native least-squares backend from that public path, removes the Python and pybind private pure-neutral least-squares entry points, and updates capability metadata so Ceres is a production optimizer when compiled.
 
@@ -753,6 +753,12 @@ Task 10 continuation note: the current accepted Ceres regression routes were aud
 neutral, pure ion/electrolyte, and binary `k_ij` production residuals all depend on implicit density/EOS derivatives or
 Born/activity derivative helpers, so they remain `cppad_implicit`; there is no direct-template production residual in
 the active Ceres surface yet. Repeated Ceres solver option setup was consolidated into one native helper.
+
+Task 10 closure note: the remaining derivative-owner checklist is closed for the current production Ceres surface. The
+active Ceres cost functions are native exact-Jacobian callbacks backed by CppAD/implicit derivative evaluators, and the
+tracked tests assert `optimizer_backend="ceres"` with `derivative_backend="cppad_implicit"`/`jacobian_backend="cppad_implicit"`
+for pure-neutral, pure-ion/electrolyte, and binary `k_ij` fits. Future direct-template residual families must use Ceres
+autodiff when they become production routes; they are not present in the accepted route set today.
 
 Task 10 continuation note: reactive electrolyte regression rows no longer expose a `P` + `_seed` pressure alias or silently
 default missing row pressure to atmospheric pressure. Rows require `P`, legacy row records containing the removed alias
