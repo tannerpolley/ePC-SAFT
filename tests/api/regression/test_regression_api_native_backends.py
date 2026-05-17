@@ -243,12 +243,12 @@ def test_fit_pure_ion_accepts_d_born_and_born_user_options(monkeypatch):
     calls = _patch_native_generic_ceres_runner(monkeypatch)
     user_options = {
         "elec_model": {
-            "rel_perm": {"rule": "empirical", "differential_mode": "autodiff"},
+            "rel_perm": {"rule": "empirical", "differential_mode": "cppad"},
             "born_model": {
                 "d_Born_mode": 3,
                 "solvation_shell_model": True,
                 "dielectric_saturation": True,
-                "mu_born_model": {"differential_mode": "autodiff", "comp_dep_delta_d": True},
+                "mu_born_model": {"differential_mode": "cppad", "comp_dep_delta_d": True},
             },
         }
     }

@@ -10,7 +10,7 @@ GENERIC_TEST_TARGETS = (
     "tests/api/runtime/test_runtime_exports_and_metadata.py::test_package_exports_are_available",
     "tests/api/runtime/test_runtime_neutral_methods.py::test_neutral_scalar_methods_return_expected_values",
     "tests/api/runtime/test_runtime_ionic_methods.py::test_ionic_activity_and_solution_methods_return_expected_values",
-    "tests/api/parameters/test_parameter_templates.py::test_runtime_options_accept_autodiff_modes_and_preserve_explicit_overrides",
+    "tests/api/parameters/test_parameter_templates.py::test_runtime_options_accept_cppad_modes_and_preserve_explicit_overrides",
     "tests/api/regression/test_regression_api_native_backends.py::test_public_pure_neutral_regression_is_robust_to_distinct_initial_guesses",
     "tests/regression/core/test_hydrocarbon.py::test_methane_reference_parameters_keep_native_objective_pinned",
     "tests/equilibrium/core/test_vle.py::test_ternary_hydrocarbon_basis_tp_flash_requires_native_ipopt_route",

@@ -246,25 +246,25 @@ void dielectric_inputs_valid_cpp(const vector<double> &x, const add_args &cpparg
         throw ValueError("params['dielc'] must be an array with length equal to ncomp.");
     }
     if (cppargs.dielc_diff_mode < 0 || cppargs.dielc_diff_mode > 3 || cppargs.dielc_diff_mode == 1) {
-        throw ValueError("Unknown dielc_diff_mode. Supported values are 0 (analytic), 2 (autodiff), and 3 (auto).");
+        throw ValueError("Unknown dielc_diff_mode. Supported values are 0 (analytic), 2 (CppAD), and 3 (auto).");
     }
     if (cppargs.hc_dadx_diff_mode < 0 || cppargs.hc_dadx_diff_mode > 3 || cppargs.hc_dadx_diff_mode == 1) {
-        throw ValueError("Unknown hc_model dadx_differential_mode. Supported values are analytic/autodiff/auto (0/2/3).");
+        throw ValueError("Unknown hc_model dadx_differential_mode. Supported values are analytic/cppad/auto (0/2/3).");
     }
     if (cppargs.disp_dadx_diff_mode < 0 || cppargs.disp_dadx_diff_mode > 3 || cppargs.disp_dadx_diff_mode == 1) {
-        throw ValueError("Unknown disp_model dadx_differential_mode. Supported values are analytic/autodiff/auto (0/2/3).");
+        throw ValueError("Unknown disp_model dadx_differential_mode. Supported values are analytic/cppad/auto (0/2/3).");
     }
     if (cppargs.assoc_dadx_diff_mode < 0 || cppargs.assoc_dadx_diff_mode > 3 || cppargs.assoc_dadx_diff_mode == 1) {
-        throw ValueError("Unknown assoc_model dadx_differential_mode. Supported values are analytic/autodiff/auto (0/2/3).");
+        throw ValueError("Unknown assoc_model dadx_differential_mode. Supported values are analytic/cppad/auto (0/2/3).");
     }
     if (cppargs.born_diff_mode < 0 || cppargs.born_diff_mode > 5 || cppargs.born_diff_mode == 1) {
-        throw ValueError("Unknown born_diff_mode. Supported values are 0 (analytic), 2 (Eq.133-style), 3 (no dielectric-concentration term), 4 (autodiff), and 5 (auto).");
+        throw ValueError("Unknown born_diff_mode. Supported values are 0 (analytic), 2 (Eq.133-style), 3 (no dielectric-concentration term), 4 (CppAD), and 5 (auto).");
     }
     if (cppargs.d_ion_mode < 0 || cppargs.d_ion_mode > 2) {
         throw ValueError("Unknown d_ion_mode. Supported values are 0, 1, 2.");
     }
     if (cppargs.mu_DH_diff_mode < 0 || cppargs.mu_DH_diff_mode > 3 || cppargs.mu_DH_diff_mode == 1) {
-        throw ValueError("Unknown mu_DH differential_mode. Supported values are analytic/autodiff/auto (0/2/3).");
+        throw ValueError("Unknown mu_DH differential_mode. Supported values are analytic/cppad/auto (0/2/3).");
     }
     if (cppargs.mu_DH_comp_dep_rel_perm != 0 && cppargs.mu_DH_comp_dep_rel_perm != 1) {
         throw ValueError("mu_DH comp_dep_rel_perm must be 0 or 1.");
@@ -282,7 +282,7 @@ void dielectric_inputs_valid_cpp(const vector<double> &x, const add_args &cpparg
         throw ValueError("Unknown born bulk_mode. Supported values are mix/solvent (0/1).");
     }
     if (cppargs.mu_born_diff_mode < 0 || cppargs.mu_born_diff_mode > 3 || cppargs.mu_born_diff_mode == 1) {
-        throw ValueError("Unknown mu_born differential_mode. Supported values are analytic/autodiff/auto (0/2/3).");
+        throw ValueError("Unknown mu_born differential_mode. Supported values are analytic/cppad/auto (0/2/3).");
     }
     if (cppargs.born_eps_mode != 0 && cppargs.born_eps_mode != 1) {
         throw ValueError("Unknown born_eps_mode. Supported values are 0 (eps_r,mix) and 1 (eps_r,solvent).");

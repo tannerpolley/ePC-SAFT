@@ -88,15 +88,15 @@ def test_runtime_options_reject_legacy_electrolyte_shorthand():
         _resolve_runtime_options({"elec_model": {"born_rel_perm": "solvent"}})
 
 
-def test_runtime_options_accept_autodiff_modes_and_preserve_explicit_overrides():
+def test_runtime_options_accept_cppad_modes_and_preserve_explicit_overrides():
     user_options = {
         "elec_model": {
-            "rel_perm": {"differential_mode": "autodiff"},
-            "hc_model": {"dadx_differential_mode": "autodiff"},
-            "disp_model": {"dadx_differential_mode": "autodiff"},
-            "assoc_model": {"dadx_differential_mode": "autodiff"},
-            "DH_model": {"mu_DH_model": {"differential_mode": "autodiff"}},
-            "born_model": {"mu_born_model": {"differential_mode": "autodiff"}},
+            "rel_perm": {"differential_mode": "cppad"},
+            "hc_model": {"dadx_differential_mode": "cppad"},
+            "disp_model": {"dadx_differential_mode": "cppad"},
+            "assoc_model": {"dadx_differential_mode": "cppad"},
+            "DH_model": {"mu_DH_model": {"differential_mode": "cppad"}},
+            "born_model": {"mu_born_model": {"differential_mode": "cppad"}},
         }
     }
 
@@ -120,6 +120,11 @@ def test_runtime_options_accept_autodiff_modes_and_preserve_explicit_overrides()
 
     minimized = minimize_user_options(user_options)
     assert minimized == user_options
+
+
+def test_runtime_options_reject_legacy_generic_derivative_mode():
+    with pytest.raises(ValueError, match="Unknown rule option"):
+        _resolve_runtime_options({"elec_model": {"rel_perm": {"differential_mode": "autodiff"}}})
 
 
 def test_runtime_options_accept_salt_free_solvent_massfraction_dielectric_rule():
@@ -185,4 +190,4 @@ def test_runtime_options_default_to_auto_derivative_policy():
 
 def test_runtime_options_reject_removed_polar_model():
     with pytest.raises(KeyError, match="unsupported key"):
-        _resolve_runtime_options({"elec_model": {"polar_model": {"dadx_differential_mode": "autodiff"}}})
+        _resolve_runtime_options({"elec_model": {"polar_model": {"dadx_differential_mode": "cppad"}}})

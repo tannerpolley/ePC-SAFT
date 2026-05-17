@@ -843,6 +843,10 @@ removed reactive-electrolyte residual wrapper. The benchmark harness now times o
 `ReactiveElectrolyteRegressionContext` / `evaluate_reactive_regression_objective(...)` diagnostic surface, with
 optional external JSON baseline comparison kept as a reporting feature.
 
+Task 12 continuation note: electrolyte/property runtime option spelling now uses `cppad` for explicit CppAD derivative
+requests. The generic legacy AD spelling is rejected outside Ceres-owned regression contexts so user options, docs, and
+tests match the analytical/CppAD derivative gate.
+
 Task 12 continuation note: stale tracked GoalBuddy artifacts for superseded native electrolyte, neutral LLE,
 reactive-equilibrium, and PR #126 repair stories were removed from active docs. This plan is now the authoritative
 tracked handoff for native Ipopt equilibrium, native Ceres regression, derivative gates, and solver-cleanup work.

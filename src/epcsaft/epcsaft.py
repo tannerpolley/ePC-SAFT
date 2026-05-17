@@ -236,10 +236,7 @@ def _state_rel_perm_rule_and_mode(params):
         "automatic": 3,
         "analytic": 0,
         "analytical": 0,
-        "autodiff": 2,
-        "automatic_differentiation": 2,
-        "automatic-differentiation": 2,
-        "automatic differentiation": 2,
+        "cppad": 2,
     }
     rule = _as_rule_number(rel_perm.get("rule"), rule_alias, default_rule)
     mode = _as_rule_number(rel_perm.get("differential_mode"), diff_alias, 3)
@@ -2492,10 +2489,7 @@ def create_struct(params):
         "automatic": 3,
         "analytic": 0,
         "analytical": 0,
-        "autodiff": 2,
-        "automatic_differentiation": 2,
-        "automatic-differentiation": 2,
-        "automatic differentiation": 2,
+        "cppad": 2,
     }
     d_ion_alias = {"t_indep": 0, "t_dep_1": 1, "t_dep_2": 2}
     d_born_alias = {"t_indep": 0, "t_dep_1": 1, "t_dep_2": 2, "fitted_param": 3}
@@ -2551,21 +2545,21 @@ def create_struct(params):
     cppargs.dielc_rule = _as_int_alias(rel_perm.get("rule", 1), rule_alias)
     cppargs.dielc_diff_mode = _as_int_alias(rel_perm.get("differential_mode", "auto"), diff_alias)
     if cppargs.dielc_diff_mode not in (0, 2, 3):
-        raise ValueError("Unknown rel_perm differential_mode. Supported values are analytic/autodiff/auto (0/2/3).")
+        raise ValueError("Unknown rel_perm differential_mode. Supported values are analytic/cppad/auto (0/2/3).")
     cppargs.hc_dadx_diff_mode = _as_int_alias(hc_model_dict.get("dadx_differential_mode", "auto"), diff_alias)
     if cppargs.hc_dadx_diff_mode not in (0, 2, 3):
         raise ValueError(
-            "Unknown hc_model dadx_differential_mode. Supported values are analytic/autodiff/auto (0/2/3)."
+            "Unknown hc_model dadx_differential_mode. Supported values are analytic/cppad/auto (0/2/3)."
         )
     cppargs.disp_dadx_diff_mode = _as_int_alias(disp_model_dict.get("dadx_differential_mode", "auto"), diff_alias)
     if cppargs.disp_dadx_diff_mode not in (0, 2, 3):
         raise ValueError(
-            "Unknown disp_model dadx_differential_mode. Supported values are analytic/autodiff/auto (0/2/3)."
+            "Unknown disp_model dadx_differential_mode. Supported values are analytic/cppad/auto (0/2/3)."
         )
     cppargs.assoc_dadx_diff_mode = _as_int_alias(assoc_model_dict.get("dadx_differential_mode", "auto"), diff_alias)
     if cppargs.assoc_dadx_diff_mode not in (0, 2, 3):
         raise ValueError(
-            "Unknown assoc_model dadx_differential_mode. Supported values are analytic/autodiff/auto (0/2/3)."
+            "Unknown assoc_model dadx_differential_mode. Supported values are analytic/cppad/auto (0/2/3)."
         )
     if cppargs.dielc_rule < 0 or cppargs.dielc_rule > 9:
         raise ValueError("Unknown rel_perm rule. Supported values are 0..9.")
@@ -2576,7 +2570,7 @@ def create_struct(params):
     bjeruum = _as_bool(dh_model_dict.get("bjeruum_treatment", False))
     cppargs.mu_DH_diff_mode = _as_int_alias(mu_dh.get("differential_mode", "auto"), diff_alias)
     if cppargs.mu_DH_diff_mode not in (0, 2, 3):
-        raise ValueError("Unknown mu_DH differential_mode. Supported values are analytic/autodiff/auto (0/2/3).")
+        raise ValueError("Unknown mu_DH differential_mode. Supported values are analytic/cppad/auto (0/2/3).")
     cppargs.mu_DH_comp_dep_rel_perm = int(_as_bool(mu_dh.get("comp_dep_rel_perm", True)))
     cppargs.mu_DH_include_sum_term = int(_as_bool(mu_dh.get("include_sum_term", True)))
 
@@ -2589,7 +2583,7 @@ def create_struct(params):
     cppargs.born_bulk_mode = _as_int_alias(born_model_dict.get("bulk_mode", "mix"), bulk_alias)
     cppargs.mu_born_diff_mode = _as_int_alias(mu_born.get("differential_mode", "auto"), diff_alias)
     if cppargs.mu_born_diff_mode not in (0, 2, 3):
-        raise ValueError("Unknown mu_born differential_mode. Supported values are analytic/autodiff/auto (0/2/3).")
+        raise ValueError("Unknown mu_born differential_mode. Supported values are analytic/cppad/auto (0/2/3).")
     cppargs.mu_born_comp_dep_rel_perm = int(_as_bool(mu_born.get("comp_dep_rel_perm", True)))
     cppargs.mu_born_include_sum_term = int(_as_bool(mu_born.get("include_sum_term", True)))
     cppargs.mu_born_comp_dep_delta_d = int(_as_bool(mu_born.get("comp_dep_delta_d", False)))

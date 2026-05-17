@@ -274,10 +274,7 @@ _DIFF_MODE_ALIASES = {
     "automatic": 3,
     "analytic": 0,
     "analytical": 0,
-    "autodiff": 2,
-    "automatic_differentiation": 2,
-    "automatic-differentiation": 2,
-    "automatic differentiation": 2,
+    "cppad": 2,
 }
 _D_ION_MODE_ALIASES = {
     "t_indep": 0,

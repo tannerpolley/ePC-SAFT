@@ -80,11 +80,11 @@ def test_ionic_activity_and_solution_methods_return_expected_values():
         [-3.4584244392944334, -191.87996157767273, -197.5723081063775],
     )
 
-def test_rel_perm_autodiff_matches_analytic_density_derivative_usage():
+def test_rel_perm_cppad_matches_analytic_density_derivative_usage():
     base_state, _ = _ionic_state()
     ad_state, _ = _ionic_state_with_elec_model(
         {
-            "rel_perm": {"differential_mode": "autodiff"},
+            "rel_perm": {"differential_mode": "cppad"},
         }
     )
 
@@ -116,34 +116,34 @@ def test_removed_derivative_backend_names_are_rejected():
             }
         )
 
-def test_hc_dadx_autodiff_matches_analytic_terms():
+def test_hc_dadx_cppad_matches_analytic_terms():
     base_state, _ = _ionic_state()
     ad_state, _ = _ionic_state_with_elec_model(
         {
-            "hc_model": {"dadx_differential_mode": "autodiff"},
+            "hc_model": {"dadx_differential_mode": "cppad"},
         }
     )
 
     _assert_array(ad_state.dadx()["terms"]["hc"], base_state.dadx()["terms"]["hc"], rtol=1e-7, atol=1e-9)
 
-def test_mu_dh_autodiff_matches_analytic_ion_terms():
+def test_mu_dh_cppad_matches_analytic_ion_terms():
     base_state, _ = _ionic_state()
     ad_state, _ = _ionic_state_with_elec_model(
         {
             "DH_model": {
-                "mu_DH_model": {"differential_mode": "autodiff"},
+                "mu_DH_model": {"differential_mode": "cppad"},
             },
         }
     )
 
     _assert_array(ad_state.dadx()["terms"]["ion"], base_state.dadx()["terms"]["ion"], rtol=1e-7, atol=1e-9)
 
-def test_mu_born_autodiff_matches_analytic_born_terms():
+def test_mu_born_cppad_matches_analytic_born_terms():
     base_state, _ = _ionic_state()
     ad_state, _ = _ionic_state_with_elec_model(
         {
             "born_model": {
-                "mu_born_model": {"differential_mode": "autodiff"},
+                "mu_born_model": {"differential_mode": "cppad"},
             },
         }
     )
