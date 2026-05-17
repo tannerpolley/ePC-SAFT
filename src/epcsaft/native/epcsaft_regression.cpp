@@ -1617,7 +1617,7 @@ GenericRegressionResult solve_one_pure_ion_ceres_start_cpp(
         start
     );
     vector<double> theta = start;
-    if (max_nfev > 1) {
+    {
         ceres::Problem problem;
         auto *cost = new PureIonCeresCostFunction(
             base_args_by_record,
@@ -1670,24 +1670,6 @@ GenericRegressionResult solve_one_pure_ion_ceres_start_cpp(
         out.jacobian_backend = "cppad_implicit";
         return out;
     }
-    GenericRegressionResult out;
-    out.x = start;
-    out.cost = initial_eval.cost;
-    out.residual_norm = initial_eval.residual_norm;
-    out.initial_cost = initial_eval.cost;
-    out.initial_residual_norm = initial_eval.residual_norm;
-    out.metrics_by_term = initial_eval.metrics_by_term;
-    out.success = std::isfinite(initial_eval.residual_norm);
-    out.status = 0;
-    out.message = "evaluated initial native Ceres pure-ion residual without optimizer";
-    out.nfev = 1;
-    out.iterations = 0;
-    out.backend = "ceres";
-    out.optimizer_backend = "ceres";
-    out.derivative_backend = "cppad_implicit";
-    out.jacobian_available = true;
-    out.jacobian_backend = "cppad_implicit";
-    return out;
 }
 
 class BinaryKijCeresCostFunction final : public ceres::CostFunction {
@@ -1762,7 +1744,7 @@ GenericRegressionResult solve_one_binary_kij_ceres_start_cpp(
         start
     );
     vector<double> theta = start;
-    if (max_nfev > 1) {
+    {
         ceres::Problem problem;
         auto *cost = new BinaryKijCeresCostFunction(
             base_args_by_record,
@@ -1813,24 +1795,6 @@ GenericRegressionResult solve_one_binary_kij_ceres_start_cpp(
         out.jacobian_backend = "cppad_implicit";
         return out;
     }
-    GenericRegressionResult out;
-    out.x = start;
-    out.cost = initial_eval.cost;
-    out.residual_norm = initial_eval.residual_norm;
-    out.initial_cost = initial_eval.cost;
-    out.initial_residual_norm = initial_eval.residual_norm;
-    out.metrics_by_term = initial_eval.metrics_by_term;
-    out.success = std::isfinite(initial_eval.residual_norm);
-    out.status = 0;
-    out.message = "evaluated initial native Ceres binary k_ij residual without optimizer";
-    out.nfev = 1;
-    out.iterations = 0;
-    out.backend = "ceres";
-    out.optimizer_backend = "ceres";
-    out.derivative_backend = "cppad_implicit";
-    out.jacobian_available = true;
-    out.jacobian_backend = "cppad_implicit";
-    return out;
 }
 #endif
 
@@ -1987,6 +1951,9 @@ GenericRegressionResult fit_generic_ceres_cpp(
     }
     if (x0.size() != target_kinds.size() || lower.size() != target_kinds.size() || upper.size() != target_kinds.size()) {
         throw ValueError("Native Ceres generic regression target arrays must have matching lengths.");
+    }
+    if (max_nfev < 1) {
+        throw ValueError("Native Ceres generic regression requires max_nfev >= 1.");
     }
     const bool is_binary_kij = target_kinds.size() == 1 && target_kinds[0] == kGenericTargetKIJ;
     bool is_pure_ion_parameter_set = !target_kinds.empty();

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
+from epcsaft._types import InputError
 from epcsaft.epcsaft import _fit_generic_native_ceres
 
 
@@ -108,4 +110,22 @@ def test_ceres_binary_kij_regression_accepts_associating_neutral_rows() -> None:
     assert result["derivative_backend"] == "cppad_implicit"
     assert result["jacobian_backend"] == "cppad_implicit"
     assert result["jacobian_available"] is True
+    assert result["message"].startswith("Ceres Solver Report")
+    assert "without" + " optimizer" not in result["message"]
+    assert result["iterations"] > 0
     assert "binary_vle_fugacity_balance" in result["metrics_by_term"]
+
+
+def test_ceres_binary_kij_regression_rejects_nonpositive_iteration_limit() -> None:
+    with pytest.raises(InputError, match="max_nfev >= 1"):
+        _fit_generic_native_ceres(
+            [],
+            [],
+            np.asarray([6]),
+            np.asarray([0]),
+            np.asarray([1]),
+            [0.0],
+            [-0.1],
+            [0.1],
+            0,
+        )

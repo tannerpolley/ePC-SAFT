@@ -2714,6 +2714,9 @@ def _fit_generic_native_ceres(
     upper,
     max_nfev=200,
 ):
+    max_nfev = int(max_nfev)
+    if max_nfev < 1:
+        raise InputError("Native Ceres generic regression requires max_nfev >= 1.")
     result = _core._fit_generic_native_ceres(
         _native_args_sequence(fixed_payloads),
         list(records),
@@ -2723,7 +2726,7 @@ def _fit_generic_native_ceres(
         np.asarray(x0, dtype=float),
         np.asarray(lower, dtype=float),
         np.asarray(upper, dtype=float),
-        int(max_nfev),
+        max_nfev,
     )
     return {
         "x": vector_to_array(result["x"]),

@@ -98,6 +98,9 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
   diagnostics tests, and retained regression setup tests now exercise a real nonideal native derivative-block gate.
 - `equilibrium_curve(...)` no longer carries accepted phase splits forward as Python-level seeds; curve points use
   route-owned canonical initial points, and user-supplied phase seeds are rejected before route execution.
+- Supported generic native Ceres regression routes no longer treat `max_nfev=1` as an initial-residual shortcut. They
+  run through Ceres, reject nonpositive evaluation limits before native dispatch, and the text gate blocks the retired
+  initial-evaluation optimizer message.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
 

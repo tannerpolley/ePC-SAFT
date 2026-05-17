@@ -685,6 +685,10 @@ Task 10 continuation note: generic native Ceres regression payloads for pure-ion
 adapter. Python wrappers preserve that metadata and fail loudly if a native regression result omits required optimizer
 or derivative backend fields instead of inferring them from adjacent Jacobian labels.
 
+Task 10 continuation note: supported generic native Ceres routes no longer return a successful production result from
+only the initial residual evaluation when `max_nfev=1`. Positive evaluation limits now dispatch through Ceres, nonpositive
+limits fail before native execution, and the text gate blocks reintroducing the old initial-evaluation optimizer message.
+
 ### Task 11: Internal Extension Boundaries
 
 **Files:**
