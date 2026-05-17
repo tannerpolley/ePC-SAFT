@@ -194,45 +194,6 @@ class ReactiveElectrolyteRow:
             raise InputError("ReactiveElectrolyteRow.mode must be 'bubble' or 'speciation'.")
         object.__setattr__(self, "mode", mode)
 
-    @classmethod
-    def from_legacy_record(
-        cls,
-        record: Mapping[str, Any],
-        *,
-        default_balances: Mapping[str, Mapping[str, float]],
-        default_reactions: Sequence[ReactionDefinition] | Sequence[Mapping[str, Any]],
-        default_vapor_species: Sequence[str] | None,
-    ) -> ReactiveElectrolyteRow:
-        removed_pressure_key = "P" + "_seed"
-        if removed_pressure_key in record:
-            raise InputError(f"ReactiveElectrolyteRow records use P, not {removed_pressure_key}.")
-        return cls(
-            row_id=str(record.get("row_id", record.get("id", "row"))),
-            T=float(record["T"]),
-            P=float(record["P"]),
-            initial_x=record.get("initial_x"),
-            balances=record.get("balances", default_balances),
-            totals=record.get("totals"),
-            reactions=record.get("reactions", default_reactions),
-            vapor_species=record.get("vapor_species", default_vapor_species),
-            target_pressure=record.get("target_pressure"),
-            target_speciation=record.get("target_x", record.get("target_speciation")),
-            target_activity=record.get("target_activity"),
-            target_fugacity=record.get("target_fugacity"),
-            target_density=record.get("target_density"),
-            target_relative_permittivity=record.get("target_relative_permittivity"),
-            target_partial_pressures=record.get(
-                "target_partial_pressures",
-                record.get("partial_pressures", record.get("pressure_targets")),
-            ),
-            weights=record.get("weights", {}),
-            source=str(record.get("source", "")),
-            split=str(record.get("split", "")),
-            metadata=record.get("metadata", {}),
-            mode=str(record.get("mode", "bubble")),
-        )
-
-
 @dataclass(frozen=True, slots=True)
 class ReactiveElectrolyteBatchOptions:
     """Batch-evaluation policy controls."""

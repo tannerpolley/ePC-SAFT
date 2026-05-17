@@ -21,35 +21,54 @@ def test_reactive_electrolyte_regression_public_surfaces_are_current() -> None:
     row_names = tuple(field.name for field in row_fields)
     option_names = tuple(field.name for field in fields(epcsaft.ReactiveElectrolyteBatchOptions))
     result_names = tuple(field.name for field in fields(epcsaft.ReactiveElectrolyteRowResult))
-    removed_pressure = "P" + "_seed"
-    removed = {
-        removed_pressure,
-        "warm_start_rows",
-        "warm_start_objective",
-        "warm_start_used",
-        "warm_start_source",
-        "warm_start_failed",
-        "cache_stats",
-    }
 
-    assert row_names[:3] == ("row_id", "T", "P")
+    assert row_names == (
+        "row_id",
+        "T",
+        "P",
+        "initial_x",
+        "balances",
+        "totals",
+        "reactions",
+        "vapor_species",
+        "target_pressure",
+        "target_speciation",
+        "target_activity",
+        "target_fugacity",
+        "target_density",
+        "target_relative_permittivity",
+        "target_partial_pressures",
+        "weights",
+        "source",
+        "split",
+        "metadata",
+        "mode",
+    )
     assert row_fields[2].default is MISSING
     assert option_names == ("penalty_value", "failure_residual_mode", "include_state_outputs")
-    assert result_names[-3:] == ("source", "split", "metadata")
-    assert removed.isdisjoint((*row_names, *option_names, *result_names))
-
-    with pytest.raises(epcsaft.InputError, match=removed_pressure):
-        epcsaft.ReactiveElectrolyteRow.from_legacy_record(
-            {
-                "row_id": "old-pressure",
-                "T": 298.15,
-                removed_pressure: 101325.0,
-                "totals": {"A": 1.0},
-            },
-            default_balances={"total": {"A": 1.0}},
-            default_reactions=(),
-            default_vapor_species=None,
-        )
+    assert result_names == (
+        "row_id",
+        "success",
+        "message",
+        "composition",
+        "pressure",
+        "ln_fugacity",
+        "activity_coefficients",
+        "density",
+        "relative_permittivity",
+        "residuals",
+        "residual_names",
+        "failure_diagnostics",
+        "active_bounds",
+        "solver_status",
+        "elapsed_seconds",
+        "partial_pressures",
+        "y_vap",
+        "named_reaction_residuals",
+        "source",
+        "split",
+        "metadata",
+    )
 
 
 def _native_mixed_pressure_speciation_batch() -> tuple[epcsaft.ReactiveElectrolyteBatch, float]:
