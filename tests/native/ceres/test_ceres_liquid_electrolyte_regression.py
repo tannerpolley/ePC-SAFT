@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 import epcsaft
 
 
@@ -45,8 +43,8 @@ def _write_ssmds_dataset(tmp_path):
 
 def test_ceres_liquid_electrolyte_regression_uses_native_ssmds_derivatives(tmp_path) -> None:
     build = epcsaft.runtime_build_info()["optional_dependencies"]
-    if not build["ceres"]["compiled"] or not build["cppad"]["compiled"]:
-        pytest.skip("Ceres and CppAD support are not enabled in this native build.")
+    assert build["ceres"]["compiled"], "Ceres must be compiled for native regression tests."
+    assert build["cppad"]["compiled"], "CppAD must be compiled for exact derivative tests."
 
     dataset = _write_ssmds_dataset(tmp_path)
     species = ("Solv", "Cat+", "An-")

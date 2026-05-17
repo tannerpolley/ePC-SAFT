@@ -902,6 +902,10 @@ Task 12 continuation note: reactive-speciation diagnostics now expose structured
 of the old association solver-status string. The executable text gate blocks reintroducing that field name in source,
 tests, or scripts.
 
+Task 2/3 continuation note: native Ceres regression tests now assert required Ceres/CppAD build support instead of
+skipping when those required dependencies are absent. The executable text gate blocks reintroducing the retired
+optional-Ceres skip wording in source, tests, or scripts.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**
