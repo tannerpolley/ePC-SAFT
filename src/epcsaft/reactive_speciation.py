@@ -631,7 +631,6 @@ def _normalize_reactive_derivative_diagnostics(diagnostics: dict[str, Any]) -> N
         diagnostics.setdefault("residual_norm_by_block", {"reactive_speciation": float(diagnostics["residual_norm"])})
     else:
         diagnostics.setdefault("residual_norm_by_block", {})
-    diagnostics.setdefault("solved_internal_states", ["reactive_speciation_log_amounts", "density_roots"])
     diagnostics.setdefault(
         "derivative_backend_by_block",
         {
@@ -640,10 +639,6 @@ def _normalize_reactive_derivative_diagnostics(diagnostics: dict[str, Any]) -> N
         },
     )
     diagnostics.setdefault("implicit_sensitivity_blocks", [])
-    diagnostics.setdefault("best_state_available", True)
-    diagnostics.setdefault("best_state", {"source": "native_chemical_equilibrium_result"})
-    diagnostics.setdefault("row_failure_count", int(diagnostics.get("state_failure_count", 0)))
-    diagnostics.setdefault("association_coupling", {"coupled": False, "solved_variables": []})
     diagnostics.setdefault(
         "derivative_policy",
         {
@@ -656,16 +651,6 @@ def _normalize_reactive_derivative_diagnostics(diagnostics: dict[str, Any]) -> N
             ],
             "unsupported_derivative_behavior": "raise",
         },
-    )
-    diagnostics.setdefault(
-        "solved_state_derivative_blocks",
-        [
-            "association_site_fractions",
-            "reactive_speciation_variables",
-            "density_roots",
-            "bubble_pressure_roots",
-            "phase_equilibrium_variables",
-        ],
     )
     diagnostics["derivative_backend_by_block"].setdefault(
         "reactive_speciation_variables",
@@ -687,8 +672,6 @@ def _normalize_reactive_derivative_diagnostics(diagnostics: dict[str, Any]) -> N
                 "reactive_speciation_variables": reactive_implicit_result.to_dict(),
             },
         )
-    else:
-        diagnostics.setdefault("implicit_solve_results", {})
 
 
 def _has_native_reactive_implicit_payload(diagnostics: dict[str, Any]) -> bool:

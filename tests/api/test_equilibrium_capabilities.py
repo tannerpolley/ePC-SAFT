@@ -19,12 +19,11 @@ def test_equilibrium_capabilities_expose_derivative_policy() -> None:
         "thermodynamic_backend",
         "solver_backend",
         "derivative_backend",
-        "solved_internal_states",
         "derivative_backend_by_block",
         "implicit_sensitivity_blocks",
         "residual_norm_by_block",
-        "association_coupling",
     }.issubset(set(policy["diagnostic_fields"]))
     removed_association_status = "association" + "_solver" + "_status"
     assert removed_association_status not in policy["diagnostic_fields"]
+    assert "association_coupling" not in policy["diagnostic_fields"]
 

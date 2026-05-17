@@ -124,12 +124,9 @@ result diagnostics report the derivative backend explicitly:
 - ``thermodynamic_backend``
 - ``solver_backend``
 - ``derivative_backend``
-- ``solved_internal_states``
 - ``derivative_backend_by_block``
 - ``implicit_sensitivity_blocks``
 - ``residual_norm_by_block``
-- ``best_state_available``
-- ``association_coupling``
 
 Supported derivative labels are ``analytic``, ``cppad``,
 ``analytic_implicit`` and ``cppad_implicit``.

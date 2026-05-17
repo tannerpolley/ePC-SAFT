@@ -130,8 +130,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
   activity-coefficient decomposition flag.
 - The strict text gate now blocks generic "not implemented" wording in executable source, tests, and scripts, so
   unsupported derivative or route paths must state the positive required backend/formulation instead.
-- Reactive-speciation diagnostics now expose structured `association_coupling` metadata instead of an association
-  solver-status string, and the executable text gate blocks the old field name.
+- Reactive-speciation diagnostics omit association-coupling metadata until a native route returns real coupled
+  association variables; the executable text gate blocks the old association solver-status field name.
 - Native Ceres regression tests now assert required Ceres/CppAD build support instead of skipping when those required
   dependencies are absent. The executable text gate blocks the retired optional-Ceres skip wording.
 - Runtime build-contract and CppAD smoke tests now require enabled Ceres/CppAD native dependencies instead of accepting
@@ -193,6 +193,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
   native route omits that metadata; diagnostics now preserve only non-empty route fields returned by native code.
 - Reactive-regression summary payloads no longer add objective-only fit/covariance status placeholders;
   summaries keep success flags, termination reason, covariance availability, and objective metrics.
+- Reactive-speciation diagnostics no longer synthesize solved density, bubble-pressure, association-coupling, or
+  best-state metadata for ideal native routes; those fields now appear only when a native route returns real evidence.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
 
