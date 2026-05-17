@@ -38,7 +38,7 @@ def _native_mixed_pressure_speciation_batch() -> tuple[epcsaft.ReactiveElectroly
     row = epcsaft.ReactiveElectrolyteRow(
         row_id="native-mixed",
         T=temperature,
-        P_seed=101325.0,
+        P=101325.0,
         totals={"water": 0.98, "sodium": 0.01, "chloride": 0.01},
         initial_x=[0.98, 0.01, 0.01],
         balances=balances,
@@ -92,7 +92,7 @@ def test_reactive_regression_reporting_helpers_write_outputs(monkeypatch, tmp_pa
             epcsaft.ReactiveElectrolyteRow(
                 row_id="row1",
                 T=298.15,
-                P_seed=101325.0,
+                P=101325.0,
                 totals={"A": 0.2, "B": 0.8},
                 initial_x=[0.2, 0.8],
                 balances={"a_total": {"A": 1.0}, "b_total": {"B": 1.0}},

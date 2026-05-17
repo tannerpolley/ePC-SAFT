@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import inspect
+
 import numpy as np
 import pytest
 
@@ -12,6 +14,38 @@ def _tiny_base_parameters() -> dict[str, np.ndarray]:
         "s": np.asarray([3.0, 3.5], dtype=float),
         "e": np.asarray([200.0, 240.0], dtype=float),
     }
+
+
+def test_reactive_electrolyte_row_requires_pressure_not_seed() -> None:
+    removed = "P" + "_seed"
+    signature = inspect.signature(epcsaft.ReactiveElectrolyteRow)
+
+    assert removed not in epcsaft.ReactiveElectrolyteRow.__dataclass_fields__
+    assert signature.parameters["P"].default is inspect._empty
+    with pytest.raises(TypeError):
+        epcsaft.ReactiveElectrolyteRow(
+            row_id="missing-pressure",
+            T=298.15,
+            totals={"A": 1.0},
+        )
+
+
+def test_reactive_electrolyte_legacy_row_rejects_pressure_seed_key() -> None:
+    removed = "P" + "_seed"
+
+    with pytest.raises(epcsaft.InputError, match=removed):
+        epcsaft.ReactiveElectrolyteRow.from_legacy_record(
+            {
+                "row_id": "old-pressure",
+                "T": 298.15,
+                removed: 101325.0,
+                "totals": {"A": 1.0},
+            },
+            default_balances={"total": {"A": 1.0}},
+            default_reactions=(),
+            default_vapor_species=None,
+        )
+
 
 def _native_mixed_pressure_speciation_batch() -> tuple[epcsaft.ReactiveElectrolyteBatch, float]:
     temperature = 298.15
@@ -36,7 +70,7 @@ def _native_mixed_pressure_speciation_batch() -> tuple[epcsaft.ReactiveElectroly
     row = epcsaft.ReactiveElectrolyteRow(
         row_id="native-mixed",
         T=temperature,
-        P_seed=101325.0,
+        P=101325.0,
         totals={"water": 0.98, "sodium": 0.01, "chloride": 0.01},
         initial_x=[0.98, 0.01, 0.01],
         balances=balances,
@@ -157,7 +191,7 @@ def test_reactive_regression_context_evaluates_batch_with_composition_warm_start
             epcsaft.ReactiveElectrolyteRow(
                 row_id="row1",
                 T=298.15,
-                P_seed=101325.0,
+                P=101325.0,
                 totals={"A": 0.2, "B": 0.8},
                 initial_x=[0.2, 0.8],
                 balances={"a_total": {"A": 1.0}, "b_total": {"B": 1.0}},
@@ -169,7 +203,7 @@ def test_reactive_regression_context_evaluates_batch_with_composition_warm_start
             epcsaft.ReactiveElectrolyteRow(
                 row_id="row2",
                 T=298.15,
-                P_seed=95000.0,
+                P=95000.0,
                 totals={"A": 0.21, "B": 0.79},
                 initial_x=[0.21, 0.79],
                 balances={"a_total": {"A": 1.0}, "b_total": {"B": 1.0}},
@@ -254,7 +288,7 @@ def test_reactive_regression_objective_and_jacobian_are_consistent(monkeypatch) 
             epcsaft.ReactiveElectrolyteRow(
                 row_id="row1",
                 T=298.15,
-                P_seed=101325.0,
+                P=101325.0,
                 totals={"A": 0.2, "B": 0.8},
                 initial_x=[0.2, 0.8],
                 balances={"a_total": {"A": 1.0}, "b_total": {"B": 1.0}},

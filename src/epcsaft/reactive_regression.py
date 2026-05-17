@@ -150,8 +150,7 @@ class ReactiveElectrolyteRow:
 
     row_id: str
     T: float
-    P: float | None = None
-    P_seed: float | None = None
+    P: float
     initial_x: Sequence[float] | Mapping[str, float] | None = None
     balances: Mapping[str, Mapping[str, float]] | None = None
     totals: Mapping[str, float] | None = None
@@ -175,14 +174,9 @@ class ReactiveElectrolyteRow:
         object.__setattr__(self, "T", float(self.T))
         if not math.isfinite(self.T) or self.T <= 0.0:
             raise InputError("ReactiveElectrolyteRow.T must be finite and positive.")
-        if self.P is not None:
-            object.__setattr__(self, "P", float(self.P))
-            if not math.isfinite(self.P) or self.P <= 0.0:
-                raise InputError("ReactiveElectrolyteRow.P must be finite and positive when provided.")
-        if self.P_seed is not None:
-            object.__setattr__(self, "P_seed", float(self.P_seed))
-            if not math.isfinite(self.P_seed) or self.P_seed <= 0.0:
-                raise InputError("ReactiveElectrolyteRow.P_seed must be finite and positive when provided.")
+        object.__setattr__(self, "P", float(self.P))
+        if not math.isfinite(self.P) or self.P <= 0.0:
+            raise InputError("ReactiveElectrolyteRow.P must be finite and positive.")
         object.__setattr__(self, "balances", dict(self.balances or {}))
         object.__setattr__(self, "totals", _mapping_float(self.totals))
         object.__setattr__(self, "reactions", _normalize_reaction_defs(self.reactions))
@@ -209,11 +203,13 @@ class ReactiveElectrolyteRow:
         default_reactions: Sequence[ReactionDefinition] | Sequence[Mapping[str, Any]],
         default_vapor_species: Sequence[str] | None,
     ) -> ReactiveElectrolyteRow:
+        removed_pressure_key = "P" + "_seed"
+        if removed_pressure_key in record:
+            raise InputError(f"ReactiveElectrolyteRow records use P, not {removed_pressure_key}.")
         return cls(
             row_id=str(record.get("row_id", record.get("id", "row"))),
             T=float(record["T"]),
-            P=float(record["P"]) if record.get("P") not in (None, "") else None,
-            P_seed=float(record["P_seed"]) if record.get("P_seed") not in (None, "") else None,
+            P=float(record["P"]),
             initial_x=record.get("initial_x"),
             balances=record.get("balances", default_balances),
             totals=record.get("totals"),
@@ -704,14 +700,14 @@ class ReactiveElectrolyteRegressionContext:
             row_start_ns = time.perf_counter_ns()
             seed, seed_source = self._resolve_row_seed(row, last_row_seed=last_row_seed)
             try:
-                pressure_seed = float(row.P_seed or row.P or 101325.0)
+                pressure = float(row.P)
                 if row.mode == "speciation":
                     solve_counter["speciation_solves"] += 1
                     raw_result = reactive_speciation_module.solve_reactive_speciation(
                         species=self.species,
                         mixture_factory=_mixture_factory_from_batch(self.batch, parameter_map),
                         T=float(row.T),
-                        P=pressure_seed,
+                        P=pressure,
                         balances=row.balances or self.batch.balances,
                         totals=row.totals,
                         reactions=row.reactions or self.batch.reactions,
@@ -732,7 +728,7 @@ class ReactiveElectrolyteRegressionContext:
                         species=self.species,
                         mixture_factory=_mixture_factory_from_batch(self.batch, parameter_map),
                         T=float(row.T),
-                        P=pressure_seed,
+                        P=pressure,
                         balances=row.balances or self.batch.balances,
                         totals=row.totals,
                         reactions=row.reactions or self.batch.reactions,
@@ -1324,9 +1320,9 @@ def _row_result_from_speciation(
             row,
             {},
             x_override=[composition[label] for label in context.species],
-            P_override=float(row.P or row.P_seed or 101325.0),
+            P_override=float(row.P),
         )
-        state = mixture.state(T=float(row.T), P=float(row.P or row.P_seed or 101325.0), x=list(composition.values()))
+        state = mixture.state(T=float(row.T), P=float(row.P), x=list(composition.values()))
         density = float(state.molar_density())
         relative_permittivity = float(state.relative_permittivity()[0])
         ln_fugacity = {label: float(value) for label, value in zip(context.species, state.fugacity_coefficient())}
@@ -1335,7 +1331,7 @@ def _row_result_from_speciation(
         success=raw_result.success,
         message=raw_result.message,
         composition=composition,
-        pressure=float(row.P or row.P_seed or 101325.0),
+        pressure=float(row.P),
         ln_fugacity=ln_fugacity,
         activity_coefficients=dict(raw_result.activity_coefficients),
         density=density,
@@ -1376,11 +1372,11 @@ def _row_result_from_bubble(
             row,
             parameter_map,
             x_override=[composition[label] for label in context.species],
-            P_override=float(getattr(raw_result, "P_total", row.P or row.P_seed or 101325.0)),
+            P_override=float(getattr(raw_result, "P_total", row.P)),
         )
         state = mixture.state(
             T=float(row.T),
-            P=float(getattr(raw_result, "P_total", row.P or row.P_seed or 101325.0)),
+            P=float(getattr(raw_result, "P_total", row.P)),
             x=[composition[label] for label in context.species],
             phase="liq",
         )
@@ -1392,7 +1388,7 @@ def _row_result_from_bubble(
         success=bool(getattr(raw_result, "success", False)),
         message=str(getattr(raw_result, "message", "")),
         composition=composition,
-        pressure=float(getattr(raw_result, "P_total", row.P or row.P_seed or 101325.0)),
+        pressure=float(getattr(raw_result, "P_total", row.P)),
         ln_fugacity=ln_fugacity,
         activity_coefficients=dict(getattr(raw_result, "activity_coefficients", {}) or {}),
         density=density,

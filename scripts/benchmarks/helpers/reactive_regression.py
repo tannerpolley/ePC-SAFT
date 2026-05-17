@@ -257,7 +257,6 @@ def _run_solve_reactive_bubble(points: Sequence[Mapping[str, Any]]) -> Callable[
                 balances=BALANCES,
                 reactions=REACTIONS,
                 vapor_species=VAPOR_SPECIES,
-                continuation="none",
                 options=epcsaft.ReactiveElectrolyteBubbleOptions(error_mode="result"),
             )
         except Exception as exc:
@@ -337,7 +336,7 @@ def _objective_rows() -> tuple[dict[str, Any], ...]:
         {
             "row_id": "tiny-1",
             "T": 298.15,
-            "P_seed": 101325.0,
+            "P": 101325.0,
             "totals": {"water": 0.98, "sodium": 0.01, "chloride": 0.01},
             "initial_x": [0.98, 0.01, 0.01],
             "target_partial_pressures": {"water": 3166.40625},
@@ -346,7 +345,7 @@ def _objective_rows() -> tuple[dict[str, Any], ...]:
         {
             "row_id": "tiny-2",
             "T": 298.15,
-            "P_seed": 95000.0,
+            "P": 95000.0,
             "totals": {"water": 0.97, "sodium": 0.015, "chloride": 0.015},
             "initial_x": [0.97, 0.015, 0.015],
             "target_partial_pressures": {"water": 3122.0},
@@ -365,7 +364,7 @@ def _compile_objective_context(
         epcsaft.ReactiveElectrolyteRow(
             row_id=str(row["row_id"]),
             T=float(row["T"]),
-            P_seed=float(row["P_seed"]),
+            P=float(row["P"]),
             totals=dict(row["totals"]),
             initial_x=list(row["initial_x"]),
             balances=BALANCES,
@@ -575,7 +574,7 @@ def _compile_mixed_pressure_speciation_surrogate_context(
                 epcsaft.ReactiveElectrolyteRow(
                     row_id=str(row["row_id"]),
                     T=float(row["T"]),
-                    P_seed=float(row["P_seed"]),
+                    P=float(row["P"]),
                     totals=dict(row["totals"]),
                     initial_x=list(row["initial_x"]),
                     balances=BALANCES,
@@ -780,13 +779,13 @@ def _case_builder_reactive_bubble_tiny() -> PreparedBenchmarkCase:
     points = (
         {
             "T": 298.15,
-            "P_seed": 101325.0,
+            "P": 101325.0,
             "totals": {"water": 0.98, "sodium": 0.01, "chloride": 0.01},
             "initial_x": [0.98, 0.01, 0.01],
         },
         {
             "T": 298.15,
-            "P_seed": 95000.0,
+            "P": 95000.0,
             "totals": {"water": 0.97, "sodium": 0.015, "chloride": 0.015},
             "initial_x": [0.97, 0.015, 0.015],
         },

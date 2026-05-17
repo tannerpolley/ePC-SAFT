@@ -28,7 +28,7 @@ def test_fit_reactive_electrolyte_parameters_validates_then_requires_native_cere
             epcsaft.ReactiveElectrolyteRow(
                 row_id="row1",
                 T=298.15,
-                P_seed=101325.0,
+                P=101325.0,
                 totals={"A": 0.2, "B": 0.8},
                 initial_x=[0.2, 0.8],
                 balances={"a_total": {"A": 1.0}, "b_total": {"B": 1.0}},
@@ -87,7 +87,7 @@ def test_fit_reactive_electrolyte_parameters_rejects_invalid_parameter_inputs(mo
             epcsaft.ReactiveElectrolyteRow(
                 row_id="row1",
                 T=298.15,
-                P_seed=101325.0,
+                P=101325.0,
                 totals={"A": 0.2, "B": 0.8},
                 initial_x=[0.2, 0.8],
                 balances={"a_total": {"A": 1.0}, "b_total": {"B": 1.0}},

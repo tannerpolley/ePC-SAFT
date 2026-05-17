@@ -388,7 +388,7 @@ Minimal example:
            epcsaft.ReactiveElectrolyteRow(
                row_id="row_1",
                T=298.15,
-               P_seed=101325.0,
+               P=101325.0,
                totals={"water": 0.98, "sodium": 0.01, "chloride": 0.01},
                initial_x=[0.98, 0.01, 0.01],
                balances={

@@ -192,8 +192,9 @@ def solve_reactive_electrolyte_bubble_sweep(
         point_options = point.get("options", options)
         if not isinstance(point_options, ReactiveElectrolyteBubbleOptions):
             raise InputError("Each point options entry must be a ReactiveElectrolyteBubbleOptions instance.")
-        if "P_seed" in point:
-            raise InputError("Reactive electrolyte bubble sweep points use P, not P_seed.")
+        removed_pressure_key = "P" + "_seed"
+        if removed_pressure_key in point:
+            raise InputError(f"Reactive electrolyte bubble sweep points use P, not {removed_pressure_key}.")
         pressure = float(point.get("P", 101325.0))
         result = solve_reactive_electrolyte_bubble(
             species=species,

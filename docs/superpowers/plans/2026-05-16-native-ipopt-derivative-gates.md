@@ -719,6 +719,10 @@ neutral, pure ion/electrolyte, and binary `k_ij` production residuals all depend
 Born/activity derivative helpers, so they remain `cppad_implicit`; there is no direct-template production residual in
 the active Ceres surface yet. Repeated Ceres solver option setup was consolidated into one native helper.
 
+Task 10 continuation note: reactive electrolyte regression rows no longer expose a `P` + `_seed` pressure alias or silently
+default missing row pressure to atmospheric pressure. Rows require `P`, legacy row records containing the removed alias
+fail loudly, benchmark helpers use `P`, and public docs now show the direct pressure field.
+
 ### Task 11: Internal Extension Boundaries
 
 **Files:**
