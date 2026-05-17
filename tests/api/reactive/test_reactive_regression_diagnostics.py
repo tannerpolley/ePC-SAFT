@@ -76,7 +76,6 @@ def test_reactive_regression_reporting_helpers_write_outputs(monkeypatch, tmp_pa
             partial_pressures={"A": 30000.0},
             fugacity_residual={"A": 0.0},
             fugacity_residual_norm=1.0e-9,
-            state_failure_count=0,
             penalty_residuals=[],
             diagnostics={},
         )

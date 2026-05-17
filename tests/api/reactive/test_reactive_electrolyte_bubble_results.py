@@ -130,7 +130,7 @@ def test_reactive_electrolyte_bubble_sweep_does_not_continue_bubble_seed_control
                 fugacity_residual_norm=1.0e-8,
                 charge_residual=0.0,
                 partial_pressures={"H2O": 112000.0},
-                diagnostics={"state_failure_count": 0},
+                diagnostics={},
             )
         raise epcsaft.SolutionError(
             "bubble failed",
@@ -197,7 +197,7 @@ def test_reactive_electrolyte_bubble_sweep_honors_point_options(monkeypatch) -> 
             fugacity_residual_norm=1.0e-8,
             charge_residual=0.0,
             partial_pressures={"H2O": 101325.0},
-            diagnostics={"state_failure_count": 0},
+            diagnostics={},
         )
 
     monkeypatch.setattr("epcsaft.reactive_electrolyte.electrolyte_bubble_pressure", bubble_sequence)

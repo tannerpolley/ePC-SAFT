@@ -487,6 +487,10 @@ Task 6/12 continuation note: `ReactiveSpeciationResult` no longer exposes a stal
 homogeneous speciation moved behind the native Ipopt/derivative gate. Reactive electrolyte bubble results still report
 their own bubble-route state-failure count, but speciation-to-phase handoff now uses residual-family diagnostics only.
 
+Task 6/12 continuation note: `ReactiveElectrolyteBubbleResult` no longer mirrors bubble-route state-failure counts as
+a top-level public field. Bubble failure diagnostics remain nested in the bubble payload when a native route reports
+them, while the wrapper result surface keeps thermodynamic outputs, residuals, penalty residuals, and diagnostics.
+
 ### Task 7: Build EOS Phase Blocks For Equilibrium
 
 **Files:**

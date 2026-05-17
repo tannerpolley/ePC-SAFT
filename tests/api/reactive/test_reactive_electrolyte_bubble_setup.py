@@ -107,7 +107,7 @@ def test_reactive_electrolyte_bubble_accepts_phase_handoff_speciation_residuals(
         fugacity_residual_norm=1.0e-7,
         charge_residual=1.0e-14,
         partial_pressures={"H2O": 101325.0},
-        diagnostics={"state_failure_count": 0},
+        diagnostics={},
     )
 
     monkeypatch.setattr("epcsaft.reactive_electrolyte.solve_reactive_speciation", lambda **kwargs: chemical)
@@ -161,7 +161,7 @@ def test_reactive_electrolyte_bubble_respects_configured_phase_handoff_tolerance
         fugacity_residual_norm=1.0e-7,
         charge_residual=1.0e-14,
         partial_pressures={"H2O": 101325.0},
-        diagnostics={"state_failure_count": 0},
+        diagnostics={},
     )
 
     monkeypatch.setattr("epcsaft.reactive_electrolyte.solve_reactive_speciation", lambda **kwargs: chemical)
@@ -219,7 +219,7 @@ def test_reactive_electrolyte_bubble_sweep_preserves_phase_handoff_tolerances(mo
         fugacity_residual_norm=1.0e-7,
         charge_residual=1.0e-14,
         partial_pressures={"H2O": 101325.0},
-        diagnostics={"state_failure_count": 0},
+        diagnostics={},
     )
 
     monkeypatch.setattr("epcsaft.reactive_electrolyte.solve_reactive_speciation", lambda **kwargs: chemical)

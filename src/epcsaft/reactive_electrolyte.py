@@ -47,7 +47,6 @@ class ReactiveElectrolyteBubbleResult:
     partial_pressures: Mapping[str, float]
     fugacity_residual: Mapping[str, float]
     fugacity_residual_norm: float
-    state_failure_count: int
     penalty_residuals: Sequence[float]
     diagnostics: Mapping[str, Any]
 
@@ -67,7 +66,6 @@ class ReactiveElectrolyteBubbleResult:
             "partial_pressures": {str(k): float(v) for k, v in self.partial_pressures.items()},
             "fugacity_residual": {str(k): float(v) for k, v in self.fugacity_residual.items()},
             "fugacity_residual_norm": float(self.fugacity_residual_norm),
-            "state_failure_count": int(self.state_failure_count),
             "penalty_residuals": [float(v) for v in self.penalty_residuals],
             "diagnostics": dict(self.diagnostics),
         }
@@ -163,7 +161,6 @@ def solve_reactive_electrolyte_bubble(
         partial_pressures=bubble.partial_pressures,
         fugacity_residual=bubble.fugacity_residual,
         fugacity_residual_norm=bubble.fugacity_residual_norm,
-        state_failure_count=int(bubble.diagnostics.get("state_failure_count", 0)),
         penalty_residuals=[],
         diagnostics=diagnostics,
     )
