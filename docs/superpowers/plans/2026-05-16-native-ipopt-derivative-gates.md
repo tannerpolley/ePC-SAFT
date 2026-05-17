@@ -665,8 +665,9 @@ result-formatting layer only.
 
 Task 9/12 continuation note: public electrolyte bubble options no longer expose pressure or vapor-composition seed
 controls. Reactive electrolyte bubble sweeps no longer carry prior bubble pressure/vapor results into later points; each
-fixed-liquid bubble call uses the native route builder's canonical initial point. Reactive-regression residual contexts
-retain composition warm starts but no longer convert row-result pressure/vapor data into bubble-route seed options.
+fixed-liquid bubble call uses the native route builder's canonical initial point, and the sweep API no longer exposes a
+continuation flag. Reactive-regression residual contexts retain composition warm starts but no longer convert row-result
+pressure/vapor data into bubble-route seed options.
 
 ### Task 10: Make Regression Ceres-Only
 
@@ -780,7 +781,7 @@ Task 12 continuation note: reactive/speciation capabilities and staged reactive 
 
 Task 12 continuation note: the tracked text gate now enforces that active source, tests, and dev scripts stay free of old retry/default fallback tokens, while the broader documentation cleanup remains separate from executable surfaces.
 
-Task 12 continuation note: fixed-liquid electrolyte bubble pressure and composed reactive electrolyte bubble pressure no longer execute the package-owned pressure-search route from public Python entry points. The public contracts now validate inputs and raise `InputError` until native Ipopt route builders own those solves; capabilities, docs, and tests mark both routes as `route_pending`, and the public `ElectrolyteBubbleOptions` surface no longer carries the disabled pressure-search controls.
+Task 12 continuation note: fixed-liquid electrolyte bubble pressure and composed reactive electrolyte bubble pressure no longer execute the package-owned pressure-search route from public Python entry points. Fixed-liquid electrolyte bubble pressure now dispatches to the native Ipopt route when compiled; staged reactive electrolyte bubble pressure uses native speciation followed by that native route for supported inputs, while unsupported staged or dependency cases fail loudly. The public `ElectrolyteBubbleOptions` surface no longer carries the disabled pressure-search controls.
 
 Task 12 continuation note: the private native electrolyte bubble pressure-search binding and C++ implementation were deleted after the public route moved to route-pending. The removed code included the pybind `_solve_electrolyte_bubble_native` entrypoint, the native route option struct, vapor submixture helpers, and the log-pressure search implementation.
 

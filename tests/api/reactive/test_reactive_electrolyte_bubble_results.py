@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import inspect
+
 import pytest
 
 import epcsaft
@@ -165,46 +167,10 @@ def test_reactive_electrolyte_bubble_sweep_does_not_continue_bubble_seed_control
     assert not hasattr(calls[1], removed_vapor_seed)
     assert results[1].P_total == pytest.approx(111000.0)
 
-def test_reactive_electrolyte_bubble_sweep_rejects_continuation_mode(monkeypatch) -> None:
-    chemical = _successful_chemical_result()
-    monkeypatch.setattr("epcsaft.reactive_electrolyte.solve_reactive_speciation", lambda **kwargs: chemical)
+def test_reactive_electrolyte_bubble_sweeps_expose_no_continuation_flag() -> None:
+    assert "continuation" not in inspect.signature(epcsaft.solve_reactive_electrolyte_bubble_sweep).parameters
+    assert "continuation" not in inspect.signature(epcsaft.ePCSAFTMixture.equilibrium_sweep).parameters
 
-    def bubble_sequence(*args, **kwargs):
-        _ = args, kwargs
-        return ElectrolyteBubbleResult(
-            success=True,
-            message="converged",
-            P=101325.0,
-            y_vap={"H2O": 1.0},
-            x_liq=[0.98, 0.01, 0.01],
-            ln_phi_liq={"H2O": 0.0},
-            ln_phi_vap={"H2O": 0.0},
-            fugacity_residual={"H2O": 1.0e-8},
-            fugacity_residual_norm=1.0e-8,
-            charge_residual=0.0,
-            partial_pressures={"H2O": 101325.0},
-            diagnostics={"state_failure_count": 0},
-        )
-
-    monkeypatch.setattr("epcsaft.reactive_electrolyte.electrolyte_bubble_pressure", bubble_sequence)
-
-    with pytest.raises(epcsaft.InputError, match="do not support continuation"):
-        epcsaft.solve_reactive_electrolyte_bubble_sweep(
-            species=["H2O", "Na+", "Cl-"],
-            mixture_factory=_salt_mixture,
-            points=[
-                {"T": 298.15, "totals": {"water": 0.98}, "initial_x": [0.98, 0.01, 0.01]},
-                {"T": 298.15, "P_seed": 99000.0, "totals": {"water": 0.98}, "initial_x": [0.98, 0.01, 0.01]},
-            ],
-            balances={"water": {"H2O": 1.0}},
-            reactions=[],
-            vapor_species=["H2O"],
-            options=epcsaft.ReactiveElectrolyteBubbleOptions(
-                bubble_options=epcsaft.ElectrolyteBubbleOptions(),
-                error_mode="result",
-            ),
-            continuation="auto",
-        )
 
 def test_reactive_electrolyte_bubble_sweep_honors_point_options(monkeypatch) -> None:
     chemical = _successful_chemical_result()

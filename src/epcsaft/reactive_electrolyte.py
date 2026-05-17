@@ -179,10 +179,8 @@ def solve_reactive_electrolyte_bubble_sweep(
     volatile_species: Any = None,
     nonvolatile_species: Any = None,
     options: ReactiveElectrolyteBubbleOptions | None = None,
-    continuation: str = "none",
 ) -> list[ReactiveElectrolyteBubbleResult]:
     """Apply the reactive electrolyte bubble route contract across sweep points."""
-    _normalize_continuation(continuation)
     if options is None:
         options = ReactiveElectrolyteBubbleOptions()
     if not isinstance(options, ReactiveElectrolyteBubbleOptions):
@@ -211,19 +209,6 @@ def solve_reactive_electrolyte_bubble_sweep(
         )
         results.append(result)
     return results
-
-
-def _normalize_continuation(value: Any) -> str:
-    if isinstance(value, bool):
-        token = "auto" if value else "none"
-    else:
-        token = str(value).strip().lower()
-    if token in {"none", "off", "false", "0", "disabled"}:
-        return "none"
-    raise InputError(
-        "reactive electrolyte bubble sweeps do not support continuation; each point uses the native route canonical "
-        "initial point."
-    )
 
 
 def _speciation_phase_handoff_diagnostics(

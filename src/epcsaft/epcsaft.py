@@ -1071,7 +1071,6 @@ class ePCSAFTMixture:
         volatile_species=None,
         nonvolatile_species=None,
         options=None,
-        continuation="none",
     ):
         """Solve an ordered reactive-electrolyte bubble sweep."""
         if kind not in {"reactive_electrolyte_bubble_pressure", "reactive_electrolyte_bubble"}:
@@ -1092,7 +1091,6 @@ class ePCSAFTMixture:
             volatile_species=volatile_species,
             nonvolatile_species=nonvolatile_species,
             options=options,
-            continuation=continuation,
         )
 
     def __repr__(self):
