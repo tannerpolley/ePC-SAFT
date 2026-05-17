@@ -905,7 +905,6 @@ def summarize_regression_result(
         fit_payload = {
             "fit_success": bool(result.success),
             "fit_message": result.message,
-            "fit_status": result.status,
             "termination_reason": result.termination_reason,
             "fit_iterations": int(result.iterations),
             "objective_initial": float(result.objective_initial),
@@ -919,8 +918,6 @@ def summarize_regression_result(
             "active_bounds": _json_like(result.active_bounds),
             "covariance_available": bool(result.covariance_available),
             "covariance_matrix": _json_like(result.covariance_matrix),
-            "identifiability_status": result.identifiability_status,
-            "covariance_status": "available" if result.covariance_available else "not_computed",
             "diagnostics": _json_like(result.diagnostics),
         }
     else:
@@ -928,7 +925,6 @@ def summarize_regression_result(
         fit_payload = {
             "fit_success": None,
             "fit_message": "",
-            "fit_status": "not_a_fit",
             "termination_reason": "objective_only",
             "fit_iterations": None,
             "objective_initial": None,
@@ -936,8 +932,6 @@ def summarize_regression_result(
             "gradient_norm": None,
             "step_norm": None,
             "covariance_available": False,
-            "identifiability_status": "not_computed",
-            "covariance_status": "not_computed",
         }
     batch = objective_result.batch_result
     row_norms: list[tuple[str, float]] = []
