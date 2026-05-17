@@ -39,7 +39,9 @@ def test_ascani_2022_lle_lane_records_accepted_ipopt_phase_split() -> None:
     assert diagnostics["charge_balance_norm"] <= payload["expected"]["charge_balance_abs"]
     assert diagnostics["phase_distance"] >= payload["expected"]["phase_distance_min"]
 
-    org_phase, aq_phase = diagnostics["phase_compositions"]
+    phases = diagnostics["phase_compositions"]
+    org_phase = max(phases, key=lambda phase: phase[1])
+    aq_phase = max(phases, key=lambda phase: phase[2] + phase[3])
     org_butanol = org_phase[1]
     aq_butanol = aq_phase[1]
     org_ion_fraction = org_phase[2] + org_phase[3]

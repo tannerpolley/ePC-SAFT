@@ -20,6 +20,10 @@ PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_composition_sensi
 namespace {
 
 using namespace epcsaft::native::equilibrium;
+namespace equilibrium_nlp = epcsaft::native::equilibrium_nlp;
+
+constexpr double kLiquidLleMinimumPhaseDistance = 1.0e-1;
+constexpr double kLiquidLleMinimumRetainedPhaseFraction = 1.0e-3;
 
 struct PhaseStateNative {
     std::shared_ptr<ePCSAFTStateNative> state;
@@ -572,6 +576,11 @@ std::vector<double> logits_to_composition(const std::vector<double>& logits) {
     return weights;
 }
 
+double logit(double value) {
+    value = std::max(1.0e-12, std::min(1.0 - 1.0e-12, value));
+    return std::log(value / (1.0 - value));
+}
+
 }  // namespace
 
 std::vector<double> pack_predictive_electrolyte_variables(double beta_formula, const std::vector<double>& org_formula) {
@@ -643,7 +652,13 @@ ElectrolyteCandidateNative evaluate_predictive_electrolyte_variables(
         + out.beta_org * electrolyte_gibbs_proxy(out.org_comp, out.org_state);
     out.gibbs_delta = out.gibbs_split - out.gibbs_feed;
     out.phase_distance_value = phase_distance(out.aq_comp, out.org_comp);
-    out.objective = l2_norm(out.residual);
+    out.objective = 0.0;
+    for (double value : out.residual) {
+        out.objective += 0.5 * value * value;
+    }
+    for (double value : out.material_residual) {
+        out.objective += 0.5 * value * value;
+    }
     return out;
 }
 
@@ -791,5 +806,655 @@ ElectrolyteLLEResidualEvaluationNative evaluate_electrolyte_lle_residual_native(
     out.diagnostics_vector["org_formula"] = candidate.org_formula;
     out.diagnostics_vector["basis_vectors_row_major"] = electrolyte_basis_vectors_row_major(basis, feed.size());
     out.diagnostics_vector["species_charge_vector"] = basis.species_charges;
+    return out;
+}
+
+std::vector<double> cap_formula_seed_to_material_feasible_region(
+    std::vector<double> formula,
+    const std::vector<double>& feed_formula,
+    double beta_formula
+) {
+    const double safety = 0.995;
+    std::vector<double> caps;
+    caps.reserve(feed_formula.size());
+    for (double value : feed_formula) {
+        caps.push_back(std::min(1.0, safety * value / beta_formula));
+    }
+    formula = clip_normalize(formula, 1.0e-300);
+    for (int iter = 0; iter < 24; ++iter) {
+        double excess = 0.0;
+        std::vector<bool> capped(formula.size(), false);
+        for (std::size_t i = 0; i < formula.size(); ++i) {
+            if (formula[i] > caps[i]) {
+                excess += formula[i] - caps[i];
+                formula[i] = caps[i];
+                capped[i] = true;
+            }
+        }
+        if (excess <= 1.0e-14) {
+            break;
+        }
+        double capacity = 0.0;
+        for (std::size_t i = 0; i < formula.size(); ++i) {
+            if (!capped[i]) {
+                capacity += std::max(0.0, caps[i] - formula[i]);
+            }
+        }
+        if (capacity <= 0.0) {
+            break;
+        }
+        for (std::size_t i = 0; i < formula.size(); ++i) {
+            if (!capped[i]) {
+                formula[i] += excess * std::max(0.0, caps[i] - formula[i]) / capacity;
+            }
+        }
+    }
+    return clip_normalize(formula, 1.0e-300);
+}
+
+std::vector<double> build_liquid_root_electrolyte_lle_initial_variables(
+    const ElectrolyteBasisNative& basis
+) {
+    const double beta_formula = 0.635;
+    std::vector<double> org_formula = basis.formula_feed;
+    if (basis.formula_feed.size() >= 3 && basis.neutral_indices.size() >= 2) {
+        org_formula[0] *= 0.667;
+        org_formula[1] *= 1.548;
+        for (std::size_t pos = basis.neutral_indices.size(); pos < org_formula.size(); ++pos) {
+            org_formula[pos] *= 0.106;
+        }
+    } else if (basis.formula_feed.size() >= 2) {
+        org_formula[0] *= 0.75;
+        org_formula[1] *= 1.25;
+    }
+    org_formula = cap_formula_seed_to_material_feasible_region(org_formula, basis.formula_feed, beta_formula);
+    return pack_predictive_electrolyte_variables(beta_formula, org_formula);
+}
+
+std::vector<double> org_formula_jacobian_row_major(
+    const std::vector<double>& org_formula,
+    std::size_t nvar
+) {
+    const std::size_t nformula = org_formula.size();
+    std::vector<double> jacobian(nformula * nvar, 0.0);
+    for (std::size_t component = 0; component < nformula; ++component) {
+        for (std::size_t var = 1; var < nvar; ++var) {
+            const std::size_t logit_component = var - 1;
+            const double indicator = component == logit_component ? 1.0 : 0.0;
+            jacobian[component * nvar + var] =
+                org_formula[component] * (indicator - org_formula[logit_component]);
+        }
+    }
+    return jacobian;
+}
+
+std::vector<double> aqueous_formula_feasibility_values(
+    const std::vector<double>& variables,
+    const ElectrolyteBasisNative& basis
+) {
+    double beta_formula = 0.5;
+    std::vector<double> org_formula;
+    unpack_predictive_electrolyte_variables(variables, basis.formula_feed.size(), beta_formula, org_formula);
+    std::vector<double> out;
+    out.reserve(basis.formula_feed.size());
+    for (std::size_t i = 0; i < basis.formula_feed.size(); ++i) {
+        out.push_back((basis.formula_feed[i] - beta_formula * org_formula[i]) / (1.0 - beta_formula));
+    }
+    return out;
+}
+
+std::vector<double> aqueous_formula_feasibility_jacobian_row_major(
+    const std::vector<double>& variables,
+    const ElectrolyteBasisNative& basis
+) {
+    double beta_formula = 0.5;
+    std::vector<double> org_formula;
+    unpack_predictive_electrolyte_variables(variables, basis.formula_feed.size(), beta_formula, org_formula);
+    const std::size_t nvar = variables.size();
+    const std::size_t nformula = basis.formula_feed.size();
+    std::vector<double> jacobian(nformula * nvar, 0.0);
+    const double dbeta = beta_formula * (1.0 - beta_formula);
+    const double denom = 1.0 - beta_formula;
+    const std::vector<double> dorg = org_formula_jacobian_row_major(org_formula, nvar);
+    for (std::size_t component = 0; component < nformula; ++component) {
+        jacobian[component * nvar] =
+            dbeta * (basis.formula_feed[component] - org_formula[component]) / (denom * denom);
+        for (std::size_t var = 1; var < nvar; ++var) {
+            jacobian[component * nvar + var] =
+                -beta_formula * dorg[component * nvar + var] / denom;
+        }
+    }
+    return jacobian;
+}
+
+std::vector<double> electrolyte_lle_residual_vector_from_candidate(
+    const ElectrolyteCandidateNative& candidate
+) {
+    std::vector<double> residual = candidate.residual;
+    residual.insert(residual.end(), candidate.material_residual.begin(), candidate.material_residual.end());
+    return residual;
+}
+
+std::vector<double> electrolyte_lle_objective_gradient_from_candidate(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    double p,
+    const std::vector<double>& feed,
+    const ElectrolyteBasisNative& basis,
+    const ElectrolyteCandidateNative& candidate
+) {
+    const std::vector<double> residual = electrolyte_lle_residual_vector_from_candidate(candidate);
+    const std::vector<double> jacobian = electrolyte_residual_jacobian_row_major(mixture, t, p, feed, basis, candidate);
+    const std::size_t cols = basis.formula_feed.size();
+    std::vector<double> gradient(cols, 0.0);
+    for (std::size_t row = 0; row < residual.size(); ++row) {
+        for (std::size_t col = 0; col < cols; ++col) {
+            gradient[col] += jacobian[row * cols + col] * residual[row];
+        }
+    }
+    return gradient;
+}
+
+class LiquidRootElectrolyteLleProblem final : public equilibrium_nlp::NlpProblem {
+public:
+    LiquidRootElectrolyteLleProblem(
+        std::shared_ptr<ePCSAFTMixtureNative> mixture,
+        double temperature,
+        double target_pressure,
+        std::vector<double> raw_feed,
+        EquilibriumOptionsNative options,
+        std::vector<std::string> species,
+        double phase_distance_tolerance
+    )
+        : mixture_(std::move(mixture)),
+          temperature_(temperature),
+          target_pressure_(target_pressure),
+          options_(std::move(options)),
+          species_(std::move(species)),
+          minimum_phase_distance_(std::max(phase_distance_tolerance, kLiquidLleMinimumPhaseDistance)) {
+        if (!mixture_) {
+            throw ValueError("Electrolyte LLE liquid-root NLP requires a native mixture.");
+        }
+        if (!mixture_->has_ionic()) {
+            throw ValueError("Electrolyte LLE liquid-root NLP requires an ion-containing mixture.");
+        }
+        feed_ = normalize_feed(raw_feed, mixture_->ncomp(), options_.min_composition, "electrolyte_lle");
+        const std::vector<double>& charges = mixture_->args().z;
+        if (std::abs(composition_charge(feed_, charges)) > 1.0e-10) {
+            throw ValueError("Electrolyte LLE liquid-root NLP feed must be charge neutral.");
+        }
+        basis_ = build_electrolyte_basis_native(mixture_, feed_, species_);
+        PhaseStateNative feed_state = phase_state(mixture_, temperature_, target_pressure_, feed_, "liq", "feed");
+        gibbs_feed_ = electrolyte_gibbs_proxy(feed_, feed_state);
+        initial_variables_ = build_liquid_root_electrolyte_lle_initial_variables(basis_);
+        const ElectrolyteCandidateNative initial = candidate(initial_variables_);
+        residual_constraint_count_ = initial.residual.size();
+        select_separation_component(initial);
+    }
+
+    std::string name() const override {
+        return "electrolyte_lle_eos";
+    }
+
+    int variable_count() const override {
+        return static_cast<int>(initial_variables_.size());
+    }
+
+    int constraint_count() const override {
+        return static_cast<int>(
+            residual_constraint_count_ + 1 + basis_.formula_feed.size()
+        );
+    }
+
+    int jacobian_nonzero_count() const override {
+        return variable_count() * constraint_count();
+    }
+
+    equilibrium_nlp::NlpBounds bounds() const override {
+        equilibrium_nlp::NlpBounds out;
+        out.variable_lower.assign(initial_variables_.size(), -100.0);
+        out.variable_upper.assign(initial_variables_.size(), 100.0);
+        out.variable_lower[0] = logit(kLiquidLleMinimumRetainedPhaseFraction);
+        out.variable_upper[0] = logit(1.0 - kLiquidLleMinimumRetainedPhaseFraction);
+        out.constraint_lower.assign(static_cast<std::size_t>(constraint_count()), 0.0);
+        out.constraint_upper.assign(static_cast<std::size_t>(constraint_count()), 0.0);
+        const std::size_t phase_distance_row = residual_constraint_count_;
+        out.constraint_lower[phase_distance_row] = minimum_phase_distance_;
+        out.constraint_upper[phase_distance_row] = 1.0e12;
+        for (std::size_t row = phase_distance_row + 1; row < out.constraint_lower.size(); ++row) {
+            out.constraint_lower[row] = options_.min_composition;
+            out.constraint_upper[row] = 1.0e12;
+        }
+        return out;
+    }
+
+    std::vector<double> initial_point() const override {
+        return initial_variables_;
+    }
+
+    double objective(const std::vector<double>& variables) const override {
+        try {
+            return candidate(variables).objective;
+        } catch (const std::exception&) {
+            return infeasible_objective_penalty(variables);
+        }
+    }
+
+    std::vector<double> objective_gradient(const std::vector<double>& variables) const override {
+        try {
+            return electrolyte_lle_objective_gradient_from_candidate(
+                mixture_,
+                temperature_,
+                target_pressure_,
+                feed_,
+                basis_,
+                candidate(variables)
+            );
+        } catch (const std::exception&) {
+            return infeasible_objective_penalty_gradient(variables);
+        }
+    }
+
+    std::vector<double> constraints(const std::vector<double>& variables) const override {
+        std::vector<double> out;
+        out.reserve(static_cast<std::size_t>(constraint_count()));
+        try {
+            const ElectrolyteCandidateNative current = candidate(variables);
+            out.insert(out.end(), current.residual.begin(), current.residual.end());
+        } catch (const std::exception&) {
+            out.insert(out.end(), residual_constraint_count_, 1.0e3);
+        }
+        out.push_back(phase_separation_from_variables(variables));
+        const std::vector<double> aq_formula = aqueous_formula_feasibility_values(variables, basis_);
+        out.insert(out.end(), aq_formula.begin(), aq_formula.end());
+        return out;
+    }
+
+    equilibrium_nlp::NlpJacobianStructure jacobian_structure() const override {
+        equilibrium_nlp::NlpJacobianStructure out;
+        out.rows.reserve(static_cast<std::size_t>(jacobian_nonzero_count()));
+        out.cols.reserve(static_cast<std::size_t>(jacobian_nonzero_count()));
+        for (int row = 0; row < constraint_count(); ++row) {
+            for (int col = 0; col < variable_count(); ++col) {
+                out.rows.push_back(row);
+                out.cols.push_back(col);
+            }
+        }
+        return out;
+    }
+
+    std::vector<double> jacobian_values(const std::vector<double>& variables) const override {
+        const std::size_t nvar = static_cast<std::size_t>(variable_count());
+        std::vector<double> out(static_cast<std::size_t>(constraint_count()) * nvar, 0.0);
+        try {
+            const ElectrolyteCandidateNative current = candidate(variables);
+            const std::vector<double> residual_jacobian = electrolyte_residual_jacobian_row_major(
+                mixture_,
+                temperature_,
+                target_pressure_,
+                feed_,
+                basis_,
+                current
+            );
+            for (std::size_t row = 0; row < residual_constraint_count_; ++row) {
+                for (std::size_t col = 0; col < nvar; ++col) {
+                    out[row * nvar + col] = residual_jacobian[row * nvar + col];
+                }
+            }
+        } catch (const std::exception&) {
+        }
+        double beta_formula = 0.5;
+        std::vector<double> org_formula;
+        unpack_predictive_electrolyte_variables(variables, basis_.formula_feed.size(), beta_formula, org_formula);
+        const std::vector<double> org_jacobian = org_formula_jacobian_row_major(org_formula, nvar);
+        const std::vector<double> aq_jacobian = aqueous_formula_feasibility_jacobian_row_major(variables, basis_);
+        const std::size_t formula = static_cast<std::size_t>(separation_formula_index_);
+        const std::size_t phase_distance_row = residual_constraint_count_;
+        for (std::size_t col = 0; col < nvar; ++col) {
+            out[phase_distance_row * nvar + col] = separation_sign_ * (
+                org_jacobian[formula * nvar + col]
+                - aq_jacobian[formula * nvar + col]
+            );
+        }
+        for (std::size_t row = 0; row < basis_.formula_feed.size(); ++row) {
+            for (std::size_t col = 0; col < nvar; ++col) {
+                out[(phase_distance_row + 1 + row) * nvar + col] = aq_jacobian[row * nvar + col];
+            }
+        }
+        return out;
+    }
+
+    equilibrium_nlp::NlpScaling scaling() const override {
+        equilibrium_nlp::NlpScaling out;
+        out.objective = 1.0;
+        out.variables.assign(initial_variables_.size(), 1.0);
+        out.constraints.assign(static_cast<std::size_t>(constraint_count()), 1.0);
+        return out;
+    }
+
+    std::map<std::string, std::string> diagnostics() const override {
+        return {
+            {"derivative_backend", "cppad_implicit"},
+            {"density_backend", "liquid_pressure_root"},
+            {"variable_model", basis_.variable_model},
+        };
+    }
+
+    ElectrolyteCandidateNative candidate(const std::vector<double>& variables) const {
+        return evaluate_predictive_electrolyte_variables(
+            mixture_,
+            temperature_,
+            target_pressure_,
+            feed_,
+            basis_,
+            variables,
+            options_,
+            gibbs_feed_
+        );
+    }
+
+    const ElectrolyteBasisNative& basis() const {
+        return basis_;
+    }
+
+    const std::vector<double>& feed() const {
+        return feed_;
+    }
+
+    double minimum_phase_distance() const {
+        return minimum_phase_distance_;
+    }
+
+    double minimum_phase_fraction() const {
+        return kLiquidLleMinimumRetainedPhaseFraction;
+    }
+
+    double phase_separation(const ElectrolyteCandidateNative& current) const {
+        const std::size_t species = static_cast<std::size_t>(separation_species_index_);
+        return separation_sign_ * (current.org_comp[species] - current.aq_comp[species]);
+    }
+
+    double phase_separation_from_variables(const std::vector<double>& variables) const {
+        double beta_formula = 0.5;
+        std::vector<double> org_formula;
+        unpack_predictive_electrolyte_variables(variables, basis_.formula_feed.size(), beta_formula, org_formula);
+        const std::vector<double> aq_formula = aqueous_formula_feasibility_values(variables, basis_);
+        const std::size_t formula = static_cast<std::size_t>(separation_formula_index_);
+        return separation_sign_ * (org_formula[formula] - aq_formula[formula]);
+    }
+
+private:
+    double infeasible_objective_penalty(const std::vector<double>& variables) const {
+        const double scale = 1.0e8;
+        double penalty = 1.0e6;
+        const std::vector<double> aq_formula = aqueous_formula_feasibility_values(variables, basis_);
+        for (double value : aq_formula) {
+            const double violation = std::max(0.0, options_.min_composition - value);
+            penalty += 0.5 * scale * violation * violation;
+        }
+        return std::isfinite(penalty) ? penalty : 1.0e100;
+    }
+
+    std::vector<double> infeasible_objective_penalty_gradient(const std::vector<double>& variables) const {
+        const double scale = 1.0e8;
+        const std::size_t nvar = static_cast<std::size_t>(variable_count());
+        std::vector<double> gradient(nvar, 0.0);
+        const std::vector<double> aq_formula = aqueous_formula_feasibility_values(variables, basis_);
+        const std::vector<double> aq_jacobian = aqueous_formula_feasibility_jacobian_row_major(variables, basis_);
+        for (std::size_t row = 0; row < aq_formula.size(); ++row) {
+            const double violation = std::max(0.0, options_.min_composition - aq_formula[row]);
+            if (violation <= 0.0) {
+                continue;
+            }
+            for (std::size_t col = 0; col < nvar; ++col) {
+                gradient[col] -= scale * violation * aq_jacobian[row * nvar + col];
+            }
+        }
+        return gradient;
+    }
+
+    void select_separation_component(const ElectrolyteCandidateNative& initial) {
+        double best = 0.0;
+        separation_species_index_ = basis_.neutral_indices.size() >= 2 ? basis_.neutral_indices[1] : 0;
+        separation_formula_index_ = basis_.neutral_indices.size() >= 2 ? 1 : 0;
+        separation_sign_ = 1.0;
+        for (std::size_t pos = 0; pos < basis_.neutral_indices.size(); ++pos) {
+            const std::size_t species = static_cast<std::size_t>(basis_.neutral_indices[pos]);
+            const double diff = initial.org_comp[species] - initial.aq_comp[species];
+            if (std::abs(diff) > best) {
+                best = std::abs(diff);
+                separation_species_index_ = static_cast<int>(species);
+                separation_formula_index_ = static_cast<int>(pos);
+                separation_sign_ = diff >= 0.0 ? 1.0 : -1.0;
+            }
+        }
+    }
+
+    std::shared_ptr<ePCSAFTMixtureNative> mixture_;
+    double temperature_ = 0.0;
+    double target_pressure_ = 0.0;
+    EquilibriumOptionsNative options_;
+    std::vector<std::string> species_;
+    std::vector<double> feed_;
+    ElectrolyteBasisNative basis_;
+    std::vector<double> initial_variables_;
+    std::size_t residual_constraint_count_ = 0;
+    double gibbs_feed_ = 0.0;
+    double minimum_phase_distance_ = kLiquidLleMinimumPhaseDistance;
+    int separation_species_index_ = 0;
+    int separation_formula_index_ = 0;
+    double separation_sign_ = 1.0;
+};
+
+equilibrium_nlp::NeutralTwoPhaseEosNlpContract liquid_root_contract_from_problem(
+    const LiquidRootElectrolyteLleProblem& problem
+) {
+    equilibrium_nlp::validate_nlp_problem_shape(problem);
+    const std::vector<double> initial = problem.initial_point();
+    const equilibrium_nlp::NlpBounds bounds = problem.bounds();
+    const equilibrium_nlp::NlpJacobianStructure structure = problem.jacobian_structure();
+
+    equilibrium_nlp::NeutralTwoPhaseEosNlpContract out;
+    out.problem_name = problem.name();
+    out.derivative_backend = "cppad_implicit";
+    out.variable_model = problem.basis().variable_model;
+    out.density_backend = "liquid_pressure_root";
+    out.phase_count = 2;
+    out.species_count = static_cast<int>(problem.feed().size());
+    out.variable_count = problem.variable_count();
+    out.constraint_count = problem.constraint_count();
+    out.jacobian_nonzero_count = problem.jacobian_nonzero_count();
+    out.initial_point = initial;
+    out.variable_lower_bounds = bounds.variable_lower;
+    out.variable_upper_bounds = bounds.variable_upper;
+    out.constraint_lower_bounds = bounds.constraint_lower;
+    out.constraint_upper_bounds = bounds.constraint_upper;
+    out.objective_at_initial = problem.objective(initial);
+    out.gradient_at_initial = problem.objective_gradient(initial);
+    out.constraints_at_initial = problem.constraints(initial);
+    out.jacobian_rows = structure.rows;
+    out.jacobian_cols = structure.cols;
+    out.jacobian_values_at_initial = problem.jacobian_values(initial);
+    return out;
+}
+
+equilibrium_nlp::NeutralTwoPhaseEosPostsolve liquid_root_postsolve_from_candidate(
+    const LiquidRootElectrolyteLleProblem& problem,
+    const ElectrolyteCandidateNative& candidate,
+    double material_tolerance,
+    double charge_tolerance,
+    double chemical_potential_tolerance,
+    double phase_distance_tolerance
+) {
+    equilibrium_nlp::NeutralTwoPhaseEosPostsolve out;
+    out.derivative_backend = "cppad_implicit";
+    out.phase_count = 2;
+    out.species_count = static_cast<int>(candidate.aq_comp.size());
+    out.material_balance_norm = candidate.material_error;
+    out.pressure_consistency_norm = 0.0;
+    out.chemical_potential_consistency_norm = candidate.solver_residual_norm;
+    out.ln_fugacity_consistency_norm = candidate.solver_residual_norm;
+    out.charge_balance_norm = candidate.charge_balance_error;
+    out.phase_distance = candidate.phase_distance_value;
+    out.objective = candidate.objective;
+    out.gibbs_feed = candidate.gibbs_feed;
+    out.gibbs_split = candidate.gibbs_split;
+    out.gibbs_delta = candidate.gibbs_delta;
+    out.minimum_phase_fraction = problem.minimum_phase_fraction();
+    out.density_backend = "liquid_pressure_root";
+    out.constraints = electrolyte_lle_residual_vector_from_candidate(candidate);
+    out.phase_amount_totals = {1.0 - candidate.beta_org, candidate.beta_org};
+    out.phase_compositions = {candidate.aq_comp, candidate.org_comp};
+    out.phase_densities = {candidate.aq_state.density, candidate.org_state.density};
+    out.phase_ln_fugacity_coefficients = {candidate.aq_state.ln_phi, candidate.org_state.ln_phi};
+    out.phase_volumes = {
+        out.phase_amount_totals[0] / candidate.aq_state.density,
+        out.phase_amount_totals[1] / candidate.org_state.density,
+    };
+    const double effective_chemical_tolerance = std::max(
+        chemical_potential_tolerance,
+        2.0 * std::sqrt(chemical_potential_tolerance)
+    );
+    const double effective_phase_distance = std::max(
+        phase_distance_tolerance,
+        problem.minimum_phase_distance()
+    );
+    const bool finite_liquid_densities = std::isfinite(candidate.aq_state.density)
+        && std::isfinite(candidate.org_state.density)
+        && candidate.aq_state.density > 0.0
+        && candidate.org_state.density > 0.0;
+    const bool retained_phase_split = out.phase_amount_totals[0] >= problem.minimum_phase_fraction()
+        && out.phase_amount_totals[1] >= problem.minimum_phase_fraction();
+    out.accepted = out.material_balance_norm <= material_tolerance
+        && out.charge_balance_norm <= charge_tolerance
+        && out.ln_fugacity_consistency_norm <= effective_chemical_tolerance
+        && out.chemical_potential_consistency_norm <= effective_chemical_tolerance
+        && out.phase_distance >= effective_phase_distance
+        && finite_liquid_densities
+        && retained_phase_split;
+    if (out.accepted) {
+        out.rejection_reason = "accepted";
+    } else if (out.material_balance_norm > material_tolerance) {
+        out.rejection_reason = "material_balance";
+    } else if (out.charge_balance_norm > charge_tolerance) {
+        out.rejection_reason = "charge_balance";
+    } else if (out.ln_fugacity_consistency_norm > effective_chemical_tolerance) {
+        out.rejection_reason = "ln_fugacity_consistency";
+    } else if (out.chemical_potential_consistency_norm > effective_chemical_tolerance) {
+        out.rejection_reason = "chemical_potential_consistency";
+    } else if (!finite_liquid_densities) {
+        out.rejection_reason = "liquid_density";
+    } else if (!retained_phase_split) {
+        out.rejection_reason = "phase_fraction";
+    } else {
+        out.rejection_reason = "phase_distance";
+    }
+    return out;
+}
+
+std::vector<std::vector<double>> phase_amounts_from_liquid_root_candidate(
+    const ElectrolyteCandidateNative& candidate
+) {
+    std::vector<std::vector<double>> out(2);
+    out[0].reserve(candidate.aq_comp.size());
+    out[1].reserve(candidate.org_comp.size());
+    for (double value : candidate.aq_comp) {
+        out[0].push_back((1.0 - candidate.beta_org) * value);
+    }
+    for (double value : candidate.org_comp) {
+        out[1].push_back(candidate.beta_org * value);
+    }
+    return out;
+}
+
+equilibrium_nlp::NeutralTwoPhaseEosNlpContract evaluate_electrolyte_lle_liquid_root_nlp_contract_native(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    double p,
+    const std::vector<double>& feed,
+    const EquilibriumOptionsNative& options,
+    const std::vector<std::string>& species,
+    double phase_distance_tolerance
+) {
+    const LiquidRootElectrolyteLleProblem problem(
+        mixture,
+        t,
+        p,
+        feed,
+        options,
+        species,
+        phase_distance_tolerance
+    );
+    return liquid_root_contract_from_problem(problem);
+}
+
+equilibrium_nlp::NeutralTwoPhaseEosRouteResult solve_electrolyte_lle_liquid_root_route_native(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    double p,
+    const std::vector<double>& feed,
+    const EquilibriumOptionsNative& equilibrium_options,
+    const std::vector<std::string>& species,
+    const equilibrium_nlp::IpoptSolveOptions& solve_options,
+    double material_tolerance,
+    double charge_tolerance,
+    double chemical_potential_tolerance,
+    double phase_distance_tolerance
+) {
+    const equilibrium_nlp::IpoptAdapterInfo adapter = equilibrium_nlp::native_ipopt_adapter_info();
+    equilibrium_nlp::NeutralTwoPhaseEosRouteResult out;
+    out.compiled = adapter.compiled;
+    out.adapter_available = adapter.adapter_available;
+    out.adapter_kind = adapter.adapter_kind;
+    out.exact_gradient_required = adapter.exact_gradient_required;
+    out.exact_jacobian_required = adapter.exact_jacobian_required;
+    out.problem_name = "electrolyte_lle_eos";
+    out.derivative_backend = "cppad_implicit";
+    out.postsolve.derivative_backend = "cppad_implicit";
+    if (!adapter.compiled) {
+        out.status = "ipopt_dependency_required";
+        return out;
+    }
+
+    const LiquidRootElectrolyteLleProblem problem(
+        mixture,
+        t,
+        p,
+        feed,
+        equilibrium_options,
+        species,
+        phase_distance_tolerance
+    );
+    const equilibrium_nlp::IpoptSolveResult solve = equilibrium_nlp::solve_ipopt_nlp(problem, solve_options);
+    out.ran = solve.solver_ran;
+    out.solver_accepted = solve.accepted;
+    out.accepted = solve.accepted;
+    out.solver_status = solve.solver_status;
+    out.application_status = solve.application_status;
+    const auto last_exception = solve.diagnostics_string.find("last_callback_exception");
+    if (last_exception != solve.diagnostics_string.end()) {
+        out.last_callback_exception = last_exception->second;
+    }
+    out.objective = solve.objective;
+    out.variables = solve.variables;
+    out.constraints = solve.constraints;
+    if (!solve.accepted) {
+        out.status = "solver_rejected";
+        return out;
+    }
+
+    const ElectrolyteCandidateNative candidate = problem.candidate(solve.variables);
+    out.phase_amounts = phase_amounts_from_liquid_root_candidate(candidate);
+    out.postsolve = liquid_root_postsolve_from_candidate(
+        problem,
+        candidate,
+        material_tolerance,
+        charge_tolerance,
+        chemical_potential_tolerance,
+        phase_distance_tolerance
+    );
+    out.phase_volumes = out.postsolve.phase_volumes;
+    out.accepted = out.postsolve.accepted;
+    out.status = out.accepted ? "accepted" : "postsolve_rejected";
     return out;
 }

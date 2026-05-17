@@ -16,4 +16,4 @@ The same command also regenerates paper-style retained outputs:
 
 - `figures/figure_4b/output/figure_4b.svg`: Figure 4b-style phase split, projected to water/1-butanol/total-salt weight fractions.
 - `figures/table_5/output/table_5_fugacity.svg`: Table 5 fugacity comparison against the current native Ipopt result.
-- `figures/gibbs_summary/output/gibbs_summary.svg`: paper `ghat` values compared with the current native objective-basis Gibbs values.
+- `figures/gibbs_summary/output/gibbs_summary.svg`: paper `ghat` values compared with the current native liquid-root ln-fugacity-basis Gibbs proxy.

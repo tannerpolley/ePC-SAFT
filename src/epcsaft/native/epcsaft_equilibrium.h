@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "epcsaft_electrolyte.h"
+#include "equilibrium_nlp/route_builders.h"
 
 struct EquilibriumOptionsNative {
     double min_composition = 1.0e-12;
@@ -89,6 +90,30 @@ ElectrolyteLLEResidualEvaluationNative evaluate_electrolyte_lle_residual_native(
     const std::vector<double>& initial_org = {},
     double initial_beta_org = 0.5,
     bool has_initial_phases = false
+);
+
+epcsaft::native::equilibrium_nlp::NeutralTwoPhaseEosNlpContract evaluate_electrolyte_lle_liquid_root_nlp_contract_native(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    double p,
+    const std::vector<double>& feed,
+    const EquilibriumOptionsNative& options,
+    const std::vector<std::string>& species,
+    double phase_distance_tolerance
+);
+
+epcsaft::native::equilibrium_nlp::NeutralTwoPhaseEosRouteResult solve_electrolyte_lle_liquid_root_route_native(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    double p,
+    const std::vector<double>& feed,
+    const EquilibriumOptionsNative& equilibrium_options,
+    const std::vector<std::string>& species,
+    const epcsaft::native::equilibrium_nlp::IpoptSolveOptions& solve_options,
+    double material_tolerance,
+    double charge_tolerance,
+    double chemical_potential_tolerance,
+    double phase_distance_tolerance
 );
 
 ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residual_native(

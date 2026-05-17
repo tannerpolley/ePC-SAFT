@@ -1,4 +1,4 @@
-quantity,paper,current_native_objective_basis,current_minus_paper
-g_hat_feed_j_per_mol,-27361.317,-30389.738728858316,-3028.421728858317
-g_hat_eq_j_per_mol,-27479.86,-30443.351495492447,-2963.491495492446
-delta_g_hat_j_per_mol,-118.543,-53.61276663413082,64.93023336586919
+quantity,paper,current_native_ln_fugacity_basis_j_per_mol,current_minus_paper
+g_hat_feed_j_per_mol,-27361.317,-46997.374049473074,-19636.057049473075
+g_hat_eq_j_per_mol,-27479.86,-47081.1778149336,-19601.3178149336
+delta_g_hat_j_per_mol,-118.543,-83.80376546052867,34.73923453947134

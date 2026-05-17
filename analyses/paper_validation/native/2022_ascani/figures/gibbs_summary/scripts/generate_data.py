@@ -24,7 +24,7 @@ def main() -> None:
     comparison, phases = common.gibbs_rows()
     common.write_rows(
         figure_output_path(__file__, "data/gibbs_comparison.csv"),
-        ["quantity", "paper", "current_native_objective_basis", "current_minus_paper"],
+        ["quantity", "paper", "current_native_ln_fugacity_basis_j_per_mol", "current_minus_paper"],
         comparison,
     )
     common.write_rows(

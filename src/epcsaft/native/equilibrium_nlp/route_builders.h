@@ -12,6 +12,8 @@ namespace epcsaft::native::equilibrium_nlp {
 struct NeutralTwoPhaseEosNlpContract {
     std::string problem_name;
     std::string derivative_backend;
+    std::string variable_model;
+    std::string density_backend;
     int phase_count = 0;
     int species_count = 0;
     int balance_row_count = 0;
@@ -48,10 +50,17 @@ struct NeutralTwoPhaseEosPostsolve {
     double phase_amount_total_norm = 0.0;
     double phase_distance = 0.0;
     double objective = 0.0;
+    double gibbs_feed = 0.0;
+    double gibbs_split = 0.0;
+    double gibbs_delta = 0.0;
+    double minimum_phase_fraction = 0.0;
+    std::string density_backend;
     std::vector<double> constraints;
     std::vector<double> phase_amount_totals;
     std::vector<double> phase_volumes;
+    std::vector<double> phase_densities;
     std::vector<std::vector<double>> phase_compositions;
+    std::vector<std::vector<double>> phase_ln_fugacity_coefficients;
 };
 
 struct NeutralTwoPhaseEosRouteResult {

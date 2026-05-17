@@ -703,6 +703,8 @@ def _accepted_native_neutral_two_phase_result(
         phase_compositions = np.asarray(postsolve.get("phase_compositions", ()), dtype=float)
         phase_amount_totals = np.asarray(postsolve.get("phase_amount_totals", ()), dtype=float).reshape(-1)
         phase_volumes = np.asarray(postsolve.get("phase_volumes", ()), dtype=float).reshape(-1)
+        phase_ln_phi_payload = postsolve.get("phase_ln_fugacity_coefficients", ())
+        phase_ln_phi = np.asarray(phase_ln_phi_payload, dtype=float) if phase_ln_phi_payload else np.asarray(())
         if (
             phase_compositions.ndim != 2
             or phase_compositions.shape[0] != 2
@@ -728,6 +730,9 @@ def _accepted_native_neutral_two_phase_result(
         for output_index, label in enumerate(phase_labels):
             index = phase_order[output_index]
             density = float(phase_amount_totals[index] / phase_volumes[index])
+            ln_phi = None
+            if phase_ln_phi.ndim == 2 and phase_ln_phi.shape == phase_compositions.shape:
+                ln_phi = phase_ln_phi[index]
             phases.append(
                 EquilibriumPhase(
                     label,
@@ -736,6 +741,7 @@ def _accepted_native_neutral_two_phase_result(
                     temperature=T,
                     pressure=P,
                     phase_fraction=float(phase_amount_totals[index] / total_amount),
+                    ln_fugacity_coefficient=ln_phi,
                     diagnostics={
                         "amount_total": float(phase_amount_totals[index]),
                         "volume": float(phase_volumes[index]),

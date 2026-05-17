@@ -50,7 +50,7 @@ def main() -> None:
     x = np.arange(len(abs_rows))
     width = 0.34
     paper_abs = [float(row["paper"]) for row in abs_rows]
-    current_abs = [float(row["current_native_objective_basis"]) for row in abs_rows]
+    current_abs = [float(row["current_native_ln_fugacity_basis_j_per_mol"]) for row in abs_rows]
     ax_abs.bar(x - width / 2, paper_abs, width, color="white", edgecolor="0.25", linewidth=1.1, label="paper")
     ax_abs.bar(x + width / 2, current_abs, width, color="black", label="current")
     ax_abs.set_xticks(x, [r"$\hat{g}_{feed}$", r"$\hat{g}_{eq}$"])
@@ -59,7 +59,7 @@ def main() -> None:
     ax_abs.legend(loc="lower left", fontsize=8)
 
     ax_delta.bar([0 - width / 2], [float(delta_row["paper"])], width, color="white", edgecolor="0.25", linewidth=1.1)
-    ax_delta.bar([0 + width / 2], [float(delta_row["current_native_objective_basis"])], width, color="black")
+    ax_delta.bar([0 + width / 2], [float(delta_row["current_native_ln_fugacity_basis_j_per_mol"])], width, color="black")
     ax_delta.axhline(0.0, color="0.25", linewidth=0.8)
     ax_delta.set_xticks([0], [r"$\Delta\hat{g}$"])
     ax_delta.set_ylabel(r"J mol$^{-1}$")

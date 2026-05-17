@@ -379,30 +379,26 @@ def _phase_g_hat_j_per_mol(mix: Any, composition: np.ndarray, rho_guess: float |
 
 def gibbs_rows() -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     mix, result = current_solution()
-    phase_volumes = np.asarray(result.diagnostics.get("phase_volumes", []), dtype=float)
-    feed_density_guess = None
-    if phase_volumes.size and np.all(np.isfinite(phase_volumes)) and float(np.sum(phase_volumes)) > 0.0:
-        feed_density_guess = 1.0 / float(np.sum(phase_volumes))
-    g_feed = _phase_g_hat_j_per_mol(mix, np.asarray(FEED, dtype=float), feed_density_guess)
-    g_eq = float(result.diagnostics["objective"]) * R_GAS * TEMPERATURE_K
+    g_feed = float(result.diagnostics["gibbs_feed"]) * R_GAS * TEMPERATURE_K
+    g_eq = float(result.diagnostics["gibbs_split"]) * R_GAS * TEMPERATURE_K
     g_delta = g_eq - g_feed
     comparison = [
         {
             "quantity": "g_hat_feed_j_per_mol",
             "paper": PAPER_GIBBS["g_hat_feed_j_per_mol"],
-            "current_native_objective_basis": g_feed,
+            "current_native_ln_fugacity_basis_j_per_mol": g_feed,
             "current_minus_paper": g_feed - PAPER_GIBBS["g_hat_feed_j_per_mol"],
         },
         {
             "quantity": "g_hat_eq_j_per_mol",
             "paper": PAPER_GIBBS["g_hat_eq_j_per_mol"],
-            "current_native_objective_basis": g_eq,
+            "current_native_ln_fugacity_basis_j_per_mol": g_eq,
             "current_minus_paper": g_eq - PAPER_GIBBS["g_hat_eq_j_per_mol"],
         },
         {
             "quantity": "delta_g_hat_j_per_mol",
             "paper": PAPER_GIBBS["delta_g_hat_j_per_mol"],
-            "current_native_objective_basis": g_delta,
+            "current_native_ln_fugacity_basis_j_per_mol": g_delta,
             "current_minus_paper": g_delta - PAPER_GIBBS["delta_g_hat_j_per_mol"],
         },
     ]

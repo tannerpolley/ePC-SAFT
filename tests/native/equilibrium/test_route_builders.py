@@ -26,6 +26,15 @@ def _ionic_mixture() -> epcsaft.ePCSAFTMixture:
     return epcsaft.ePCSAFTMixture.from_params(params, species=["water", "Na+", "Cl-"])
 
 
+def _ascani_electrolyte_mixture() -> tuple[epcsaft.ePCSAFTMixture, list[float]]:
+    aq = np.asarray([0.798324680201737, 0.016320352824141723, 0.09267748348706063, 0.09267748348706063])
+    org = np.asarray([0.37006036048879404, 0.6214918588210971, 0.004223890345054407, 0.004223890345054407])
+    beta_org = 0.613766575013417
+    feed = ((1.0 - beta_org) * aq + beta_org * org).tolist()
+    mix = epcsaft.ePCSAFTMixture.from_dataset("2022_Ascani", ["H2O", "Butanol", "Na+", "Cl-"], feed, 298.15)
+    return mix, feed
+
+
 def test_neutral_two_phase_eos_nlp_contract_uses_phase_system_blocks() -> None:
     mix = _neutral_binary_mixture()
     temperature = 300.0
@@ -300,87 +309,65 @@ def test_neutral_lle_route_contract_builds_native_initial_point_from_feed() -> N
     assert payload["constraints_at_initial"][-1] >= payload["constraint_lower_bounds"][-1]
 
 
-def test_electrolyte_lle_route_contract_adds_phase_charge_rows() -> None:
-    mix = _ionic_mixture()
+def test_electrolyte_lle_route_contract_uses_liquid_root_transformed_variables() -> None:
+    mix, feed_amounts = _ascani_electrolyte_mixture()
     temperature = 298.15
-    target_pressure = 1.013e5
-    feed_amounts = np.asarray([0.9998, 1.0e-4, 1.0e-4], dtype=float)
-    charges = np.asarray([0.0, 1.0, -1.0], dtype=float)
+    target_pressure = 1.0e5
 
     payload = _core._native_electrolyte_lle_eos_nlp_contract(
         mix._native,
         temperature,
         target_pressure,
-        feed_amounts.tolist(),
-    )
-
-    initial = np.asarray(payload["initial_point"], dtype=float).reshape(2, 4)
-    phase_amounts = initial[:, :3]
-    volumes = initial[:, 3]
-    phase_system = _core._native_eos_phase_system(
-        mix._native,
-        temperature,
-        target_pressure,
-        phase_amounts.tolist(),
-        volumes.tolist(),
-        feed_amounts.tolist(),
-        charges.tolist(),
+        feed_amounts,
     )
 
     assert payload["problem_name"] == "electrolyte_lle_eos"
-    assert payload["derivative_backend"] == "analytic_cppad"
+    assert payload["derivative_backend"] == "cppad_implicit"
+    assert payload["density_backend"] == "liquid_pressure_root"
     assert payload["phase_count"] == 2
-    assert payload["species_count"] == 3
-    assert payload["variable_count"] == 8
-    assert payload["constraint_count"] == 8
-    assert payload["jacobian_nonzero_count"] == 64
-    assert np.all(phase_amounts > 0.0)
-    assert np.all(volumes > 0.0)
-    assert np.sum(phase_amounts, axis=0) == pytest.approx(feed_amounts)
-    assert phase_amounts @ charges == pytest.approx([0.0, 0.0], abs=1.0e-14)
-    assert payload["constraints_at_initial"][:3] == pytest.approx([0.0, 0.0, 0.0], abs=1.0e-14)
-    assert payload["constraints_at_initial"][5:7] == pytest.approx([0.0, 0.0], abs=1.0e-14)
-    assert payload["constraint_lower_bounds"][-1] == pytest.approx(1.0e-8)
-    assert payload["constraint_upper_bounds"][-1] > 1.0e6
-    assert payload["constraints_at_initial"][-1] >= payload["constraint_lower_bounds"][-1]
-    assert phase_system["constraint_names"][-2:] == ["phase_0.charge_balance", "phase_1.charge_balance"]
-    assert payload["constraints_at_initial"][:-1] == pytest.approx(
-        phase_system["constraints"],
-        rel=1.0e-12,
-        abs=1.0e-8,
-    )
+    assert payload["species_count"] == 4
+    assert payload["variable_model"] == "ascani_transformed_salt_pairs"
+    assert payload["variable_count"] == 3
+    assert payload["constraint_count"] == 7
+    assert payload["jacobian_nonzero_count"] == 21
+    assert len(payload["initial_point"]) == 3
+    assert len(payload["variable_lower_bounds"]) == 3
+    assert len(payload["variable_upper_bounds"]) == 3
+    assert np.allclose(payload["constraint_lower_bounds"][:3], 0.0)
+    assert np.allclose(payload["constraint_upper_bounds"][:3], 0.0)
+    assert payload["constraint_lower_bounds"][3] >= 0.1
+    assert payload["constraint_upper_bounds"][3] > 1.0e6
+    assert payload["constraints_at_initial"][3] >= payload["constraint_lower_bounds"][3]
+    assert np.all(np.asarray(payload["constraints_at_initial"][4:], dtype=float) > 0.0)
     payload_jacobian = np.asarray(payload["jacobian_values_at_initial"], dtype=float).reshape(
         payload["constraint_count"],
         payload["variable_count"],
     )
-    assert payload_jacobian[:-1].reshape(-1).tolist() == pytest.approx(
-        phase_system["constraint_jacobian_row_major"],
-        rel=1.0e-12,
-        abs=1.0e-8,
-    )
-    assert np.count_nonzero(np.abs(payload_jacobian[-1]) > 0.0) > 0
+    assert np.all(np.isfinite(payload_jacobian))
+    assert np.count_nonzero(np.abs(payload_jacobian[0]) > 0.0) > 0
+    assert np.count_nonzero(np.abs(payload_jacobian[3]) > 0.0) > 0
 
 
 def test_electrolyte_lle_route_result_uses_ipopt_adapter_gate_and_charge_rows() -> None:
-    mix = _ionic_mixture()
+    mix, feed = _ascani_electrolyte_mixture()
     payload = _core._native_electrolyte_lle_eos_route_result(
         mix._native,
         298.15,
-        1.013e5,
-        [0.9998, 1.0e-4, 1.0e-4],
-        30,
+        1.0e5,
+        feed,
+        500,
         1.0e-8,
         0.0,
-        1.0e-7,
-        1.0e-5,
         1.0e-8,
+        1.0e-3,
         1.0e-7,
-        1.0e-4,
+        1.0e-6,
+        0.1,
     )
 
     assert payload["backend"] == "ipopt"
     assert payload["problem_name"] == "electrolyte_lle_eos"
-    assert payload["derivative_backend"] == "analytic_cppad"
+    assert payload["derivative_backend"] == "cppad_implicit"
     assert payload["exact_gradient_required"] is True
     assert payload["exact_jacobian_required"] is True
     if not payload["compiled"]:
@@ -394,17 +381,28 @@ def test_electrolyte_lle_route_result_uses_ipopt_adapter_gate_and_charge_rows() 
         return
 
     assert payload["ran"] is True
-    if not payload["solver_accepted"]:
-        assert payload["accepted"] is False
-        assert payload["status"] == "solver_rejected"
-        return
-
-    assert np.asarray(payload["variables"], dtype=float).shape == (8,)
+    assert payload["solver_accepted"] is True
+    assert payload["accepted"] is True
+    assert payload["status"] == "accepted"
+    assert np.asarray(payload["variables"], dtype=float).shape == (3,)
     assert np.asarray(payload["constraints"], dtype=float).shape == (7,)
-    assert np.asarray(payload["phase_amounts"], dtype=float).shape == (2, 3)
+    assert np.asarray(payload["phase_amounts"], dtype=float).shape == (2, 4)
     assert np.asarray(payload["phase_volumes"], dtype=float).shape == (2,)
-    assert payload["postsolve"]["derivative_backend"] == "analytic_cppad"
-    assert payload["postsolve"]["charge_balance_norm"] <= 1.0e-8 or payload["status"] == "postsolve_rejected"
+    assert payload["postsolve"]["derivative_backend"] == "cppad_implicit"
+    assert payload["postsolve"]["charge_balance_norm"] <= 1.0e-8
+    assert payload["postsolve"]["material_balance_norm"] <= 1.0e-8
+    assert payload["postsolve"]["ln_fugacity_consistency_norm"] <= 1.0e-6
+    assert payload["postsolve"]["phase_distance"] >= 0.1
+
+    phase_compositions = np.asarray(payload["postsolve"]["phase_compositions"], dtype=float)
+    phase_amounts = np.asarray(payload["phase_amounts"], dtype=float)
+    phase_volumes = np.asarray(payload["phase_volumes"], dtype=float)
+    route_densities = phase_amounts.sum(axis=1) / phase_volumes
+    for composition, route_density in zip(phase_compositions, route_densities, strict=True):
+        liquid_density = mix.state(T=298.15, P=1.0e5, x=composition, phase="liq").density()
+        vapor_density = mix.state(T=298.15, P=1.0e5, x=composition, phase="vap").density()
+        assert route_density == pytest.approx(liquid_density, rel=1.0e-10)
+        assert route_density / vapor_density > 100.0
 
 
 @pytest.mark.parametrize(

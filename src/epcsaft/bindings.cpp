@@ -623,6 +623,8 @@ py::dict neutral_two_phase_eos_nlp_contract_to_dict(
     py::dict out;
     out["problem_name"] = result.problem_name;
     out["derivative_backend"] = result.derivative_backend;
+    out["variable_model"] = result.variable_model;
+    out["density_backend"] = result.density_backend;
     out["phase_count"] = result.phase_count;
     out["species_count"] = result.species_count;
     out["balance_row_count"] = result.balance_row_count;
@@ -663,10 +665,17 @@ py::dict neutral_two_phase_eos_postsolve_to_dict(
     out["phase_amount_total_norm"] = result.phase_amount_total_norm;
     out["phase_distance"] = result.phase_distance;
     out["objective"] = result.objective;
+    out["gibbs_feed"] = result.gibbs_feed;
+    out["gibbs_split"] = result.gibbs_split;
+    out["gibbs_delta"] = result.gibbs_delta;
+    out["minimum_phase_fraction"] = result.minimum_phase_fraction;
+    out["density_backend"] = result.density_backend;
     out["constraints"] = result.constraints;
     out["phase_amount_totals"] = result.phase_amount_totals;
     out["phase_volumes"] = result.phase_volumes;
+    out["phase_densities"] = result.phase_densities;
     out["phase_compositions"] = result.phase_compositions;
+    out["phase_ln_fugacity_coefficients"] = result.phase_ln_fugacity_coefficients;
     return out;
 }
 
@@ -1728,12 +1737,16 @@ PYBIND11_MODULE(_core, m) {
         if (!mixture) {
             throw ValueError("Electrolyte LLE EOS NLP contract requires a native mixture.");
         }
+        EquilibriumOptionsNative options;
         return neutral_two_phase_eos_nlp_contract_to_dict(
-            epcsaft::native::equilibrium_nlp::evaluate_electrolyte_lle_eos_nlp_contract(
-                mixture->args(),
+            evaluate_electrolyte_lle_liquid_root_nlp_contract_native(
+                mixture,
                 temperature,
                 target_pressure,
-                feed_amounts
+                feed_amounts,
+                options,
+                {},
+                1.0e-1
             )
         );
     });
@@ -2282,17 +2295,20 @@ PYBIND11_MODULE(_core, m) {
         if (!mixture) {
             throw ValueError("Electrolyte LLE EOS route result requires a native mixture.");
         }
+        (void)pressure_tolerance;
         const epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
             ipopt_solve_options_from_scalars(max_iterations, tolerance, timeout_seconds);
+        EquilibriumOptionsNative equilibrium_options;
         return neutral_two_phase_eos_route_result_to_dict(
-            epcsaft::native::equilibrium_nlp::solve_electrolyte_lle_eos_route(
-                mixture->args(),
+            solve_electrolyte_lle_liquid_root_route_native(
+                mixture,
                 temperature,
                 target_pressure,
                 feed_amounts,
+                equilibrium_options,
+                {},
                 options,
                 material_tolerance,
-                pressure_tolerance,
                 charge_tolerance,
                 chemical_potential_tolerance,
                 phase_distance_tolerance
