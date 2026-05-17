@@ -304,6 +304,9 @@ Still ongoing:
   removed; retained coverage stays on active residual-evaluator, Ipopt route, and reactive-stability gate behavior.
 - Duplicate public-export and reactive-electrolyte fit-route absence assertions were pruned where broader runtime API
   coverage already protects the same surface.
+- The duplicate neutral reactive-LLE public route-gate test was removed. The retained staged/production separation test
+  still proves `kind="reactive_lle"` bypasses staged helpers and raises at the native Ipopt reactive phase-equilibrium
+  route boundary, while the electrolyte-specific public route gate keeps its distinct ion-containing fixture coverage.
 - Runtime, reactive-speciation, and staged reactive diagnostics no longer emit the negative
   `unsupported_derivative_behavior` field; accepted derivative backends and auto policy now carry the contract, and the
   text gate blocks the retired field in active source/tests/scripts.

@@ -379,6 +379,11 @@ concentration derivative gates, native ideal Ipopt routes, sweep result handling
 Task 2 continuation note: duplicate electrolyte smoke assertions were pruned. The default equilibrium-option value now
 lives with the public option-surface test, and neutral LLE ionic-mixture rejection remains covered by the core LLE test.
 
+Task 2 continuation note: the duplicate neutral reactive-LLE public route-gate test was removed. The retained
+staged/production separation test still proves `kind="reactive_lle"` bypasses staged helpers and raises at the native
+Ipopt reactive phase-equilibrium route boundary, while the electrolyte-specific public route gate keeps separate
+ion-containing fixture coverage.
+
 ### Task 3: Build Dependency Boundary
 
 **Files:**

@@ -5,7 +5,6 @@ import pytest
 
 import epcsaft
 from epcsaft import ePCSAFTMixture
-from tests.equilibrium.reactive.test_reactive_lle_coupled_solver import _assert_reactive_phase_native_ipopt_gate
 
 
 def _reactive_electrolyte_lle_fixture() -> tuple[
@@ -27,6 +26,10 @@ def _reactive_electrolyte_lle_fixture() -> tuple[
         source="repo-contained model-consistent reactive electrolyte LLE fixture",
     )
     return mix, feed, reaction
+
+
+def _assert_reactive_phase_native_ipopt_gate(excinfo: pytest.ExceptionInfo[epcsaft.InputError]) -> None:
+    assert "native Ipopt reactive phase-equilibrium NLP route" in str(excinfo.value)
 
 
 def test_reactive_electrolyte_lle_public_route_requires_native_ipopt() -> None:
