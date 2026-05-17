@@ -238,44 +238,26 @@ def test_profile_shortcut_sets_perf_environment_flag(monkeypatch):
     assert env["ePCSAFT_RUN_PERF"] == "1"
 
 
-def test_equilibrium_confidence_slice_is_listed():
-    result = subprocess.run(
-        [sys.executable, "run_pytest.py", "--equilibrium-confidence", "--list-slices"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+def test_equilibrium_slices_are_listed():
+    for flag, label in (
+        ("--equilibrium-confidence", "equilibrium-confidence:"),
+        ("--equilibrium-api", "equilibrium-api:"),
+    ):
+        result = subprocess.run(
+            [sys.executable, "run_pytest.py", flag, "--list-slices"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
 
-    assert result.returncode == 0
-    assert "equilibrium-confidence:" in result.stdout
-
-
-def test_equilibrium_api_slice_is_listed():
-    result = subprocess.run(
-        [sys.executable, "run_pytest.py", "--equilibrium-api", "--list-slices"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-
-    assert result.returncode == 0
-    assert "equilibrium-api:" in result.stdout
+        assert result.returncode == 0
+        assert label in result.stdout
 
 
 def test_equilibrium_confidence_shortcut_keeps_full_report_env_opt_in():
     source = Path(run_pytest.__file__).read_text(encoding="utf-8")
 
     assert 'env["EPCSAFT_EQUILIBRIUM_CONFIDENCE"] = "1"' not in source
-
-
-def test_full_profile_shortcut_sets_perf_environment_flag(monkeypatch):
-    pytest_temp = Path("build") / "pytest-temp" / "run-test"
-    monkeypatch.delenv("EPCSAFT_RUN_PERF", raising=False)
-
-    env = run_pytest._pytest_env(pytest_temp, profile=True)
-
-    assert env["EPCSAFT_RUN_PERF"] == "1"
-    assert env["ePCSAFT_RUN_PERF"] == "1"
 
 
 def test_pytest_temp_root_prefers_configured_root_and_normalizes_relative_paths(monkeypatch, tmp_path):
