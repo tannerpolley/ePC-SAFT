@@ -689,6 +689,11 @@ Task 10 continuation note: supported generic native Ceres routes no longer retur
 only the initial residual evaluation when `max_nfev=1`. Positive evaluation limits now dispatch through Ceres, nonpositive
 limits fail before native execution, and the text gate blocks reintroducing the old initial-evaluation optimizer message.
 
+Task 10 continuation note: the current accepted Ceres regression routes were audited for the Ceres-autodiff gate. Pure
+neutral, pure ion/electrolyte, and binary `k_ij` production residuals all depend on implicit density/EOS derivatives or
+Born/activity derivative helpers, so they remain `cppad_implicit`; there is no direct-template production residual in
+the active Ceres surface yet. Repeated Ceres solver option setup was consolidated into one native helper.
+
 ### Task 11: Internal Extension Boundaries
 
 **Files:**

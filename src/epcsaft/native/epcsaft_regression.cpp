@@ -577,6 +577,18 @@ PureNeutralObjectiveEvaluation evaluate_pure_neutral_objective_cpp(
 }
 
 #ifdef EPCSAFT_HAS_CERES
+ceres::Solver::Options ceres_regression_options_cpp(int max_num_iterations) {
+    ceres::Solver::Options options;
+    options.linear_solver_type = ceres::DENSE_QR;
+    options.minimizer_progress_to_stdout = false;
+    options.logging_type = ceres::SILENT;
+    options.max_num_iterations = std::max(1, max_num_iterations);
+    options.function_tolerance = 1.0e-10;
+    options.gradient_tolerance = 1.0e-10;
+    options.parameter_tolerance = 1.0e-10;
+    return options;
+}
+
 class PureNeutralCeresCostFunction final : public ceres::CostFunction {
 public:
     PureNeutralCeresCostFunction(
@@ -673,14 +685,7 @@ PureNeutralRegressionResult solve_one_start_ceres_cpp(
         problem.SetParameterUpperBound(theta.data(), j, upper[static_cast<size_t>(j)]);
     }
 
-    ceres::Solver::Options options;
-    options.linear_solver_type = ceres::DENSE_QR;
-    options.minimizer_progress_to_stdout = false;
-    options.logging_type = ceres::SILENT;
-    options.max_num_iterations = 100;
-    options.function_tolerance = 1.0e-10;
-    options.gradient_tolerance = 1.0e-10;
-    options.parameter_tolerance = 1.0e-10;
+    ceres::Solver::Options options = ceres_regression_options_cpp(100);
 
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
@@ -1632,14 +1637,7 @@ GenericRegressionResult solve_one_pure_ion_ceres_start_cpp(
             problem.SetParameterUpperBound(theta.data(), j, upper[static_cast<size_t>(j)]);
         }
 
-        ceres::Solver::Options options;
-        options.linear_solver_type = ceres::DENSE_QR;
-        options.minimizer_progress_to_stdout = false;
-        options.logging_type = ceres::SILENT;
-        options.max_num_iterations = std::max(1, max_nfev);
-        options.function_tolerance = 1.0e-10;
-        options.gradient_tolerance = 1.0e-10;
-        options.parameter_tolerance = 1.0e-10;
+        ceres::Solver::Options options = ceres_regression_options_cpp(max_nfev);
 
         ceres::Solver::Summary summary;
         ceres::Solve(options, &problem, &summary);
@@ -1757,14 +1755,7 @@ GenericRegressionResult solve_one_binary_kij_ceres_start_cpp(
         problem.SetParameterLowerBound(theta.data(), 0, lower[0]);
         problem.SetParameterUpperBound(theta.data(), 0, upper[0]);
 
-        ceres::Solver::Options options;
-        options.linear_solver_type = ceres::DENSE_QR;
-        options.minimizer_progress_to_stdout = false;
-        options.logging_type = ceres::SILENT;
-        options.max_num_iterations = std::max(1, max_nfev);
-        options.function_tolerance = 1.0e-10;
-        options.gradient_tolerance = 1.0e-10;
-        options.parameter_tolerance = 1.0e-10;
+        ceres::Solver::Options options = ceres_regression_options_cpp(max_nfev);
 
         ceres::Solver::Summary summary;
         ceres::Solve(options, &problem, &summary);

@@ -101,6 +101,9 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - Supported generic native Ceres regression routes no longer treat `max_nfev=1` as an initial-residual shortcut. They
   run through Ceres, reject nonpositive evaluation limits before native dispatch, and the text gate blocks the retired
   initial-evaluation optimizer message.
+- The accepted Ceres regression surfaces were checked against the autodiff gate. Current production residuals depend on
+  implicit density/EOS derivatives or Born/activity derivative helpers and remain `cppad_implicit`; no direct-template
+  production Ceres residual is active yet. Native Ceres option setup now uses one shared helper.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
 
