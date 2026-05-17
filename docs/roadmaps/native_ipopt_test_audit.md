@@ -94,6 +94,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - The standalone salting-out LLE route-pending benchmark test was removed because the smoke tests already cover strict
   seeded electrolyte LLE route gating and the solver-contract tests cover mixed-salt route gates. Its typed problem
   fixture now lives with the `ElectrolyteLLEProblem` problem-object test.
+- A duplicate electrolyte LLE explicit-Ipopt route-pending test was removed. The retained native-route request test
+  already sets `solver_backend="ipopt"` and verifies the exact route payload before the local no-Ipopt gate.
 - The no-reaction mixed reactive-regression objective status test was removed. Target-family accounting is covered in
   diagnostics tests, and retained regression setup tests now exercise a real nonideal native derivative-block gate.
 - `equilibrium_curve(...)` no longer carries accepted phase splits forward as Python-level seeds; curve points use

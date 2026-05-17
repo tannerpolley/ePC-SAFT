@@ -23,7 +23,7 @@ GENERIC_TEST_TARGETS = (
     ),
     (
         "tests/equilibrium/electrolyte/test_electrolyte_lle_smokes.py::"
-        "test_electrolyte_lle_direct_feed_requested_ipopt_requires_native_ipopt_route"
+        "test_electrolyte_lle_builds_native_route_before_ipopt_gate"
     ),
     (
         "tests/workflows/validation/equilibrium_core/test_electrolyte_thermo_diagnostics.py::"

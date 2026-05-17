@@ -320,6 +320,10 @@ Task 2 continuation note: the standalone salting-out LLE route-pending benchmark
 electrolyte LLE route gating stays in the smoke tests, mixed-salt route gating stays in the solver-contract tests, and
 the typed `ElectrolyteLLEProblem` fixture now lives with the problem-object test.
 
+Task 2 continuation note: a duplicate electrolyte LLE explicit-Ipopt route-pending test was removed. The retained
+native-route request test already uses `solver_backend="ipopt"` and verifies the exact native route payload before the
+local no-Ipopt gate, while default direct-feed and molality-feed route gates remain covered separately.
+
 ### Task 3: Build Dependency Boundary
 
 **Files:**
