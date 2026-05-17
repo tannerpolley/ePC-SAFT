@@ -316,6 +316,10 @@ Task 2 continuation note: duplicate public route-pending checks were pruned from
 The route-specific public tests still own neutral TP flash, stability, and electrolyte LLE route-gate behavior; native
 contract coverage stays focused on native residual and dependency-boundary evidence.
 
+Task 2 continuation note: the standalone salting-out LLE route-pending benchmark test was removed. Strict seeded
+electrolyte LLE route gating stays in the smoke tests, mixed-salt route gating stays in the solver-contract tests, and
+the typed `ElectrolyteLLEProblem` fixture now lives with the problem-object test.
+
 ### Task 3: Build Dependency Boundary
 
 **Files:**

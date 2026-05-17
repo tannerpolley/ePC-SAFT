@@ -91,6 +91,9 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - Duplicate public route-pending checks were pruned from the native equilibrium contract file. Route-specific public
   tests still own TP flash, stability, and electrolyte LLE route-gate behavior, while the native contract file keeps the
   native residual and dependency-boundary checks.
+- The standalone salting-out LLE route-pending benchmark test was removed because the smoke tests already cover strict
+  seeded electrolyte LLE route gating and the solver-contract tests cover mixed-salt route gates. Its typed problem
+  fixture now lives with the `ElectrolyteLLEProblem` problem-object test.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
 
