@@ -1664,6 +1664,8 @@ GenericRegressionResult solve_one_pure_ion_ceres_start_cpp(
         out.nfev = static_cast<int>(summary.num_residual_evaluations + summary.num_jacobian_evaluations);
         out.iterations = static_cast<int>(summary.iterations.size());
         out.backend = "ceres";
+        out.optimizer_backend = "ceres";
+        out.derivative_backend = "cppad_implicit";
         out.jacobian_available = true;
         out.jacobian_backend = "cppad_implicit";
         return out;
@@ -1681,6 +1683,8 @@ GenericRegressionResult solve_one_pure_ion_ceres_start_cpp(
     out.nfev = 1;
     out.iterations = 0;
     out.backend = "ceres";
+    out.optimizer_backend = "ceres";
+    out.derivative_backend = "cppad_implicit";
     out.jacobian_available = true;
     out.jacobian_backend = "cppad_implicit";
     return out;
@@ -1803,6 +1807,8 @@ GenericRegressionResult solve_one_binary_kij_ceres_start_cpp(
         out.nfev = static_cast<int>(summary.num_residual_evaluations + summary.num_jacobian_evaluations);
         out.iterations = static_cast<int>(summary.iterations.size());
         out.backend = "ceres";
+        out.optimizer_backend = "ceres";
+        out.derivative_backend = "cppad_implicit";
         out.jacobian_available = true;
         out.jacobian_backend = "cppad_implicit";
         return out;
@@ -1820,6 +1826,8 @@ GenericRegressionResult solve_one_binary_kij_ceres_start_cpp(
     out.nfev = 1;
     out.iterations = 0;
     out.backend = "ceres";
+    out.optimizer_backend = "ceres";
+    out.derivative_backend = "cppad_implicit";
     out.jacobian_available = true;
     out.jacobian_backend = "cppad_implicit";
     return out;
@@ -2029,6 +2037,8 @@ GenericRegressionResult fit_generic_ceres_cpp(
         );
     result.starts_tried = 1;
     result.backend = "ceres";
+    result.optimizer_backend = "ceres";
+    result.derivative_backend = "cppad_implicit";
     result.jacobian_available = true;
     result.jacobian_backend = "cppad_implicit";
     return result;

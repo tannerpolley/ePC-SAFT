@@ -296,6 +296,8 @@ struct GenericRegressionResult {
     int starts_tried = 0;
     bool jacobian_available = true;
     std::string jacobian_backend = "unspecified";
+    std::string optimizer_backend = "unspecified";
+    std::string derivative_backend = "unspecified";
     std::string message;
     std::string backend;
 };

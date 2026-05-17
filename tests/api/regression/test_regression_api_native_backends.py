@@ -73,6 +73,8 @@ def _patch_native_generic_ceres_runner(monkeypatch):
             "starts_tried": 1,
             "message": "patched native generic Ceres regression",
             "backend": "ceres",
+            "optimizer_backend": "ceres",
+            "derivative_backend": "cppad_implicit",
             "jacobian_available": True,
             "jacobian_backend": "cppad_implicit",
         }

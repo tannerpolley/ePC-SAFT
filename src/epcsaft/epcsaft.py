@@ -2742,6 +2742,8 @@ def _fit_generic_native_ceres(
         "starts_tried": int(result["starts_tried"]),
         "message": str(result["message"]),
         "backend": str(result["backend"]),
+        "optimizer_backend": str(result["optimizer_backend"]),
+        "derivative_backend": str(result["derivative_backend"]),
         "jacobian_available": bool(result.get("jacobian_available", True)),
         "jacobian_backend": str(result.get("jacobian_backend", "unspecified")),
     }

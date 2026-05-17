@@ -344,6 +344,8 @@ py::dict generic_regression_result_to_dict(const GenericRegressionResult& result
     out["starts_tried"] = result.starts_tried;
     out["message"] = result.message;
     out["backend"] = result.backend;
+    out["optimizer_backend"] = result.optimizer_backend;
+    out["derivative_backend"] = result.derivative_backend;
     out["jacobian_available"] = result.jacobian_available;
     out["jacobian_backend"] = result.jacobian_backend;
     return out;

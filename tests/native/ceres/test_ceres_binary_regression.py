@@ -56,6 +56,8 @@ def test_ceres_binary_kij_regression_uses_native_cppad_implicit_jacobian() -> No
 
     assert result["success"] is True
     assert result["backend"] == "ceres"
+    assert result["optimizer_backend"] == "ceres"
+    assert result["derivative_backend"] == "cppad_implicit"
     assert result["jacobian_backend"] == "cppad_implicit"
     assert result["jacobian_available"] is True
     assert result["cost"] <= result["initial_cost"] + 1.0e-12
@@ -102,6 +104,8 @@ def test_ceres_binary_kij_regression_accepts_associating_neutral_rows() -> None:
 
     assert result["success"] is True
     assert result["backend"] == "ceres"
+    assert result["optimizer_backend"] == "ceres"
+    assert result["derivative_backend"] == "cppad_implicit"
     assert result["jacobian_backend"] == "cppad_implicit"
     assert result["jacobian_available"] is True
     assert "binary_vle_fugacity_balance" in result["metrics_by_term"]

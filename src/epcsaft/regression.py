@@ -845,8 +845,8 @@ def _fit_derivative_metadata(result: Mapping[str, Any]) -> dict[str, Any]:
     """Extract compact optimizer and first-derivative metadata from native regression payloads."""
 
     return {
-        "optimizer_backend": str(result.get("optimizer_backend", result.get("backend", "unspecified"))),
-        "derivative_backend": str(result.get("derivative_backend", result.get("jacobian_backend", "unspecified"))),
+        "optimizer_backend": _required_native_regression_metadata(result, "optimizer_backend"),
+        "derivative_backend": _required_native_regression_metadata(result, "derivative_backend"),
         "objective_initial": float(result.get("objective_initial", result.get("initial_cost", float("nan")))),
         "objective_final": float(result.get("objective_final", result.get("cost", float("nan")))),
         "n_residual_evaluations": int(result.get("n_residual_evaluations", result.get("objective_evaluations", 0))),
@@ -857,6 +857,12 @@ def _fit_derivative_metadata(result: Mapping[str, Any]) -> dict[str, Any]:
         "jacobian_available": bool(result.get("jacobian_available", False)),
         "jacobian_backend": str(result.get("jacobian_backend", "unspecified")),
     }
+
+
+def _required_native_regression_metadata(result: Mapping[str, Any], key: str) -> str:
+    if key not in result:
+        raise RuntimeError(f"Native regression result missing required {key!r} metadata.")
+    return str(result[key])
 
 
 def _row_diagnostics_from_metrics(metrics_by_term: Mapping[str, Any]) -> list[dict[str, Any]]:
@@ -2226,8 +2232,8 @@ def _fit_pure_neutral_native_ceres(
         "solve_wall_time_s": float(result["solve_wall_time_s"]),
         "message": str(result["message"]),
         "backend": str(result["backend"]),
-        "optimizer_backend": str(result.get("optimizer_backend", result["backend"])),
-        "derivative_backend": str(result.get("derivative_backend", result.get("jacobian_backend", "unspecified"))),
+        "optimizer_backend": _required_native_regression_metadata(result, "optimizer_backend"),
+        "derivative_backend": _required_native_regression_metadata(result, "derivative_backend"),
         "objective_initial": float(result.get("objective_initial", result["initial_cost"])),
         "objective_final": float(result.get("objective_final", result["cost"])),
         "n_residual_evaluations": int(result.get("n_residual_evaluations", result["objective_evaluations"])),
