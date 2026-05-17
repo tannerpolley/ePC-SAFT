@@ -13,54 +13,6 @@ def _tiny_base_parameters() -> dict[str, np.ndarray]:
         "e": np.asarray([200.0, 240.0], dtype=float),
     }
 
-def _native_mixed_pressure_speciation_batch() -> tuple[epcsaft.ReactiveElectrolyteBatch, float]:
-    temperature = 298.15
-    water_sigma = 2.7927 + 10.11 * np.exp(-0.01775 * temperature) - 1.417 * np.exp(-0.01146 * temperature)
-    params = {
-        "MW": np.asarray([18.01528e-3, 22.98e-3, 35.45e-3]),
-        "m": np.asarray([1.2047, 1.0, 1.0]),
-        "s": np.asarray([water_sigma, 2.8232, 2.7560]),
-        "e": np.asarray([353.95, 230.0, 170.0]),
-        "e_assoc": np.asarray([2425.7, 0.0, 0.0]),
-        "vol_a": np.asarray([0.04509, 0.0, 0.0]),
-        "assoc_scheme": ["2B", None, None],
-        "z": np.asarray([0.0, 1.0, -1.0]),
-        "dielc": np.asarray([78.09, 8.0, 8.0]),
-        "d_born": np.asarray([0.0, 3.445, 4.1]),
-        "f_solv": np.asarray([1.5, 1.0, 1.0]),
-        "k_ij": np.asarray([[0.0, 0.0045, -0.25], [0.0045, 0.0, 0.317], [-0.25, 0.317, 0.0]]),
-        "l_ij": np.zeros((3, 3)),
-        "k_hb": np.zeros((3, 3)),
-    }
-    balances = {"water": {"water": 1.0}, "sodium": {"Na+": 1.0}, "chloride": {"Cl-": 1.0}}
-    row = epcsaft.ReactiveElectrolyteRow(
-        row_id="native-mixed",
-        T=temperature,
-        P_seed=101325.0,
-        totals={"water": 0.98, "sodium": 0.01, "chloride": 0.01},
-        initial_x=[0.98, 0.01, 0.01],
-        balances=balances,
-        reactions=[],
-        vapor_species=["water"],
-        target_partial_pressures={"water": 3000.0},
-        target_speciation={"water": 0.98},
-    )
-    batch = epcsaft.ReactiveElectrolyteBatch(
-        species=["water", "Na+", "Cl-"],
-        rows=[row],
-        balances=balances,
-        reactions=[],
-        vapor_species=["water"],
-        base_parameters=params,
-        options=epcsaft.ReactiveElectrolyteBatchOptions(
-            include_state_outputs=False,
-            warm_start_rows=True,
-            warm_start_objective=True,
-        ),
-        reactive_bubble_options=epcsaft.ReactiveElectrolyteBubbleOptions(error_mode="result"),
-    )
-    return batch, water_sigma
-
 def test_fit_reactive_electrolyte_parameters_validates_then_requires_native_ceres(monkeypatch) -> None:
     called_solver = False
 
@@ -223,26 +175,3 @@ def test_evaluate_reactive_regression_objective_accepts_speciation_rows(monkeypa
     assert "validation" in summary["by_source"]
     assert "holdout" in summary["train_validation"]
     assert summary["fit_success"] is None
-
-def test_evaluate_reactive_regression_objective_reports_route_pending_mixed_objective() -> None:
-    batch, _water_sigma = _native_mixed_pressure_speciation_batch()
-
-    result = epcsaft.evaluate_reactive_regression_objective(
-        batch,
-        parameter_map={"Na+.sigma": 2.7},
-    )
-
-    payload = result.to_dict()
-    summary = epcsaft.summarize_regression_result(result)
-    target_counts = result.batch_result.diagnostics["target_family_counts"]
-    row = result.batch_result.row_results[0]
-
-    assert result.batch_result.success_count == 0
-    assert result.batch_result.failure_count == 1
-    assert row.success is False
-    assert row.solver_status == "exception"
-    assert "reactive_speciation requires a native Ipopt homogeneous reactive-speciation NLP route" in row.message
-    assert target_counts["partial_pressure"] == 1
-    assert target_counts["speciation"] == 1
-    assert payload["objective"] == pytest.approx(result.objective)
-    assert summary["fit_status"] == "not_a_fit"

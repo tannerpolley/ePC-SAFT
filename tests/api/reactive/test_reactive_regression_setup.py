@@ -78,7 +78,7 @@ def test_reactive_regression_context_runs_native_speciation_objective_and_jacobi
                 {"NaCl": -1.0, "Na+": 1.0, "Cl-": 1.0},
                 np.log(1.0e-2),
                 name="salt_dissociation",
-                standard_state="ideal_mole_fraction",
+                standard_state="mole_fraction_activity",
             )
         ],
         mode="speciation",
@@ -112,7 +112,7 @@ def test_reactive_regression_context_runs_native_speciation_objective_and_jacobi
     assert objective.batch_result.failure_count == 1
     assert objective.residual_names == ("native-row.reaction.salt_dissociation",)
     assert objective.residuals.shape == (1,)
-    assert "reactive_speciation requires a native Ipopt homogeneous reactive-speciation NLP route" in (
+    assert "activity and concentration routes require the EOS derivative NLP blocks" in (
         objective.batch_result.row_results[0].message
     )
     with pytest.raises(epcsaft.InputError, match="native Ceres derivative coverage"):

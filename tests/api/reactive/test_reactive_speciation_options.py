@@ -22,10 +22,12 @@ def _salt_speciation_mixture() -> epcsaft.ePCSAFTMixture:
     return epcsaft.ePCSAFTMixture.from_params(params, species=["H2O", "NaCl", "Na+", "Cl-"])
 
 
-def _assert_reactive_speciation_route_pending(excinfo: pytest.ExceptionInfo[epcsaft.InputError]) -> None:
+def _assert_reactive_speciation_native_derivative_route_required(
+    excinfo: pytest.ExceptionInfo[epcsaft.InputError],
+) -> None:
     message = str(excinfo.value)
-    assert "reactive_speciation requires a native Ipopt homogeneous reactive-speciation NLP route" in message
-    assert "No package-owned alternate homogeneous reactive-speciation solver is available" in message
+    assert "Native Ipopt reactive speciation currently supports ideal_mole_fraction standard states" in message
+    assert "activity and concentration routes require the EOS derivative NLP blocks" in message
 
 
 @pytest.mark.parametrize("standard_state", ["ideal_mole_fraction", "concentration", "mole_fraction_activity"])
@@ -216,7 +218,7 @@ def test_reactive_speciation_auto_routes_ideal_speciation_to_native_ipopt_when_c
     assert result.diagnostics["solver_selection_reason"] == "auto_selected_native_ipopt"
 
 
-def test_reactive_speciation_auto_gates_activity_coupled_state() -> None:
+def test_reactive_speciation_auto_routes_activity_coupled_state_to_native_derivative_gate() -> None:
     mix = _salt_speciation_mixture()
 
     with pytest.raises(epcsaft.InputError) as excinfo:
@@ -241,4 +243,4 @@ def test_reactive_speciation_auto_gates_activity_coupled_state() -> None:
             initial_x=[0.998, 0.001, 0.0005, 0.0005],
         )
 
-    _assert_reactive_speciation_route_pending(excinfo)
+    _assert_reactive_speciation_native_derivative_route_required(excinfo)

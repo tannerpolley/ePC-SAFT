@@ -355,8 +355,6 @@ def solve_reactive_speciation(
     if opts.jacobian_backend == "cppad":
         raise InputError("CppAD reactive-speciation Jacobians require an implemented CppAD NLP derivative route.")
     if opts.solver_backend == "auto":
-        if not _all_ideal_mole_fraction_reactions(reaction_defs):
-            _raise_native_ipopt_reactive_speciation_required()
         opts = _options_with_solver_backend(opts, "ipopt")
     return _solve_reactive_speciation_native(
         species=labels,
@@ -478,11 +476,6 @@ def _normalize_options(options: ReactiveSpeciationOptions | None) -> ReactiveSpe
         charge_tolerance=options.charge_tolerance,
         reaction_tolerance=options.reaction_tolerance,
     )
-
-
-def _all_ideal_mole_fraction_reactions(reactions: list[ReactionDefinition]) -> bool:
-    return all(reaction.standard_state == "ideal_mole_fraction" for reaction in reactions)
-
 
 def _options_with_solver_backend(
     options: ReactiveSpeciationOptions,

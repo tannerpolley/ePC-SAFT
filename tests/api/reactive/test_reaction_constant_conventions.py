@@ -6,7 +6,9 @@ import numpy as np
 import pytest
 
 import epcsaft
-from tests.api.reactive.test_reactive_speciation_options import _assert_reactive_speciation_route_pending
+from tests.api.reactive.test_reactive_speciation_options import (
+    _assert_reactive_speciation_native_derivative_route_required,
+)
 
 
 def _toy_mixture() -> epcsaft.ePCSAFTMixture:
@@ -85,7 +87,7 @@ def test_corrected_convention_rejects_fixed_input_fitting_role() -> None:
         )
 
 
-def test_reactive_speciation_auto_validates_conventions_before_ipopt_route_gate() -> None:
+def test_reactive_speciation_auto_validates_conventions_before_native_derivative_gate() -> None:
     mix = _toy_mixture()
     reaction = epcsaft.ReactionDefinition.from_literature_constant(
         {"A": -1.0, "B": 1.0},
@@ -108,7 +110,7 @@ def test_reactive_speciation_auto_validates_conventions_before_ipopt_route_gate(
             options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-10),
         )
 
-    _assert_reactive_speciation_route_pending(excinfo)
+    _assert_reactive_speciation_native_derivative_route_required(excinfo)
     assert reaction.metadata["constant_convention"]["standard_state"] == "mole_fraction_activity"
     assert reaction.metadata["constant_convention"]["basis"] == "mole_fraction"
     assert reaction.metadata["constant_convention"]["constant_kind"] == "thermodynamic"

@@ -6,7 +6,9 @@ import numpy as np
 import pytest
 
 import epcsaft
-from tests.api.reactive.test_reactive_speciation_options import _assert_reactive_speciation_route_pending
+from tests.api.reactive.test_reactive_speciation_options import (
+    _assert_reactive_speciation_native_derivative_route_required,
+)
 
 
 def _salt_speciation_mixture() -> epcsaft.ePCSAFTMixture:
@@ -58,34 +60,34 @@ def _salt_speciation_request(standard_state: str = "mole_fraction_activity") -> 
     }
 
 
-def test_solve_reactive_speciation_activity_coupled_state_requires_native_ipopt_route() -> None:
+def test_solve_reactive_speciation_activity_coupled_state_reaches_native_derivative_gate() -> None:
     with pytest.raises(epcsaft.InputError) as excinfo:
         epcsaft.solve_reactive_speciation(
             **_salt_speciation_request(),
             options=epcsaft.ReactiveSpeciationOptions(max_iterations=8, tolerance=1.0e-8),
         )
 
-    _assert_reactive_speciation_route_pending(excinfo)
+    _assert_reactive_speciation_native_derivative_route_required(excinfo)
 
 
-def test_solve_reactive_speciation_concentration_standard_state_requires_native_ipopt_route() -> None:
+def test_solve_reactive_speciation_concentration_standard_state_reaches_native_derivative_gate() -> None:
     with pytest.raises(epcsaft.InputError) as excinfo:
         epcsaft.solve_reactive_speciation(
             **_salt_speciation_request("concentration"),
             options=epcsaft.ReactiveSpeciationOptions(max_iterations=50, tolerance=1.0e-8),
         )
 
-    _assert_reactive_speciation_route_pending(excinfo)
+    _assert_reactive_speciation_native_derivative_route_required(excinfo)
 
 
-def test_concentration_standard_state_can_validate_activity_output_before_route_gate() -> None:
+def test_concentration_standard_state_with_no_activity_output_reaches_native_derivative_gate() -> None:
     with pytest.raises(epcsaft.InputError) as excinfo:
         epcsaft.solve_reactive_speciation(
             **_salt_speciation_request("concentration"),
             options=epcsaft.ReactiveSpeciationOptions(activity_output="never"),
         )
 
-    _assert_reactive_speciation_route_pending(excinfo)
+    _assert_reactive_speciation_native_derivative_route_required(excinfo)
 
 
 def test_reactive_speciation_sweep_auto_uses_native_ipopt_ideal_route_when_compiled() -> None:

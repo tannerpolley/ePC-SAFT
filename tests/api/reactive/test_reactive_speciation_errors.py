@@ -4,7 +4,9 @@ import numpy as np
 import pytest
 
 import epcsaft
-from tests.api.reactive.test_reactive_speciation_options import _assert_reactive_speciation_route_pending
+from tests.api.reactive.test_reactive_speciation_options import (
+    _assert_reactive_speciation_native_derivative_route_required,
+)
 
 
 def _salt_speciation_mixture() -> epcsaft.ePCSAFTMixture:
@@ -20,7 +22,7 @@ def _salt_speciation_mixture() -> epcsaft.ePCSAFTMixture:
     return epcsaft.ePCSAFTMixture.from_params(params, species=["H2O", "NaCl", "Na+", "Cl-"])
 
 
-def test_solve_reactive_speciation_auto_requires_native_ipopt_route_before_result_payload() -> None:
+def test_solve_reactive_speciation_auto_reaches_native_derivative_gate_before_result_payload() -> None:
     species = ["H2O", "NaCl", "Na+", "Cl-"]
     mix = _salt_speciation_mixture()
 
@@ -51,10 +53,10 @@ def test_solve_reactive_speciation_auto_requires_native_ipopt_route_before_resul
             ),
         )
 
-    _assert_reactive_speciation_route_pending(excinfo)
+    _assert_reactive_speciation_native_derivative_route_required(excinfo)
 
 
-def test_solve_reactive_speciation_result_mode_does_not_mask_route_gate() -> None:
+def test_solve_reactive_speciation_result_mode_does_not_mask_native_derivative_gate() -> None:
     species = ["H2O", "NaCl", "Na+", "Cl-"]
     mix = _salt_speciation_mixture()
 
@@ -86,7 +88,7 @@ def test_solve_reactive_speciation_result_mode_does_not_mask_route_gate() -> Non
             ),
         )
 
-    _assert_reactive_speciation_route_pending(excinfo)
+    _assert_reactive_speciation_native_derivative_route_required(excinfo)
 
 
 @pytest.mark.parametrize(
