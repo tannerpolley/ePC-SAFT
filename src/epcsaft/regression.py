@@ -1677,7 +1677,6 @@ def _pure_parameter_declarations(
     terms: Sequence[FitTerm],
     *,
     provenance: Sequence[FitParameter] | Mapping[str, str] | None,
-    allow_unsupported_parameters: bool,
 ) -> list[FitParameter]:
     declared: dict[str, FitParameter] = {}
     if isinstance(provenance, Mapping):
@@ -1686,7 +1685,6 @@ def _pure_parameter_declarations(
                 component,
                 str(target),
                 source=str(source),
-                allow_without_direct_data=allow_unsupported_parameters,
             )
     elif provenance is not None:
         for item in provenance:
@@ -1702,7 +1700,6 @@ def _pure_parameter_declarations(
                     component,
                     target,
                     source=_source_for_pure_target(target, terms),
-                    allow_without_direct_data=allow_unsupported_parameters,
                 ),
             )
         )
@@ -1714,7 +1711,6 @@ def _binary_interaction_declarations(
     targets: Sequence[str],
     *,
     provenance: Sequence[BinaryInteraction] | Mapping[str, str] | None,
-    allow_unsupported_parameters: bool,
 ) -> list[BinaryInteraction]:
     declared: dict[str, BinaryInteraction] = {}
     if isinstance(provenance, Mapping):
@@ -1723,7 +1719,6 @@ def _binary_interaction_declarations(
                 pair,
                 parameter=str(target),
                 source=str(source),
-                allow_without_direct_data=allow_unsupported_parameters,
             )
     elif provenance is not None:
         for item in provenance:
@@ -1739,7 +1734,6 @@ def _binary_interaction_declarations(
                     pair,
                     parameter=target,
                     source="direct_binary_vle",
-                    allow_without_direct_data=allow_unsupported_parameters,
                 ),
             )
         )
@@ -1758,7 +1752,6 @@ def _fit_pure_ion_internal(
     bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None = None,
     user_options: Mapping[str, Any] | None = None,
     provenance: Sequence[FitParameter] | Mapping[str, str] | None = None,
-    allow_unsupported_parameters: bool = False,
 ) -> FitResult:
     normalized_component = _normalize_component(component)
     normalized_solvent = None if solvent is None else _normalize_component(solvent)
@@ -1780,7 +1773,6 @@ def _fit_pure_ion_internal(
             normalized_fit_targets,
             terms,
             provenance=provenance,
-            allow_unsupported_parameters=allow_unsupported_parameters,
         ),
         terms=terms,
         species=normalized_species,
@@ -1926,7 +1918,6 @@ def _fit_binary_pair_internal(
     bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None = None,
     user_options: Mapping[str, Any] | None = None,
     provenance: Sequence[BinaryInteraction] | Mapping[str, str] | None = None,
-    allow_unsupported_parameters: bool = False,
     optimizer_backend: str = "ceres",
 ) -> FitResult:
     optimizer_backend = _optimizer_backend_from_options({"optimizer_backend": optimizer_backend}, "ceres")
@@ -1953,7 +1944,6 @@ def _fit_binary_pair_internal(
             normalized_pair,
             normalized_fit_targets,
             provenance=provenance,
-            allow_unsupported_parameters=allow_unsupported_parameters,
         ),
         terms=terms,
         species=normalized_species,
@@ -2727,7 +2717,6 @@ def fit_pure_ion(
     bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None = None,
     user_options: Mapping[str, Any] | None = None,
     provenance: Sequence[FitParameter] | Mapping[str, str] | None = None,
-    allow_unsupported_parameters: bool = False,
 ) -> FitResult:
     """Fit ion pure-component parameters against electrolyte records."""
     return _fit_pure_ion_internal(
@@ -2741,7 +2730,6 @@ def fit_pure_ion(
         bounds=bounds,
         user_options=user_options,
         provenance=provenance,
-        allow_unsupported_parameters=allow_unsupported_parameters,
     )
 
 
@@ -2761,7 +2749,6 @@ def fit_binary_parameters(
     initial_guess: Mapping[str, float] | None = None,
     user_options: Mapping[str, Any] | None = None,
     provenance: Sequence[BinaryInteraction] | Mapping[str, str] | None = None,
-    allow_unsupported_parameters: bool = False,
 ) -> FitResult:
     """Fit binary interaction parameters through the easy regression API contract."""
 
@@ -2781,7 +2768,6 @@ def fit_binary_parameters(
         bounds=bounds,
         user_options=user_options,
         provenance=provenance,
-        allow_unsupported_parameters=allow_unsupported_parameters,
         optimizer_backend=_optimizer_backend_from_options(solver_options, "ceres"),
     )
     return _annotate_contract_problem(
@@ -2807,7 +2793,6 @@ def fit_binary_pair(
     bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None = None,
     user_options: Mapping[str, Any] | None = None,
     provenance: Sequence[BinaryInteraction] | Mapping[str, str] | None = None,
-    allow_unsupported_parameters: bool = False,
     optimizer_backend: str = "ceres",
 ) -> FitResult:
     """Fit V1 binary interaction parameters against VLE x/y records."""
@@ -2822,7 +2807,6 @@ def fit_binary_pair(
         bounds=bounds,
         user_options=user_options,
         provenance=provenance,
-        allow_unsupported_parameters=allow_unsupported_parameters,
         optimizer_backend=optimizer_backend,
     )
 
