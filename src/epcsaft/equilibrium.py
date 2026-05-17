@@ -845,30 +845,6 @@ def _explicit_to_formula_composition(composition: np.ndarray, basis: dict[str, A
     return out / total
 
 
-def _phase_state(
-    mixture: Any,
-    T: float,
-    P: float,
-    composition: np.ndarray,
-    label: str,
-    options: EquilibriumOptions,
-    context: str,
-) -> dict[str, Any]:
-    try:
-        state = mixture.state(T=T, P=P, x=composition, phase=label)
-    except SolutionError:
-        raise
-    except (InputError, ValueError, RuntimeError, ArithmeticError) as exc:
-        raise SolutionError(f"Failed to construct {label} phase during {context}: {exc}") from exc
-    diagnostics = state.state_diagnostics(species=mixture.species) if options.include_phase_diagnostics else None
-    return {
-        "state": state,
-        "ln_phi": np.asarray(state.fugacity_coefficient(), dtype=float),
-        "density": float(state.density()),
-        "diagnostics": diagnostics,
-    }
-
-
 def _neutral_two_phase_eos_tolerances(P: float, options: EquilibriumOptions) -> tuple[float, float, float, float]:
     material_tolerance = options.tolerance
     pressure_tolerance = max(abs(P) * options.tolerance, options.tolerance)

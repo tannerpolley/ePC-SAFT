@@ -11,8 +11,9 @@ import numpy as np
 
 from epcsaft._types import SolutionError
 from epcsaft.epcsaft import ePCSAFTMixture
-from epcsaft.equilibrium import EquilibriumOptions, _json_like, _phase_state
+from epcsaft.equilibrium import EquilibriumOptions, _json_like
 from epcsaft.equilibrium_core.electrolyte_basis import build_electrolyte_basis
+from scripts.validation.equilibrium_core.phase_state import phase_state
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 KHUIDAIDA_ANALYSIS = REPO_ROOT / "analyses" / "paper_validation" / "application" / "2026_khudaida"
@@ -760,7 +761,7 @@ def _state_payload(
     options: EquilibriumOptions,
     label: str,
 ) -> dict[str, Any]:
-    payload = _phase_state(
+    payload = phase_state(
         mixture, float(temperature), PRESSURE_PA, composition, "liq", options, f"khudaida_{label}_diagnostic"
     )
     state = payload["state"]

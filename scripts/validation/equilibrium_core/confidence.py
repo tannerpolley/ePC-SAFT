@@ -20,7 +20,8 @@ import pandas as pd
 
 from epcsaft._types import SolutionError
 from epcsaft.epcsaft import ePCSAFTMixture
-from epcsaft.equilibrium import EquilibriumOptions, _phase_state
+from epcsaft.equilibrium import EquilibriumOptions
+from scripts.validation.equilibrium_core.phase_state import phase_state
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 BENCHMARK_ROOT = REPO_ROOT / "data" / "reference" / "equilibrium_benchmarks" / "electrolyte_lle"
@@ -337,11 +338,11 @@ def fixed_phase_gibbs_delta(
     beta = _best_phase_fraction(native.feed, org, aq)
     mixture = ePCSAFTMixture.from_dataset(suite.dataset, suite.species, native.feed, case.temperature_K)
     options = EquilibriumOptions(include_phase_diagnostics=False)
-    feed_state = _phase_state(mixture, case.temperature_K, PRESSURE_PA, native.feed, "liq", options, "oracle_feed")[
+    feed_state = phase_state(mixture, case.temperature_K, PRESSURE_PA, native.feed, "liq", options, "oracle_feed")[
         "state"
     ]
-    org_state = _phase_state(mixture, case.temperature_K, PRESSURE_PA, org, "liq", options, "oracle_org")["state"]
-    aq_state = _phase_state(mixture, case.temperature_K, PRESSURE_PA, aq, "liq", options, "oracle_aq")["state"]
+    org_state = phase_state(mixture, case.temperature_K, PRESSURE_PA, org, "liq", options, "oracle_org")["state"]
+    aq_state = phase_state(mixture, case.temperature_K, PRESSURE_PA, aq, "liq", options, "oracle_aq")["state"]
     g_feed = _gibbs_proxy(native.feed, feed_state.fugacity_coefficient())
     g_org = _gibbs_proxy(org, org_state.fugacity_coefficient())
     g_aq = _gibbs_proxy(aq, aq_state.fugacity_coefficient())
