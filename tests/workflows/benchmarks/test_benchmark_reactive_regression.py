@@ -12,7 +12,6 @@ def test_reactive_regression_benchmark_cases_and_order():
         "reactive_speciation_batch_tiny",
         "reactive_bubble_batch_tiny",
         "reactive_regression_objective_tiny",
-        "reactive_regression_parameter_shift",
         "reactive_regression_pressure_speciation_35_row_surrogate",
         "mea_trace_carbonate_35_row_public_surrogate",
     )
@@ -20,7 +19,6 @@ def test_reactive_regression_benchmark_cases_and_order():
         "reactive_speciation_batch_tiny",
         "reactive_bubble_batch_tiny",
         "reactive_regression_objective_tiny",
-        "reactive_regression_parameter_shift",
     )
 
 
@@ -45,8 +43,6 @@ def test_reactive_regression_benchmark_schema_for_one_case():
         "failure_count",
         "measured_success_repeat_count",
         "failure_messages",
-        "baseline_repeat",
-        "baseline_warmup",
         "residual_count",
         "cache_hits",
         "cache_misses",
@@ -73,10 +69,10 @@ def test_reactive_regression_benchmark_schema_for_one_case():
     assert case_payload["failure_count"] >= 1
     assert case_payload["measured_success_repeat_count"] == 1
     assert case_payload["failure_messages"] == []
-    assert case_payload["baseline_repeat"] == 1
-    assert case_payload["baseline_warmup"] == 1
     assert case_payload["context_cache_hits"] >= 0
     assert case_payload["native_reference_state_cache_hits"] is None
+    assert "baseline_repeat" not in case_payload
+    assert "baseline_warmup" not in case_payload
 
 
 def test_reactive_regression_benchmark_baseline_merge(tmp_path):

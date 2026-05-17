@@ -69,7 +69,6 @@ class PreparedBenchmarkCase:
     case: str
     description: str
     runner: Callable[[], BenchmarkObservation]
-    baseline_runner: Callable[[], BenchmarkObservation] | None = None
 
 
 def _to_int(value: Any) -> int:
@@ -352,79 +351,6 @@ def _objective_rows() -> tuple[dict[str, Any], ...]:
             "initial_x": [0.97, 0.015, 0.015],
             "target_partial_pressures": {"water": 3122.0},
             "target_x": {"water": 0.97},
-        },
-    )
-
-
-def _run_objective_legacy(
-    rows: Sequence[Mapping[str, Any]],
-    *,
-    pressure_weight: float,
-    speciation_weight: float,
-) -> BenchmarkObservation:
-    factory, mix = _mixture_factory_and_instance()
-    cache_before = _runtime_cache_stats(mix)
-    result = epcsaft.evaluate_reactive_electrolyte_bubble_residuals(
-        rows,
-        species=SPECIES,
-        mixture_factory=factory,
-        balances=BALANCES,
-        reactions=REACTIONS,
-        vapor_species=VAPOR_SPECIES,
-        reaction_names=("reactive_regression_reaction",),
-        pressure_species=VAPOR_SPECIES,
-        speciation_species=("water",),
-        pressure_weight=pressure_weight,
-        speciation_weight=speciation_weight,
-        reaction_weight=1.0e-12,
-        options=epcsaft.ReactiveElectrolyteBubbleOptions(error_mode="result"),
-        continuation="none",
-    )
-    cache_after = _runtime_cache_stats(mix)
-    cache_hits = _cache_delta(cache_before, cache_after, "reference_state_cache_hits")
-    cache_misses = _cache_delta(cache_before, cache_after, "reference_state_cache_misses")
-
-    residual_count = int(result.residuals.size)
-    diagnostics_keys: list[str] = []
-    density_solves = 0
-    activity_calls = 0
-    fugacity_calls = 0
-    speciation_solves = 0
-    bubble_solves = 0
-    for row in result.record_results:
-        row_diag = _mapping_value(dict(row), "diagnostics")
-        d_count, a_count, diag_keys = _extract_nested_diagnostics(row_diag)
-        density_solves += d_count
-        activity_calls += a_count
-        fugacity_calls += len(_mapping_value(dict(row), "partial_pressures"))
-        speciation_solves += 1
-        bubble_solves += 1
-        diagnostics_keys.extend(diag_keys)
-
-    return BenchmarkObservation(
-        fingerprint={
-            "case": "reactive_regression_objective_tiny",
-            "row_count": len(rows),
-            "parameter_count": len(SPECIES),
-            "residual_norm": _to_float(result.residual_norm),
-        },
-        diagnostics={"diagnostics_keys": sorted(set(diagnostics_keys)), "residual_payload": result.to_dict()},
-        row_count=len(rows),
-        parameter_count=len(SPECIES),
-        success_count=int(result.success_count),
-        failure_count=int(result.failure_count),
-        residual_count=residual_count,
-        cache_hits=cache_hits,
-        cache_misses=cache_misses,
-        speciation_solves=speciation_solves,
-        bubble_solves=bubble_solves,
-        density_solves=density_solves,
-        activity_calls=activity_calls,
-        fugacity_calls=fugacity_calls,
-        counter_details={
-            "native_reference_state_cache_hits": cache_hits,
-            "native_reference_state_cache_misses": cache_misses,
-            "density_warm_start_hits": _cache_delta(cache_before, cache_after, "density_warm_start_hits"),
         },
     )
 
@@ -878,33 +804,6 @@ def _case_builder_reactive_regression_objective_tiny() -> PreparedBenchmarkCase:
         case="reactive_regression_objective_tiny",
         description="Reactive electrolyte pressure/speciation objective over a tiny two-row batch.",
         runner=_run_objective_compiled(rows, pressure_weight=1.0, speciation_weight=1.0),
-        baseline_runner=lambda: _run_objective_legacy(rows, pressure_weight=1.0, speciation_weight=1.0),
-    )
-
-
-def _case_builder_reactive_regression_parameter_shift() -> PreparedBenchmarkCase:
-    base_rows = list(_objective_rows())
-    shifted_rows = []
-    for row in base_rows:
-        mutated = dict(row)
-        target = dict(mutated["target_partial_pressures"])
-        for species_key, value in target.items():
-            target[species_key] = float(value) * 1.001
-        mutated["target_partial_pressures"] = target
-        mutated["row_id"] = f"{mutated['row_id']}-shifted"
-        shifted_rows.append(mutated)
-    rows = tuple(base_rows + shifted_rows)
-
-    return PreparedBenchmarkCase(
-        case="reactive_regression_parameter_shift",
-        description="Tiny reaction-objective benchmark with baseline and shifted pressure targets.",
-        runner=_run_objective_compiled(
-            rows,
-            pressure_weight=1.0,
-            speciation_weight=1.0,
-            parameter_map={"Na+.sigma": 2.8232 * 1.001},
-        ),
-        baseline_runner=lambda: _run_objective_legacy(rows, pressure_weight=1.0, speciation_weight=1.0),
     )
 
 
@@ -931,7 +830,6 @@ CASE_BUILDERS: OrderedDict[str, Callable[[], PreparedBenchmarkCase]] = OrderedDi
         ("reactive_speciation_batch_tiny", _case_builder_reactive_speciation_tiny),
         ("reactive_bubble_batch_tiny", _case_builder_reactive_bubble_tiny),
         ("reactive_regression_objective_tiny", _case_builder_reactive_regression_objective_tiny),
-        ("reactive_regression_parameter_shift", _case_builder_reactive_regression_parameter_shift),
         (
             "reactive_regression_pressure_speciation_35_row_surrogate",
             _case_builder_reactive_regression_pressure_speciation_35_row_surrogate,
@@ -946,7 +844,6 @@ DEFAULT_CASES: tuple[str, ...] = (
     "reactive_speciation_batch_tiny",
     "reactive_bubble_batch_tiny",
     "reactive_regression_objective_tiny",
-    "reactive_regression_parameter_shift",
 )
 
 
@@ -1076,22 +973,6 @@ def _benchmark_case(prepared: PreparedBenchmarkCase, *, warmup: int, repeat: int
         "native_reference_state_cache_misses": counter_details_totals["native_reference_state_cache_misses"],
         "density_warm_start_hits": counter_details_totals["density_warm_start_hits"],
     }
-    if prepared.baseline_runner is not None:
-        baseline_timings_ns: list[int] = []
-        baseline_repeat = min(max(1, repeat), 3)
-        baseline_warmup = min(max(0, warmup), 1)
-        for _ in range(baseline_warmup):
-            prepared.baseline_runner()
-        for _ in range(baseline_repeat):
-            start_ns = time.perf_counter_ns()
-            prepared.baseline_runner()
-            baseline_timings_ns.append(time.perf_counter_ns() - start_ns)
-        baseline_timings = np.asarray(baseline_timings_ns, dtype=np.int64)
-        baseline_median = int(np.median(baseline_timings))
-        payload["baseline_median_ns"] = baseline_median
-        payload["baseline_repeat"] = int(baseline_repeat)
-        payload["baseline_warmup"] = int(baseline_warmup)
-        payload["speedup_vs_baseline"] = float(baseline_median / max(int(payload["median_ns"]), 1))
     return payload
 
 

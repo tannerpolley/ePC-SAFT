@@ -114,6 +114,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - The older reactive-electrolyte bubble residual wrapper and its public result payload were removed. The retained
   diagnostic path is the native-first `ReactiveElectrolyteRegressionContext` plus
   `evaluate_reactive_regression_objective(...)` surface.
+- Reactive-regression benchmarks no longer keep an in-process legacy timing baseline against the removed wrapper. The
+  retained benchmark comparison path is optional external JSON baseline reporting against supported cases.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
 

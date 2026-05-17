@@ -838,6 +838,11 @@ Task 12 continuation note: density root diagnostics no longer sample pressure sl
 Candidate acceptance now uses pressure residual and finite residual Gibbs data only; exact pressure-density
 derivatives remain in the native analytical/CppAD derivative APIs rather than density failure payloads.
 
+Task 10/12 continuation note: reactive-regression benchmarks no longer build an in-process timing baseline through the
+removed reactive-electrolyte residual wrapper. The benchmark harness now times only the supported
+`ReactiveElectrolyteRegressionContext` / `evaluate_reactive_regression_objective(...)` diagnostic surface, with
+optional external JSON baseline comparison kept as a reporting feature.
+
 Task 12 continuation note: stale tracked GoalBuddy artifacts for superseded native electrolyte, neutral LLE,
 reactive-equilibrium, and PR #126 repair stories were removed from active docs. This plan is now the authoritative
 tracked handoff for native Ipopt equilibrium, native Ceres regression, derivative gates, and solver-cleanup work.
