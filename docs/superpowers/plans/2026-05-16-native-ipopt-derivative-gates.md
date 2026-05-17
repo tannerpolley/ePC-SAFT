@@ -685,6 +685,12 @@ Default requests enumerate the deterministic parent/trial phase set; every nativ
 public result is returned, and the selected public trial is the minimum accepted TPD. Python still does not own TPD
 residual packing, minimization, retry logic, or alternate solve behavior.
 
+Task 8 continuation note: public electrolyte stability now dispatches one deterministic liquid/liquid TPD request
+through the native Ipopt stability binding. The native NLP adds a charge-balance equality row beside the unity
+composition row, uses the charge-neutral feed as its canonical initial point, and keeps the exact objective gradient on
+the CppAD-implicit fugacity-composition sensitivity surface. Python validates charge neutrality, calls the native route,
+and converts accepted payloads into `StabilityResult`; local no-Ipopt builds still raise the typed dependency gate.
+
 ### Task 9: Replace Electrolyte And Reactive Phase Equilibrium Routes
 
 **Files:**
@@ -908,8 +914,7 @@ Task 12 continuation note: public neutral TP flash no longer executes the native
 Task 12 continuation note: public electrolyte stability routes no longer execute legacy native TPD searches from
 `electrolyte_stability`, `electrolyte_stability_tp`, typed ionic `StabilityAnalysis`, or reactive-stability
 post-speciation dispatch. The public adapters validate inputs, phase labels, charge neutrality, and electrolyte formula
-bases, then raise until native Ipopt electrolyte stability NLP route builders own production stability analysis. Public
-neutral stability later moved onto the native Ipopt TPD route boundary.
+bases, then call the native Ipopt charge-constrained TPD route boundary for production electrolyte stability analysis.
 
 Task 12 continuation note: obsolete PR #126 and issue-specific Ceres-equilibrium handoff documents were removed from active docs. Literature benchmark metadata for blocked Ascani electrolyte LLE and reactive phase-equilibrium cases now points at this native Ipopt gate plan instead of superseded Ceres-equilibrium planning artifacts.
 
@@ -972,10 +977,10 @@ requests. The generic legacy AD spelling is rejected outside Ceres-owned regress
 tests match the analytical/CppAD derivative gate.
 
 Task 12 continuation note: equilibrium cookbook and downstream local-install docs no longer describe implemented
-native-Ipopt neutral TP/LLE, fixed-temperature bubble/dew pressure, electrolyte LLE, or electrolyte bubble-pressure
-routes as globally native-Ipopt-gated. They now distinguish Ipopt-enabled native routes from stability and broader
-reactive phase-equilibrium routes that remain gated. Scoped reactive electrolyte bubble pressure uses native speciation
-followed by the fixed-liquid native bubble route when Ipopt is compiled.
+native-Ipopt neutral TP/LLE, fixed-temperature bubble/dew pressure, neutral/electrolyte stability, electrolyte LLE, or
+electrolyte bubble-pressure routes as globally native-Ipopt-gated. They now distinguish Ipopt-enabled native routes from
+broader reactive phase-equilibrium routes that remain gated. Scoped reactive electrolyte bubble pressure uses native
+speciation followed by the fixed-liquid native bubble route when Ipopt is compiled.
 
 Task 12 continuation note: stale tracked GoalBuddy artifacts for superseded native electrolyte, neutral LLE,
 reactive-equilibrium, and PR #126 repair stories were removed from active docs. This plan is now the authoritative

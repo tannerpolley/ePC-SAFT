@@ -1771,6 +1771,24 @@ PYBIND11_MODULE(_core, m) {
             )
         );
     });
+    m.def("_native_electrolyte_stability_tpd_nlp_contract", [](
+        const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+        double temperature,
+        double pressure,
+        const std::vector<double>& feed_composition
+    ) {
+        if (!mixture) {
+            throw ValueError("Electrolyte stability TPD NLP contract requires a native mixture.");
+        }
+        return stability_nlp_contract_to_dict(
+            epcsaft::native::equilibrium_nlp::evaluate_electrolyte_stability_tpd_nlp_contract(
+                mixture->args(),
+                temperature,
+                pressure,
+                feed_composition
+            )
+        );
+    });
     m.def("_native_neutral_two_phase_eos_route_result", [](
         const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
         double temperature,
@@ -2080,6 +2098,32 @@ PYBIND11_MODULE(_core, m) {
                 feed_composition,
                 stability_phase_token_to_int(parent_phase),
                 stability_phase_token_to_int(trial_phase),
+                options,
+                stability_tolerance
+            )
+        );
+    });
+    m.def("_native_electrolyte_stability_tpd_route_result", [](
+        const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+        double temperature,
+        double pressure,
+        const std::vector<double>& feed_composition,
+        int max_iterations,
+        double tolerance,
+        double timeout_seconds,
+        double stability_tolerance
+    ) {
+        if (!mixture) {
+            throw ValueError("Electrolyte stability TPD route result requires a native mixture.");
+        }
+        const epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
+            ipopt_solve_options_from_scalars(max_iterations, tolerance, timeout_seconds);
+        return stability_route_result_to_dict(
+            epcsaft::native::equilibrium_nlp::solve_electrolyte_stability_tpd_route(
+                mixture->args(),
+                temperature,
+                pressure,
+                feed_composition,
                 options,
                 stability_tolerance
             )

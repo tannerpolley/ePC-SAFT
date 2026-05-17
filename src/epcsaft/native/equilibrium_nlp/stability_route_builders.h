@@ -69,6 +69,13 @@ StabilityNlpContract evaluate_neutral_stability_tpd_nlp_contract(
     int trial_phase
 );
 
+StabilityNlpContract evaluate_electrolyte_stability_tpd_nlp_contract(
+    const add_args& args,
+    double temperature,
+    double pressure,
+    const std::vector<double>& feed_composition
+);
+
 StabilityRouteResult solve_neutral_stability_tpd_route(
     const add_args& args,
     double temperature,
@@ -76,6 +83,15 @@ StabilityRouteResult solve_neutral_stability_tpd_route(
     const std::vector<double>& feed_composition,
     int parent_phase,
     int trial_phase,
+    const IpoptSolveOptions& options,
+    double stability_tolerance
+);
+
+StabilityRouteResult solve_electrolyte_stability_tpd_route(
+    const add_args& args,
+    double temperature,
+    double pressure,
+    const std::vector<double>& feed_composition,
     const IpoptSolveOptions& options,
     double stability_tolerance
 );

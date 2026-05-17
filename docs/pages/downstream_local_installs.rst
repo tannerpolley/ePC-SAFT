@@ -181,6 +181,9 @@ Capability status summary
    * - Neutral stability
      - Native Ipopt route when compiled
      - Uses native TPD route builders; Python does not provide an alternate solve loop.
+   * - Electrolyte stability
+     - Native Ipopt route when compiled
+     - Uses native charge-constrained TPD route builders; Python does not provide an alternate solve loop.
    * - Electrolyte LLE
      - Native Ipopt route when compiled
      - Requires an Ipopt-enabled build.

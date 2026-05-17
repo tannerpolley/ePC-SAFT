@@ -909,10 +909,10 @@ def _normalize_phase_token(value: Any, label: str) -> str:
 def _native_stability_trial_from_route(route: Mapping[str, Any], stability_tolerance: float) -> StabilityTrial:
     composition = np.asarray(route.get("trial_composition", route.get("variables", [])), dtype=float).flatten()
     if composition.size == 0 or not np.all(np.isfinite(composition)):
-        raise SolutionError("Native neutral stability route did not return a finite trial composition.", dict(route))
+        raise SolutionError("Native stability route did not return a finite trial composition.", dict(route))
     min_tpd = float(route.get("min_tpd", route.get("objective", np.nan)))
     if not np.isfinite(min_tpd):
-        raise SolutionError("Native neutral stability route did not return a finite TPD objective.", dict(route))
+        raise SolutionError("Native stability route did not return a finite TPD objective.", dict(route))
     diagnostics = {
         "route_status": str(route.get("status", "")),
         "solver_status": str(route.get("solver_status", "")),
@@ -999,6 +999,61 @@ def _native_neutral_stability(
             "stability_tolerance": options.tolerance,
             "parent_phases": list(parent_phases),
             "trial_phases": list(trial_phases),
+        },
+    )
+
+
+def _native_electrolyte_stability(
+    mixture: Any,
+    *,
+    T: float,
+    P: float,
+    feed: np.ndarray,
+    feed_diagnostics: Mapping[str, Any],
+    options: EquilibriumOptions,
+) -> StabilityResult:
+    from . import _core
+
+    route = _core._native_electrolyte_stability_tpd_route_result(
+        mixture._native,
+        T,
+        P,
+        feed.tolist(),
+        options.max_iterations,
+        options.tolerance,
+        _native_timeout_seconds(options),
+        options.tolerance,
+    )
+    if str(route.get("status", "")) == "ipopt_dependency_required":
+        _raise_native_ipopt_stability_required("electrolyte_stability")
+    if not bool(route.get("accepted", False)):
+        diagnostics = {
+            "route_status": str(route.get("status", "")),
+            "solver_status": str(route.get("solver_status", "")),
+            "application_status": str(route.get("application_status", "")),
+            "parent_phase": str(route.get("parent_phase", "")),
+            "trial_phase": str(route.get("trial_phase", "")),
+        }
+        raise SolutionError("Native electrolyte stability route was rejected.", diagnostics)
+
+    trial = _native_stability_trial_from_route(route, options.tolerance)
+    stable = trial.tpd >= -abs(options.tolerance)
+    return StabilityResult(
+        backend="native_equilibrium_nlp",
+        problem_kind="electrolyte_stability",
+        stable=stable,
+        min_tpd=trial.tpd,
+        parent_phase=trial.parent_phase,
+        trial_phase=trial.trial_phase,
+        trial_composition=trial.composition,
+        trials=(trial,),
+        diagnostics={
+            "backend": "ipopt",
+            "derivative_backend": "cppad_implicit",
+            "route_count": 1,
+            "selected_trial_index": 0,
+            "stability_tolerance": options.tolerance,
+            "feed_basis": _json_like(feed_diagnostics),
         },
     )
 
@@ -1337,8 +1392,8 @@ def electrolyte_stability(
     """Validate an electrolyte stability request and require the native Ipopt route."""
     opts = _normalize_options(options)
     _require_ion_containing_mixture(mixture, "electrolyte_stability")
-    _positive_scalar(T, "T", "electrolyte_stability")
-    _positive_scalar(P, "P", "electrolyte_stability")
+    temperature = _positive_scalar(T, "T", "electrolyte_stability")
+    pressure = _positive_scalar(P, "P", "electrolyte_stability")
     feed, feed_diagnostics = _normalize_electrolyte_feed(
         mixture,
         z=z,
@@ -1349,7 +1404,14 @@ def electrolyte_stability(
     charges = _mixture_charges(mixture)
     _require_charge_neutral(feed, charges, "electrolyte_stability feed")
     electrolyte_formula_basis(mixture.species, charges, feed, salt_labels=tuple(feed_diagnostics.get("salt_molality", {})))
-    _raise_native_ipopt_stability_required("electrolyte_stability")
+    return _native_electrolyte_stability(
+        mixture,
+        T=temperature,
+        P=pressure,
+        feed=feed,
+        feed_diagnostics=feed_diagnostics,
+        options=opts,
+    )
 
 
 def electrolyte_lle_flash_native(

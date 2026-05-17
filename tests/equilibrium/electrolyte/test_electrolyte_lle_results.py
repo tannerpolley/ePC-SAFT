@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 import epcsaft
-from epcsaft import ePCSAFTMixture
+from epcsaft import _core, ePCSAFTMixture
 from epcsaft.equilibrium_core.electrolyte_basis import (
     build_electrolyte_basis,
     explicit_to_formula_composition,
@@ -99,8 +99,42 @@ def test_mixed_monovalent_divalent_shared_anion_basis_builds() -> None:
     assert labels == ["LiCl", "MgCl2"]
     assert basis.rank == 2
 
-def test_electrolyte_stability_requires_native_ipopt_route_after_validation() -> None:
+def test_electrolyte_stability_builds_native_route_request_before_ipopt_gate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     mix = _case2_mixture()
+    calls: list[dict[str, object]] = []
+
+    def fake_route(
+        _native,
+        temperature,
+        pressure,
+        feed_composition,
+        max_iterations,
+        tolerance,
+        timeout_seconds,
+        stability_tolerance,
+    ):
+        calls.append(
+            {
+                "temperature": temperature,
+                "pressure": pressure,
+                "feed_composition": feed_composition,
+                "max_iterations": max_iterations,
+                "tolerance": tolerance,
+                "timeout_seconds": timeout_seconds,
+                "stability_tolerance": stability_tolerance,
+            }
+        )
+        return {
+            "backend": "ipopt",
+            "compiled": False,
+            "ran": False,
+            "accepted": False,
+            "status": "ipopt_dependency_required",
+        }
+
+    monkeypatch.setattr(_core, "_native_electrolyte_stability_tpd_route_result", fake_route)
 
     with pytest.raises(epcsaft.InputError) as excinfo:
         mix.equilibrium(
@@ -112,3 +146,79 @@ def test_electrolyte_stability_requires_native_ipopt_route_after_validation() ->
         )
 
     _assert_stability_native_ipopt_gate(excinfo, route="electrolyte_stability")
+    assert len(calls) == 1
+    call = calls[0]
+    assert call["temperature"] == pytest.approx(298.15)
+    assert call["pressure"] == pytest.approx(1.0e5)
+    assert call["feed_composition"] == pytest.approx(_case2_feed())
+    assert call["max_iterations"] == 80
+    assert call["tolerance"] == pytest.approx(1.0e-8)
+    assert call["timeout_seconds"] == pytest.approx(0.0)
+    assert call["stability_tolerance"] == pytest.approx(1.0e-8)
+
+
+def test_electrolyte_stability_converts_accepted_native_route_payload(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    mix = _case2_mixture()
+    feed = _case2_feed()
+
+    def fake_route(
+        _native,
+        temperature,
+        pressure,
+        feed_composition,
+        max_iterations,
+        tolerance,
+        timeout_seconds,
+        stability_tolerance,
+    ):
+        assert temperature == pytest.approx(298.15)
+        assert pressure == pytest.approx(1.0e5)
+        assert feed_composition == pytest.approx(feed)
+        assert max_iterations > 0
+        assert tolerance > 0.0
+        assert timeout_seconds == pytest.approx(0.0)
+        assert stability_tolerance > 0.0
+        return {
+            "backend": "ipopt",
+            "compiled": True,
+            "ran": True,
+            "solver_accepted": True,
+            "accepted": True,
+            "stable": True,
+            "status": "accepted",
+            "solver_status": "Solve_Succeeded",
+            "application_status": "Solve_Succeeded",
+            "parent_phase": "liq",
+            "trial_phase": "liq",
+            "seed_name": "canonical_charge_neutral_feed",
+            "min_tpd": 4.0e-6,
+            "objective": 4.0e-6,
+            "trial_composition": feed.tolist(),
+            "constraints": [0.0, 0.0],
+            "derivative_backend": "cppad_implicit",
+        }
+
+    monkeypatch.setattr(_core, "_native_electrolyte_stability_tpd_route_result", fake_route)
+
+    result = mix.equilibrium(
+        kind="electrolyte_stability",
+        T=298.15,
+        P=1.0e5,
+        z=feed,
+    )
+
+    assert isinstance(result, epcsaft.StabilityResult)
+    assert result.backend == "native_equilibrium_nlp"
+    assert result.problem_kind == "electrolyte_stability"
+    assert result.stable is True
+    assert result.min_tpd == pytest.approx(4.0e-6)
+    assert result.parent_phase == "liq"
+    assert result.trial_phase == "liq"
+    assert result.trial_composition == pytest.approx(feed)
+    assert len(result.trials) == 1
+    assert result.trials[0].seed_name == "canonical_charge_neutral_feed"
+    assert result.trials[0].diagnostics["constraints"] == pytest.approx([0.0, 0.0])
+    assert result.diagnostics["route_count"] == 1
+    assert result.diagnostics["derivative_backend"] == "cppad_implicit"

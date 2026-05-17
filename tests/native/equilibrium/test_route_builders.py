@@ -195,6 +195,81 @@ def test_neutral_stability_tpd_route_result_uses_ipopt_adapter_gate() -> None:
     assert np.asarray(payload["trial_composition"], dtype=float).sum() == pytest.approx(1.0, abs=1.0e-7)
 
 
+def test_electrolyte_stability_tpd_contract_adds_charge_constraint() -> None:
+    mix = _ionic_mixture()
+    feed = np.asarray([0.9998, 1.0e-4, 1.0e-4], dtype=float)
+    charges = np.asarray([0.0, 1.0, -1.0], dtype=float)
+
+    payload = _core._native_electrolyte_stability_tpd_nlp_contract(
+        mix._native,
+        298.15,
+        1.013e5,
+        feed.tolist(),
+    )
+
+    initial = np.asarray(payload["initial_point"], dtype=float)
+    gradient = np.asarray(payload["gradient_at_initial"], dtype=float)
+    jacobian = np.asarray(payload["jacobian_values_at_initial"], dtype=float).reshape(2, 3)
+
+    assert payload["problem_name"] == "electrolyte_stability_tpd"
+    assert payload["derivative_backend"] == "cppad_implicit"
+    assert payload["parent_phase"] == "liq"
+    assert payload["trial_phase"] == "liq"
+    assert payload["species_count"] == 3
+    assert payload["variable_count"] == 3
+    assert payload["constraint_count"] == 2
+    assert payload["jacobian_nonzero_count"] == 6
+    assert payload["feed_composition"] == pytest.approx(feed)
+    assert len(payload["parent_reduced_potential"]) == 3
+    assert initial == pytest.approx(feed)
+    assert np.dot(initial, charges) == pytest.approx(0.0, abs=1.0e-14)
+    assert payload["constraints_at_initial"] == pytest.approx([0.0, 0.0], abs=1.0e-14)
+    assert np.all(np.isfinite(gradient))
+    assert jacobian[0] == pytest.approx([1.0, 1.0, 1.0])
+    assert jacobian[1] == pytest.approx(charges)
+
+
+def test_electrolyte_stability_tpd_route_result_uses_ipopt_adapter_gate() -> None:
+    mix = _ionic_mixture()
+    payload = _core._native_electrolyte_stability_tpd_route_result(
+        mix._native,
+        298.15,
+        1.013e5,
+        [0.9998, 1.0e-4, 1.0e-4],
+        30,
+        1.0e-8,
+        0.0,
+        1.0e-8,
+    )
+
+    assert payload["backend"] == "ipopt"
+    assert payload["problem_name"] == "electrolyte_stability_tpd"
+    assert payload["derivative_backend"] == "cppad_implicit"
+    assert payload["parent_phase"] == "liq"
+    assert payload["trial_phase"] == "liq"
+    assert payload["seed_name"] == "canonical_charge_neutral_feed"
+    assert payload["exact_gradient_required"] is True
+    assert payload["exact_jacobian_required"] is True
+    if not payload["compiled"]:
+        assert payload["ran"] is False
+        assert payload["solver_accepted"] is False
+        assert payload["accepted"] is False
+        assert payload["status"] == "ipopt_dependency_required"
+        assert payload["trial_composition"] == []
+        return
+
+    assert payload["ran"] is True
+    if not payload["solver_accepted"]:
+        assert payload["accepted"] is False
+        assert payload["status"] == "solver_rejected"
+        return
+    assert payload["accepted"] is True
+    assert payload["status"] == "accepted"
+    trial = np.asarray(payload["trial_composition"], dtype=float)
+    assert trial.sum() == pytest.approx(1.0, abs=1.0e-7)
+    assert np.dot(trial, np.asarray([0.0, 1.0, -1.0])) == pytest.approx(0.0, abs=1.0e-7)
+
+
 def test_neutral_lle_route_contract_builds_native_initial_point_from_feed() -> None:
     mix = _neutral_binary_mixture()
     temperature = 298.15

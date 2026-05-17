@@ -361,6 +361,7 @@ def capabilities() -> dict[str, object]:
         "reactive_speciation:ideal_mole_fraction",
         "neutral_tp_flash",
         "neutral_stability",
+        "electrolyte_stability",
         "neutral_lle_flash",
         "neutral_bubble_p",
         "neutral_bubble_t",
@@ -484,6 +485,13 @@ def capabilities() -> dict[str, object]:
                 "methods": ["stability_tp"],
                 "ipopt_formulation": "thermodynamic_constrained_nlp",
                 "route": "tangent_plane_distance",
+            },
+            "electrolyte_stability": {
+                "available": ipopt_route_available,
+                "backend": "native_ipopt_equilibrium_nlp",
+                "methods": ["electrolyte_stability_tp"],
+                "ipopt_formulation": "thermodynamic_constrained_nlp",
+                "route": "charge_constrained_tangent_plane_distance",
             },
             "neutral_lle_flash": {
                 "available": ipopt_route_available,

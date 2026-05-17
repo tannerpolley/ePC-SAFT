@@ -177,10 +177,10 @@ parameter fits.
 Electrolyte LLE
 ---------------
 
-Electrolyte stability remains route-gated until a native Ipopt stability NLP
-builder owns that calculation. Call the native electrolyte LLE route with the
-feed specification only; the native Ipopt route builder owns the canonical
-initial point and user-provided phase seeds are rejected.
+Electrolyte stability uses the native Ipopt tangent-plane-distance route with
+explicit unity and charge-balance constraints. Call the native electrolyte LLE
+route with the feed specification only; the native Ipopt route builder owns the
+canonical initial point and user-provided phase seeds are rejected.
 
 .. code-block:: python
 

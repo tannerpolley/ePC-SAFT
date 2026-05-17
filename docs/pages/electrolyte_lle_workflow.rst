@@ -14,8 +14,10 @@ Recommended workflow
    use each route builder's canonical initial point instead of caller-provided
    phase seeds.
 
-Electrolyte stability analysis remains route-gated until a native Ipopt
-stability NLP builder owns that production calculation.
+Electrolyte stability analysis uses the native Ipopt tangent-plane-distance
+route with explicit unity and charge-balance constraints. Local builds without
+Ipopt raise the same native dependency gate before any package-owned solve loop
+can run.
 
 Bounded diagnostic runs
 -----------------------

@@ -124,15 +124,18 @@ std::vector<double> reduced_potential(
     return out;
 }
 
-class NeutralStabilityTpdProblem final : public NlpProblem {
+class StabilityTpdProblem final : public NlpProblem {
 public:
-    NeutralStabilityTpdProblem(
+    StabilityTpdProblem(
         add_args args,
         double temperature,
         double pressure,
         std::vector<double> feed_composition,
         int parent_phase,
-        int trial_phase
+        int trial_phase,
+        std::string problem_name,
+        std::vector<double> charges = {},
+        bool require_charge_constraint = false
     )
         : args_(std::move(args)),
           temperature_(temperature),
@@ -141,10 +144,35 @@ public:
           parent_phase_(parent_phase),
           trial_phase_(trial_phase),
           parent_phase_label_(phase_label(parent_phase)),
-          trial_phase_label_(phase_label(trial_phase)) {
+          trial_phase_label_(phase_label(trial_phase)),
+          problem_name_(std::move(problem_name)),
+          charges_(std::move(charges)) {
         require_positive_finite(temperature_, "stability temperature");
         require_positive_finite(pressure_, "stability pressure");
         species_count_ = static_cast<int>(feed_composition_.size());
+        if (charges_.empty()) {
+            if (require_charge_constraint) {
+                throw ValueError("electrolyte stability route requires charge data.");
+            }
+        } else {
+            require_size(charges_, static_cast<std::size_t>(species_count_), "stability charge");
+            bool has_charged_species = false;
+            double feed_charge = 0.0;
+            for (int index = 0; index < species_count_; ++index) {
+                const double charge = charges_[static_cast<std::size_t>(index)];
+                if (!std::isfinite(charge)) {
+                    throw ValueError("stability charge values must be finite.");
+                }
+                has_charged_species = has_charged_species || std::abs(charge) > charge_epsilon_;
+                feed_charge += feed_composition_[static_cast<std::size_t>(index)] * charge;
+            }
+            if (!has_charged_species) {
+                throw ValueError("electrolyte stability route requires charged species.");
+            }
+            if (std::abs(feed_charge) > charge_balance_tolerance_) {
+                throw ValueError("electrolyte stability feed must be charge neutral.");
+            }
+        }
         parent_state_ = phase_state_sensitivity(
             args_,
             temperature_,
@@ -157,7 +185,7 @@ public:
     }
 
     std::string name() const override {
-        return "neutral_stability_tpd";
+        return problem_name_;
     }
 
     int variable_count() const override {
@@ -165,23 +193,26 @@ public:
     }
 
     int constraint_count() const override {
-        return 1;
+        return has_charge_constraint() ? 2 : 1;
     }
 
     int jacobian_nonzero_count() const override {
-        return species_count_;
+        return species_count_ * constraint_count();
     }
 
     NlpBounds bounds() const override {
         NlpBounds out;
         out.variable_lower.assign(static_cast<std::size_t>(species_count_), minimum_composition_);
         out.variable_upper.assign(static_cast<std::size_t>(species_count_), 1.0);
-        out.constraint_lower = {0.0};
-        out.constraint_upper = {0.0};
+        out.constraint_lower.assign(static_cast<std::size_t>(constraint_count()), 0.0);
+        out.constraint_upper.assign(static_cast<std::size_t>(constraint_count()), 0.0);
         return out;
     }
 
     std::vector<double> initial_point() const override {
+        if (has_charge_constraint()) {
+            return feed_composition_;
+        }
         return shifted_composition(feed_composition_);
     }
 
@@ -220,29 +251,47 @@ public:
 
     std::vector<double> constraints(const std::vector<double>& variables) const override {
         require_trial_variables(variables);
-        return {std::accumulate(variables.begin(), variables.end(), 0.0) - 1.0};
+        std::vector<double> out;
+        out.reserve(static_cast<std::size_t>(constraint_count()));
+        out.push_back(std::accumulate(variables.begin(), variables.end(), 0.0) - 1.0);
+        if (has_charge_constraint()) {
+            double charge_balance = 0.0;
+            for (int index = 0; index < species_count_; ++index) {
+                charge_balance +=
+                    variables[static_cast<std::size_t>(index)] * charges_[static_cast<std::size_t>(index)];
+            }
+            out.push_back(charge_balance);
+        }
+        return out;
     }
 
     NlpJacobianStructure jacobian_structure() const override {
         NlpJacobianStructure out;
-        out.rows.assign(static_cast<std::size_t>(species_count_), 0);
-        out.cols.reserve(static_cast<std::size_t>(species_count_));
-        for (int col = 0; col < species_count_; ++col) {
-            out.cols.push_back(col);
+        out.rows.reserve(static_cast<std::size_t>(jacobian_nonzero_count()));
+        out.cols.reserve(static_cast<std::size_t>(jacobian_nonzero_count()));
+        for (int row = 0; row < constraint_count(); ++row) {
+            for (int col = 0; col < species_count_; ++col) {
+                out.rows.push_back(row);
+                out.cols.push_back(col);
+            }
         }
         return out;
     }
 
     std::vector<double> jacobian_values(const std::vector<double>& variables) const override {
         require_trial_variables(variables);
-        return std::vector<double>(static_cast<std::size_t>(species_count_), 1.0);
+        std::vector<double> out(static_cast<std::size_t>(species_count_), 1.0);
+        if (has_charge_constraint()) {
+            out.insert(out.end(), charges_.begin(), charges_.end());
+        }
+        return out;
     }
 
     NlpScaling scaling() const override {
         NlpScaling out;
         out.objective = 1.0;
         out.variables.assign(static_cast<std::size_t>(species_count_), 1.0);
-        out.constraints = {1.0};
+        out.constraints.assign(static_cast<std::size_t>(constraint_count()), 1.0);
         return out;
     }
 
@@ -267,6 +316,10 @@ public:
     }
 
 private:
+    bool has_charge_constraint() const {
+        return !charges_.empty();
+    }
+
     void require_trial_variables(const std::vector<double>& variables) const {
         require_size(variables, static_cast<std::size_t>(species_count_), "stability trial variable");
         for (double value : variables) {
@@ -290,17 +343,21 @@ private:
     double temperature_ = 0.0;
     double pressure_ = 0.0;
     double minimum_composition_ = 1.0e-14;
+    double charge_epsilon_ = 1.0e-12;
+    double charge_balance_tolerance_ = 1.0e-10;
     std::vector<double> feed_composition_;
     int parent_phase_ = 0;
     int trial_phase_ = 0;
     std::string parent_phase_label_;
     std::string trial_phase_label_;
+    std::string problem_name_;
+    std::vector<double> charges_;
     PhaseStateCompositionSensitivityResult parent_state_;
     std::vector<double> parent_reduced_potential_;
     int species_count_ = 0;
 };
 
-StabilityNlpContract make_contract(const NeutralStabilityTpdProblem& problem) {
+StabilityNlpContract make_contract(const StabilityTpdProblem& problem) {
     validate_nlp_problem_shape(problem);
 
     const std::vector<double> initial = problem.initial_point();
@@ -332,27 +389,17 @@ StabilityNlpContract make_contract(const NeutralStabilityTpdProblem& problem) {
     return out;
 }
 
-}  // namespace
-
-StabilityNlpContract evaluate_neutral_stability_tpd_nlp_contract(
-    const add_args& args,
-    double temperature,
-    double pressure,
-    const std::vector<double>& feed_composition,
-    int parent_phase,
-    int trial_phase
-) {
-    NeutralStabilityTpdProblem problem(args, temperature, pressure, feed_composition, parent_phase, trial_phase);
-    return make_contract(problem);
-}
-
-StabilityRouteResult solve_neutral_stability_tpd_route(
+StabilityRouteResult solve_stability_tpd_route(
     const add_args& args,
     double temperature,
     double pressure,
     const std::vector<double>& feed_composition,
     int parent_phase,
     int trial_phase,
+    const std::string& problem_name,
+    const std::string& seed_name,
+    std::vector<double> charges,
+    bool require_charge_constraint,
     const IpoptSolveOptions& options,
     double stability_tolerance
 ) {
@@ -361,6 +408,8 @@ StabilityRouteResult solve_neutral_stability_tpd_route(
     out.compiled = adapter.compiled;
     out.adapter_available = adapter.adapter_available;
     out.adapter_kind = adapter.adapter_kind;
+    out.problem_name = problem_name;
+    out.seed_name = seed_name;
     out.exact_gradient_required = adapter.exact_gradient_required;
     out.exact_jacobian_required = adapter.exact_jacobian_required;
     out.parent_phase = phase_label(parent_phase);
@@ -370,7 +419,17 @@ StabilityRouteResult solve_neutral_stability_tpd_route(
         return out;
     }
 
-    NeutralStabilityTpdProblem problem(args, temperature, pressure, feed_composition, parent_phase, trial_phase);
+    StabilityTpdProblem problem(
+        args,
+        temperature,
+        pressure,
+        feed_composition,
+        parent_phase,
+        trial_phase,
+        problem_name,
+        std::move(charges),
+        require_charge_constraint
+    );
     out.parent_reduced_potential = problem.parent_reduced_potential();
     const IpoptSolveResult solve = solve_ipopt_nlp(problem, options);
     out.ran = solve.solver_ran;
@@ -390,6 +449,98 @@ StabilityRouteResult solve_neutral_stability_tpd_route(
     out.trial_composition = solve.variables;
     out.status = "accepted";
     return out;
+}
+
+}  // namespace
+
+StabilityNlpContract evaluate_neutral_stability_tpd_nlp_contract(
+    const add_args& args,
+    double temperature,
+    double pressure,
+    const std::vector<double>& feed_composition,
+    int parent_phase,
+    int trial_phase
+) {
+    StabilityTpdProblem problem(
+        args,
+        temperature,
+        pressure,
+        feed_composition,
+        parent_phase,
+        trial_phase,
+        "neutral_stability_tpd"
+    );
+    return make_contract(problem);
+}
+
+StabilityNlpContract evaluate_electrolyte_stability_tpd_nlp_contract(
+    const add_args& args,
+    double temperature,
+    double pressure,
+    const std::vector<double>& feed_composition
+) {
+    StabilityTpdProblem problem(
+        args,
+        temperature,
+        pressure,
+        feed_composition,
+        0,
+        0,
+        "electrolyte_stability_tpd",
+        args.z,
+        true
+    );
+    return make_contract(problem);
+}
+
+StabilityRouteResult solve_neutral_stability_tpd_route(
+    const add_args& args,
+    double temperature,
+    double pressure,
+    const std::vector<double>& feed_composition,
+    int parent_phase,
+    int trial_phase,
+    const IpoptSolveOptions& options,
+    double stability_tolerance
+) {
+    return solve_stability_tpd_route(
+        args,
+        temperature,
+        pressure,
+        feed_composition,
+        parent_phase,
+        trial_phase,
+        "neutral_stability_tpd",
+        "canonical_shifted_feed",
+        {},
+        false,
+        options,
+        stability_tolerance
+    );
+}
+
+StabilityRouteResult solve_electrolyte_stability_tpd_route(
+    const add_args& args,
+    double temperature,
+    double pressure,
+    const std::vector<double>& feed_composition,
+    const IpoptSolveOptions& options,
+    double stability_tolerance
+) {
+    return solve_stability_tpd_route(
+        args,
+        temperature,
+        pressure,
+        feed_composition,
+        0,
+        0,
+        "electrolyte_stability_tpd",
+        "canonical_charge_neutral_feed",
+        args.z,
+        true,
+        options,
+        stability_tolerance
+    );
 }
 
 }  // namespace epcsaft::native::equilibrium_nlp
