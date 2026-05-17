@@ -275,7 +275,8 @@ The failure list from the initial full-duration run has been retired. Each liste
   now keep those route names absent until a thermodynamic native Ipopt route is deliberately added. Broad reactive
   phase-equilibrium route builders and their reaction-coupled acceptance tests remain open, but private route-builder
   coverage now includes the conserved-balance plus reaction-standard-potential two-phase EOS NLP contract needed for
-  that production route and its native Ipopt route-result dependency gate.
+  that production route, its native Ipopt route-result dependency gate, and native postsolve checks for conserved
+  balances, pressure consistency, reaction stationarity, and phase separation.
 
 ## Required Cleanup Still Open
 

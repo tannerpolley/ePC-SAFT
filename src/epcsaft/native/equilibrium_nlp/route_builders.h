@@ -77,6 +77,27 @@ struct NeutralTwoPhaseEosRouteResult {
     NeutralTwoPhaseEosPostsolve postsolve;
 };
 
+struct ReactiveTwoPhaseEosPostsolve {
+    bool accepted = false;
+    std::string rejection_reason;
+    std::string derivative_backend = "analytic_cppad";
+    int phase_count = 0;
+    int species_count = 0;
+    int balance_row_count = 0;
+    int reaction_count = 0;
+    double conserved_balance_norm = 0.0;
+    double pressure_consistency_norm = 0.0;
+    double reaction_stationarity_norm = 0.0;
+    double phase_distance = 0.0;
+    double objective = 0.0;
+    std::vector<double> standard_mu_rt;
+    std::vector<double> constraints;
+    std::vector<double> reaction_stationarity_residuals;
+    std::vector<double> phase_amount_totals;
+    std::vector<double> phase_volumes;
+    std::vector<std::vector<double>> phase_compositions;
+};
+
 struct ReactiveTwoPhaseEosRouteResult {
     bool compiled = false;
     bool adapter_available = false;
@@ -102,6 +123,7 @@ struct ReactiveTwoPhaseEosRouteResult {
     std::vector<double> constraints;
     std::vector<std::vector<double>> phase_amounts;
     std::vector<double> phase_volumes;
+    ReactiveTwoPhaseEosPostsolve postsolve;
 };
 
 NeutralTwoPhaseEosNlpContract evaluate_neutral_two_phase_eos_nlp_contract(
@@ -160,7 +182,29 @@ ReactiveTwoPhaseEosRouteResult solve_reactive_two_phase_eos_route(
     int reaction_rows,
     const std::vector<double>& reaction_stoichiometry_row_major,
     const std::vector<double>& log_equilibrium_constants,
-    const IpoptSolveOptions& options
+    const IpoptSolveOptions& options,
+    double conserved_balance_tolerance,
+    double pressure_tolerance,
+    double reaction_stationarity_tolerance,
+    double phase_distance_tolerance
+);
+
+ReactiveTwoPhaseEosPostsolve evaluate_reactive_two_phase_eos_postsolve(
+    const add_args& args,
+    double temperature,
+    double target_pressure,
+    const std::vector<std::vector<double>>& phase_amounts,
+    const std::vector<double>& volumes,
+    int balance_rows,
+    const std::vector<double>& balance_matrix_row_major,
+    const std::vector<double>& total_vector,
+    int reaction_rows,
+    const std::vector<double>& reaction_stoichiometry_row_major,
+    const std::vector<double>& log_equilibrium_constants,
+    double conserved_balance_tolerance,
+    double pressure_tolerance,
+    double reaction_stationarity_tolerance,
+    double phase_distance_tolerance
 );
 
 NeutralTwoPhaseEosNlpContract evaluate_neutral_bubble_p_eos_nlp_contract(

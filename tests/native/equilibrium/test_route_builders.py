@@ -948,6 +948,55 @@ def test_reactive_two_phase_eos_contract_uses_conserved_balances_and_standard_po
     assert contract_jacobian[1:] == pytest.approx(phase_system_jacobian[2:], rel=1.0e-12, abs=1.0e-8)
 
 
+def test_reactive_two_phase_eos_postsolve_checks_reaction_stationarity() -> None:
+    mix = _neutral_binary_mixture()
+    temperature = 300.0
+    phase_amounts = [
+        np.asarray([0.1, 0.4], dtype=float),
+        np.asarray([0.2, 0.3], dtype=float),
+    ]
+    volumes = [float(phase_amounts[0].sum() / 80.0), float(phase_amounts[1].sum() / 120.0)]
+    species_totals = phase_amounts[0] + phase_amounts[1]
+    target_pressure = mix.state(
+        T=temperature,
+        rho=phase_amounts[0].sum() / volumes[0],
+        x=phase_amounts[0] / phase_amounts[0].sum(),
+        phase="liquid",
+    ).pressure()
+
+    payload = _core._native_reactive_two_phase_eos_postsolve(
+        mix._native,
+        temperature,
+        target_pressure,
+        [phase.tolist() for phase in phase_amounts],
+        volumes,
+        1,
+        [1.0, 1.0],
+        [float(species_totals.sum())],
+        1,
+        [-1.0, 1.0],
+        [float(np.log(3.0))],
+        1.0e-12,
+        1.0e12,
+        1.0e-12,
+        1.0e-3,
+    )
+
+    assert payload["derivative_backend"] == "analytic_cppad"
+    assert payload["phase_count"] == 2
+    assert payload["species_count"] == 2
+    assert payload["balance_row_count"] == 1
+    assert payload["reaction_count"] == 1
+    assert payload["conserved_balance_norm"] == pytest.approx(0.0, abs=1.0e-12)
+    assert np.isfinite(payload["pressure_consistency_norm"])
+    assert payload["reaction_stationarity_norm"] > 1.0e-12
+    assert payload["phase_distance"] > 1.0e-3
+    assert payload["accepted"] is False
+    assert payload["rejection_reason"] == "reaction_stationarity"
+    assert len(payload["constraints"]) == 3
+    assert len(payload["reaction_stationarity_residuals"]) == 2
+
+
 def test_reactive_two_phase_eos_route_result_uses_native_ipopt_gate() -> None:
     mix = _neutral_binary_mixture()
     temperature = 300.0
@@ -979,6 +1028,10 @@ def test_reactive_two_phase_eos_route_result_uses_native_ipopt_gate() -> None:
         10,
         1.0e-8,
         0.0,
+        1.0e-8,
+        1.0e-6,
+        1.0e-6,
+        1.0e-3,
     )
 
     assert payload["backend"] == "ipopt"
@@ -996,6 +1049,7 @@ def test_reactive_two_phase_eos_route_result_uses_native_ipopt_gate() -> None:
         assert payload["ran"] is False
         assert payload["accepted"] is False
         assert payload["status"] == "ipopt_dependency_required"
+        assert payload["postsolve"]["accepted"] is False
         return
 
     assert payload["ran"] is True

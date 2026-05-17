@@ -697,6 +697,31 @@ py::dict neutral_two_phase_eos_route_result_to_dict(
     return out;
 }
 
+py::dict reactive_two_phase_eos_postsolve_to_dict(
+    const epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosPostsolve& result
+) {
+    py::dict out;
+    out["accepted"] = result.accepted;
+    out["rejection_reason"] = result.rejection_reason;
+    out["derivative_backend"] = result.derivative_backend;
+    out["phase_count"] = result.phase_count;
+    out["species_count"] = result.species_count;
+    out["balance_row_count"] = result.balance_row_count;
+    out["reaction_count"] = result.reaction_count;
+    out["conserved_balance_norm"] = result.conserved_balance_norm;
+    out["pressure_consistency_norm"] = result.pressure_consistency_norm;
+    out["reaction_stationarity_norm"] = result.reaction_stationarity_norm;
+    out["phase_distance"] = result.phase_distance;
+    out["objective"] = result.objective;
+    out["standard_mu_rt"] = result.standard_mu_rt;
+    out["constraints"] = result.constraints;
+    out["reaction_stationarity_residuals"] = result.reaction_stationarity_residuals;
+    out["phase_amount_totals"] = result.phase_amount_totals;
+    out["phase_volumes"] = result.phase_volumes;
+    out["phase_compositions"] = result.phase_compositions;
+    return out;
+}
+
 py::dict reactive_two_phase_eos_route_result_to_dict(
     const epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult& result
 ) {
@@ -725,6 +750,7 @@ py::dict reactive_two_phase_eos_route_result_to_dict(
     out["constraints"] = result.constraints;
     out["phase_amounts"] = result.phase_amounts;
     out["phase_volumes"] = result.phase_volumes;
+    out["postsolve"] = reactive_two_phase_eos_postsolve_to_dict(result.postsolve);
     return out;
 }
 
@@ -1741,6 +1767,46 @@ PYBIND11_MODULE(_core, m) {
             )
         );
     });
+    m.def("_native_reactive_two_phase_eos_postsolve", [](
+        const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+        double temperature,
+        double target_pressure,
+        const std::vector<std::vector<double>>& phase_amounts,
+        const std::vector<double>& volumes,
+        int balance_rows,
+        const std::vector<double>& balance_matrix_row_major,
+        const std::vector<double>& total_vector,
+        int reaction_rows,
+        const std::vector<double>& reaction_stoichiometry_row_major,
+        const std::vector<double>& log_equilibrium_constants,
+        double conserved_balance_tolerance,
+        double pressure_tolerance,
+        double reaction_stationarity_tolerance,
+        double phase_distance_tolerance
+    ) {
+        if (!mixture) {
+            throw ValueError("Reactive two-phase EOS postsolve requires a native mixture.");
+        }
+        return reactive_two_phase_eos_postsolve_to_dict(
+            epcsaft::native::equilibrium_nlp::evaluate_reactive_two_phase_eos_postsolve(
+                mixture->args(),
+                temperature,
+                target_pressure,
+                phase_amounts,
+                volumes,
+                balance_rows,
+                balance_matrix_row_major,
+                total_vector,
+                reaction_rows,
+                reaction_stoichiometry_row_major,
+                log_equilibrium_constants,
+                conserved_balance_tolerance,
+                pressure_tolerance,
+                reaction_stationarity_tolerance,
+                phase_distance_tolerance
+            )
+        );
+    });
     m.def("_native_neutral_bubble_p_eos_nlp_contract", [](
         const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
         double temperature,
@@ -1910,7 +1976,11 @@ PYBIND11_MODULE(_core, m) {
         const std::vector<double>& log_equilibrium_constants,
         int max_iterations,
         double tolerance,
-        double timeout_seconds
+        double timeout_seconds,
+        double conserved_balance_tolerance,
+        double pressure_tolerance,
+        double reaction_stationarity_tolerance,
+        double phase_distance_tolerance
     ) {
         if (!mixture) {
             throw ValueError("Reactive two-phase EOS route result requires a native mixture.");
@@ -1930,7 +2000,11 @@ PYBIND11_MODULE(_core, m) {
                 reaction_rows,
                 reaction_stoichiometry_row_major,
                 log_equilibrium_constants,
-                options
+                options,
+                conserved_balance_tolerance,
+                pressure_tolerance,
+                reaction_stationarity_tolerance,
+                phase_distance_tolerance
             )
         );
     });

@@ -815,6 +815,11 @@ entrypoint that routes through the generic Ipopt adapter and returns the same ha
 compiled. The route-result surface remains private until reactive postsolve acceptance and public facade wiring are
 implemented.
 
+Task 9 continuation note: the private reactive two-phase route now has native postsolve diagnostics for conserved
+balances, pressure consistency, reaction-stationarity residuals, and phase separation. The private route result applies
+those gates after an accepted Ipopt solve; public reactive phase-equilibrium wiring remains blocked until these
+diagnostics are connected to a public result contract and acceptance tests.
+
 ### Task 10: Make Regression Ceres-Only
 
 **Files:**
