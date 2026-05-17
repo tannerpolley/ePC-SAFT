@@ -7,13 +7,15 @@ problems before chemical or speciation equilibrium is introduced.
 Recommended workflow
 --------------------
 
-1. Run ``kind="electrolyte_stability"`` to confirm whether the feed is unstable.
-2. If ``min_tpd`` is negative, call ``kind="electrolyte_lle"`` with the feed
-   specification only. The native route builder owns the canonical initial
-   point for the production solve.
+1. Build the charge-neutral feed specification.
+2. Call ``kind="electrolyte_lle"`` with the feed specification only. The native
+   route builder owns the canonical initial point for the production solve.
 3. For curves, pass independent feed/specification points. Ordered curve calls
    use each route builder's canonical initial point instead of caller-provided
    phase seeds.
+
+Electrolyte stability analysis remains route-gated until a native Ipopt
+stability NLP builder owns that production calculation.
 
 Bounded diagnostic runs
 -----------------------

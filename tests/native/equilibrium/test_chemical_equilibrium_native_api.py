@@ -163,22 +163,11 @@ def test_mixture_equilibrium_auto_routes_ideal_chemical_equilibrium_to_native_ip
     assert result.diagnostics["selected_solver_backend"] == "native_ipopt"
 
 
-def test_reactive_stability_requires_native_ipopt_stability_route_after_speciation(monkeypatch) -> None:
+def test_reactive_stability_requires_native_ipopt_stability_route_before_speciation(monkeypatch) -> None:
     mix = _methanol_cyclohexane_mixture()
-    target_x = np.asarray([0.45, 0.55], dtype=float)
 
     def successful_speciation(*_args, **_kwargs):
-        return epcsaft.ReactiveSpeciationResult(
-            success=True,
-            message="converged",
-            x={"Methanol": float(target_x[0]), "Cyclohexane": float(target_x[1])},
-            activity_coefficients={},
-            mass_balance_residuals={"total": 0.0},
-            charge_residual=0.0,
-            reaction_residuals=[0.0],
-            named_reaction_residuals={"methanol_to_cyclohexane": 0.0},
-            diagnostics={"phase_equilibrium_handoff": {}},
-        )
+        pytest.fail("reactive_stability must not run a Python speciation handoff before the native stability gate")
 
     monkeypatch.setattr(mix, "chemical_equilibrium", successful_speciation)
 
@@ -202,4 +191,4 @@ def test_reactive_stability_requires_native_ipopt_stability_route_after_speciati
             options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-10),
         )
 
-    _assert_stability_native_ipopt_gate(excinfo)
+    _assert_stability_native_ipopt_gate(excinfo, route="reactive_stability")

@@ -113,28 +113,9 @@ state, and activity-evaluation counts.
 Reactive stability handoff
 --------------------------
 
-``kind="reactive_stability"`` first solves homogeneous chemical equilibrium
-with the native chemical solver, then sends the equilibrated composition to the
-existing native stability route.
-
-.. code-block:: python
-
-   result = mixture.equilibrium(
-       kind="reactive_stability",
-       T=298.15,
-       P=1.013e5,
-       z=feed_guess,
-       balances=balances,
-       totals=totals,
-       reactions=reactions,
-       options=epcsaft.ReactiveSpeciationOptions(),
-   )
-
-The returned ``StabilityResult`` diagnostics include
-``reactive_chemical_equilibrium`` and ``reactive_feed_composition`` so callers
-can inspect the chemical-equilibrated feed used for tangent-plane-distance
-analysis. This route is a native stability/handoff coordinator, not a full
-rigorous reactive flash solver.
+``kind="reactive_stability"`` is declared but route-gated. It validates the
+reactive request shape and then raises until a native Ipopt stability NLP owns
+the coupled chemical-equilibrium and stability calculation.
 
 Electrolyte bubble pressure
 ---------------------------

@@ -998,6 +998,11 @@ Task 12 continuation note: reactive-speciation runtime capabilities no longer ex
 Capability tests now assert supported and route-gated standard-state lists directly, keeping derivative gaps out of
 status-string metadata.
 
+Task 8/9/12 continuation note: public `reactive_stability` no longer runs a Python chemical-equilibrium handoff before
+the native stability route gate. The facade validates the request shape and raises at the native Ipopt stability NLP
+boundary, and docs no longer recommend electrolyte or reactive stability prechecks as runnable production workflow
+steps until those native builders exist.
+
 Task 12 continuation note: reactive-speciation diagnostics now expose structured `association_coupling` metadata instead
 of the old association solver-status string. The executable text gate blocks reintroducing that field name in source,
 tests, or scripts.

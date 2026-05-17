@@ -151,5 +151,5 @@ Native-First Policy
 
 Package-owned regression, equilibrium, and speciation workflows must use native
 runtime kernels for thermodynamic calculations. Python may batch rows, validate
-inputs, manage continuation seeds, and report diagnostics, but it should not
+inputs, and report diagnostics, but it should not
 silently become the production thermodynamic solver.

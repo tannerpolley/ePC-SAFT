@@ -759,50 +759,25 @@ class ePCSAFTMixture:
                 )
             if solvent_feed is not None or salt_molality is not None:
                 raise InputError("solvent_feed and salt_molality are not supported for kind='reactive_stability'.")
-            reactive_options = options if options is not None else ReactiveSpeciationOptions()
-            if not isinstance(reactive_options, ReactiveSpeciationOptions):
+            if options is not None and not isinstance(options, ReactiveSpeciationOptions):
                 raise InputError("reactive_stability options must be a ReactiveSpeciationOptions instance.")
-            chemical = self.chemical_equilibrium(
-                T=T,
-                P=P,
-                balances=balances,
-                totals=totals,
-                reactions=reactions,
-                initial_x=initial_x,
-                z=z,
-                options=reactive_options,
+            from .equilibrium import (
+                _normalize_parent_phases,
+                _normalize_trial_phases,
+                _raise_native_ipopt_stability_required,
             )
-            equilibrated_z = [chemical.x[label] for label in self.species]
+
             charges = np.asarray(self.parameters.get("z", []), dtype=float).flatten()
             if charges.size and np.any(np.abs(charges) > 1.0e-12):
                 if parent_phase is not None or trial_phases is not None:
                     raise InputError("parent_phase and trial_phases are not supported for ionic reactive_stability.")
-                result = self.electrolyte_stability_tp(T=T, P=P, z=equilibrated_z, options=phase_options)
+                _raise_native_ipopt_stability_required("electrolyte_stability")
             else:
-                result = self.stability_tp(
-                    T=T,
-                    P=P,
-                    z=equilibrated_z,
-                    options=phase_options,
-                    parent_phase=parent_phase,
-                    trial_phases=trial_phases,
-                )
-            diagnostics = dict(result.diagnostics)
-            diagnostics["reactive_phase_method"] = "chemical_equilibrium_then_native_stability"
-            diagnostics["reactive_feed_composition"] = equilibrated_z
-            diagnostics["reactive_chemical_equilibrium"] = chemical.to_dict()
-            diagnostics["phase_equilibrium_handoff"] = chemical.diagnostics.get("phase_equilibrium_handoff")
-            return type(result)(
-                backend=result.backend,
-                problem_kind=result.problem_kind,
-                stable=result.stable,
-                min_tpd=result.min_tpd,
-                parent_phase=result.parent_phase,
-                trial_phase=result.trial_phase,
-                trial_composition=result.trial_composition,
-                trials=result.trials,
-                diagnostics=diagnostics,
-            )
+                if parent_phase is not None:
+                    _normalize_parent_phases(parent_phase)
+                if trial_phases is not None:
+                    _normalize_trial_phases(trial_phases)
+                _raise_native_ipopt_stability_required("reactive_stability")
 
         if kind == "auto":
             route = classify_equilibrium_route(self, kind, backend)
