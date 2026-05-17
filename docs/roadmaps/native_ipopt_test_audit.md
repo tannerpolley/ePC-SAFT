@@ -225,6 +225,9 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
   CppAD production-coverage flag were removed from tests. The executable text gate now owns those retired labels.
 - Public repeated-state property helpers now use only the canonical `rho_guess` density-seed spelling. The `rho_seed`
   alias was removed from public Python signatures, capabilities, tests, and API docs.
+- Runtime capability smoke coverage no longer repeats the same per-route Ipopt dependency status assertions for every
+  equilibrium route; adapter and route-builder tests own the dependency gate while the runtime smoke keeps route shape
+  and backend coverage.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
 

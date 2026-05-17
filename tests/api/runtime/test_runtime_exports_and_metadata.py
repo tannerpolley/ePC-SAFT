@@ -131,33 +131,26 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert neutral_tp["available"] is ipopt["available"]
     assert neutral_tp["backend"] == "native_ipopt_equilibrium_nlp"
     assert neutral_tp["methods"] == ["tp_flash", "flash_tp"]
-    assert neutral_tp["status"] == ("available" if ipopt["available"] else "ipopt_dependency_required")
-    assert equilibrium["neutral_bubble_dew"] == {
-        "available": ipopt["available"],
-        "backend": "native_ipopt_equilibrium_nlp",
-        "methods": ["bubble_p", "dew_p"],
-        "status": "available" if ipopt["available"] else "ipopt_dependency_required",
-    }
+    neutral_bubble_dew = equilibrium["neutral_bubble_dew"]
+    assert neutral_bubble_dew["available"] is ipopt["available"]
+    assert neutral_bubble_dew["backend"] == "native_ipopt_equilibrium_nlp"
+    assert neutral_bubble_dew["methods"] == ["bubble_p", "dew_p"]
     neutral_lle = equilibrium["neutral_lle_flash"]
     assert neutral_lle["available"] is ipopt["available"]
     assert neutral_lle["backend"] == "native_ipopt_equilibrium_nlp"
     assert neutral_lle["methods"] == ["lle_flash", "lle_tp"]
-    assert neutral_lle["status"] == ("available" if ipopt["available"] else "ipopt_dependency_required")
     electrolyte_bubble = equilibrium["electrolyte_bubble_pressure"]
     assert electrolyte_bubble["available"] is ipopt["available"]
     assert electrolyte_bubble["backend"] == "native_ipopt_equilibrium_nlp"
-    assert electrolyte_bubble["status"] == ("available" if ipopt["available"] else "ipopt_dependency_required")
     assert electrolyte_bubble["scope"] == "fixed liquid composition with neutral vapor species; ions remain liquid-only"
     electrolyte_lle = equilibrium["electrolyte_lle"]
     assert electrolyte_lle["available"] is ipopt["available"]
     assert electrolyte_lle["backend"] == "native_ipopt_equilibrium_nlp"
     assert electrolyte_lle["methods"] == ["electrolyte_lle", "electrolyte_lle_tp"]
-    assert electrolyte_lle["status"] == ("available" if ipopt["available"] else "ipopt_dependency_required")
     assert electrolyte_lle["full_constrained_nlp_available"] is ipopt["available"]
     reactive_speciation = equilibrium["reactive_speciation"]
     assert reactive_speciation["available"] is ipopt["available"]
     assert reactive_speciation["backend"] == "native_ipopt_equilibrium_nlp"
-    assert reactive_speciation["status"] == ("available" if ipopt["available"] else "ipopt_dependency_required")
     assert reactive_speciation["sweep_available"] is ipopt["available"]
     assert reactive_speciation["solver_backends"] == ["auto", "ipopt"]
     assert reactive_speciation["ipopt_routes"] == ["reactive_speciation:ideal_mole_fraction"]
