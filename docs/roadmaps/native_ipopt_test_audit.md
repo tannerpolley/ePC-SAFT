@@ -124,7 +124,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
   stability, bubble/dew temperature, and reactive-electrolyte bubble routes.
 - The public activity-coefficient contribution decomposition path now raises the package's typed `InputError` instead
   of a generic Python unsupported-operation exception, and the regression derivative table now describes neutral LLE as
-  a native Ipopt route when compiled rather than a pending route.
+  a native Ipopt route when compiled rather than a pending route. Runtime capabilities omit the unavailable
+  activity-coefficient decomposition flag.
 - The strict text gate now blocks generic "not implemented" wording in executable source, tests, and scripts, so
   unsupported derivative or route paths must state the positive required backend/formulation instead.
 - Reactive-speciation diagnostics now expose structured `association_coupling` metadata instead of an association

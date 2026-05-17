@@ -597,7 +597,6 @@ def capabilities() -> dict[str, object]:
                 "backend": "native_term_payloads",
                 "families": ["hard_chain", "dispersion", "association", "ionic", "born"],
                 "inactive_terms_explicit": True,
-                "activity_coefficient_term_decomposition_available": False,
             },
             "dataset_validation": {
                 "available": True,

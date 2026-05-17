@@ -192,9 +192,7 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert "fit_route" not in batch_context
     assert equilibrium["problem_objects"]["entrypoint"] == "mixture.solve_equilibrium(problem)"
     assert "ReactivePhaseEquilibriumProblem" in equilibrium["problem_objects"]["classes"]
-    assert (
-        capabilities["equilibrium"]["contribution_maps"]["activity_coefficient_term_decomposition_available"] is False
-    )
+    assert "activity_coefficient_term_decomposition_available" not in equilibrium["contribution_maps"]
 
 def test_fast_fugacity_helper_matches_state_call_and_reports_density() -> None:
     state, _ = _ionic_state()
