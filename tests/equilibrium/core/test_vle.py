@@ -38,7 +38,6 @@ def test_ternary_hydrocarbon_basis_tp_flash_requires_native_ipopt_route() -> Non
 
     _assert_tp_flash_route_pending(excinfo)
 
-
 def test_tp_flash_builds_one_native_route_request_before_ipopt_gate(monkeypatch: pytest.MonkeyPatch) -> None:
     mix = _hydrocarbon_basis_mixture()
     feed = np.asarray([0.1, 0.3, 0.6])
@@ -208,21 +207,6 @@ def test_tp_flash_accepts_stability_precheck_option_before_route_gate() -> None:
             P=1.0e5,
             z=[0.1, 0.3, 0.6],
             options=epcsaft.EquilibriumOptions(stability_precheck=False),
-        )
-
-    _assert_tp_flash_route_pending(excinfo)
-
-
-def test_tp_flash_phase_diagnostics_option_requires_native_ipopt_route() -> None:
-    mix = _hydrocarbon_basis_mixture()
-
-    with pytest.raises(epcsaft.InputError) as excinfo:
-        mix.equilibrium(
-            kind="tp_flash",
-            T=220.0,
-            P=1.0e5,
-            z=[0.1, 0.3, 0.6],
-            options=epcsaft.EquilibriumOptions(include_phase_diagnostics=True),
         )
 
     _assert_tp_flash_route_pending(excinfo)

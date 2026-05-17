@@ -324,6 +324,10 @@ Task 2 continuation note: a duplicate electrolyte LLE explicit-Ipopt route-pendi
 native-route request test already uses `solver_backend="ipopt"` and verifies the exact native route payload before the
 local no-Ipopt gate, while default direct-feed and molality-feed route gates remain covered separately.
 
+Task 2 continuation note: a duplicate TP-flash route-pending test for `include_phase_diagnostics=True` was removed.
+Positive option acceptance is already covered by electrolyte route-gate tests and invalid option typing is covered by
+the shared equilibrium option validation.
+
 ### Task 3: Build Dependency Boundary
 
 **Files:**
