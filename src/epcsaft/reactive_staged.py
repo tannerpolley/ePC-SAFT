@@ -151,14 +151,12 @@ def _chemical_equilibrium_audit(chemical: ReactiveSpeciationResult) -> dict[str,
     x = dict(chemical.x)
     return {
         "reaction_coordinates": {
-            "status": "implicit_in_solved_composition",
             "reaction_count": len(chemical.reaction_residuals),
             "named_reactions": list(chemical.named_reaction_residuals),
         },
         "element_balance_residuals": dict(chemical.mass_balance_residuals),
         "reaction_equilibrium_residuals": dict(chemical.named_reaction_residuals),
         "nonnegativity": {
-            "status": "pass" if all(value >= 0.0 for value in x.values()) else "fail",
             "minimum_mole_fraction": min(x.values()) if x else 0.0,
         },
     }
@@ -170,13 +168,11 @@ def _phase_equilibrium_audit(phase: Any) -> dict[str, Any]:
     phases = tuple(getattr(phase, "phases", ()) or ())
     return {
         "phase_split": {
-            "status": "split_detected" if split_detected else "single_phase_or_not_detected",
             "phase_count": len(phases),
             "phase_labels": [str(getattr(item, "label", "")) for item in phases],
             "phase_distance": _float_or_none(diagnostics.get("phase_distance")),
         },
         "fugacity_equality": {
-            "status": "reported" if "fugacity_residual_norm" in diagnostics else "not_reported_by_phase_route",
             "fugacity_residual_norm": _float_or_none(diagnostics.get("fugacity_residual_norm")),
         },
         "material_balance_error": _float_or_none(diagnostics.get("material_balance_error")),

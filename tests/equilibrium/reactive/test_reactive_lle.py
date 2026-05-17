@@ -127,8 +127,8 @@ def test_explicit_reactive_staged_equilibrium_routes_reaction_coordinates_into_n
         0.0, abs=1.0e-8
     )
     assert result.diagnostics["element_balance_residuals"]["total"] == pytest.approx(0.0, abs=1.0e-10)
-    assert result.diagnostics["nonnegativity"]["status"] == "pass"
-    assert result.diagnostics["phase_split"]["status"] == "split_detected"
+    assert result.diagnostics["nonnegativity"]["minimum_mole_fraction"] >= 0.0
+    assert result.diagnostics["phase_split"]["phase_count"] == 2
     assert result.diagnostics["phase_split"]["phase_labels"] == ["liq1", "liq2"]
     assert result.diagnostics["fugacity_equality"]["fugacity_residual_norm"] < 1.0e-8
     assert result.diagnostics["material_balance_error"] < 1.0e-8

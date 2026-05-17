@@ -187,6 +187,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - Duplicate neutral LLE explicit-Ipopt and stability-option route-gate tests were removed. The quick gate keeps one
   representative native route-request test per active public equilibrium route, while field-set and invalid-option
   tests keep current option-surface coverage.
+- Staged reactive-equilibrium diagnostics now report direct counts, labels, residuals, and minimum composition instead
+  of redundant pass/reported/split status strings.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
 
