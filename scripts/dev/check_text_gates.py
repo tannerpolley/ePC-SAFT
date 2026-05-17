@@ -88,6 +88,16 @@ def _blocked_terms() -> tuple[str, ...]:
     thirtieth = "local density " + "perturbation"
     thirty_first = "perturbation" + " slope"
     thirty_second = "perturbation" + " slopes"
+    thirty_third = "numeric" + "_diff"
+    thirty_fourth = "numeric" + "-" + "diff"
+    thirty_fifth = "numeric" + "diff"
+    thirty_sixth = "numerical" + "_diff"
+    thirty_seventh = "numerical" + "-" + "diff"
+    thirty_eighth = "numeric" + " differencing"
+    thirty_ninth = "numerical" + " differencing"
+    fortieth = "numeric" + " differentiation"
+    forty_first = "numerical" + " differentiation"
+    forty_second = "numerical" + "-" + "differentiation"
     return (
         first,
         second,
@@ -121,6 +131,16 @@ def _blocked_terms() -> tuple[str, ...]:
         thirtieth,
         thirty_first,
         thirty_second,
+        thirty_third,
+        thirty_fourth,
+        thirty_fifth,
+        thirty_sixth,
+        thirty_seventh,
+        thirty_eighth,
+        thirty_ninth,
+        fortieth,
+        forty_first,
+        forty_second,
     )
 
 

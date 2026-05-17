@@ -245,7 +245,7 @@ For standalone property/state calls:
 - [x] Remove or rewrite enough explicit banned wording for the gate to pass.
 - [x] Commit as `Add strict solver derivative text gates`.
 
-Task 1 note: the first committed gate covers the explicit backend-status and numerical-difference text bans. The broader legacy missing-status family remains widespread and is intentionally left as implementation debt for the solver/derivative replacement tasks, not as completed capability work.
+Task 1 note: the first committed gate covers explicit missing-backend-status and non-exact derivative text bans. The broader legacy missing-status family remains widespread and is intentionally left as implementation debt for the solver/derivative replacement tasks, not as completed capability work.
 
 Task 1 continuation note: the CppAD disabled smoke/default derivative result no longer assembles the removed backend-status token at runtime. Disabled CppAD smoke payloads now report `cppad_disabled`, and a repo test blocks reintroducing the old assembled source pattern.
 
@@ -271,7 +271,7 @@ Task 1 continuation note: the CppAD disabled smoke/default derivative result no 
 
 Task 2 continuation note: native derivative tests that previously used shifted-source oracle evidence have been rewritten around analytical/CppAD derivative contracts, exact chain-rule identities, backend identity, and finite/nonzero payload checks. The tracked text gate now also blocks common shifted-source oracle and Eigen nonlinear optimizer tokens.
 
-Task 2 continuation note: the electrolyte LLE confidence validation report no longer generates parameter-shift sensitivity artifacts. Report outputs now cover benchmark predictions, continuation, oracle checks, stress cases, and residual/error plots without numeric-differencing or parameter-shift sensitivity metrics.
+Task 2 continuation note: the electrolyte LLE confidence validation report no longer generates parameter-shift sensitivity artifacts. Report outputs now cover benchmark predictions, continuation, oracle checks, stress cases, and residual/error plots without sampled-sensitivity or parameter-shift sensitivity metrics.
 
 Task 2 continuation note: the stale full-duration failure list in the tracked test audit has been retired. The previously listed dependency, CppAD LLE, reactive-phase Ceres, and dependency-triage nodes now pass individually.
 
@@ -288,7 +288,7 @@ Task 2 continuation note: the neutral equilibrium benchmark payload and table no
 Task 2 continuation note: the reactive regression benchmark payload and table no longer aggregate retired solver-dodge flags, missing-counter lists, or density warm-start dodge counters. Benchmark evidence is now limited to timing, success/failure counts, fingerprints, diagnostic keys, target-family counts, cache hits/misses, and solve/evaluation counters.
 
 Task 2 continuation note: a repo workflow gate now scans public Python solver surfaces for external optimizer/root-loop
-calls. Together with the dependency gate, native Eigen nonlinear-optimizer gate, Ceres numeric-diff gate, and strict text
+calls. Together with the dependency gate, native Eigen nonlinear-optimizer gate, Ceres exact-derivative gate, and strict text
 gate, the tracked test suite now covers the required no-SciPy, no-Eigen-nonlinear, no-Python-production-solver-loop, and
 no banned derivative/status concepts. Obsolete status-only tests remain a separate cleanup stream.
 
@@ -672,14 +672,16 @@ result-formatting layer only.
 - [x] Route pure-neutral, pure-ion, binary pair, and generic supported fits through Ceres.
 - [ ] Use Ceres autodiff where residuals can be templated.
 - [ ] Use analytical/CppAD Jacobians where residuals depend on implicit EOS/state derivatives.
-- [x] Add tests proving no numeric-diff Ceres route exists.
+- [x] Add tests proving Ceres routes reject non-exact derivative APIs.
 - [ ] Commit as `Make regression Ceres-only`.
 
 Task 10 progress note: the first regression slice moves public nonassociating pure-neutral regression to the native Ceres route by default, rejects the old native least-squares backend from that public path, removes the Python and pybind private pure-neutral least-squares entry points, and updates capability metadata so Ceres is a production optimizer when compiled.
 
 Task 10 continuation note: the second regression slice removes the private generic Eigen regression route, its derivative-approximation Jacobian, its pybind/Python wrapper, and the doctor-required symbol. Supported generic production fits remain Ceres-owned. Associating and MEA-CO2-H2O benchmark helpers now do residual scoring and reject optimization until native analytic/CppAD/implicit Ceres derivative coverage exists for those target families.
 
-Task 10 continuation note: a tracked repo gate now scans native C++ sources and blocks Ceres numeric-diff APIs plus legacy shifted-source derivative tokens. This closes the explicit test-gate item, while templated Ceres autodiff and broader implicit derivative coverage remain open.
+Task 10 continuation note: a tracked repo gate now scans native C++ sources and blocks Ceres non-exact derivative APIs plus legacy shifted-source derivative tokens. This closes the explicit test-gate item, while templated Ceres autodiff and broader implicit derivative coverage remain open.
+
+Task 10 continuation note: the strict text gate now blocks common Ceres non-exact derivative API spellings and related shorthand across active tracked text, so the Ceres regression path cannot reintroduce perturbation-style derivatives through a renamed source or test surface.
 
 Task 10 continuation note: regression public/native result payloads no longer expose placeholder fallback booleans, empty missing-derivative reason fields, or Hessian skeleton metadata. The retained regression derivative surface reports optimizer backend, derivative backend, objective/evaluation counters, gradient/step norms, and implemented Jacobian availability/backend only.
 

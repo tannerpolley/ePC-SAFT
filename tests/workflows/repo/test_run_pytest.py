@@ -108,7 +108,7 @@ def test_native_regression_source_has_no_eigen_nonlinear_optimizer_route():
         assert term not in source
 
 
-def test_native_ceres_sources_have_no_numeric_diff_route():
+def test_native_ceres_sources_have_no_ceres_nonexact_derivative_route():
     source = "\n".join(
         path.read_text(encoding="utf-8")
         for path in sorted(Path("src/epcsaft/native").rglob("*"))
