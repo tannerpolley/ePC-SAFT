@@ -946,6 +946,10 @@ Task 2/12 continuation note: the CppAD dependency row no longer reports a negati
 flag; production derivative support is represented by the coverage matrix. A duplicate staged reactive LLE test was also
 folded into the stronger reaction-coordinate and split-diagnostic coverage.
 
+Task 2/12 continuation note: a repo workflow gate now scans active `src/epcsaft` text for custom scalar
+root/search solver tokens and allows them only in the evidence-gated density-closure exception files. This keeps the
+density closure exception explicit while blocking new package-owned nonlinear solve algorithms outside that boundary.
+
 Task 10/12 continuation note: generic native residual-score benchmark paths no longer report optimizer, derivative, or
 Jacobian backends as out-of-scope placeholders. Residual-only diagnostics now use the positive
 `diagnostic_residual_score` label, and the executable text gate blocks reintroducing the old regression backend labels.

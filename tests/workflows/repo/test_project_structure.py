@@ -193,6 +193,40 @@ def test_public_python_solver_surfaces_do_not_own_optimizer_or_root_loops() -> N
     assert offenders == []
 
 
+def test_custom_scalar_solver_tokens_are_limited_to_density_closure_exception() -> None:
+    allowed_paths = {
+        "src/epcsaft/native/epcsaft_density.cpp",
+        "src/epcsaft/native/epcsaft_electrolyte.h",
+    }
+    blocked_terms = (
+        "br" + "ent",
+        "bisect" + "ion",
+        "golden" + "_section",
+        "golden" + "-" + "section",
+        "root" + "_scalar",
+        "minimize" + "_scalar",
+        "least" + "_squares",
+        "new" + "ton",
+        "line" + "_search",
+        "multi" + "start",
+        "multi" + "_start",
+    )
+    tracked = _tracked_files("src/epcsaft")
+
+    offenders: list[str] = []
+    for relpath in tracked:
+        rel = relpath.replace("\\", "/")
+        if rel in allowed_paths:
+            continue
+        if Path(rel).suffix.lower() not in {".py", ".cpp", ".h", ".hpp"}:
+            continue
+        text = (REPO_ROOT / rel).read_text(encoding="utf-8", errors="ignore").lower()
+        for term in blocked_terms:
+            if term in text:
+                offenders.append(f"{rel}: {term}")
+    assert offenders == []
+
+
 def test_package_import_is_lazy_across_equilibrium_and_regression_extensions() -> None:
     loaded = _probe_epcsaft_import_modules("import epcsaft")
     assert loaded == set()

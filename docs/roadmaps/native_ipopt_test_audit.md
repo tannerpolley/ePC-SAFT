@@ -192,6 +192,8 @@ The failure list from the initial full-duration run has been retired. Each liste
 - The third Task 3 slice made Ceres and CppAD mandatory native dependencies for dev-script, package-backend, and CMake builds, excluded vendored Ceres install rules from package artifacts, and validated the actual local extension with Ceres enabled.
 - Public `EquilibriumOptions` now accepts only `auto` and explicit `ipopt`; `ReactiveSpeciationOptions` has the same public solver selector shape.
 - Native homogeneous chemical-equilibrium solves now dispatch only to the explicit Ipopt ideal-speciation NLP. Remaining known custom bracket/root behavior is in density closure diagnostics, which stay evidence-gated rather than accepted as a general equilibrium solver route.
+- A workflow gate now enforces that custom scalar root/search solver tokens are confined to the density-closure exception
+  files and cannot appear in new active `src/epcsaft` solver surfaces.
 - Regression public pure-neutral fitting now defaults to Ceres and rejects the old native least-squares backend. The private generic Eigen least-squares binding, shifted-source Jacobian route, and repeated-start Ceres controls are removed; generic supported production fits go through one canonical Ceres start, while associating/MEA benchmark helpers are residual scorers until native Ceres derivative coverage exists.
 - Runtime derivative capabilities now list implemented production coverage only. Open derivative blockers remain in the roadmap and state-level coverage matrices, not in `epcsaft.capabilities()` as capability rows.
 - Reactive electrolyte batch regression is no longer described as a production optimizer in runtime capabilities; it is a diagnostic residual context until native Ceres owns that route.
