@@ -5,6 +5,7 @@
 #include "gibbs_blocks.h"
 #include "reaction_block.h"
 
+#include <cppad/cppad.hpp>
 #include <Eigen/Dense>
 
 #include <algorithm>
@@ -213,10 +214,64 @@ bool charge_constraint_increases_rank(const IdealSpeciationRequest& request) {
     return charged_rank.rank() > base_rank.rank();
 }
 
+std::string ideal_derivative_backend_from_options(const std::string& requested) {
+    if (requested == "cppad") {
+        return "cppad";
+    }
+    if (requested == "auto" || requested == "analytic") {
+        return "analytic";
+    }
+    throw ValueError("Ideal Ipopt speciation jacobian_backend must be 'auto', 'analytic', or 'cppad'.");
+}
+
+std::vector<double> cppad_ideal_reduced_gibbs_gradient(
+    const std::vector<double>& amounts,
+    const std::vector<double>& standard_mu_rt
+) {
+    using CppADScalar = CppAD::AD<double>;
+    if (amounts.empty() || amounts.size() != standard_mu_rt.size()) {
+        throw ValueError("CppAD ideal Gibbs gradient requires one standard chemical potential per species.");
+    }
+    const std::size_t species = amounts.size();
+    std::vector<CppADScalar> variables(species);
+    std::vector<double> point(species);
+    for (std::size_t index = 0; index < species; ++index) {
+        if (!(std::isfinite(amounts[index]) && amounts[index] > 0.0) || !std::isfinite(standard_mu_rt[index])) {
+            throw ValueError("CppAD ideal Gibbs gradient requires positive amounts and finite standard potentials.");
+        }
+        variables[index] = amounts[index];
+        point[index] = amounts[index];
+    }
+    CppAD::Independent(variables);
+
+    CppADScalar total = CppADScalar(0.0);
+    for (const CppADScalar& amount : variables) {
+        total += amount;
+    }
+    CppADScalar objective = CppADScalar(0.0);
+    for (std::size_t index = 0; index < species; ++index) {
+        const CppADScalar mole_fraction = variables[index] / total;
+        objective += variables[index] * (CppAD::log(mole_fraction) + standard_mu_rt[index]);
+    }
+    std::vector<CppADScalar> outputs = {objective};
+    CppAD::ADFun<double> function(variables, outputs);
+    std::vector<double> gradient = function.Jacobian(point);
+    if (gradient.size() != species) {
+        throw ValueError("CppAD ideal Gibbs gradient shape did not match the species count.");
+    }
+    for (double value : gradient) {
+        if (!std::isfinite(value)) {
+            throw ValueError("CppAD ideal Gibbs gradient produced a non-finite value.");
+        }
+    }
+    return gradient;
+}
+
 class IdealSpeciationProblem final : public NlpProblem {
 public:
-    explicit IdealSpeciationProblem(IdealSpeciationRequest request)
+    explicit IdealSpeciationProblem(IdealSpeciationRequest request, std::string derivative_backend)
         : request_(std::move(request)),
+          derivative_backend_(std::move(derivative_backend)),
           standard_mu_rt_(standard_mu_from_reactions(
               request_.species_count,
               request_.reaction_rows,
@@ -268,6 +323,9 @@ public:
     }
 
     std::vector<double> objective_gradient(const std::vector<double>& variables) const override {
+        if (derivative_backend_ == "cppad") {
+            return cppad_ideal_reduced_gibbs_gradient(variables, standard_mu_rt_);
+        }
         return evaluate_ideal_reduced_gibbs(variables, standard_mu_rt_, false).gradient;
     }
 
@@ -339,6 +397,7 @@ public:
 
 private:
     IdealSpeciationRequest request_;
+    std::string derivative_backend_;
     std::vector<double> standard_mu_rt_;
     std::vector<double> initial_amounts_;
     double total_scale_ = 1.0;
@@ -447,14 +506,100 @@ Eigen::MatrixXd ideal_log_amount_residual_jacobian(
     return jac;
 }
 
+Eigen::MatrixXd cppad_ideal_log_amount_residual_jacobian(
+    const IdealSpeciationRequest& request,
+    const std::vector<double>& amounts
+) {
+    using CppADScalar = CppAD::AD<double>;
+    require_size(amounts, static_cast<std::size_t>(request.species_count), "Ideal CppAD residual amounts");
+    const int rows = request.balance_rows + 1 + request.reaction_rows;
+    std::vector<CppADScalar> variables(static_cast<std::size_t>(request.species_count));
+    std::vector<double> point(static_cast<std::size_t>(request.species_count));
+    for (int index = 0; index < request.species_count; ++index) {
+        const double amount = amounts[static_cast<std::size_t>(index)];
+        if (!(std::isfinite(amount) && amount > 0.0)) {
+            throw ValueError("Ideal CppAD residual Jacobian requires positive species amounts.");
+        }
+        const double log_amount = std::log(amount);
+        variables[static_cast<std::size_t>(index)] = log_amount;
+        point[static_cast<std::size_t>(index)] = log_amount;
+    }
+    CppAD::Independent(variables);
+
+    std::vector<CppADScalar> n(static_cast<std::size_t>(request.species_count));
+    CppADScalar total = CppADScalar(0.0);
+    for (int col = 0; col < request.species_count; ++col) {
+        n[static_cast<std::size_t>(col)] = CppAD::exp(variables[static_cast<std::size_t>(col)]);
+        total += n[static_cast<std::size_t>(col)];
+    }
+    std::vector<CppADScalar> x(static_cast<std::size_t>(request.species_count));
+    for (int col = 0; col < request.species_count; ++col) {
+        x[static_cast<std::size_t>(col)] = n[static_cast<std::size_t>(col)] / total;
+    }
+
+    std::vector<CppADScalar> outputs(static_cast<std::size_t>(rows), CppADScalar(0.0));
+    for (int row = 0; row < request.balance_rows; ++row) {
+        CppADScalar residual = CppADScalar(0.0);
+        for (int col = 0; col < request.species_count; ++col) {
+            residual += request.balance_matrix_row_major[
+                static_cast<std::size_t>(row) * static_cast<std::size_t>(request.species_count)
+                + static_cast<std::size_t>(col)
+            ] * n[static_cast<std::size_t>(col)];
+        }
+        outputs[static_cast<std::size_t>(row)] = residual - request.total_vector[static_cast<std::size_t>(row)];
+    }
+
+    CppADScalar charge = CppADScalar(0.0);
+    if (request.charges.size() == static_cast<std::size_t>(request.species_count)) {
+        for (int col = 0; col < request.species_count; ++col) {
+            charge += request.charges[static_cast<std::size_t>(col)] * n[static_cast<std::size_t>(col)];
+        }
+    }
+    outputs[static_cast<std::size_t>(request.balance_rows)] = charge;
+
+    const int reaction_offset = request.balance_rows + 1;
+    for (int reaction = 0; reaction < request.reaction_rows; ++reaction) {
+        CppADScalar residual = -request.log_equilibrium_constants[static_cast<std::size_t>(reaction)];
+        for (int col = 0; col < request.species_count; ++col) {
+            const double coefficient = request.reaction_stoichiometry_row_major[
+                static_cast<std::size_t>(reaction) * static_cast<std::size_t>(request.species_count)
+                + static_cast<std::size_t>(col)
+            ];
+            residual += coefficient * CppAD::log(x[static_cast<std::size_t>(col)]);
+        }
+        outputs[static_cast<std::size_t>(reaction_offset + reaction)] = residual;
+    }
+
+    CppAD::ADFun<double> function(variables, outputs);
+    std::vector<double> jacobian = function.Jacobian(point);
+    if (jacobian.size() != static_cast<std::size_t>(rows * request.species_count)) {
+        throw ValueError("Ideal CppAD residual Jacobian shape did not match the residual model.");
+    }
+    Eigen::MatrixXd out(rows, request.species_count);
+    for (int row = 0; row < rows; ++row) {
+        for (int col = 0; col < request.species_count; ++col) {
+            const double value =
+                jacobian[static_cast<std::size_t>(row * request.species_count + col)];
+            if (!std::isfinite(value)) {
+                throw ValueError("Ideal CppAD residual Jacobian produced a non-finite value.");
+            }
+            out(row, col) = value;
+        }
+    }
+    return out;
+}
+
 void add_ideal_implicit_sensitivity_diagnostics(
     ChemicalEquilibriumResultNative& result,
     const IdealSpeciationRequest& request,
     const std::vector<double>& amounts,
     const std::vector<double>& composition,
-    const std::vector<double>& residuals
+    const std::vector<double>& residuals,
+    const std::string& derivative_backend
 ) {
-    Eigen::MatrixXd residual_state = ideal_log_amount_residual_jacobian(request, amounts, composition);
+    Eigen::MatrixXd residual_state = derivative_backend == "cppad"
+        ? cppad_ideal_log_amount_residual_jacobian(request, amounts)
+        : ideal_log_amount_residual_jacobian(request, amounts, composition);
     Eigen::MatrixXd residual_parameter =
         Eigen::MatrixXd::Zero(residual_state.rows(), request.reaction_rows);
     const int reaction_offset = request.balance_rows + 1;
@@ -467,7 +612,8 @@ void add_ideal_implicit_sensitivity_diagnostics(
     for (std::size_t index = 0; index < amounts.size(); ++index) {
         log_amounts[index] = std::log(amounts[index]);
     }
-    result.diagnostics_string["implicit_sensitivity_backend"] = "analytic_implicit";
+    result.diagnostics_string["implicit_sensitivity_backend"] =
+        derivative_backend == "cppad" ? "cppad_implicit" : "analytic_implicit";
     result.diagnostics_string["reactive_speciation_sensitivity_parameter"] = "log_equilibrium_constants";
     result.diagnostics_int["reactive_speciation_residual_rows"] = static_cast<int>(residual_state.rows());
     result.diagnostics_int["reactive_speciation_state_size"] = static_cast<int>(residual_state.cols());
@@ -486,10 +632,11 @@ void add_ideal_implicit_sensitivity_diagnostics(
 
 IdealSpeciationIpoptResult solve_ideal_speciation_ipopt(
     const IdealSpeciationRequest& request,
-    const IpoptSolveOptions& options
+    const IpoptSolveOptions& options,
+    const std::string& derivative_backend
 ) {
     validate_request(request);
-    IdealSpeciationProblem problem(request);
+    IdealSpeciationProblem problem(request, derivative_backend);
     IpoptSolveResult ipopt = solve_ipopt_nlp(problem, options);
     if (!ipopt.accepted) {
         throw SolutionError("Ipopt did not accept the ideal reactive speciation NLP solution.");
@@ -524,7 +671,9 @@ ChemicalEquilibriumResultNative solve_ideal_speciation_chemical_equilibrium_ipop
     solve_options.tolerance = options.tolerance;
     solve_options.acceptable_tolerance = std::max(options.tolerance, 10.0 * options.tolerance);
     solve_options.limited_memory_hessian = true;
-    const IdealSpeciationIpoptResult ipopt_result = solve_ideal_speciation_ipopt(request, solve_options);
+    const std::string derivative_backend = ideal_derivative_backend_from_options(options.jacobian_backend);
+    const IdealSpeciationIpoptResult ipopt_result =
+        solve_ideal_speciation_ipopt(request, solve_options, derivative_backend);
 
     std::vector<double> residuals = ipopt_result.mass_balance_residuals;
     residuals.push_back(ipopt_result.charge_residual);
@@ -551,10 +700,11 @@ ChemicalEquilibriumResultNative solve_ideal_speciation_chemical_equilibrium_ipop
     result.diagnostics_string["activity_basis"] = "ideal_mole_fraction";
     result.diagnostics_string["phase"] = options.phase;
     result.diagnostics_string["requested_jacobian_backend"] = options.jacobian_backend;
-    result.diagnostics_string["jacobian_backend"] = "analytic";
-    result.diagnostics_string["derivative_backend"] = "analytic";
-    result.diagnostics_string["derivative_capability_path"] =
-        "chemical_equilibrium:ideal_mole_fraction:ipopt_amount_gibbs";
+    result.diagnostics_string["jacobian_backend"] = derivative_backend;
+    result.diagnostics_string["derivative_backend"] = derivative_backend;
+    result.diagnostics_string["derivative_capability_path"] = derivative_backend == "cppad"
+        ? "chemical_equilibrium:ideal_mole_fraction:ipopt_amount_gibbs_cppad"
+        : "chemical_equilibrium:ideal_mole_fraction:ipopt_amount_gibbs";
     result.diagnostics_string["selected_solver_backend"] = "native_ipopt";
     result.diagnostics_string["solver_selection_reason"] = "explicit_request";
     result.diagnostics_string["ipopt_solver_status"] = ipopt_result.ipopt.solver_status;
@@ -583,7 +733,8 @@ ChemicalEquilibriumResultNative solve_ideal_speciation_chemical_equilibrium_ipop
         request,
         ipopt_result.amounts,
         ipopt_result.composition,
-        residuals
+        residuals,
+        derivative_backend
     );
     return result;
 }

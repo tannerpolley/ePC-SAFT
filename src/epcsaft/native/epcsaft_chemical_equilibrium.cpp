@@ -1,5 +1,6 @@
 #include "epcsaft_chemical_equilibrium.h"
 
+#include <cppad/cppad.hpp>
 #include <Eigen/Dense>
 
 #include "epcsaft_electrolyte.h"
@@ -282,15 +283,16 @@ ChemicalDerivativeSelection select_chemical_derivative_backend(
 ) {
     ChemicalDerivativeSelection selection;
     const std::string requested = options.jacobian_backend;
-    if (requested == "cppad") {
-        throw ValueError("CppAD chemical-equilibrium residual jacobian requires implemented log-species amount coverage.");
-    }
     if (requested != "auto" && requested != "analytic") {
-        throw ValueError("chemical equilibrium jacobian_backend must be 'auto', 'analytic', or 'cppad'.");
+        if (requested != "cppad") {
+            throw ValueError("chemical equilibrium jacobian_backend must be 'auto', 'analytic', or 'cppad'.");
+        }
     }
     if (standard_states_all_ideal_mole_fraction(reaction_standard_states)) {
-        selection.backend = "analytic";
-        selection.capability_path = "chemical_equilibrium:ideal_mole_fraction:log_amounts";
+        selection.backend = requested == "cppad" ? "cppad" : "analytic";
+        selection.capability_path = requested == "cppad"
+            ? "chemical_equilibrium:ideal_mole_fraction:cppad_log_amounts"
+            : "chemical_equilibrium:ideal_mole_fraction:log_amounts";
         selection.derivative_available = true;
         return selection;
     }
@@ -353,6 +355,83 @@ Eigen::MatrixXd analytic_ideal_log_amount_jacobian(
         }
     }
     return jac;
+}
+
+Eigen::MatrixXd cppad_ideal_log_amount_jacobian(
+    const Eigen::VectorXd& log_n,
+    const Eigen::MatrixXd& balances,
+    const Eigen::MatrixXd& reactions,
+    const Eigen::VectorXd& log_k,
+    const std::vector<double>& charges
+) {
+    using CppADScalar = CppAD::AD<double>;
+    const Eigen::Index nvars = log_n.size();
+    const Eigen::Index rows = balances.rows() + 1 + reactions.rows();
+    std::vector<CppADScalar> variables(static_cast<std::size_t>(nvars));
+    std::vector<double> point(static_cast<std::size_t>(nvars));
+    for (Eigen::Index col = 0; col < nvars; ++col) {
+        const double value = log_n[col];
+        if (!std::isfinite(value)) {
+            throw ValueError("CppAD chemical-equilibrium residual Jacobian requires finite log amounts.");
+        }
+        variables[static_cast<std::size_t>(col)] = value;
+        point[static_cast<std::size_t>(col)] = value;
+    }
+    CppAD::Independent(variables);
+
+    std::vector<CppADScalar> amounts(static_cast<std::size_t>(nvars));
+    CppADScalar total = CppADScalar(0.0);
+    for (Eigen::Index col = 0; col < nvars; ++col) {
+        amounts[static_cast<std::size_t>(col)] = CppAD::exp(variables[static_cast<std::size_t>(col)]);
+        total += amounts[static_cast<std::size_t>(col)];
+    }
+    std::vector<CppADScalar> composition(static_cast<std::size_t>(nvars));
+    for (Eigen::Index col = 0; col < nvars; ++col) {
+        composition[static_cast<std::size_t>(col)] = amounts[static_cast<std::size_t>(col)] / total;
+    }
+
+    std::vector<CppADScalar> outputs(static_cast<std::size_t>(rows), CppADScalar(0.0));
+    for (Eigen::Index row = 0; row < balances.rows(); ++row) {
+        CppADScalar residual = CppADScalar(0.0);
+        for (Eigen::Index col = 0; col < nvars; ++col) {
+            residual += balances(row, col) * amounts[static_cast<std::size_t>(col)];
+        }
+        outputs[static_cast<std::size_t>(row)] = residual;
+    }
+
+    const Eigen::Index charge_row = balances.rows();
+    CppADScalar charge_residual = CppADScalar(0.0);
+    if (charges.size() == static_cast<std::size_t>(nvars)) {
+        for (Eigen::Index col = 0; col < nvars; ++col) {
+            charge_residual += charges[static_cast<std::size_t>(col)] * amounts[static_cast<std::size_t>(col)];
+        }
+    }
+    outputs[static_cast<std::size_t>(charge_row)] = charge_residual;
+
+    for (Eigen::Index row = 0; row < reactions.rows(); ++row) {
+        CppADScalar residual = -log_k[row];
+        for (Eigen::Index col = 0; col < nvars; ++col) {
+            residual += reactions(row, col) * CppAD::log(composition[static_cast<std::size_t>(col)]);
+        }
+        outputs[static_cast<std::size_t>(balances.rows() + 1 + row)] = residual;
+    }
+
+    CppAD::ADFun<double> function(variables, outputs);
+    std::vector<double> jacobian = function.Jacobian(point);
+    if (jacobian.size() != static_cast<std::size_t>(rows * nvars)) {
+        throw ValueError("CppAD chemical-equilibrium residual Jacobian shape did not match the ideal route.");
+    }
+    Eigen::MatrixXd out(rows, nvars);
+    for (Eigen::Index row = 0; row < rows; ++row) {
+        for (Eigen::Index col = 0; col < nvars; ++col) {
+            const double value = jacobian[static_cast<std::size_t>(row * nvars + col)];
+            if (!std::isfinite(value)) {
+                throw ValueError("CppAD chemical-equilibrium residual Jacobian produced a non-finite value.");
+            }
+            out(row, col) = value;
+        }
+    }
+    return out;
 }
 
 ChemicalEvaluation evaluate_chemical(
@@ -493,6 +572,18 @@ Eigen::MatrixXd chemical_residual_jacobian(
             reactions,
             mixture->args().z,
             options.min_mole_fraction
+        );
+    }
+    if (selected.backend == "cppad") {
+        if (counters != nullptr) {
+            counters->jacobian_evaluations += 1;
+        }
+        return cppad_ideal_log_amount_jacobian(
+            log_n,
+            balances,
+            reactions,
+            log_k,
+            mixture->args().z
         );
     }
     (void)mixture;
@@ -735,9 +826,6 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
         && options.jacobian_backend != "analytic"
         && options.jacobian_backend != "cppad") {
         throw ValueError("chemical equilibrium jacobian_backend must be 'auto', 'analytic', or 'cppad'.");
-    }
-    if (options.jacobian_backend == "cppad") {
-        throw ValueError("CppAD chemical-equilibrium NLP derivatives require a registered CppAD route.");
     }
     std::vector<double> initial = normalize_composition_chemical(initial_x, options.min_mole_fraction);
     if (options.solver_backend != "ipopt") {

@@ -2,6 +2,7 @@
 
 #include "ipopt_adapter.h"
 
+#include <string>
 #include <vector>
 
 struct ChemicalEquilibriumOptionsNative;
@@ -35,7 +36,8 @@ struct IdealSpeciationIpoptResult {
 
 IdealSpeciationIpoptResult solve_ideal_speciation_ipopt(
     const IdealSpeciationRequest& request,
-    const IpoptSolveOptions& options
+    const IpoptSolveOptions& options,
+    const std::string& derivative_backend
 );
 
 ChemicalEquilibriumResultNative solve_ideal_speciation_chemical_equilibrium_ipopt(

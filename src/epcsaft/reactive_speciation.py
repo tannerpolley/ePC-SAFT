@@ -333,8 +333,6 @@ def solve_reactive_speciation(
     initial = _normalize_required_initial_composition(initial_x, len(labels), opts.min_mole_fraction)
     balance_matrix, total_vector, balance_names = _normalize_balances(labels, balances, totals)
     reaction_defs = _normalize_reactions(labels, reactions)
-    if opts.jacobian_backend == "cppad":
-        raise InputError("CppAD reactive-speciation Jacobians require an implemented CppAD NLP derivative route.")
     if opts.solver_backend == "auto":
         opts = _options_with_solver_backend(opts, "ipopt")
     return _solve_reactive_speciation_native(

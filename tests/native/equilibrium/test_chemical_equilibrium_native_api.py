@@ -150,6 +150,47 @@ def test_native_chemical_equilibrium_residual_evaluator_uses_analytic_jacobian_b
     assert payload["objective"] == pytest.approx(0.5 * float(residual @ residual))
     assert len(payload["lower_bounds"]) == len(payload["variables"]) == len(payload["upper_bounds"])
 
+
+def test_native_chemical_equilibrium_residual_evaluator_uses_cppad_when_requested() -> None:
+    mix = epcsaft.ePCSAFTMixture.from_params(
+        {
+            "m": np.asarray([1.0, 1.0]),
+            "s": np.asarray([3.0, 3.0]),
+            "e": np.asarray([200.0, 200.0]),
+        },
+        species=["A", "B"],
+    )
+    request = {
+        "T": 298.15,
+        "P": 1.0e5,
+        "initial_x": [0.5, 0.5],
+        "balance_matrix": [1.0, 1.0],
+        "balance_rows": 1,
+        "total_vector": [1.0],
+        "reaction_stoichiometry": [-1.0, 1.0],
+        "reaction_rows": 1,
+        "log_equilibrium_constants": [math.log(3.0)],
+        "reaction_standard_states": [1],
+        "options": {"tolerance": 1.0e-10, "jacobian_backend": "cppad"},
+    }
+
+    cppad_payload = _core._evaluate_chemical_equilibrium_residual_native(mix._native, request)
+    analytic_request = dict(request)
+    analytic_request["options"] = {"tolerance": 1.0e-10, "jacobian_backend": "analytic"}
+    analytic_payload = _core._evaluate_chemical_equilibrium_residual_native(mix._native, analytic_request)
+
+    diagnostics = cppad_payload["diagnostics"]
+    assert cppad_payload["jacobian_backend"] == "cppad"
+    assert diagnostics["derivative_backend"] == "cppad"
+    assert diagnostics["derivative_capability_path"] == "chemical_equilibrium:ideal_mole_fraction:cppad_log_amounts"
+    assert diagnostics["derivative_available"] is True
+    assert_allclose(
+        np.asarray(cppad_payload["jacobian_row_major"], dtype=float),
+        np.asarray(analytic_payload["jacobian_row_major"], dtype=float),
+        rtol=1.0e-10,
+        atol=1.0e-10,
+    )
+
 def test_mixture_equilibrium_auto_routes_ideal_chemical_equilibrium_to_native_ipopt_when_compiled() -> None:
     mix = epcsaft.ePCSAFTMixture.from_params(
         {

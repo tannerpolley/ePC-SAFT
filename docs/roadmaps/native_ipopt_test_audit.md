@@ -162,6 +162,9 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
   failure status labels.
 - The ideal reactive-speciation Ipopt route now reports the positive analytical derivative backend without no-op activity
   derivative policy or Hessian-mode diagnostics.
+- The same ideal reactive-speciation route now honors explicit `jacobian_backend="cppad"` requests with CppAD residual
+  Jacobians, CppAD ideal-Gibbs objective gradients, and CppAD implicit-sensitivity diagnostics. Activity and
+  concentration routes still stop at the native EOS derivative-block gate.
 - Native Ipopt smoke and route result payloads no longer expose Hessian-strategy or exact-Hessian-required fields; those
   choices stay inside the adapter while result payloads report exact gradient/Jacobian requirements.
 - Runtime reactive phase-equilibrium capabilities no longer emit an empty negative reaction-scope list. The retained
