@@ -168,17 +168,12 @@ def test_reactive_electrolyte_bubble_sweeps_expose_no_continuation_flag() -> Non
     assert "continuation" not in inspect.signature(epcsaft.ePCSAFTMixture.equilibrium_sweep).parameters
 
 
-def test_reactive_electrolyte_bubble_public_api_uses_pressure_not_seed() -> None:
+def test_reactive_electrolyte_bubble_public_api_rejects_pressure_seed_key() -> None:
     removed = "P" + "_seed"
 
     assert removed not in inspect.signature(epcsaft.solve_reactive_electrolyte_bubble).parameters
     assert removed not in inspect.signature(epcsaft.ePCSAFTMixture.reactive_electrolyte_bubble_p).parameters
     assert removed not in epcsaft.ReactiveElectrolyteBubbleProblem.__dataclass_fields__
-
-
-def test_reactive_electrolyte_bubble_sweep_rejects_pressure_seed_key() -> None:
-    removed = "P" + "_seed"
-
     with pytest.raises(epcsaft.InputError, match=removed):
         epcsaft.solve_reactive_electrolyte_bubble_sweep(
             species=["H2O", "Na+", "Cl-"],
