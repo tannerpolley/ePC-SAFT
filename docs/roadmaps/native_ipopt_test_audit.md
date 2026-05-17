@@ -125,6 +125,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - The public activity-coefficient contribution decomposition path now raises the package's typed `InputError` instead
   of a generic Python unsupported-operation exception, and the regression derivative table now describes neutral LLE as
   a native Ipopt route when compiled rather than a pending route.
+- The strict text gate now blocks generic "not implemented" wording in executable source, tests, and scripts, so
+  unsupported derivative or route paths must state the positive required backend/formulation instead.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
 

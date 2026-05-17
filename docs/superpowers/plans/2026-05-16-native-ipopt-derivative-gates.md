@@ -892,6 +892,7 @@ neutral LLE as an Ipopt-enabled native route with internal exact derivative call
 Task 12 continuation note: active source no longer uses generic "not implemented" wording for derivative gates,
 reserved Bjerrum routing, the abstract equilibrium base class, or the retained CppAD route-gated native paths. These
 surfaces now state the positive required route or typed abstract/problem boundary.
+The strict text gate now blocks reintroducing that phrase in executable source, tests, and scripts.
 
 Task 12 continuation note: reactive-speciation runtime capabilities no longer expose the derivative-gap status field.
 Capability tests now assert supported and route-gated standard-state lists directly, keeping derivative gaps out of
