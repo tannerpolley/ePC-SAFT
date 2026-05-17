@@ -174,9 +174,10 @@ parameter fits.
 Electrolyte LLE
 ---------------
 
-Use stability first. If the feed is unstable, call the native electrolyte LLE
-route with the feed specification only. The native Ipopt route builder owns the
-canonical initial point; user-provided phase seeds are rejected.
+Electrolyte stability remains route-gated until a native Ipopt stability NLP
+builder owns that calculation. Call the native electrolyte LLE route with the
+feed specification only; the native Ipopt route builder owns the canonical
+initial point and user-provided phase seeds are rejected.
 
 .. code-block:: python
 

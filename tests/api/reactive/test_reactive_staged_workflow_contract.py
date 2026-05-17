@@ -76,6 +76,29 @@ def test_staged_workflow_requires_native_ipopt_phase_route_after_fixed_constant_
     _assert_tp_flash_native_ipopt_gate(excinfo)
 
 
+@pytest.mark.parametrize("phase_kind", ["stability", "stability_tp", "electrolyte_stability", "electrolyte_stability_tp"])
+def test_staged_workflow_rejects_stability_phase_kind_before_speciation(monkeypatch, phase_kind) -> None:
+    mix = _toy_mixture()
+
+    def fail_if_called(**_kwargs):
+        pytest.fail("staged stability must fail before chemical speciation handoff")
+
+    monkeypatch.setattr("epcsaft.reactive_staged.solve_reactive_speciation", fail_if_called)
+
+    with pytest.raises(epcsaft.InputError, match="native Ipopt stability NLP route"):
+        epcsaft.solve_reactive_staged_equilibrium(
+            species=mix.species,
+            mixture_factory=lambda x, T, P: mix,
+            T=298.15,
+            P=1.0e5,
+            balances={"total": {"A": 1.0, "B": 1.0}},
+            totals={"total": 1.0},
+            reactions=[_fixed_literature_reaction()],
+            initial_x=[0.5, 0.5],
+            phase_kind=phase_kind,
+        )
+
+
 def test_reactive_phase_equilibrium_problem_is_public_generic_contract() -> None:
     assert "ReactivePhaseEquilibriumProblem" in epcsaft.__all__
 

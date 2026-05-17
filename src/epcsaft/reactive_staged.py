@@ -67,7 +67,7 @@ def solve_reactive_staged_equilibrium(
     fully coupled reactive flash calculation.
     """
     labels = [str(label) for label in species]
-    kind = str(phase_kind).strip()
+    kind = _normalize_phase_kind(phase_kind)
     if not kind:
         raise InputError("phase_kind must be a non-empty equilibrium route label.")
     extra_phase_kwargs = dict(phase_kwargs or {})
@@ -217,17 +217,7 @@ def _solve_phase_route(
     phase_options: Any,
     phase_kwargs: Mapping[str, Any],
 ) -> Any:
-    route = kind.strip()
-    aliases = {
-        "flash_tp": "tp_flash",
-        "lle_tp": "lle_flash",
-        "electrolyte_lle_tp": "electrolyte_lle",
-        "stability_tp": "stability",
-        "electrolyte_stability_tp": "electrolyte_stability",
-        "electrolyte_bubble_p": "electrolyte_bubble_pressure",
-        "electrolyte_bubble": "electrolyte_bubble_pressure",
-    }
-    route = aliases.get(route, route)
+    route = _normalize_phase_kind(kind)
     if route == "auto":
         if not hasattr(mixture, "equilibrium"):
             raise InputError("mixture_factory must return an object with an equilibrium method for auto phase routes.")
@@ -241,26 +231,8 @@ def _solve_phase_route(
             z=z,
             options=phase_options,
         )
-    if route == "stability":
-        return mixture.stability_tp(
-            T=T,
-            P=P,
-            z=z,
-            options=phase_options,
-            parent_phase=phase_kwargs.get("parent_phase"),
-            trial_phases=phase_kwargs.get("trial_phases"),
-        )
     if route == "electrolyte_lle":
         return mixture.electrolyte_lle_tp(
-            T=T,
-            P=P,
-            z=z,
-            solvent_feed=phase_kwargs.get("solvent_feed"),
-            salt_molality=phase_kwargs.get("salt_molality"),
-            options=phase_options,
-        )
-    if route == "electrolyte_stability":
-        return mixture.electrolyte_stability_tp(
             T=T,
             P=P,
             z=z,
@@ -283,6 +255,23 @@ def _solve_phase_route(
             options=bubble_options,
         )
     raise InputError(
-        "phase_kind must be one of auto, tp_flash, lle_flash, stability, electrolyte_lle, "
-        "electrolyte_stability, or electrolyte_bubble_pressure."
+        "phase_kind must be one of auto, tp_flash, lle_flash, electrolyte_lle, or electrolyte_bubble_pressure."
     )
+
+
+def _normalize_phase_kind(phase_kind: Any) -> str:
+    route = str(phase_kind).strip()
+    aliases = {
+        "flash_tp": "tp_flash",
+        "lle_tp": "lle_flash",
+        "electrolyte_lle_tp": "electrolyte_lle",
+        "electrolyte_bubble_p": "electrolyte_bubble_pressure",
+        "electrolyte_bubble": "electrolyte_bubble_pressure",
+    }
+    route = aliases.get(route, route)
+    if route in {"stability", "stability_tp", "electrolyte_stability", "electrolyte_stability_tp"}:
+        raise InputError(
+            "staged stability phase routes require a native Ipopt stability NLP route; "
+            "reactive_staged_equilibrium must not run a chemical-equilibrium handoff first."
+        )
+    return route

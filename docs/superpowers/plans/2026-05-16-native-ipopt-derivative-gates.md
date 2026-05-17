@@ -1118,6 +1118,11 @@ positive values to Ipopt's wall-clock limit.
 Task 8/12 continuation note: removed no-op `EquilibriumOptions.include_phase_diagnostics`; no native route builder or
 result converter consumed it, and native payloads now carry only diagnostics they actually return.
 
+Task 8/9/12 continuation note: explicit staged reactive workflows no longer accept `stability`,
+`stability_tp`, `electrolyte_stability`, or `electrolyte_stability_tp` as phase routes. Those requests fail before
+chemical speciation so Python does not run a sequential chemical handoff into an unimplemented stability route, and the
+equilibrium cookbook no longer recommends stability prechecks as runnable production workflow steps.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**
