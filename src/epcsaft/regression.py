@@ -862,7 +862,10 @@ def _fit_derivative_metadata(result: Mapping[str, Any]) -> dict[str, Any]:
 def _required_native_regression_metadata(result: Mapping[str, Any], key: str) -> str:
     if key not in result:
         raise RuntimeError(f"Native regression result missing required {key!r} metadata.")
-    return str(result[key])
+    value = str(result[key])
+    if not value or value == "unspecified":
+        raise RuntimeError(f"Native regression result has invalid {key!r} metadata: {value!r}.")
+    return value
 
 
 def _row_diagnostics_from_metrics(metrics_by_term: Mapping[str, Any]) -> list[dict[str, Any]]:
