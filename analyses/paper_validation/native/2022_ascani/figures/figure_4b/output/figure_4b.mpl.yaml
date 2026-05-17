@@ -1,0 +1,10 @@
+# Matplotlib plot-set style contract.
+# Edit this sidecar, then rerun the owning render script.
+figure:
+  file: "figure_4b.png"
+  format: "png"
+axes:
+  - index: 0
+    title: "Ascani 2022 Figure 4b-style phase split"
+    xlabel: ""
+    ylabel: ""

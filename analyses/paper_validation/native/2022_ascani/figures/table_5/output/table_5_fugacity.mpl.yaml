@@ -1,0 +1,10 @@
+# Matplotlib plot-set style contract.
+# Edit this sidecar, then rerun the owning render script.
+figure:
+  file: "table_5_fugacity.png"
+  format: "png"
+axes:
+  - index: 0
+    title: "Ascani 2022 Table 5 fugacity comparison"
+    xlabel: "$\\ln(f/\\mathrm{bar})$"
+    ylabel: ""

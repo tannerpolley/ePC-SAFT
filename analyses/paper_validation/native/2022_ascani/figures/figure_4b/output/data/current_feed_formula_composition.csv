@@ -1,0 +1,5 @@
+source,phase,component,formula_mole_fraction
+current_native_ipopt_source_like_nacl,feed,H2O,0.5568463646854985
+current_native_ipopt_source_like_nacl,feed,Butanol,0.40323357442742996
+current_native_ipopt_source_like_nacl,feed,NaCl,0.03992006088707156
+current_native_ipopt_source_like_nacl,feed,KCl,0.0

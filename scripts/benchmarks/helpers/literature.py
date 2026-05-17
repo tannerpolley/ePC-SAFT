@@ -349,7 +349,12 @@ LITERATURE_CASES: OrderedDict[str, BenchmarkCase] = OrderedDict(
                     "src/epcsaft/equilibrium.py",
                     "analyses/paper_validation/native/2022_ascani/scripts/run_all.py",
                 ),
-                validation_paths=("analyses/paper_validation/native/2022_ascani/results/electrolyte_lle/summary.json",),
+                validation_paths=(
+                    "analyses/paper_validation/native/2022_ascani/results/electrolyte_lle/summary.json",
+                    "analyses/paper_validation/native/2022_ascani/figures/figure_4b/output/figure_4b.svg",
+                    "analyses/paper_validation/native/2022_ascani/figures/table_5/output/table_5_fugacity.svg",
+                    "analyses/paper_validation/native/2022_ascani/figures/gibbs_summary/output/gibbs_summary.svg",
+                ),
                 notes="Executable native Ipopt electrolyte LLE gate. It proves an accepted, physically sensible phase split through the public API; it is not a forced exact match to Ascani 2022 Case 2.",
             ),
         ),

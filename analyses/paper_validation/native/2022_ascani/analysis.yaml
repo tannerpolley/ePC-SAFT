@@ -15,7 +15,7 @@ commands:
 expected:
   feed_species: [H2O, Butanol, Na+, Cl-]
   temperature_K: 298.15
-  pressure_Pa: 101300.0
+  pressure_Pa: 100000.0
   accepted: true
   solver_backend: ipopt
   phase_distance_min: 0.1
@@ -30,5 +30,11 @@ outputs:
     kind: normalized_source_expectations
   - path: analyses/paper_validation/native/2022_ascani/results/electrolyte_lle/summary.json
     kind: accepted_solve_summary
+  - path: analyses/paper_validation/native/2022_ascani/figures/figure_4b/output/figure_4b.svg
+    kind: paper_figure_style_phase_diagram
+  - path: analyses/paper_validation/native/2022_ascani/figures/table_5/output/table_5_fugacity.svg
+    kind: paper_table_fugacity_comparison_figure
+  - path: analyses/paper_validation/native/2022_ascani/figures/gibbs_summary/output/gibbs_summary.svg
+    kind: gibbs_objective_comparison_figure
 claim_boundary:
-  note: This gate proves accepted native Ipopt electrolyte LLE execution and a physically sensible water/ion-rich versus butanol-rich phase split. It does not claim an exact match to Ascani 2022 Case 2 mixed NaCl/KCl phase compositions.
+  note: This gate proves accepted native Ipopt electrolyte LLE execution and a physically sensible water/ion-rich versus butanol-rich phase split at the paper temperature and pressure. It does not claim an exact match to Ascani 2022 Case 2 mixed NaCl/KCl phase compositions.

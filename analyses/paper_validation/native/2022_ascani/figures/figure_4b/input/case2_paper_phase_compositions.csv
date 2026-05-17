@@ -1,0 +1,9 @@
+phase,component,formula_mole_fraction,source
+org,H2O,0.4426,Ascani_2022_Case2_text
+org,Butanol,0.5570,Ascani_2022_Case2_text
+org,NaCl,0.0000415,Ascani_2022_Case2_text
+org,KCl,0.000420,Ascani_2022_Case2_text
+aq,H2O,0.9627,Ascani_2022_Case2_text
+aq,Butanol,0.0122,Ascani_2022_Case2_text
+aq,NaCl,0.0076,Ascani_2022_Case2_text
+aq,KCl,0.0174,Ascani_2022_Case2_text

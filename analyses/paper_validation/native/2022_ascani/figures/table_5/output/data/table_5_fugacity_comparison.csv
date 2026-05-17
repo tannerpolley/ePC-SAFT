@@ -1,0 +1,9 @@
+quantity,component,phase,paper_ln_f_bar,current_ln_f_bar,current_minus_paper,current_basis,note
+ln_f_H2O_bar,H2O,org,-3.521,-0.8885949241524056,2.6324050758475943,component,
+ln_f_H2O_bar,H2O,aq,-3.521,-0.8885949183206001,2.6324050816793996,component,
+ln_f_Butanol_bar,Butanol,org,-5.088,-0.7069447611895034,4.381055238810497,component,
+ln_f_Butanol_bar,Butanol,aq,-5.088,-0.7069491797115854,4.381050820288415,component,
+ln_f_NaCl_bar,NaCl,org,-224.891,-198.34652164706603,26.544478352933965,mean_ionic_NaCl,
+ln_f_NaCl_bar,NaCl,aq,-224.891,-198.34652397216394,26.544476027836055,mean_ionic_NaCl,
+ln_f_KCl_bar,KCl,org,-206.733,,,component,current accepted source-like gate has no K+ species
+ln_f_KCl_bar,KCl,aq,-206.733,,,component,current accepted source-like gate has no K+ species
