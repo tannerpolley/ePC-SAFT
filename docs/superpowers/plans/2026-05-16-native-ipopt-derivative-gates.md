@@ -826,6 +826,11 @@ uses the largest deterministic initial composition split, exact analytical deriv
 Ipopt adapter. An Ipopt-enabled electrolyte LLE proof now rejects the collapsed split through the native solver gate
 rather than returning an accepted single-phase-like postsolve.
 
+Task 8/9 continuation note: runtime capabilities now list implemented public native-Ipopt route builders instead of
+claiming all non-speciation equilibrium routes are unavailable. The route list covers homogeneous ideal reactive
+speciation, neutral TP/LLE/bubble/dew pressure, electrolyte LLE, and fixed-liquid electrolyte bubble pressure when Ipopt
+is compiled. Bubble/dew temperature, stability, and coupled reactive phase routes remain route-gated.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**

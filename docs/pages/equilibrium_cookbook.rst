@@ -287,14 +287,14 @@ package derivative backend.
 Electrolyte bubble and reactive bubble
 --------------------------------------
 
-Electrolyte bubble pressure and reactive electrolyte bubble pressure are route
-pending. These APIs raise until a native Ipopt electrolyte bubble route builder
-owns the solve.
+Electrolyte bubble pressure uses the native Ipopt fixed-liquid bubble-pressure
+route when Ipopt is compiled. Reactive electrolyte bubble pressure remains
+route-pending until a coupled native reactive phase route owns the solve.
 
 .. code-block:: python
 
    caps = epcsaft.capabilities()
-   assert caps["equilibrium"]["electrolyte_bubble_pressure"]["status"] == "route_pending"
+   assert caps["equilibrium"]["electrolyte_bubble_pressure"]["available"] == caps["optimizers"]["ipopt"]["available"]
 
 Repeated fugacity/property loops
 --------------------------------

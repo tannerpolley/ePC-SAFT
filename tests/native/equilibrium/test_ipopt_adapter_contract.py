@@ -18,13 +18,21 @@ def test_native_ipopt_smoke_reports_generic_adapter_contract() -> None:
     assert smoke["adapter_available"] is smoke["compiled"]
 
 
-def test_runtime_capabilities_report_ideal_speciation_ipopt_route() -> None:
+def test_runtime_capabilities_report_public_ipopt_routes() -> None:
     capabilities = epcsaft.capabilities()
     ipopt = capabilities["optimizers"]["ipopt"]
 
     assert ipopt["adapter_source_available"] is True
     assert ipopt["adapter_kind"] == "native_tnlp_adapter"
-    assert ipopt["public_routes"] == ["reactive_speciation:ideal_mole_fraction"]
+    assert ipopt["public_routes"] == [
+        "reactive_speciation:ideal_mole_fraction",
+        "neutral_tp_flash",
+        "neutral_lle_flash",
+        "neutral_bubble_p",
+        "neutral_dew_p",
+        "electrolyte_lle",
+        "electrolyte_bubble_pressure",
+    ]
     assert ipopt["full_constrained_nlp_available"] is ipopt["available"]
 
 

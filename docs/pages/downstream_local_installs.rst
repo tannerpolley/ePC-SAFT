@@ -150,13 +150,15 @@ Use ``capabilities()`` before wiring high-level downstream workflows:
 
    caps = epcsaft.capabilities()
    assert caps["equilibrium"]["neutral_tp_flash"]["available"]
-   assert not caps["equilibrium"]["electrolyte_bubble_pressure"]["available"]
+   assert caps["equilibrium"]["electrolyte_bubble_pressure"]["available"]
    assert not caps["equilibrium"]["reactive_electrolyte_bubble"]["available"]
 
 Native EOS/property calls and native regression helpers are available.
 Equilibrium routes are declared public contracts, but production solves are
-gated on native Ipopt route builders. Homogeneous ideal reactive speciation is
-the first explicit Ipopt route when the extension is built with Ipopt.
+gated on native Ipopt route builders and an Ipopt-enabled build. Homogeneous
+ideal reactive speciation, neutral two-phase routes, and fixed-liquid
+electrolyte LLE/bubble routes are native Ipopt routes when that extension is
+compiled.
 
 For routing examples and the production/opt-in solver table, see
 :doc:`equilibrium_cookbook`.

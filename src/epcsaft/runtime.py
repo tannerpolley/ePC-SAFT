@@ -378,8 +378,17 @@ def capabilities() -> dict[str, object]:
     ceres = dict(runtime_build_info()["optional_dependencies"]["ceres"])  # type: ignore[index]
     cppad = dict(runtime_build_info()["optional_dependencies"]["cppad"])  # type: ignore[index]
     ipopt = dict(runtime_build_info()["optional_dependencies"]["ipopt"])  # type: ignore[index]
-    ipopt_public_routes = ["reactive_speciation:ideal_mole_fraction"]
+    ipopt_public_routes = [
+        "reactive_speciation:ideal_mole_fraction",
+        "neutral_tp_flash",
+        "neutral_lle_flash",
+        "neutral_bubble_p",
+        "neutral_dew_p",
+        "electrolyte_lle",
+        "electrolyte_bubble_pressure",
+    ]
     ipopt_route_available = bool(ipopt.get("available", False))
+    ipopt_route_status = "available" if ipopt_route_available else "route_pending"
     cppad_capability = _dependency_capability(
         cppad,
         production=False,
@@ -501,17 +510,17 @@ def capabilities() -> dict[str, object]:
                 ],
             },
             "neutral_tp_flash": {
-                "available": False,
-                "backend": "native_ipopt_equilibrium_nlp_required",
+                "available": ipopt_route_available,
+                "backend": "native_ipopt_equilibrium_nlp",
                 "methods": ["tp_flash", "flash_tp"],
-                "status": "route_pending",
+                "status": ipopt_route_status,
                 "ipopt_formulation": "thermodynamic_constrained_nlp",
             },
             "neutral_lle_flash": {
-                "available": False,
-                "backend": "native_ipopt_equilibrium_nlp_required",
+                "available": ipopt_route_available,
+                "backend": "native_ipopt_equilibrium_nlp",
                 "methods": ["lle_flash", "lle_tp"],
-                "status": "route_pending",
+                "status": ipopt_route_status,
                 "ipopt_formulation": "thermodynamic_constrained_nlp",
             },
             "neutral_stability": {
@@ -522,21 +531,23 @@ def capabilities() -> dict[str, object]:
                 "ipopt_formulation": "thermodynamic_constrained_nlp",
             },
             "neutral_bubble_dew": {
-                "available": False,
-                "backend": "native_ipopt_equilibrium_nlp_required",
+                "available": ipopt_route_available,
+                "backend": "native_ipopt_equilibrium_nlp",
                 "methods": ["bubble_p", "bubble_t", "dew_p", "dew_t"],
-                "status": "route_pending",
+                "available_methods": ["bubble_p", "dew_p"] if ipopt_route_available else [],
+                "route_gated_methods": ["bubble_t", "dew_t"],
+                "status": "partially_available" if ipopt_route_available else "route_pending",
             },
             "electrolyte_lle": {
-                "available": False,
-                "backend": "native_ipopt_equilibrium_nlp_required",
+                "available": ipopt_route_available,
+                "backend": "native_ipopt_equilibrium_nlp",
                 "methods": ["electrolyte_lle", "electrolyte_lle_tp"],
-                "status": "route_pending",
+                "status": ipopt_route_status,
                 "solver_backends": ["auto", "ipopt"],
                 "ipopt_available": bool(ipopt["available"]),
-                "explicit_ipopt_request": "raises_until_native_route_is_implemented",
+                "explicit_ipopt_request": "routes_to_native_ipopt_when_compiled",
                 "ipopt_formulation": "thermodynamic_constrained_nlp",
-                "full_constrained_nlp_available": False,
+                "full_constrained_nlp_available": ipopt_route_available,
             },
             "electrolyte_stability": {
                 "available": False,
@@ -546,10 +557,10 @@ def capabilities() -> dict[str, object]:
                 "ipopt_formulation": "thermodynamic_constrained_nlp",
             },
             "electrolyte_bubble_pressure": {
-                "available": False,
-                "backend": "native_ipopt_equilibrium_nlp_required",
+                "available": ipopt_route_available,
+                "backend": "native_ipopt_equilibrium_nlp",
                 "scope": "fixed liquid composition with neutral vapor species; ions remain liquid-only",
-                "status": "route_pending",
+                "status": ipopt_route_status,
             },
             "reactive_electrolyte_bubble": {
                 "available": False,
@@ -594,7 +605,7 @@ def capabilities() -> dict[str, object]:
                 "solver_backends": ["auto", "ipopt"],
                 "ipopt_available": bool(ipopt["available"]),
                 "explicit_ipopt_request": "ideal_mole_fraction_routes_to_native_ipopt_when_compiled",
-                "ipopt_routes": ipopt_public_routes,
+                "ipopt_routes": ["reactive_speciation:ideal_mole_fraction"],
                 "ipopt_formulation": "thermodynamic_constrained_nlp",
                 "ideal_speciation_nlp_available": ipopt_route_available,
                 "full_constrained_nlp_available": False,
