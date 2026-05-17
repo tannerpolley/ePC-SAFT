@@ -10,12 +10,8 @@ def test_native_ipopt_smoke_reports_generic_adapter_contract() -> None:
     assert smoke["backend"] == "ipopt"
     assert smoke["adapter_source_available"] is True
     assert smoke["adapter_kind"] == "native_tnlp_adapter"
-    removed_solver_detail = "hessian" + "_strategy"
-    assert removed_solver_detail not in smoke
     assert smoke["requires_exact_gradient"] is True
     assert smoke["requires_exact_jacobian"] is True
-    removed_hessian_requirement = "requires" + "_exact" + "_hessian"
-    assert removed_hessian_requirement not in smoke
     assert smoke["available"] is smoke["compiled"]
     assert smoke["adapter_available"] is smoke["compiled"]
 

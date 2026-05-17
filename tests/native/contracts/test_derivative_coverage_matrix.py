@@ -38,8 +38,6 @@ def test_derivative_coverage_matrix_enumerates_required_quantities() -> None:
                 "parameter_family",
             )
         ).issubset(row)
-        removed_column = "not" + "_applicable"
-        assert removed_column not in row
 
 
 def test_derivative_coverage_matrix_uses_explicit_backend_labels() -> None:

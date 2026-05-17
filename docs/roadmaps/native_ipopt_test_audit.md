@@ -215,6 +215,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - Runtime capability and reactive workflow tests now avoid repeated old-field absence checks for Hessian strategies,
   continuation state, derivative-gap status, not-applicable rows, and benchmark-attempt diagnostics. The executable text
   gate owns those retired labels; the retained assertions check the current route, backend, and supported-row contracts.
+- Native Ipopt smoke and state derivative-matrix tests dropped remaining duplicate retired-field absence checks; the
+  source text gate already blocks those labels while the tests keep exact-gradient/Jacobian and classification coverage.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
 
