@@ -21,8 +21,9 @@ def test_reactive_electrolyte_regression_public_surfaces_are_current() -> None:
     row_names = tuple(field.name for field in row_fields)
     option_names = tuple(field.name for field in fields(epcsaft.ReactiveElectrolyteBatchOptions))
     result_names = tuple(field.name for field in fields(epcsaft.ReactiveElectrolyteRowResult))
+    removed_pressure = "P" + "_seed"
     removed = {
-        "P" + "_seed",
+        removed_pressure,
         "warm_start_rows",
         "warm_start_objective",
         "warm_start_used",
@@ -37,16 +38,12 @@ def test_reactive_electrolyte_regression_public_surfaces_are_current() -> None:
     assert result_names[-3:] == ("source", "split", "metadata")
     assert removed.isdisjoint((*row_names, *option_names, *result_names))
 
-
-def test_reactive_electrolyte_legacy_row_rejects_pressure_seed_key() -> None:
-    removed = "P" + "_seed"
-
-    with pytest.raises(epcsaft.InputError, match=removed):
+    with pytest.raises(epcsaft.InputError, match=removed_pressure):
         epcsaft.ReactiveElectrolyteRow.from_legacy_record(
             {
                 "row_id": "old-pressure",
                 "T": 298.15,
-                removed: 101325.0,
+                removed_pressure: 101325.0,
                 "totals": {"A": 1.0},
             },
             default_balances={"total": {"A": 1.0}},
