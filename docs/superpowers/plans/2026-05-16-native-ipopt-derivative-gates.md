@@ -931,6 +931,11 @@ Task 10/12 continuation note: generic native residual-score benchmark paths no l
 Jacobian backends as `not_applicable`. Residual-only diagnostics now use the positive
 `diagnostic_residual_score` label, and the executable text gate blocks reintroducing the old regression backend labels.
 
+Task 7/12 continuation note: the generic staged reactive workflow no longer carries a benchmark-specific attempt
+diagnostic or a negative neutral-route status. The retained diagnostics describe the staged method, phase kind,
+derivative policy, residual audits, and phase-route diagnostics only; the executable text gate blocks the removed field
+and status tokens.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**

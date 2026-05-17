@@ -120,7 +120,6 @@ def solve_reactive_staged_equilibrium(
         "phase_split": phase_audit["phase_split"],
         "fugacity_equality": phase_audit["fugacity_equality"],
         "material_balance_error": phase_audit["material_balance_error"],
-        "ascani_benchmark_attempt": _ascani_benchmark_attempt(kind),
         "derivative_policy": {
             "accepted_derivative_backends": [
                 "auto",
@@ -182,27 +181,6 @@ def _phase_equilibrium_audit(phase: Any) -> dict[str, Any]:
         },
         "material_balance_error": _float_or_none(diagnostics.get("material_balance_error")),
         "diagnostics": diagnostics,
-    }
-
-
-def _ascani_benchmark_attempt(kind: str) -> dict[str, Any]:
-    route = str(kind).strip()
-    if route in {"electrolyte_lle", "electrolyte_lle_flash", "electrolyte_lle_tp"}:
-        return {
-            "status": "supported_route_available",
-            "reference": "Ascani electrolyte LLE transformed-basis route",
-            "route": route,
-        }
-    if route in {"lle_flash", "lle_tp"}:
-        return {
-            "status": "not_applicable_to_neutral_route",
-            "reference": "Ascani electrolyte benchmark requires an electrolyte LLE phase route",
-            "route": route,
-        }
-    return {
-        "status": "not_attempted_for_route",
-        "reference": "Use phase_kind='electrolyte_lle' for Ascani electrolyte benchmark attempts.",
-        "route": route,
     }
 
 

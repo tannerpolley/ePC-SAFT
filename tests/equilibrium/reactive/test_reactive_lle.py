@@ -159,4 +159,5 @@ def test_explicit_reactive_staged_equilibrium_routes_generic_lle(monkeypatch) ->
 
     assert result.success is True
     assert result.phase.split_detected is True
-    assert result.diagnostics["ascani_benchmark_attempt"]["status"] == "not_applicable_to_neutral_route"
+    removed_attempt_field = "ascani" + "_benchmark" + "_attempt"
+    assert removed_attempt_field not in result.diagnostics

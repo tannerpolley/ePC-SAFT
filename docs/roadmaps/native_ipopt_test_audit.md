@@ -146,6 +146,9 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - Generic native residual-score benchmark paths now use the positive `diagnostic_residual_score` label for optimizer,
   derivative, and Jacobian backend metadata instead of `not_applicable`; the executable text gate blocks the old
   regression backend labels.
+- Generic staged reactive workflow diagnostics no longer include a benchmark-specific attempt field or negative
+  neutral-route status. The retained diagnostics cover staged method metadata, residual audits, derivative policy, and
+  phase-route diagnostics.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
 
