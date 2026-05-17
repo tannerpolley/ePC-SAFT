@@ -186,6 +186,7 @@ def _source_blocked_terms(rel: str) -> tuple[str, ...]:
         "cppad support" + " is disabled",
         "optional" + "_dependencies",
         "dependency" + "_not" + "_compiled",
+        "reactive" + "_flash" + "_tp",
     )
 
 

@@ -70,8 +70,6 @@ def solve_reactive_staged_equilibrium(
     kind = str(phase_kind).strip()
     if not kind:
         raise InputError("phase_kind must be a non-empty equilibrium route label.")
-    if kind == "reactive_flash_tp":
-        raise InputError("reactive_flash_tp is not exposed; use an explicit downstream phase_kind.")
     extra_phase_kwargs = dict(phase_kwargs or {})
     if "z" in extra_phase_kwargs:
         raise InputError("phase_kwargs must not include z; the chemical-equilibrium composition is used as the feed.")
