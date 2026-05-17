@@ -972,6 +972,10 @@ Task 8/9/12 continuation note: the broad `ePCSAFTMixture.equilibrium(...)` and `
 longer expose a compatibility-only `initial_phases` keyword. Route-specific public entry points and problem dataclasses
 remain the supported public surface; private native residual/Jacobian evaluator payloads are unchanged.
 
+Task 8/9/12 continuation note: public reactive `phase_kwargs` no longer carries compatibility handling for phase-seed
+data. Unknown phase-route keys now use the normal unsupported-key path; the text gate blocks reintroducing public
+`phase_kwargs` phase-seed branches while private native residual/Jacobian payloads remain separate.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**

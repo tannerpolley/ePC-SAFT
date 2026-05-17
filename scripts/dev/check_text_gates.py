@@ -223,6 +223,8 @@ def _source_blocked_terms(rel: str) -> tuple[str, ...]:
         "_with" + "_bubble" + "_continuation",
         "initial" + "_phases" + "=none",
         "initial" + "_phases" + " = none",
+        "phase" + "_kwargs.get(\"initial" + "_phases\")",
+        "phase" + "_kwargs={\"initial" + "_phases\"",
     )
 
 

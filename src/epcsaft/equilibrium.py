@@ -1196,8 +1196,6 @@ def _normalize_reactive_phase_route(
 
 
 def _reject_reactive_phase_kwargs(phase_kwargs: Mapping[str, Any], route: str) -> None:
-    if phase_kwargs.get("initial_phases") is not None:
-        raise InputError(f"{route} uses route-owned canonical initial points; initial_phases is not accepted.")
     allowed = {"solvent_feed", "salt_molality"}
     unsupported = sorted(key for key, value in phase_kwargs.items() if value is not None and key not in allowed)
     if unsupported:

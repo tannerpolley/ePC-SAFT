@@ -26,11 +26,10 @@ def _reactive_lle_mixture() -> ePCSAFTMixture:
     return ePCSAFTMixture.from_params(params, species=["Methanol", "Cyclohexane"])
 
 
-def _lle_seed() -> tuple[np.ndarray, dict[str, object]]:
+def _lle_feed() -> np.ndarray:
     phase_a = np.asarray([0.05, 0.95], dtype=float)
     phase_b = np.asarray([0.85, 0.15], dtype=float)
-    feed = 0.5 * phase_a + 0.5 * phase_b
-    return feed, {"liq1": phase_a, "liq2": phase_b, "phase_fraction": 0.5}
+    return 0.5 * phase_a + 0.5 * phase_b
 
 
 def _reaction_for_feed(feed: np.ndarray) -> epcsaft.ReactionDefinition:
@@ -95,7 +94,7 @@ def _speciation_result(feed: np.ndarray) -> epcsaft.ReactiveSpeciationResult:
 
 def test_explicit_reactive_staged_equilibrium_routes_reaction_coordinates_into_neutral_lle_split(monkeypatch) -> None:
     mix = _reactive_lle_mixture()
-    feed, _initial_phases = _lle_seed()
+    feed = _lle_feed()
     monkeypatch.setattr(
         "epcsaft.reactive_staged.solve_reactive_speciation",
         lambda **kwargs: _speciation_result(feed),
@@ -138,7 +137,7 @@ def test_explicit_reactive_staged_equilibrium_routes_reaction_coordinates_into_n
 
 def test_explicit_reactive_staged_equilibrium_routes_generic_lle(monkeypatch) -> None:
     mix = _reactive_lle_mixture()
-    feed, _initial_phases = _lle_seed()
+    feed = _lle_feed()
     monkeypatch.setattr(
         "epcsaft.reactive_staged.solve_reactive_speciation",
         lambda **kwargs: _speciation_result(feed),
@@ -159,26 +158,3 @@ def test_explicit_reactive_staged_equilibrium_routes_generic_lle(monkeypatch) ->
     assert result.phase.split_detected is True
     removed_attempt_field = "ascani" + "_benchmark" + "_attempt"
     assert removed_attempt_field not in result.diagnostics
-
-
-def test_explicit_reactive_staged_equilibrium_rejects_phase_seed_surface(monkeypatch) -> None:
-    mix = _reactive_lle_mixture()
-    feed, initial_phases = _lle_seed()
-    monkeypatch.setattr(
-        "epcsaft.reactive_staged.solve_reactive_speciation",
-        lambda **kwargs: _speciation_result(feed),
-    )
-    mix.lle_tp = lambda *, T, P, z, options=None: _phase_result(np.asarray(z, dtype=float))
-
-    with pytest.raises(epcsaft.InputError, match="route-owned canonical initial point"):
-        mix.reactive_staged_equilibrium(
-            T=298.15,
-            P=1.013e5,
-            z=[0.5, 0.5],
-            balances={"total": {"Methanol": 1.0, "Cyclohexane": 1.0}},
-            totals={"total": 1.0},
-            reactions=[_reaction_for_feed(feed)],
-            phase_kind="lle_flash",
-            phase_options=epcsaft.EquilibriumOptions(max_iterations=240, tolerance=1.0e-10),
-            phase_kwargs={"initial_phases": initial_phases},
-        )
