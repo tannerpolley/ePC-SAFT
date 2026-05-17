@@ -154,6 +154,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
   executable text gate blocks the retired build-requirement status literal in active source, tests, and scripts.
 - Public Ipopt capabilities and chemical-equilibrium diagnostics no longer publish negative Hessian availability flags;
   Ipopt Hessian behavior stays internal to the adapter while public contracts require exact gradients and Jacobians.
+- Runtime derivative capabilities no longer publish diagnostic-field inventories; derivative policy reports accepted
+  backends and raise-on-unsupported behavior, while concrete solve diagnostics carry route-specific fields.
 - The ideal reactive-speciation Ipopt route now reports the positive analytical derivative backend without no-op activity
   derivative policy or Hessian-mode diagnostics.
 - Native Ipopt smoke and route result payloads no longer expose Hessian-strategy or exact-Hessian-required fields; those

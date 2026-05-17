@@ -471,15 +471,6 @@ def capabilities() -> dict[str, object]:
                 ],
                 "auto_policy": "analytic_or_cppad_or_implicit_else_raise",
                 "unsupported_derivative_behavior": "raise",
-                "diagnostic_fields": [
-                    "thermodynamic_backend",
-                    "solver_backend",
-                    "derivative_backend",
-                    "residual_norm",
-                    "derivative_backend_by_block",
-                    "implicit_sensitivity_blocks",
-                    "residual_norm_by_block",
-                ],
             },
             "neutral_tp_flash": {
                 "available": ipopt_route_available,
