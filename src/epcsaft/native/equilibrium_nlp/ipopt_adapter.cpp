@@ -158,7 +158,6 @@ public:
           jacobian_structure_(problem_.jacobian_structure()),
           scaling_(problem_.scaling()) {
         result_.variables = initial_;
-        result_.hessian_strategy = options_.limited_memory_hessian ? "limited_memory" : "exact";
         result_.diagnostics_string["problem_name"] = problem_.name();
         for (const auto& item : problem_.diagnostics()) {
             result_.diagnostics_string[item.first] = item.second;
@@ -388,7 +387,6 @@ public:
         result_.diagnostics_int["constraints"] = static_cast<int>(m);
         result_.diagnostics_bool["exact_gradient_required"] = true;
         result_.diagnostics_bool["exact_jacobian_required"] = true;
-        result_.diagnostics_bool["exact_hessian_required"] = false;
     }
 
     const IpoptSolveResult& result() const {

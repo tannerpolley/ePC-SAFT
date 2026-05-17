@@ -66,7 +66,6 @@ struct NeutralTwoPhaseEosRouteResult {
     std::string status;
     std::string solver_status;
     std::string application_status;
-    std::string hessian_strategy = "limited_memory";
     double objective = 0.0;
     std::vector<double> variables;
     std::vector<double> constraints;

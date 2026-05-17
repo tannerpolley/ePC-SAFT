@@ -687,7 +687,6 @@ py::dict neutral_two_phase_eos_route_result_to_dict(
     out["status"] = result.status;
     out["solver_status"] = result.solver_status;
     out["application_status"] = result.application_status;
-    out["hessian_strategy"] = result.hessian_strategy;
     out["objective"] = result.objective;
     out["variables"] = result.variables;
     out["constraints"] = result.constraints;
@@ -1364,7 +1363,6 @@ PYBIND11_MODULE(_core, m) {
         out["adapter_available"] = adapter.adapter_available;
         out["adapter_kind"] = adapter.adapter_kind;
         out["adapter_source_available"] = true;
-        out["hessian_strategy"] = adapter.hessian_strategy;
         out["requires_exact_gradient"] = adapter.exact_gradient_required;
         out["requires_exact_jacobian"] = adapter.exact_jacobian_required;
 #ifdef EPCSAFT_IPOPT_STATUS
@@ -1396,7 +1394,6 @@ PYBIND11_MODULE(_core, m) {
         out["objective"] = result.objective;
         out["variables"] = result.variables;
         out["constraints"] = result.constraints;
-        out["hessian_strategy"] = result.hessian_strategy;
         out["exact_gradient_required"] = adapter.exact_gradient_required;
         out["exact_jacobian_required"] = adapter.exact_jacobian_required;
         return out;

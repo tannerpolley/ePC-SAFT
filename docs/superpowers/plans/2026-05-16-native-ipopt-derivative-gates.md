@@ -631,6 +631,10 @@ Jacobians.
 Task 6/12 continuation note: the ideal reactive-speciation Ipopt route now reports the positive analytical derivative
 backend without no-op activity derivative policy or Hessian-mode diagnostics.
 
+Task 9/12 continuation note: native Ipopt smoke and route result payloads no longer expose Hessian-strategy or
+exact-Hessian-required fields; those choices stay inside the adapter while result payloads report exact gradient/Jacobian
+requirements.
+
 Task 9 continuation note: stale electrolyte LLE contract tests that expected missing residual derivatives were rewritten to assert the implemented Ceres solve plus CppAD-implicit transformed-variable residual Jacobian surface.
 
 Task 9 continuation note: the Python reactive-phase diagnostics no longer call NumPy's least-squares convenience routine for reaction extent reporting. The helper uses a small direct linear solve of the stoichiometric normal system and remains diagnostic-only.

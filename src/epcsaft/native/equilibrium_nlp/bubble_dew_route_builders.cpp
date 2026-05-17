@@ -637,7 +637,6 @@ NeutralTwoPhaseEosRouteResult solve_pressure_route(
     out.compiled = adapter.compiled;
     out.adapter_available = adapter.adapter_available;
     out.adapter_kind = adapter.adapter_kind;
-    out.hessian_strategy = adapter.hessian_strategy;
     out.exact_gradient_required = adapter.exact_gradient_required;
     out.exact_jacobian_required = adapter.exact_jacobian_required;
     out.problem_name = problem_name;
@@ -659,7 +658,6 @@ NeutralTwoPhaseEosRouteResult solve_pressure_route(
     out.solver_accepted = solve.accepted;
     out.solver_status = solve.solver_status;
     out.application_status = solve.application_status;
-    out.hessian_strategy = solve.hessian_strategy;
     out.objective = solve.objective;
     out.variables = solve.variables;
     out.constraints = solve.constraints;

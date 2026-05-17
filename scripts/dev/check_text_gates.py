@@ -233,6 +233,8 @@ def _source_blocked_terms(rel: str) -> tuple[str, ...]:
         "python" + "_sweep",
         "selected" + "_solver" + "_backend" + "\": \"not" + "_run",
         "residual" + "_surface" + "_only",
+        "hessian" + "_strategy",
+        "exact" + "_hessian" + "_required",
         "exact" + "_hessian" + "_available",
         "hessian" + "_callback" + "_available",
         "hessian" + "_includes" + "_second" + "_residual" + "_derivatives",

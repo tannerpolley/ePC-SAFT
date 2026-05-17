@@ -14,10 +14,8 @@ struct IpoptAdapterInfo {
     std::string backend = "ipopt";
     std::string status = "disabled";
     std::string adapter_kind = "native_tnlp_adapter";
-    std::string hessian_strategy = "limited_memory";
     bool exact_gradient_required = true;
     bool exact_jacobian_required = true;
-    bool exact_hessian_required = false;
 };
 
 struct IpoptSolveOptions {
@@ -38,7 +36,6 @@ struct IpoptSolveResult {
     std::string adapter_kind = "native_tnlp_adapter";
     std::string solver_status;
     std::string application_status;
-    std::string hessian_strategy = "limited_memory";
     double objective = 0.0;
     std::vector<double> variables;
     std::vector<double> constraints;

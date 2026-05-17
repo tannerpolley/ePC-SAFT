@@ -157,6 +157,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
   Ipopt Hessian behavior stays internal to the adapter while public contracts require exact gradients and Jacobians.
 - The ideal reactive-speciation Ipopt route now reports the positive analytical derivative backend without no-op activity
   derivative policy or Hessian-mode diagnostics.
+- Native Ipopt smoke and route result payloads no longer expose Hessian-strategy or exact-Hessian-required fields; those
+  choices stay inside the adapter while result payloads report exact gradient/Jacobian requirements.
 - Runtime reactive phase-equilibrium capabilities no longer emit an empty negative reaction-scope list. The retained
   contract is the positive `supported_reaction_scopes` list plus cross-phase quotient metadata, and the executable text
   gate blocks the retired empty-field label.
