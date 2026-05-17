@@ -235,6 +235,8 @@ def _source_blocked_terms(rel: str) -> tuple[str, ...]:
             "objective" + "_seed",
             "row" + "_seed",
         )
+    if rel.startswith("src/"):
+        terms += ("fit" + "_route",)
     if rel in {"src/epcsaft/reactive_regression.py", "scripts/benchmarks/helpers/reactive_regression.py"}:
         terms += (
             "warm" + "_start" + "_source",

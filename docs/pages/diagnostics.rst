@@ -14,15 +14,13 @@ and implemented package workflows. The important backend labels are:
 * ``batch_residual_evaluation_context``: Python batches rows and formats
   diagnostics for a residual context; this is not a production optimizer.
 
-For reactive electrolyte regression, inspect
-``capabilities()["regression"]["reactive_electrolyte_batch_context"]["fit_route"]``.
-It records that the public fit helper validates parameter maps and bounds, then
-raises ``InputError`` until native Ceres owns the optimizer route with exact
-derivatives. The sibling ``mixed_pressure_speciation_residual_context``
-capability advertises the
-diagnostic residual context, its supported target families, and the fact that
-it is not a production optimizer. Thermodynamic calculations remain native
-while row batching and diagnostic formatting stay outside the optimizer path.
+For reactive electrolyte regression, the
+``mixed_pressure_speciation_residual_context`` capability advertises the
+diagnostic residual context, its supported target families, and the fact that it
+is not a production optimizer. ``fit_reactive_electrolyte_parameters(...)``
+still validates parameter maps and bounds, then raises ``InputError`` until
+native Ceres owns the optimizer route with exact derivatives; it is not listed
+as an available capability route before that implementation exists.
 
 Reactive Speciation And Bubble Diagnostics
 ------------------------------------------
