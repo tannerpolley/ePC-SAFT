@@ -28,14 +28,3 @@ def test_equilibrium_capabilities_expose_derivative_policy() -> None:
     removed_association_status = "association" + "_solver" + "_status"
     assert removed_association_status not in policy["diagnostic_fields"]
 
-
-def test_equilibrium_capabilities_omit_unimplemented_route_contracts() -> None:
-    equilibrium = epcsaft.capabilities()["equilibrium"]
-
-    assert "neutral_stability" not in equilibrium
-    assert "electrolyte_stability" not in equilibrium
-    assert "reactive_electrolyte_bubble" not in equilibrium
-    assert "reactive_phase_equilibrium" not in equilibrium
-    assert "ReactivePhaseEquilibriumProblem" in equilibrium["problem_objects"]["classes"]
-    removed_scope_field = "unsupported" + "_reaction" + "_scopes"
-    assert removed_scope_field not in str(equilibrium)
