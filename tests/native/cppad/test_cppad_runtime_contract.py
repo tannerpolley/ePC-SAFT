@@ -8,8 +8,9 @@ def test_runtime_reports_cppad_build_contract() -> None:
     cppad = info["optional_dependencies"]["cppad"]
 
     assert cppad["backend"] == "cppad"
-    assert cppad["status"] in {"disabled", "enabled_available", "enabled_missing", "not_configured"}
-    assert cppad["compiled"] is (cppad["status"] == "enabled_available")
+    assert cppad["status"] == "enabled_available"
+    assert cppad["compiled"] is True
+    assert cppad["available"] is True
 
     capabilities = epcsaft.capabilities()
     assert capabilities["derivatives"]["cppad"]["status"] == cppad["status"]

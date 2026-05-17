@@ -906,6 +906,10 @@ Task 2/3 continuation note: native Ceres regression tests now assert required Ce
 skipping when those required dependencies are absent. The executable text gate blocks reintroducing the retired
 optional-Ceres skip wording in source, tests, or scripts.
 
+Task 2/3 continuation note: runtime build-contract and CppAD smoke tests now require enabled Ceres/CppAD native
+dependencies instead of accepting disabled or unconfigured states as valid local test outcomes. Ipopt remains the
+documented system-dependency route gate until the final native adapter/package boundary is closed.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**

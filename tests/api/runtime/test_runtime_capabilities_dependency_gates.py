@@ -13,19 +13,15 @@ def test_default_build_reports_cppad_and_ceres_capabilities_honestly() -> None:
     ceres = info["optional_dependencies"]["ceres"]
     ipopt = info["optional_dependencies"]["ipopt"]
 
-    assert cppad["available"] is cppad["compiled"]
-    assert ceres["available"] is ceres["compiled"]
+    assert cppad["compiled"] is True
+    assert cppad["available"] is True
+    assert ceres["compiled"] is True
+    assert ceres["available"] is True
     assert ipopt["available"] is ipopt["compiled"]
-    if not cppad["compiled"]:
-        assert capabilities["derivatives"]["cppad"]["available"] is False
-        assert capabilities["derivatives"]["cppad"]["production"] is False
-        assert capabilities["derivatives"]["cppad"]["reason"] == "dependency_not_compiled"
-    if not ceres["compiled"]:
-        assert capabilities["optimizers"]["ceres"]["available"] is False
-        assert capabilities["optimizers"]["ceres"]["production"] is False
-        assert capabilities["optimizers"]["ceres"]["reason"] == "dependency_not_compiled"
-    assert capabilities["optimizers"]["ceres"]["production"] is ceres["available"]
-    assert capabilities["optimizers"]["ceres"]["native_hot_loop"] is ceres["available"]
+    assert capabilities["derivatives"]["cppad"]["available"] is True
+    assert capabilities["derivatives"]["cppad"]["reason"] == "not_validated_for_production"
+    assert capabilities["optimizers"]["ceres"]["production"] is True
+    assert capabilities["optimizers"]["ceres"]["native_hot_loop"] is True
     assert capabilities["optimizers"]["ipopt"]["production"] is ipopt["available"]
     assert capabilities["optimizers"]["ipopt"]["adapter_available"] is ipopt["adapter_available"]
     assert capabilities["optimizers"]["ipopt"]["adapter_source_available"] is True

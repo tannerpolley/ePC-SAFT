@@ -84,21 +84,23 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert info["optional_dependencies"]["ipopt"]["available"] is ipopt["available"]
     cppad = info["optional_dependencies"]["cppad"]
     assert cppad["backend"] == "cppad"
-    assert cppad["status"] in {"disabled", "enabled_available", "enabled_missing", "not_configured"}
-    assert cppad["compiled"] is (cppad["status"] == "enabled_available")
+    assert cppad["status"] == "enabled_available"
+    assert cppad["compiled"] is True
+    assert cppad["available"] is True
     assert "numerical" + "_derivative" not in capabilities["derivatives"]
     assert "eigen_forward" not in capabilities["derivatives"]
     assert capabilities["derivatives"]["cppad"] == {
         **cppad,
         "production": False,
-        "reason": "dependency_not_compiled" if not cppad["available"] else "not_validated_for_production",
+        "reason": "not_validated_for_production",
         "scope": "package-wide AD substrate",
         "production_eos_coverage": False,
     }
     ceres = info["optional_dependencies"]["ceres"]
     assert ceres["backend"] == "ceres"
-    assert ceres["status"] in {"disabled", "enabled_available", "not_configured"}
-    assert ceres["compiled"] is (ceres["status"] == "enabled_available")
+    assert ceres["status"] == "enabled_available"
+    assert ceres["compiled"] is True
+    assert ceres["available"] is True
     assert capabilities["optimizers"]["ceres"]["available"] is ceres["available"]
     assert capabilities["optimizers"]["ceres"]["production"] is ceres["available"]
     assert capabilities["optimizers"]["ceres"]["native_hot_loop"] is ceres["available"]
