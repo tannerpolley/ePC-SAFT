@@ -215,6 +215,15 @@ def test_equilibrium_options_public_surface_is_current_fields() -> None:
         "solver_backend",
         "timeout_seconds",
     }
+    assert {field.name for field in fields(epcsaft.LLEProblem)} == {"T", "P", "z", "options"}
+    assert {field.name for field in fields(epcsaft.ElectrolyteLLEProblem)} == {
+        "T",
+        "P",
+        "z",
+        "solvent_feed",
+        "salt_molality",
+        "options",
+    }
     assert epcsaft.EquilibriumOptions().solver_backend == "auto"
     assert epcsaft.EquilibriumOptions().timeout_seconds is None
 
@@ -293,12 +302,6 @@ def test_lle_flash_rejects_invalid_public_inputs(kwargs, match) -> None:
 
     with pytest.raises(epcsaft.InputError, match=match):
         mix.equilibrium(**kwargs)
-
-
-def test_lle_problem_has_no_public_phase_seed_field() -> None:
-    field_name = "initial" + "_phases"
-
-    assert field_name not in epcsaft.LLEProblem.__dataclass_fields__
 
 
 def test_lle_flash_rejects_ionic_mixtures_for_v2() -> None:

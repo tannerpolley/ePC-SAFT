@@ -1011,6 +1011,9 @@ Task 2/8/9/12 continuation note: duplicate tests for individual retired equilibr
 retained core LLE coverage asserts the full current `EquilibriumOptions` field set and a generic unknown-option error
 instead of preserving one test per legacy compatibility key.
 
+Task 2/8/9/12 continuation note: reactive bubble seed-control and LLE problem-object surface checks were folded into
+exact field-set coverage instead of repeated missing-field assertions.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**

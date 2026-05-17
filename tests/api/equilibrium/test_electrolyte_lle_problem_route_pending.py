@@ -31,9 +31,3 @@ def test_electrolyte_lle_problem_requires_native_ipopt_route() -> None:
         mix.solve_equilibrium(problem)
 
     _assert_electrolyte_lle_route_pending(excinfo)
-
-
-def test_electrolyte_lle_problem_has_no_public_phase_seed_field() -> None:
-    field_name = "initial" + "_phases"
-
-    assert field_name not in epcsaft.ElectrolyteLLEProblem.__dataclass_fields__

@@ -161,10 +161,6 @@ def test_reactive_electrolyte_bubble_sweep_does_not_continue_bubble_seed_control
 
     assert [result.success for result in results] == [True, False]
     assert len(calls) == 2
-    removed_pressure_seed = "initial" + "_pressure"
-    removed_vapor_seed = "initial" + "_y" + "_vap"
-    assert not hasattr(calls[1], removed_pressure_seed)
-    assert not hasattr(calls[1], removed_vapor_seed)
     assert results[1].P_total == pytest.approx(111000.0)
 
 def test_reactive_electrolyte_bubble_sweeps_expose_no_continuation_flag() -> None:
@@ -243,8 +239,4 @@ def test_reactive_electrolyte_bubble_sweep_honors_point_options(monkeypatch) -> 
         ),
     )
 
-    removed_pressure_seed = "initial" + "_pressure"
-    removed_vapor_seed = "initial" + "_y" + "_vap"
-    assert not hasattr(calls[0], removed_pressure_seed)
-    assert not hasattr(calls[0], removed_vapor_seed)
     assert calls[0].max_iterations == 7
