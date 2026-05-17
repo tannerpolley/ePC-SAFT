@@ -22,12 +22,17 @@ def _salt_speciation_mixture() -> epcsaft.ePCSAFTMixture:
     return epcsaft.ePCSAFTMixture.from_params(params, species=["H2O", "NaCl", "Na+", "Cl-"])
 
 
-def _assert_reactive_speciation_native_derivative_route_required(
-    excinfo: pytest.ExceptionInfo[epcsaft.InputError],
+def _native_ipopt_compiled() -> bool:
+    from epcsaft import _core
+
+    return bool(_core._native_ipopt_smoke()["compiled"])
+
+
+def _assert_reactive_speciation_native_ipopt_dependency_required(
+    excinfo: pytest.ExceptionInfo[epcsaft.SolutionError],
 ) -> None:
     message = str(excinfo.value)
-    assert "Native Ipopt nonideal reactive speciation requires" in message
-    assert "Gibbs/activity NLP route builder" in message
+    assert "EPCSAFT_ENABLE_IPOPT=ON" in message
 
 
 @pytest.mark.parametrize("standard_state", ["ideal_mole_fraction", "concentration", "mole_fraction_activity"])
@@ -224,3 +229,45 @@ def test_reactive_speciation_auto_routes_ideal_speciation_to_native_ipopt_when_c
     assert result.diagnostics["requested_solver_backend"] == "auto"
     assert result.diagnostics["selected_solver_backend"] == "native_ipopt"
     assert result.diagnostics["solver_selection_reason"] == "auto_selected_native_ipopt"
+
+
+def test_reactive_speciation_requested_ipopt_routes_nonideal_speciation_when_compiled() -> None:
+    mix = epcsaft.ePCSAFTMixture.from_params(
+        {
+            "m": np.asarray([1.0, 1.0]),
+            "s": np.asarray([3.0, 3.0]),
+            "e": np.asarray([200.0, 200.0]),
+        },
+        species=["A", "B"],
+    )
+    kwargs = {
+        "species": ["A", "B"],
+        "mixture_factory": lambda x, T, P: mix,
+        "T": 298.15,
+        "P": 1.0e5,
+        "balances": {"total": {"A": 1.0, "B": 1.0}},
+        "totals": {"total": 1.0},
+        "reactions": [
+            epcsaft.ReactionDefinition(
+                {"A": -1.0, "B": 1.0},
+                log_equilibrium_constant=math.log(3.0),
+                standard_state="mole_fraction_activity",
+            )
+        ],
+        "initial_x": [0.5, 0.5],
+        "options": epcsaft.ReactiveSpeciationOptions(solver_backend="ipopt", tolerance=1.0e-9),
+    }
+
+    if not _native_ipopt_compiled():
+        with pytest.raises(epcsaft.SolutionError) as excinfo:
+            epcsaft.solve_reactive_speciation(**kwargs)
+        _assert_reactive_speciation_native_ipopt_dependency_required(excinfo)
+        return
+
+    result = epcsaft.solve_reactive_speciation(**kwargs)
+
+    assert result.success is True
+    assert result.x["B"] / result.x["A"] == pytest.approx(3.0, rel=1.0e-7)
+    assert result.diagnostics["problem_class"] == "homogeneous_nonideal_gibbs_speciation"
+    assert result.diagnostics["derivative_backend"] == "cppad_implicit"
+    assert result.diagnostics["implicit_sensitivity_backend"] == "cppad_implicit"

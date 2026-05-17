@@ -149,7 +149,7 @@ def test_native_chemical_equilibrium_solve_accepts_ideal_cppad_derivative_reques
     assert payload["diagnostics"]["implicit_sensitivity_backend"] == "cppad_implicit"
 
 
-def test_native_chemical_equilibrium_solve_keeps_nonideal_cppad_at_eos_derivative_gate() -> None:
+def test_native_chemical_equilibrium_solve_routes_nonideal_speciation_to_ipopt() -> None:
     mix = _toy_mixture()
     request = {
         "T": 298.15,
@@ -165,7 +165,40 @@ def test_native_chemical_equilibrium_solve_keeps_nonideal_cppad_at_eos_derivativ
         "options": {"solver_backend": "ipopt", "jacobian_backend": "cppad"},
     }
 
-    with pytest.raises(_core.NativeValueError, match="nonideal reactive speciation requires a native Ipopt Gibbs"):
+    if not _core._native_ipopt_smoke()["compiled"]:
+        with pytest.raises(_core.NativeSolutionError, match=r"EPCSAFT_ENABLE_IPOPT=ON"):
+            _core._solve_chemical_equilibrium_native(mix._native, request)
+        return
+
+    payload = _core._solve_chemical_equilibrium_native(mix._native, request)
+
+    assert payload["success"] is True
+    assert payload["composition"][1] / payload["composition"][0] == pytest.approx(3.0, rel=1.0e-7)
+    diagnostics = payload["diagnostics"]
+    assert diagnostics["problem_class"] == "homogeneous_nonideal_gibbs_speciation"
+    assert diagnostics["derivative_backend"] == "cppad_implicit"
+    assert diagnostics["jacobian_backend"] == "cppad_implicit"
+    assert diagnostics["implicit_sensitivity_backend"] == "cppad_implicit"
+    assert diagnostics["selected_solver_backend"] == "native_ipopt"
+
+
+def test_native_chemical_equilibrium_solve_rejects_mixed_nonideal_standard_states() -> None:
+    mix = _toy_mixture()
+    request = {
+        "T": 298.15,
+        "P": 1.0e5,
+        "initial_x": [0.5, 0.5],
+        "balance_matrix": [1.0, 1.0],
+        "balance_rows": 1,
+        "total_vector": [1.0],
+        "reaction_stoichiometry": [-1.0, 1.0, 1.0, -1.0],
+        "reaction_rows": 2,
+        "log_equilibrium_constants": [math.log(3.0), math.log(1.0 / 3.0)],
+        "reaction_standard_states": [0, 2],
+        "options": {"solver_backend": "ipopt", "jacobian_backend": "cppad"},
+    }
+
+    with pytest.raises(_core.NativeValueError, match="one shared standard-state basis"):
         _core._solve_chemical_equilibrium_native(mix._native, request)
 
 

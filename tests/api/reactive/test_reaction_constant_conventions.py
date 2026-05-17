@@ -7,7 +7,8 @@ import pytest
 
 import epcsaft
 from tests.api.reactive.test_reactive_speciation_options import (
-    _assert_reactive_speciation_native_derivative_route_required,
+    _assert_reactive_speciation_native_ipopt_dependency_required,
+    _native_ipopt_compiled,
 )
 
 
@@ -87,7 +88,7 @@ def test_corrected_convention_rejects_fixed_input_fitting_role() -> None:
         )
 
 
-def test_reactive_speciation_auto_validates_conventions_before_native_derivative_gate() -> None:
+def test_reactive_speciation_auto_validates_conventions_before_native_ipopt_route() -> None:
     mix = _toy_mixture()
     reaction = epcsaft.ReactionDefinition.from_literature_constant(
         {"A": -1.0, "B": 1.0},
@@ -97,20 +98,28 @@ def test_reactive_speciation_auto_validates_conventions_before_native_derivative
         source="generic fixed table",
     )
 
-    with pytest.raises(epcsaft.InputError) as excinfo:
-        epcsaft.solve_reactive_speciation(
-            species=mix.species,
-            mixture_factory=lambda x, T, P: mix,
-            T=298.15,
-            P=1.0e5,
-            balances={"total": {"A": 1.0, "B": 1.0}},
-            totals={"total": 1.0},
-            reactions=[reaction],
-            initial_x=[0.5, 0.5],
-            options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-10),
-        )
+    kwargs = {
+        "species": mix.species,
+        "mixture_factory": lambda x, T, P: mix,
+        "T": 298.15,
+        "P": 1.0e5,
+        "balances": {"total": {"A": 1.0, "B": 1.0}},
+        "totals": {"total": 1.0},
+        "reactions": [reaction],
+        "initial_x": [0.5, 0.5],
+        "options": epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-10),
+    }
 
-    _assert_reactive_speciation_native_derivative_route_required(excinfo)
+    if not _native_ipopt_compiled():
+        with pytest.raises(epcsaft.SolutionError) as excinfo:
+            epcsaft.solve_reactive_speciation(**kwargs)
+        _assert_reactive_speciation_native_ipopt_dependency_required(excinfo)
+    else:
+        result = epcsaft.solve_reactive_speciation(**kwargs)
+        assert result.success is True
+        assert result.diagnostics["problem_class"] == "homogeneous_nonideal_gibbs_speciation"
+        assert result.diagnostics["derivative_backend"] == "cppad_implicit"
+
     assert reaction.metadata["constant_convention"]["standard_state"] == "mole_fraction_activity"
     assert reaction.metadata["constant_convention"]["basis"] == "mole_fraction"
     assert reaction.metadata["constant_convention"]["constant_kind"] == "thermodynamic"

@@ -7,7 +7,8 @@ import pytest
 
 import epcsaft
 from tests.api.reactive.test_reactive_speciation_options import (
-    _assert_reactive_speciation_native_derivative_route_required,
+    _assert_reactive_speciation_native_ipopt_dependency_required,
+    _native_ipopt_compiled,
 )
 
 
@@ -60,24 +61,42 @@ def _salt_speciation_request(standard_state: str = "mole_fraction_activity") -> 
     }
 
 
-def test_solve_reactive_speciation_activity_coupled_state_reaches_native_derivative_gate() -> None:
-    with pytest.raises(epcsaft.InputError) as excinfo:
-        epcsaft.solve_reactive_speciation(
-            **_salt_speciation_request(),
-            options=epcsaft.ReactiveSpeciationOptions(max_iterations=8, tolerance=1.0e-8),
-        )
+def test_solve_reactive_speciation_activity_coupled_state_routes_to_native_ipopt() -> None:
+    kwargs = {
+        **_salt_speciation_request(),
+        "options": epcsaft.ReactiveSpeciationOptions(max_iterations=50, tolerance=1.0e-8),
+    }
+    if not _native_ipopt_compiled():
+        with pytest.raises(epcsaft.SolutionError) as excinfo:
+            epcsaft.solve_reactive_speciation(**kwargs)
+        _assert_reactive_speciation_native_ipopt_dependency_required(excinfo)
+        return
 
-    _assert_reactive_speciation_native_derivative_route_required(excinfo)
+    result = epcsaft.solve_reactive_speciation(**kwargs)
+
+    assert result.success is True
+    assert result.diagnostics["problem_class"] == "homogeneous_nonideal_gibbs_speciation"
+    assert result.diagnostics["derivative_backend"] == "cppad_implicit"
+    assert result.diagnostics["activity_basis"] == "mole_fraction"
 
 
-def test_solve_reactive_speciation_concentration_standard_state_reaches_native_derivative_gate() -> None:
-    with pytest.raises(epcsaft.InputError) as excinfo:
-        epcsaft.solve_reactive_speciation(
-            **_salt_speciation_request("concentration"),
-            options=epcsaft.ReactiveSpeciationOptions(max_iterations=50, tolerance=1.0e-8),
-        )
+def test_solve_reactive_speciation_concentration_standard_state_routes_to_native_ipopt() -> None:
+    kwargs = {
+        **_salt_speciation_request("concentration"),
+        "options": epcsaft.ReactiveSpeciationOptions(max_iterations=50, tolerance=1.0e-8),
+    }
+    if not _native_ipopt_compiled():
+        with pytest.raises(epcsaft.SolutionError) as excinfo:
+            epcsaft.solve_reactive_speciation(**kwargs)
+        _assert_reactive_speciation_native_ipopt_dependency_required(excinfo)
+        return
 
-    _assert_reactive_speciation_native_derivative_route_required(excinfo)
+    result = epcsaft.solve_reactive_speciation(**kwargs)
+
+    assert result.success is True
+    assert result.diagnostics["problem_class"] == "homogeneous_nonideal_gibbs_speciation"
+    assert result.diagnostics["derivative_backend"] == "cppad_implicit"
+    assert result.diagnostics["activity_basis"] == "concentration"
 
 
 def test_reactive_speciation_sweep_auto_uses_native_ipopt_ideal_route_when_compiled() -> None:
