@@ -267,6 +267,9 @@ The failure list from the initial full-duration run has been retired. Each liste
 - Task 10 derivative ownership is closed for the current accepted Ceres production surface. Pure-neutral, pure-ion/electrolyte, and binary `k_ij` routes use native Ceres cost functions with exact `cppad_implicit` Jacobians; no direct-template production residual exists today, so future templated Ceres residual families remain gated to Ceres autodiff when promoted.
 - Runtime derivative capabilities now list implemented production coverage only. Open derivative blockers remain in the roadmap and state-level coverage matrices, not in `epcsaft.capabilities()` as capability rows.
 - Reactive electrolyte batch regression is no longer described as a production optimizer in runtime capabilities; it is a diagnostic residual context until native Ceres owns that route.
+- Task 9 is partially closed: charge/electrolyte blocks, association-variable phase-system coupling, electrolyte LLE,
+  fixed-liquid electrolyte bubble pressure, and accepted-path Ceres equilibrium solve removal are implemented and tested.
+  Broad reactive phase-equilibrium route builders and their reaction-coupled acceptance tests remain open.
 
 ## Required Cleanup Still Open
 

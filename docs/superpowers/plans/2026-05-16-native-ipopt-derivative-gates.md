@@ -719,13 +719,15 @@ postsolve acceptance gates, and legacy diagnostic-only route-gate tests have bee
 - Create: `src/epcsaft/native/equilibrium_nlp/association_block.cpp`
 - Modify electrolyte/reactive public facades and tests.
 
-- [ ] Add charge-balance and electrolyte contribution blocks.
-- [ ] Couple density/volume and association variables where practical.
-- [ ] Implement electrolyte LLE/VLE/bubble route builders.
+- [x] Add charge-balance and electrolyte contribution blocks.
+- [x] Couple density/volume and association variables where practical.
+- [x] Implement electrolyte LLE and fixed-liquid electrolyte bubble route builders.
+- [ ] Implement broader electrolyte VLE route builders beyond the fixed-liquid bubble scope, if promoted as a public route.
 - [ ] Implement reactive phase equilibrium route builders.
-- [ ] Remove Ceres equilibrium residual-solve ownership from accepted equilibrium paths.
-- [ ] Add charge/material/reaction/phase-distance acceptance tests.
-- [ ] Commit as `Replace electrolyte reactive equilibrium with native Ipopt`.
+- [x] Remove Ceres equilibrium residual-solve ownership from accepted equilibrium paths.
+- [x] Add charge/material/phase-distance acceptance tests for implemented electrolyte routes.
+- [ ] Add reaction-coupled phase-equilibrium acceptance tests when reactive phase route builders land.
+- [ ] Commit remaining reactive/electrolyte route slices under the native Ipopt gate.
 
 Task 9 progress note: the public `ReactiveSpeciationOptions.hessian_strategy` knob was removed for the same reason as the equilibrium facade knob. Hessian behavior remains internal to native solver adapters.
 
@@ -760,24 +762,26 @@ Task 9 continuation note: the unbound native coupled reactive phase Ceres solve 
 
 Task 9 continuation note: a first `electrolyte_block` slice adds a native phase charge-balance block with analytical
 residuals and Jacobian rows, and the EOS phase-system assembler can append one charge-balance row per phase when
-charges are supplied. This is block-level NLP wiring only; electrolyte contribution terms, association variables, and
-production electrolyte route builders remain open.
+charges are supplied. This was the first block-level NLP wiring slice; later slices added electrolyte contribution
+terms, association-variable coupling, and implemented electrolyte route builders.
 
 Task 9 continuation note: the electrolyte block now also exposes native EOS-backed electrolyte contribution terms for a
 phase: ionic residual Helmholtz, Born residual Helmholtz, their electrolyte total, total residual Helmholtz, charge
-vector, and phase charge residual. The EOS phase block embeds this contribution payload for diagnostics and route-builder
-assembly. This is still block-level wiring; electrolyte LLE/VLE/bubble route builders remain open.
+vector, and phase charge residual. The EOS phase block embeds this contribution payload for diagnostics and
+route-builder assembly. This was block-level wiring at that checkpoint; later route-builder slices promoted electrolyte
+LLE and fixed-liquid electrolyte bubble pressure to native route-result dispatch. Broader electrolyte VLE remains
+outside the current public route set.
 
 Task 9 continuation note: a private electrolyte LLE EOS NLP contract now reuses the two-phase EOS phase-system assembly
 with analytical phase charge-balance rows. Its canonical initial point preserves material balance and per-phase charge
 neutrality for charge-neutral feeds, and focused coverage checks the dense exact Jacobian against the reusable
-`eos_phase_system` block. This is route-builder contract plumbing only; no public electrolyte LLE solve or alternate
-solve path has been added.
+`eos_phase_system` block. Later public electrolyte LLE dispatch now validates inputs, submits exactly one native Ipopt
+route-result request, and converts accepted native payloads without a Python-owned Ceres solve or fallback path.
 
 Task 9 continuation note: private electrolyte bubble-pressure EOS NLP contract plumbing now exists for fixed-liquid
 composition routes. The contract adds analytical phase charge-balance rows to the fixed-temperature pressure NLP and
-uses a deterministic charge-neutral vapor initial composition for charge-neutral liquid inputs. This is private route
-builder coverage only; the public electrolyte bubble-pressure API still requires the native Ipopt production route.
+uses a deterministic charge-neutral vapor initial composition for charge-neutral liquid inputs. Later public
+fixed-liquid electrolyte bubble-pressure dispatch now routes through the native Ipopt route-result binding.
 
 Task 9 continuation note: the public fixed-liquid electrolyte bubble-pressure facade now dispatches to a native Ipopt
 route-result binding before failing loudly when Ipopt is not compiled. The native pressure route carries analytical
