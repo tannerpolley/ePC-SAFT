@@ -329,6 +329,22 @@ def test_eos_phase_system_can_append_association_mass_action_rows() -> None:
         "phase_1.association_site_1",
     ]
     assert payload["constraint_jacobian_shape"] == (8, 10)
+    expected_phase_objectives = [
+        float(
+            np.sum(
+                amounts
+                * (np.log(fractions) - 0.5 * fractions + 0.5)
+            )
+        )
+        for amounts, fractions in zip(phase_amounts, site_fractions, strict=True)
+    ]
+    expected_association_objective = sum(expected_phase_objectives)
+    base_objective = sum(block["objective"] for block in payload["phase_blocks"])
+    gradient = np.asarray(payload["gradient"], dtype=float)
+
+    assert payload["phase_association_objectives"] == pytest.approx(expected_phase_objectives)
+    assert payload["association_objective"] == pytest.approx(expected_association_objective)
+    assert payload["objective"] == pytest.approx(base_objective + expected_association_objective)
 
     jacobian = np.asarray(payload["constraint_jacobian_row_major"], dtype=float).reshape((8, 10))
     association_rows = jacobian[4:, :]
@@ -348,6 +364,19 @@ def test_eos_phase_system_can_append_association_mass_action_rows() -> None:
         )
         row_offset = phase_index * 2
         col_offset = phase_index * 5
+        expected_amount_gradient = np.log(fractions) - 0.5 * fractions + 0.5
+        expected_site_gradient = amounts * (1.0 / fractions - 0.5)
+
+        assert gradient[col_offset : col_offset + 2] == pytest.approx(
+            np.asarray(payload["phase_blocks"][phase_index]["gradient"], dtype=float)[:2] + expected_amount_gradient,
+            rel=1.0e-14,
+            abs=1.0e-14,
+        )
+        assert gradient[col_offset + 3 : col_offset + 5] == pytest.approx(
+            expected_site_gradient,
+            rel=1.0e-14,
+            abs=1.0e-14,
+        )
         assert payload["phase_association_residuals"][row_offset : row_offset + 2] == pytest.approx(
             block["residuals"],
             rel=1.0e-14,

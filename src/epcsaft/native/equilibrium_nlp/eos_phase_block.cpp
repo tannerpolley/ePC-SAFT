@@ -107,6 +107,15 @@ bool association_block_enabled(
     return true;
 }
 
+add_args without_solved_association(add_args args) {
+    args.e_assoc.clear();
+    args.vol_a.clear();
+    args.assoc_num.clear();
+    args.assoc_matrix.clear();
+    args.k_hb.clear();
+    return args;
+}
+
 }  // namespace
 
 EosPhaseBlockResult evaluate_eos_phase_block(
@@ -296,13 +305,14 @@ EosPhaseSystemResult evaluate_eos_phase_system(
 
     const std::size_t base_local_variable_count = species_count + 1;
     const std::size_t local_variable_count = base_local_variable_count + association_site_count;
+    const add_args phase_block_args = include_association ? without_solved_association(args) : args;
     result.gradient.reserve(phase_count * local_variable_count);
     for (std::size_t phase = 0; phase < phase_count; ++phase) {
         if (phase_amounts[phase].size() != species_count) {
             throw ValueError("EOS phase system phase amount sizes must match feed species count.");
         }
         result.phase_blocks.push_back(
-            evaluate_eos_phase_block(args, temperature, target_pressure, phase_amounts[phase], volumes[phase])
+            evaluate_eos_phase_block(phase_block_args, temperature, target_pressure, phase_amounts[phase], volumes[phase])
         );
         const EosPhaseBlockResult& block = result.phase_blocks.back();
         if (block.gradient.size() != base_local_variable_count) {
@@ -339,6 +349,19 @@ EosPhaseSystemResult evaluate_eos_phase_system(
             || block.site_fraction_jacobian_row_major.size() != association_site_count * association_site_count) {
             throw ValueError("EOS phase system association block size did not match the phase variable model.");
         }
+        double phase_association_objective = 0.0;
+        const std::size_t col_offset = phase * local_variable_count;
+        for (std::size_t site = 0; site < association_site_count; ++site) {
+            const double site_fraction = association_site_fractions[phase][site];
+            const double amount = phase_amounts[phase][site];
+            const double site_objective = std::log(site_fraction) - 0.5 * site_fraction + 0.5;
+            phase_association_objective += amount * site_objective;
+            result.gradient[col_offset + site] += site_objective;
+            result.gradient[col_offset + base_local_variable_count + site] += amount * (1.0 / site_fraction - 0.5);
+        }
+        result.phase_association_objectives.push_back(phase_association_objective);
+        result.association_objective += phase_association_objective;
+        result.objective += phase_association_objective;
     }
     const std::size_t association_constraint_count = association_blocks.size() * association_site_count;
     const std::size_t constraint_count =

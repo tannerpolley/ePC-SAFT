@@ -58,6 +58,8 @@ struct EosPhaseSystemResult {
     std::vector<double> feed_amounts;
     std::vector<EosPhaseBlockResult> phase_blocks;
     double objective = 0.0;
+    double association_objective = 0.0;
+    std::vector<double> phase_association_objectives;
     std::vector<double> gradient;
     std::vector<double> constraints;
     std::vector<double> phase_charge_residuals;

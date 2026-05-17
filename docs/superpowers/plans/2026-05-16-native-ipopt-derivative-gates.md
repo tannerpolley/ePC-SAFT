@@ -449,6 +449,12 @@ analytical derivatives with respect to phase amounts, phase volume, and site fra
 coupling only; association Helmholtz objective dependence on explicit site variables and production route-builder
 integration remain open.
 
+Task 7/9 continuation note: EOS phase-system assembly now adds the explicit Wertheim association Helmholtz objective
+term for supplied site-fraction variables, with analytical gradients for phase amounts and site fractions. When
+site-fraction variables are supplied, the phase block evaluates the remaining EOS terms with solved association disabled
+so Ipopt callbacks do not hide an internal association closure solve behind the objective. Production route-builder
+integration remains open.
+
 ### Task 8: Replace Neutral Equilibrium Routes
 
 **Files:**

@@ -583,6 +583,8 @@ py::dict eos_phase_system_to_dict(const epcsaft::native::equilibrium_nlp::EosPha
     out["target_pressure"] = result.target_pressure;
     out["feed_amounts"] = result.feed_amounts;
     out["objective"] = result.objective;
+    out["association_objective"] = result.association_objective;
+    out["phase_association_objectives"] = result.phase_association_objectives;
     out["gradient"] = result.gradient;
     out["constraints"] = result.constraints;
     out["phase_charge_residuals"] = result.phase_charge_residuals;
