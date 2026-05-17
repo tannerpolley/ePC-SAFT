@@ -14,14 +14,6 @@ from .implicit_sensitivity import (
     implicit_backend_for_residual_backend,
 )
 
-_SPECIATION_EVALUATION_ERRORS = (
-    InputError,
-    SolutionError,
-    ValueError,
-    RuntimeError,
-    ArithmeticError,
-    np.linalg.LinAlgError,
-)
 _COMPOSITION_NORMALIZATION_ERRORS = (
     InputError,
     TypeError,
