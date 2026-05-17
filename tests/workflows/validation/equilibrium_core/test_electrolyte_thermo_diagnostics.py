@@ -220,6 +220,7 @@ def test_khudaida_solver_gate_reports_algorithm_or_thermo_failure() -> None:
         "fixed_tieline_consistent_solver_suspect",
         "solver_accepts_package_fixed_tieline_feed",
     }
+    assert "seeded" not in diagnostics
     assert "ascani_case2_fixture_regression" not in json.dumps(diagnostics)
     assert "v4_partition_seed_api_compatibility" not in json.dumps(diagnostics)
     json.dumps(diagnostics, allow_nan=False)

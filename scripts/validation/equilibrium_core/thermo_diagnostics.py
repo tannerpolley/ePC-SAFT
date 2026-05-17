@@ -564,7 +564,6 @@ def evaluate_khudaida_solver_gate(*, figure: int, tie_line: int, source: str = "
             "source": fixed["source"],
             "figure": int(figure),
             "tie_line": int(tie_line),
-            "seeded": bool(seeded),
             "fixed_phase_residual_norm": fixed["fixed_phase_residual_norm"],
             "gibbs_delta": fixed["gibbs_delta"],
             "solver_outcome": solver_outcome,

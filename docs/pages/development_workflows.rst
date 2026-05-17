@@ -62,7 +62,7 @@ Command matrix
      - Runtime-only profiling. The wrapper enables the required performance environment flag.
    * - Neutral equilibrium benchmark
      - ``uv run python scripts/benchmarks/benchmark_neutral_equilibrium.py --warmup 20 --repeat 100``
-     - Measure neutral state, TP flash, and seeded neutral LLE without any FeOs dependency.
+     - Measure the current neutral state runtime guardrail without any FeOs dependency.
    * - Literature benchmark inventory
      - ``uv run python scripts/benchmarks/benchmark_literature_suite.py``
      - Review the package-owned literature benchmark scope, including which issue anchors are already supported by tests and which still require follow-up work.
@@ -225,8 +225,6 @@ Use the package-owned benchmark harness when the claim is specifically about neu
 The harness benchmarks these package-owned neutral cases:
 
 - ``neutral_state``
-- ``tp_flash`` for methane/ethane/propane at ``T=220 K``, ``P=1e5 Pa``, ``z=[0.1, 0.3, 0.6]``
-- ``lle_seeded`` for the methanol/cyclohexane seeded LLE fixture
 
 Each case reports a deterministic fingerprint plus medians, spread metrics,
 failures, and whether a neutral fast path was used. This harness does not

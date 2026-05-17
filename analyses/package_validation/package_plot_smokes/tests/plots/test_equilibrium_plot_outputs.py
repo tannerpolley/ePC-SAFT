@@ -296,37 +296,6 @@ def test_equilibrium_electrolyte_lle_residual_closure_plot() -> None:
     )
 
 
-def test_equilibrium_electrolyte_khudaida_seeded_solver_gate_plot() -> None:
-    diagnostics = evaluate_khudaida_solver_gate(figure=2, tie_line=1, source="package", seeded=True)
-    solver = diagnostics["solver_diagnostics"]
-
-    assert diagnostics["solver_outcome"] == "accepted"
-    assert diagnostics["decision"] == "solver_accepts_package_fixed_tieline_feed"
-    assert solver["solver_seed_name"] == "initial_phases"
-    labels = ["fixed tie-line residual", "solver residual", "material balance", "charge balance", "Gibbs favored"]
-    actual = np.asarray(
-        [
-            diagnostics["fixed_phase_residual_norm"],
-            solver["solver_residual_norm"],
-            solver["material_balance_error"],
-            solver["charge_balance_error"],
-            max(solver["gibbs_delta"], 0.0),
-        ],
-        dtype=float,
-    )
-    tolerances = np.asarray([1.0e-6, 1.0e-6, 1.0e-10, 1.0e-8, 1.0e-15], dtype=float)
-    save_comparison_plot(
-        "equilibrium_electrolyte_khudaida_seeded_solver_gate.png",
-        "V4 Khudaida seeded electrolyte LLE solver gate",
-        labels,
-        actual,
-        tolerances,
-        category=("equilibrium", "electrolyte_lle"),
-        ylabel="Residual norm or clipped Gibbs delta",
-        relative_error=False,
-    )
-
-
 def test_equilibrium_stability_reference_case_plot() -> None:
     lle_mix = methanol_cyclohexane_mixture()
     unstable = lle_mix.equilibrium(

@@ -96,7 +96,7 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
   tests still own TP flash, stability, and electrolyte LLE route-gate behavior, while the native contract file keeps the
   native residual and dependency-boundary checks.
 - The standalone salting-out LLE route-pending benchmark test was removed because the smoke tests already cover strict
-  seeded electrolyte LLE route gating and the solver-contract tests cover mixed-salt route gates. Its typed problem
+  electrolyte LLE route gating and the solver-contract tests cover mixed-salt route gates. Its typed problem
   fixture now lives with the `ElectrolyteLLEProblem` problem-object test.
 - A duplicate electrolyte LLE explicit-Ipopt route-pending test was removed. The retained native-route request test
   already sets `solver_backend="ipopt"` and verifies the exact route payload before the local no-Ipopt gate.
@@ -173,8 +173,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
   builder owns the canonical initial point, while private native residual-surface tests keep explicit evaluator phase
   payloads where needed for diagnostic Jacobian coverage.
 - Public neutral LLE and reactive LLE facades no longer accept user phase seeds. Direct LLE, typed LLE, reactive phase,
-  and staged reactive LLE calls all use route-owned canonical initial points; seeded public validation-script paths were
-  removed.
+  and staged reactive LLE calls all use route-owned canonical initial points; public validation-script paths with
+  explicit phase initializers were removed.
 - A duplicate staged reactive LLE test was folded into the stronger reaction-coordinate and split-diagnostic test.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:

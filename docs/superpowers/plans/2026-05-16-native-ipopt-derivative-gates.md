@@ -982,9 +982,9 @@ the residual/Jacobian diagnostic contract explicitly requires it.
 
 Task 8/9/12 continuation note: public neutral LLE and reactive LLE facades no longer accept user `initial_phases`.
 `LLEProblem`, `lle_flash`, `lle_tp`, `reactive_lle`, `ReactivePhaseEquilibriumProblem`, and explicit staged LLE now
-use route-owned canonical initial points. Seed-specific Python validation helpers and seeded public validation-script
-paths were removed; private native residual/Jacobian evaluator payloads still carry phase data where that diagnostic
-contract requires it.
+use route-owned canonical initial points. Python validation helpers and public validation-script paths that accepted
+explicit phase initializers were removed; private native residual/Jacobian evaluator payloads still carry phase data
+where that diagnostic contract requires it.
 
 Task 8/9/12 continuation note: the broad `ePCSAFTMixture.equilibrium(...)` and `equilibrium_curve(...)` facades no
 longer expose a compatibility-only `initial_phases` keyword. Route-specific public entry points and problem dataclasses
@@ -998,6 +998,10 @@ Task 6/12 continuation note: public homogeneous reactive-speciation sweeps no lo
 `warm_start` solve hook, `continuation_state` result payload, or runtime continuation-state capability flag. Each sweep
 point supplies its own explicit `initial_x`; reactive-regression residual diagnostics likewise use each row's explicit
 initial composition/defaults rather than cached compositions.
+
+Task 2/12 continuation note: the stale Khudaida public seeded-solver diagnostic script and package plot smoke were
+removed. The retained Khudaida solver-gate diagnostic calls the public electrolyte LLE route without explicit phase
+initializers, and the neutral equilibrium benchmark docs now describe only the active neutral-state runtime guardrail.
 
 ### Task 13: Final Validation And Cleanup
 
