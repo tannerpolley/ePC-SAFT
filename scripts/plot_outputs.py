@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import pandas as pd
 from matplotlib import colors as mcolors
@@ -343,22 +344,6 @@ def figure_output_path(source_path: str | Path, filename: str | Path | None = No
     path = target / name
     path.parent.mkdir(parents=True, exist_ok=True)
     return path
-
-
-def analysis_final_dir(source_path: str | Path, category: str = "figures") -> Path:
-    """Compatibility alias for analysis-owned curated result directories.
-
-    New analysis outputs should use figure-owned ``figures/<figure_id>/output``
-    folders. Historical analyses that still use analysis-level curated result
-    directories map this helper to ``results/<category>/`` instead of the
-    older ``results/final/<category>/`` layout.
-    """
-
-    return analysis_plot_set_dir(source_path, category=category)
-
-
-def analysis_final_path(source_path: str | Path, filename: str | Path, category: str = "figures") -> Path:
-    return analysis_plot_set_dir(source_path, filename=filename, category=category) / Path(filename)
 
 
 def paper_validation_path(source_path: str | Path, filename: str | None = None) -> Path:
