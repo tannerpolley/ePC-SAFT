@@ -1131,6 +1131,10 @@ Task 12 continuation note: the pybind native-diagnostics converter no longer pre
 `stability_analysis="not_run"` to `stability_stable=None` shim. No active native producer emits that diagnostic contract,
 and the executable text gate now blocks the retired stability diagnostic labels in source, tests, and scripts.
 
+Task 12 continuation note: the reactive electrolyte VLE workflow documentation now matches the implemented
+fixed-liquid native Ipopt bubble route. It describes reactive electrolyte bubble pressure as native speciation composed
+with the native bubble route for scoped supported inputs instead of saying the whole public entry point is pending.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**

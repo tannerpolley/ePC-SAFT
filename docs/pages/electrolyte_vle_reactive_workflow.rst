@@ -11,11 +11,12 @@ native payloads into structured result objects. New production equilibrium
 ownership is moving to native Ipopt constrained NLPs; existing native residual
 routes remain transitional until each Ipopt route builder lands.
 
-Consequently, electrolyte bubble-pressure and composed reactive electrolyte
-bubble-pressure entry points now fail loudly until native Ipopt route builders
-own those solves. The Python layer may coordinate native speciation, native
-phase-equilibrium calls, structured results, and diagnostics only after those
-native route builders exist.
+Consequently, fixed-liquid electrolyte bubble-pressure routes run through the
+native Ipopt route builder when Ipopt is compiled, and scoped reactive
+electrolyte bubble-pressure routes compose native speciation with that native
+bubble route. The Python layer may validate inputs, coordinate native
+speciation and phase-equilibrium calls, and convert structured result
+diagnostics; it does not own pressure-search or phase-equilibrium solve loops.
 
 ``ReactiveSpeciationOptions`` accepts ``solver_backend="auto" | "ipopt"``.
 ``auto`` uses the native Ipopt constrained-NLP route for homogeneous
@@ -30,8 +31,8 @@ only as Ipopt solver-internal behavior and is not reported as a package
 derivative backend.
 
 Solver-selection policy is intentionally conservative. ``auto`` does not run a
-package-owned reactive solve loop or route activity-coupled chemistry while the
-needed native Ipopt route builders are pending.
+package-owned reactive solve loop or route activity-coupled chemistry until the
+needed native Ipopt derivative NLP blocks exist.
 
 Homogeneous reactive speciation
 -------------------------------
@@ -125,17 +126,17 @@ Electrolyte bubble pressure
 names. They require an Ipopt-enabled build because production equilibrium
 routes must be native Ipopt NLPs, not package-owned scalar pressure searches.
 
-The target reactive electrolyte bubble route will first solve homogeneous
-chemical equilibrium with the native chemical solver and then hand the
-equilibrated liquid composition to the native Ipopt electrolyte bubble solver.
-``ReactiveElectrolyteBubbleResult`` is retained as the structured result shape
-for that route:
+The reactive electrolyte bubble route first solves homogeneous chemical
+equilibrium with the native chemical solver and then hands the equilibrated
+liquid composition to the native Ipopt electrolyte bubble solver.
+``ReactiveElectrolyteBubbleResult`` is the structured result shape for that
+route:
 
 - ``speciation_strict_success`` reflects the standalone native chemical
   equilibrium tolerances requested in ``ReactiveSpeciationOptions``.
 - ``speciation_phase_handoff_success`` reflects whether finite mass, charge,
   and reaction residuals are accurate enough for phase-equilibrium handoff.
-- ``bubble_success`` will reflect the native Ipopt electrolyte bubble-pressure solve.
+- ``bubble_success`` reflects the native Ipopt electrolyte bubble-pressure solve.
 
 The handoff tolerances default to ``1e-8`` for mass, ``1e-8`` for charge, and
 ``1e-5`` for reaction residuals. They can be adjusted with
