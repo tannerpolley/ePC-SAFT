@@ -335,5 +335,5 @@ the native adapter when Ipopt is compiled; route-pending methods still raise
            options=epcsaft.EquilibriumOptions(solver_backend="ipopt"),
        )
    except epcsaft.InputError as exc:
-       print("IPOPT route is unavailable in this build or for this method:", exc)
+       print("IPOPT route is dependency-gated in this build or method:", exc)
 

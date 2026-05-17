@@ -117,8 +117,7 @@ Current public imports must continue working across boundary cleanups:
    epcsaft.fit_pure_neutral
 
 Cleaner subsystem imports may be added over time, but large module moves must
-land in small refactor PRs with compatibility-shim imports and focused API
-tests.
+land in small refactor PRs with stable facade imports and focused API tests.
 Do not use package-boundary work as a reason to break downstream notebooks,
 MEA/Li extraction consumers, or existing documented imports.
 
@@ -129,8 +128,8 @@ The default install should keep the lightweight runtime usable. Heavy or
 platform-sensitive dependencies belong behind optional dependency groups,
 feature flags, or runtime capability checks. For example, Ipopt-dependent
 workflows must fail with actionable diagnostics when native Ipopt is not
-compiled or the native adapter route is not available, instead of making the
-base package import fail.
+compiled or a route is outside the compiled native adapter surface, instead of
+making the base package import fail.
 
 Native build capabilities should be reported through ``capabilities()`` and
 ``runtime_build_info()`` so downstream projects can select supported workflows

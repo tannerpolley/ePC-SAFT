@@ -166,9 +166,10 @@ documented phase-equilibrium handoff envelope when the bubble solve itself is
 well converged.
 
 Strict default behavior raises ``InputError`` when the native Ipopt dependency
-or a required staged route is unavailable. Reactive electrolyte bubble sweeps
-evaluate each point independently; the bubble route owns its canonical initial
-point and does not accept continuation pressure or vapor-composition seeds.
+or a required staged route is outside the compiled native surface. Reactive
+electrolyte bubble sweeps evaluate each point independently; the bubble route
+owns its canonical initial point and does not accept continuation pressure or
+vapor-composition seeds.
 
 Solved-state derivative boundary
 --------------------------------

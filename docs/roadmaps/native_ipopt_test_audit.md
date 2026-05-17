@@ -54,7 +54,7 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
   - `10.06s` `tests/workflows/benchmarks/test_benchmark_reactive_regression.py::test_reactive_regression_benchmark_schema_for_one_case`
 - `tests/profile/**` is opt-in through `EPCSAFT_RUN_PERF`.
 - MEA regression literature tests are opt-in through `EPCSAFT_RUN_MEA_TABLE2_REGRESSION` or `EPCSAFT_RUN_MEA_REGRESSION`.
-- Khudaida matrix and digitized-data validation tests use explicit skip gates for unavailable local validation assets.
+- Khudaida matrix and digitized-data validation tests use explicit skip gates for missing local validation assets.
 
 ## Unnecessary Or Weak Coverage Found
 
@@ -73,7 +73,7 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - The public `EquilibriumOptions.jacobian_backend` selector rejects the same removed backend spelling, keeping phase-equilibrium derivative requests aligned to analytical/CppAD semantics.
 - Stale native electrolyte LLE and reactive-phase tests that protected accepted Ceres equilibrium solves were deleted. Residual-surface derivative tests remain as private diagnostic coverage until native Ipopt route builders own production equilibrium.
 - Old PR #126 and issue-specific Ceres-equilibrium handoff documents were removed from active docs, and literature benchmark metadata now points blocked Ascani LLE/reactive-phase cases at the native Ipopt gate plan.
-- Public route-pending errors now describe the current Ipopt ownership requirement without naming retired solver routes as compatibility context.
+- Public route-pending errors now describe the current Ipopt ownership requirement without naming retired solver routes as migration context.
 - Runtime reactive-regression capability labels now describe residual-evaluation contexts instead of naming Python orchestration as a solver backend.
 - The unreferenced tracked LaTeX backup `docs/latex/equations_old.tex` was deleted; `docs/latex/equations.tex` remains the equation source of truth.
 - Completed, unreferenced JetBrains cleanup plan artifacts were removed now that the repo-owned script exists.
@@ -82,7 +82,7 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - The unused private `_solve_equilibrium_native` pybind wrapper and Python payload adapter were removed; public equilibrium routes remain gated to native Ipopt builders, and private residual-surface bindings stay separate.
 - The `_core` pybind module now disables pybind11 release extras and MSVC optimization for the large binding translation unit; native thermodynamic objects remain Release-optimized.
 - The reactive phase diagnostic extent helper no longer uses NumPy's least-squares convenience path; it uses a direct library linear solve for the small stoichiometric normal system.
-- No-reaction, failed, and best-effort reactive speciation paths now omit implicit-sensitivity payloads when the native route has no reaction-constant sensitivity matrix instead of returning placeholders or raising during diagnostic normalization.
+- No-reaction, failed, and result-mode reactive speciation paths now omit implicit-sensitivity payloads when the native route has no reaction-constant sensitivity matrix instead of returning placeholders or raising during diagnostic normalization.
 - The MIAC electrolyte fixture check now uses a strict approximate comparison instead of exact binary float equality.
 - A repo workflow gate now scans native C++ sources for Ceres non-exact derivative APIs and legacy shifted-source route tokens.
 - A repo workflow gate now scans public Python solver surfaces for external optimizer/root-loop calls, so Python facades
@@ -125,7 +125,7 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
   stability, bubble/dew temperature, and reactive-electrolyte bubble routes.
 - The public activity-coefficient contribution decomposition path now raises the package's typed `InputError` instead
   of a generic Python unsupported-operation exception, and the regression derivative table now describes neutral LLE as
-  a native Ipopt route when compiled rather than a pending route. Runtime capabilities omit the unavailable
+  a native Ipopt route when compiled rather than a pending route. Runtime capabilities omit the unimplemented
   activity-coefficient decomposition flag.
 - The strict text gate now blocks generic "not implemented" wording in executable source, tests, and scripts, so
   unsupported derivative or route paths must state the positive required backend/formulation instead.
@@ -168,7 +168,7 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
   contract is the positive `supported_reaction_scopes` list plus cross-phase quotient metadata, and the executable text
   gate blocks the retired empty-field label.
 - Runtime Ipopt dependency probing now reports `native_extension_missing` or `ipopt_probe_missing` instead of a generic
-  configuration-status fallback, and the executable text gate blocks the retired fallback label.
+  configuration-status label, and the executable text gate blocks the retired label.
 - Equilibrium capabilities now list implemented native Ipopt routes only. Unimplemented stability, reactive bubble, and
   reactive phase-equilibrium routes remain public API contracts that fail loudly, but they are no longer advertised as
   available-false capability rows. Implemented but locally uncompiled Ipopt routes use `ipopt_dependency_required`.
