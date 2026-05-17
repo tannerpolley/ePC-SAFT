@@ -1258,21 +1258,31 @@ retired-token bans.
 **Files:**
 - No planned source changes except fixes from validation failures.
 
-- [ ] Run normal native build:
+- [x] Run normal native build:
   - `uv run python scripts/dev/build_epcsaft.py`
-- [ ] Run doctor:
+- [x] Run doctor:
   - `uv run python scripts/dev/doctor.py`
-- [ ] Run focused tests for changed areas with `uv run python run_pytest.py ... -q`.
-- [ ] Run quick validation:
+- [x] Run focused tests for changed areas with `uv run python run_pytest.py ... -q`.
+- [x] Run quick validation:
   - `uv run python scripts/dev/validate_project.py quick`
-- [ ] Run docs validation:
+- [x] Run docs validation:
   - `uv run python scripts/dev/validate_project.py docs`
-- [ ] Run package boundary check:
+- [x] Run package boundary check:
   - `uv run python scripts/dev/build_dist.py`
-- [ ] Run cleanup hook:
+- [x] Run cleanup hook:
   - `pwsh.exe -NoProfile -ExecutionPolicy Bypass -File "$env:USERPROFILE\.codex\hooks\codex-cleanup.ps1" -RepoRoot .`
-- [ ] Confirm clean git status.
-- [ ] Commit any final validation/doc fixes.
+- [x] Confirm clean git status.
+- [x] Commit any final validation/doc fixes.
+
+Task 13 validation note: final local validation passed on 2026-05-17 from branch
+`codex/native-ipopt-derivative-gates`. Commands run:
+`uv run python scripts/dev/build_epcsaft.py`, `uv run python scripts/dev/doctor.py`,
+focused route/test-prune slice with 71 passed and 4 expected opt-in skips,
+`uv run python scripts/dev/validate_project.py quick` with 40 passed,
+`uv run python scripts/dev/validate_project.py docs`, and `uv run python scripts/dev/build_dist.py`
+with source distribution, wheel build, wheel install, and wheel smoke import passing. The local fast native profile
+reported Ceres and CppAD enabled and Ipopt disabled, so this final local pass proves the dependency gate and package
+boundary but not an accepted Ipopt-enabled solve on this machine.
 
 ---
 
