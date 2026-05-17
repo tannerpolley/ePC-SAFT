@@ -109,6 +109,9 @@ def test_reactive_electrolyte_bubble_result_mode_returns_bubble_failure(monkeypa
     assert result.diagnostics["bubble"]["diagnostics"]["state_failure_count"] == 3
 
 def test_reactive_electrolyte_bubble_sweep_does_not_continue_bubble_seed_controls(monkeypatch) -> None:
+    assert "continuation" not in inspect.signature(epcsaft.solve_reactive_electrolyte_bubble_sweep).parameters
+    assert "continuation" not in inspect.signature(epcsaft.ePCSAFTMixture.equilibrium_sweep).parameters
+
     chemical = _successful_chemical_result()
     calls = []
     monkeypatch.setattr("epcsaft.reactive_electrolyte.solve_reactive_speciation", lambda **kwargs: chemical)
@@ -162,10 +165,6 @@ def test_reactive_electrolyte_bubble_sweep_does_not_continue_bubble_seed_control
     assert [result.success for result in results] == [True, False]
     assert len(calls) == 2
     assert results[1].P_total == pytest.approx(111000.0)
-
-def test_reactive_electrolyte_bubble_sweeps_expose_no_continuation_flag() -> None:
-    assert "continuation" not in inspect.signature(epcsaft.solve_reactive_electrolyte_bubble_sweep).parameters
-    assert "continuation" not in inspect.signature(epcsaft.ePCSAFTMixture.equilibrium_sweep).parameters
 
 
 def test_reactive_electrolyte_bubble_public_api_rejects_pressure_seed_key() -> None:
