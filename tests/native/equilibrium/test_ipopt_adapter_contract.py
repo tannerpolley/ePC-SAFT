@@ -45,7 +45,7 @@ def test_native_ipopt_quadratic_smoke_is_gated_by_compiled_dependency() -> None:
     if not smoke["compiled"]:
         assert smoke["ran"] is False
         assert smoke["accepted"] is False
-        assert smoke["status"] == "requires_ipopt_build"
+        assert smoke["status"] == "ipopt_dependency_required"
     else:
         assert smoke["ran"] is True
         assert smoke["accepted"] is True

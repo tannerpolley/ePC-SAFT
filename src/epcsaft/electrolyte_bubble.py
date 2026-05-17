@@ -116,7 +116,7 @@ def electrolyte_bubble_pressure(
         float(options.tolerance),
         max(10.0 * float(options.min_composition), 1.0e-8),
     )
-    if str(route.get("status", "")) == "requires_ipopt_build":
+    if str(route.get("status", "")) == "ipopt_dependency_required":
         _raise_native_ipopt_electrolyte_bubble_required()
     if not bool(route.get("accepted", False)):
         postsolve = route.get("postsolve", {})

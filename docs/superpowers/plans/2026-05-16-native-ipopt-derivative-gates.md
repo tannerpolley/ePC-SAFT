@@ -516,7 +516,7 @@ derivatives. This is a contract scaffold for Ipopt wiring only; production neutr
 replacement remains open.
 
 Task 8 continuation note: the neutral two-phase EOS route builder can now be submitted to the generic native Ipopt
-adapter through private native route-result plumbing. Local no-Ipopt builds return the explicit `requires_ipopt_build`
+adapter through private native route-result plumbing. Local no-Ipopt builds return the explicit `ipopt_dependency_required`
 gate, while Ipopt-enabled builds run the adapter with exact objective gradients and constraint Jacobians. This is still
 private route-builder plumbing; public neutral equilibrium dispatch remains route-gated until route-specific dispatch is
 implemented.
@@ -563,7 +563,7 @@ deterministic initial point. These contracts are not public accepted routes yet;
 native-Ipopt route-gated until a full accepted solve and postsolve proof exists.
 
 Task 8 continuation note: the private fixed-temperature bubble/dew pressure contracts now have route-result plumbing
-through the generic native Ipopt adapter. Local no-Ipopt builds return the explicit `requires_ipopt_build` gate, while
+through the generic native Ipopt adapter. Local no-Ipopt builds return the explicit `ipopt_dependency_required` gate, while
 Ipopt-enabled builds can submit the exact-gradient/exact-Jacobian NLP and then apply postsolve checks for fixed
 composition, phase amount scaling, pressure consistency, chemical-potential consistency, and phase distance. Public
 bubble/dew methods remain route-gated until accepted result translation is implemented and proven.
@@ -572,6 +572,10 @@ Task 8 continuation note: public fixed-temperature `bubble_p` and `dew_p` now va
 native route-result call, preserve the local no-Ipopt route gate, and convert accepted native payloads through the
 native two-phase result converter using the pressure solved by the native NLP. Python does not own iterations, pressure
 search, retry logic, residual packing, or acceptance.
+
+Task 8 continuation note: local no-Ipopt native route contracts now use the positive `ipopt_dependency_required` status
+instead of build-requirement wording. The executable text gate blocks the retired route-status literal in active source,
+tests, and scripts so missing system Ipopt remains a typed dependency boundary rather than a legacy backend status.
 
 Task 8 continuation note: the private fixed-temperature pressure NLP now includes chemical-potential equality rows in
 the Ipopt model instead of leaving fugacity equality as a postsolve-only check. The row Jacobian is exact and comes from

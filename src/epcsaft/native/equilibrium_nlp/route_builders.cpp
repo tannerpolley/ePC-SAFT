@@ -872,7 +872,7 @@ NeutralTwoPhaseEosRouteResult solve_neutral_two_phase_eos_route(
     out.exact_jacobian_required = adapter.exact_jacobian_required;
     out.problem_name = problem_name;
     if (!adapter.compiled) {
-        out.status = "requires_ipopt_build";
+        out.status = "ipopt_dependency_required";
         return out;
     }
 

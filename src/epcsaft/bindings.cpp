@@ -1373,7 +1373,7 @@ PYBIND11_MODULE(_core, m) {
         out["ran"] = false;
         out["accepted"] = false;
         if (!adapter.compiled) {
-            out["status"] = "requires_ipopt_build";
+            out["status"] = "ipopt_dependency_required";
             return out;
         }
         const auto result = epcsaft::native::equilibrium_nlp::solve_ipopt_quadratic_smoke();

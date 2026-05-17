@@ -48,7 +48,7 @@ def test_electrolyte_lle_builds_native_route_before_ipopt_gate(monkeypatch) -> N
             "compiled": False,
             "ran": False,
             "accepted": False,
-            "status": "requires_ipopt_build",
+            "status": "ipopt_dependency_required",
             "postsolve": {"accepted": False},
         }
 

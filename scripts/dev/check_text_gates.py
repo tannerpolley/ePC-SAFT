@@ -196,6 +196,7 @@ def _source_blocked_terms(rel: str) -> tuple[str, ...]:
         "jacobian" + "_backend = \"not" + "_applicable",
         "ascani" + "_benchmark" + "_attempt",
         "not" + "_applicable" + "_to" + "_neutral" + "_route",
+        "requires" + "_ipopt" + "_build",
     )
 
 

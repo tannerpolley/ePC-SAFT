@@ -1028,7 +1028,7 @@ def _native_neutral_fixed_temperature_pressure(
         options.tolerance,
         *route_tolerances,
     )
-    if str(route.get("status", "")) == "requires_ipopt_build":
+    if str(route.get("status", "")) == "ipopt_dependency_required":
         _raise_native_ipopt_equilibrium_required(route_label)
 
     pressure = _solved_native_pressure(route, route_label) if bool(route.get("accepted", False)) else 1.0
@@ -1070,7 +1070,7 @@ def _native_neutral_tp_flash(
         options.tolerance,
         *tolerances,
     )
-    if str(route.get("status", "")) == "requires_ipopt_build":
+    if str(route.get("status", "")) == "ipopt_dependency_required":
         _raise_native_ipopt_tp_flash_required()
     return _accepted_native_neutral_two_phase_result(
         mixture,
@@ -1105,7 +1105,7 @@ def _native_neutral_lle_flash(
         options.tolerance,
         *tolerances,
     )
-    if str(route.get("status", "")) == "requires_ipopt_build":
+    if str(route.get("status", "")) == "ipopt_dependency_required":
         _raise_native_ipopt_lle_required("lle_flash")
     return _accepted_native_neutral_two_phase_result(
         mixture,
@@ -1577,7 +1577,7 @@ def electrolyte_lle_flash_native(
         chemical_potential_tolerance,
         phase_distance_tolerance,
     )
-    if str(route.get("status", "")) == "requires_ipopt_build":
+    if str(route.get("status", "")) == "ipopt_dependency_required":
         _raise_native_ipopt_lle_required("electrolyte_lle")
     return _accepted_native_neutral_two_phase_result(
         mixture,

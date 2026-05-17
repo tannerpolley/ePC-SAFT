@@ -236,7 +236,7 @@ def test_electrolyte_lle_route_result_uses_ipopt_adapter_gate_and_charge_rows() 
         assert payload["ran"] is False
         assert payload["solver_accepted"] is False
         assert payload["accepted"] is False
-        assert payload["status"] == "requires_ipopt_build"
+        assert payload["status"] == "ipopt_dependency_required"
         assert payload["phase_amounts"] == []
         assert payload["phase_volumes"] == []
         assert payload["postsolve"]["accepted"] is False
@@ -391,7 +391,7 @@ def test_neutral_fixed_temperature_pressure_route_result_uses_ipopt_adapter_gate
         assert payload["ran"] is False
         assert payload["solver_accepted"] is False
         assert payload["accepted"] is False
-        assert payload["status"] == "requires_ipopt_build"
+        assert payload["status"] == "ipopt_dependency_required"
         assert payload["phase_amounts"] == []
         assert payload["phase_volumes"] == []
         assert "fixed_composition_norm" in payload["postsolve"]
@@ -452,7 +452,7 @@ def test_neutral_two_phase_eos_route_result_translates_solver_and_postsolve() ->
         assert payload["ran"] is False
         assert payload["solver_accepted"] is False
         assert payload["accepted"] is False
-        assert payload["status"] == "requires_ipopt_build"
+        assert payload["status"] == "ipopt_dependency_required"
         assert payload["phase_amounts"] == []
         assert payload["phase_volumes"] == []
         assert payload["postsolve"]["accepted"] is False
@@ -494,7 +494,7 @@ def test_neutral_lle_route_result_uses_ipopt_adapter_gate() -> None:
     if not payload["compiled"]:
         assert payload["ran"] is False
         assert payload["accepted"] is False
-        assert payload["status"] == "requires_ipopt_build"
+        assert payload["status"] == "ipopt_dependency_required"
         return
 
     assert payload["ran"] is True

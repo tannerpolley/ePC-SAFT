@@ -149,6 +149,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - Generic staged reactive workflow diagnostics no longer include a benchmark-specific attempt field or negative
   neutral-route status. The retained diagnostics cover staged method metadata, residual audits, derivative policy, and
   phase-route diagnostics.
+- Native Ipopt route gates now use the positive `ipopt_dependency_required` status for local no-Ipopt builds, and the
+  executable text gate blocks the retired build-requirement status literal in active source, tests, and scripts.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
 

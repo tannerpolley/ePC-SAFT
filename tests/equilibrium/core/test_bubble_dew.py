@@ -69,7 +69,7 @@ def test_bubble_p_builds_one_native_route_request_before_ipopt_gate(monkeypatch:
             "compiled": False,
             "ran": False,
             "accepted": False,
-            "status": "requires_ipopt_build",
+            "status": "ipopt_dependency_required",
             "postsolve": {"accepted": False},
         }
 
