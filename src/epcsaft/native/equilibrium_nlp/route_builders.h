@@ -189,6 +189,37 @@ ReactiveTwoPhaseEosRouteResult solve_reactive_two_phase_eos_route(
     double phase_distance_tolerance
 );
 
+NeutralTwoPhaseEosNlpContract evaluate_reactive_lle_eos_nlp_contract(
+    const add_args& args,
+    double temperature,
+    double target_pressure,
+    const std::vector<double>& feed_amounts,
+    int balance_rows,
+    const std::vector<double>& balance_matrix_row_major,
+    const std::vector<double>& total_vector,
+    int reaction_rows,
+    const std::vector<double>& reaction_stoichiometry_row_major,
+    const std::vector<double>& log_equilibrium_constants
+);
+
+ReactiveTwoPhaseEosRouteResult solve_reactive_lle_eos_route(
+    const add_args& args,
+    double temperature,
+    double target_pressure,
+    const std::vector<double>& feed_amounts,
+    int balance_rows,
+    const std::vector<double>& balance_matrix_row_major,
+    const std::vector<double>& total_vector,
+    int reaction_rows,
+    const std::vector<double>& reaction_stoichiometry_row_major,
+    const std::vector<double>& log_equilibrium_constants,
+    const IpoptSolveOptions& options,
+    double conserved_balance_tolerance,
+    double pressure_tolerance,
+    double reaction_stationarity_tolerance,
+    double phase_distance_tolerance
+);
+
 ReactiveTwoPhaseEosPostsolve evaluate_reactive_two_phase_eos_postsolve(
     const add_args& args,
     double temperature,

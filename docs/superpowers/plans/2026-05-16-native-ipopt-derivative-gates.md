@@ -820,6 +820,11 @@ balances, pressure consistency, reaction-stationarity residuals, and phase separ
 those gates after an accepted Ipopt solve; public reactive phase-equilibrium wiring remains blocked until these
 diagnostics are connected to a public result contract and acceptance tests.
 
+Task 9 continuation note: neutral public `reactive_lle` now serializes validated conserved balances and reaction
+standard-potential data into a native reactive LLE route-result binding. The native route builder owns the deterministic
+two-phase initial point and dispatches through Ipopt before the public no-Ipopt gate. Broad reactive electrolyte LLE
+remains gated until the reaction-coupled NLP carries electrolyte phase charge constraints and acceptance evidence.
+
 ### Task 10: Make Regression Ceres-Only
 
 **Files:**

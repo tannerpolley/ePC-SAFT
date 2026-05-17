@@ -1767,6 +1767,36 @@ PYBIND11_MODULE(_core, m) {
             )
         );
     });
+    m.def("_native_reactive_lle_eos_nlp_contract", [](
+        const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+        double temperature,
+        double target_pressure,
+        const std::vector<double>& feed_amounts,
+        int balance_rows,
+        const std::vector<double>& balance_matrix_row_major,
+        const std::vector<double>& total_vector,
+        int reaction_rows,
+        const std::vector<double>& reaction_stoichiometry_row_major,
+        const std::vector<double>& log_equilibrium_constants
+    ) {
+        if (!mixture) {
+            throw ValueError("Reactive LLE EOS NLP contract requires a native mixture.");
+        }
+        return neutral_two_phase_eos_nlp_contract_to_dict(
+            epcsaft::native::equilibrium_nlp::evaluate_reactive_lle_eos_nlp_contract(
+                mixture->args(),
+                temperature,
+                target_pressure,
+                feed_amounts,
+                balance_rows,
+                balance_matrix_row_major,
+                total_vector,
+                reaction_rows,
+                reaction_stoichiometry_row_major,
+                log_equilibrium_constants
+            )
+        );
+    });
     m.def("_native_reactive_two_phase_eos_postsolve", [](
         const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
         double temperature,
@@ -1994,6 +2024,50 @@ PYBIND11_MODULE(_core, m) {
                 target_pressure,
                 phase_amounts,
                 volumes,
+                balance_rows,
+                balance_matrix_row_major,
+                total_vector,
+                reaction_rows,
+                reaction_stoichiometry_row_major,
+                log_equilibrium_constants,
+                options,
+                conserved_balance_tolerance,
+                pressure_tolerance,
+                reaction_stationarity_tolerance,
+                phase_distance_tolerance
+            )
+        );
+    });
+    m.def("_native_reactive_lle_eos_route_result", [](
+        const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+        double temperature,
+        double target_pressure,
+        const std::vector<double>& feed_amounts,
+        int balance_rows,
+        const std::vector<double>& balance_matrix_row_major,
+        const std::vector<double>& total_vector,
+        int reaction_rows,
+        const std::vector<double>& reaction_stoichiometry_row_major,
+        const std::vector<double>& log_equilibrium_constants,
+        int max_iterations,
+        double tolerance,
+        double timeout_seconds,
+        double conserved_balance_tolerance,
+        double pressure_tolerance,
+        double reaction_stationarity_tolerance,
+        double phase_distance_tolerance
+    ) {
+        if (!mixture) {
+            throw ValueError("Reactive LLE EOS route result requires a native mixture.");
+        }
+        const epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
+            ipopt_solve_options_from_scalars(max_iterations, tolerance, timeout_seconds);
+        return reactive_two_phase_eos_route_result_to_dict(
+            epcsaft::native::equilibrium_nlp::solve_reactive_lle_eos_route(
+                mixture->args(),
+                temperature,
+                target_pressure,
+                feed_amounts,
                 balance_rows,
                 balance_matrix_row_major,
                 total_vector,

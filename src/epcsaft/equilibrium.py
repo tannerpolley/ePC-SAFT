@@ -15,7 +15,10 @@ from .equilibrium_core.electrolyte_basis import (
     electrolyte_formula_basis,
     normalize_salt_molality,
 )
-from .equilibrium_core.native_requests import neutral_two_phase_eos_tolerances
+from .equilibrium_core.native_requests import (
+    build_reactive_two_phase_eos_native_request,
+    neutral_two_phase_eos_tolerances,
+)
 from .equilibrium_core.native_results import (
     native_route_solved_pressure,
     native_route_solved_temperature,
@@ -709,6 +712,68 @@ def _accepted_native_neutral_two_phase_result(
     )
 
 
+def _accepted_native_reactive_two_phase_result(
+    mixture: Any,
+    *,
+    T: float,
+    P: float,
+    route: Mapping[str, Any],
+    tolerances: tuple[float, float, float, float],
+    route_label: str,
+    problem_kind: str,
+    phase_labels: tuple[str, str],
+) -> EquilibriumResult:
+    from . import _core
+
+    if not bool(route.get("accepted", False)):
+        postsolve = route.get("postsolve", {})
+        diagnostics = dict(postsolve) if isinstance(postsolve, Mapping) else {}
+        if route_status := route.get("status"):
+            diagnostics["route_status"] = route_status
+        if solver_status := route.get("solver_status"):
+            diagnostics["solver_status"] = solver_status
+        raise SolutionError(f"Native reactive {route_label} route was rejected.", diagnostics)
+
+    material_tolerance, pressure_tolerance, chemical_potential_tolerance, phase_distance_tolerance = tolerances
+    phase_amounts = np.asarray(route["phase_amounts"], dtype=float)
+    if phase_amounts.ndim != 2 or phase_amounts.shape[1] != int(mixture.ncomp):
+        raise SolutionError(f"Native reactive {route_label} route phase amounts had an invalid shape.")
+    reacted_feed = np.sum(phase_amounts, axis=0)
+    if not np.all(np.isfinite(reacted_feed)) or np.any(reacted_feed <= 0.0):
+        raise SolutionError(f"Native reactive {route_label} route did not return positive species totals.")
+
+    result_payload = _core._native_neutral_two_phase_eos_result(
+        mixture._native,
+        T,
+        P,
+        route["phase_amounts"],
+        route["phase_volumes"],
+        reacted_feed.tolist(),
+        material_tolerance,
+        pressure_tolerance,
+        chemical_potential_tolerance,
+        phase_distance_tolerance,
+    )
+    result = neutral_two_phase_payload_to_result(
+        result_payload,
+        problem_kind=problem_kind,
+        phase_labels=phase_labels,
+    )
+    diagnostics = dict(result.diagnostics)
+    diagnostics["reactive_postsolve"] = _json_like(route.get("postsolve", {}))
+    diagnostics["reactive_route_status"] = str(route.get("status", ""))
+    diagnostics["reaction_count"] = int(route.get("reaction_count", 0))
+    diagnostics["balance_row_count"] = int(route.get("balance_row_count", 0))
+    return EquilibriumResult(
+        backend=result.backend,
+        problem_kind=result.problem_kind,
+        phases=result.phases,
+        stable=result.stable,
+        split_detected=result.split_detected,
+        diagnostics=diagnostics,
+    )
+
+
 def _native_neutral_fixed_temperature_pressure(
     mixture: Any,
     *,
@@ -875,6 +940,63 @@ def _native_neutral_lle_flash(
         tolerances=tolerances,
         route_label="LLE",
         problem_kind="neutral_lle",
+        phase_labels=("liq1", "liq2"),
+    )
+
+
+def _native_reactive_lle_flash(
+    mixture: Any,
+    *,
+    T: float,
+    P: float,
+    feed: np.ndarray,
+    balance_matrix: np.ndarray,
+    total_vector: np.ndarray,
+    species: list[str],
+    reactions: list[Any],
+    options: EquilibriumOptions,
+) -> EquilibriumResult:
+    from . import _core
+
+    request = build_reactive_two_phase_eos_native_request(
+        T=T,
+        P=P,
+        feed=feed,
+        balance_matrix=balance_matrix,
+        total_vector=total_vector,
+        species=species,
+        reactions=reactions,
+    )
+    material_tolerance, pressure_tolerance, _, phase_distance_tolerance = neutral_two_phase_eos_tolerances(P, options)
+    route = _core._native_reactive_lle_eos_route_result(
+        mixture._native,
+        request["T"],
+        request["P"],
+        request["feed_amounts"],
+        request["balance_rows"],
+        request["balance_matrix"],
+        request["total_vector"],
+        request["reaction_rows"],
+        request["reaction_stoichiometry"],
+        request["log_equilibrium_constants"],
+        options.max_iterations,
+        options.tolerance,
+        _native_timeout_seconds(options),
+        material_tolerance,
+        pressure_tolerance,
+        options.tolerance,
+        phase_distance_tolerance,
+    )
+    if str(route.get("status", "")) == "ipopt_dependency_required":
+        _raise_native_ipopt_reactive_phase_required("reactive_lle")
+    return _accepted_native_reactive_two_phase_result(
+        mixture,
+        T=T,
+        P=P,
+        route=route,
+        tolerances=neutral_two_phase_eos_tolerances(P, options),
+        route_label="LLE",
+        problem_kind="reactive_lle",
         phase_labels=("liq1", "liq2"),
     )
 
@@ -1128,9 +1250,24 @@ def reactive_phase_equilibrium(
         feed_source = z if z is not None else initial_x
         feed = _normalize_feed(feed_source, int(mixture.ncomp), solver_options.min_composition, "reactive_lle")
 
-    _normalize_reactive_balances(species, balances, totals)
+    balance_matrix, total_vector, _ = _normalize_reactive_balances(species, balances, totals)
     reaction_defs = _normalize_reactions(species, reactions)
-    _reaction_phase_stoichiometry_matrix(species, reaction_defs, route)
+    _, reaction_scope = _reaction_phase_stoichiometry_matrix(species, reaction_defs, route)
+    _require_reactive_phase_standard_states(reaction_defs, route)
+    if reaction_scope != "per_phase_same_stoichiometry":
+        raise InputError(f"{route} requires per-phase identical reaction stoichiometry in the native Ipopt route.")
+    if route == "lle_flash":
+        return _native_reactive_lle_flash(
+            mixture,
+            T=T,
+            P=P,
+            feed=feed,
+            balance_matrix=balance_matrix,
+            total_vector=total_vector,
+            species=species,
+            reactions=reaction_defs,
+            options=solver_options,
+        )
     _raise_native_ipopt_reactive_phase_required(route)
 
 
@@ -1251,6 +1388,17 @@ def _reaction_phase_stoichiometry_matrix(
         if seen_phases != {0, 1}:
             raise InputError("phase-tagged reactions must include terms for both liquid phases.")
     return matrix, "phase_tagged_cross_phase"
+
+
+def _require_reactive_phase_standard_states(reactions: list[Any], route: str) -> None:
+    supported = {"mole_fraction_activity", "thermodynamic_activity"}
+    unsupported = sorted(
+        {str(reaction.standard_state) for reaction in reactions if str(reaction.standard_state) not in supported}
+    )
+    if unsupported:
+        allowed = "', '".join(sorted(supported))
+        observed = "', '".join(unsupported)
+        raise InputError(f"{route} requires reaction standard_state in '{allowed}'; got '{observed}'.")
 
 
 def bubble_p(mixture: Any, *, T: float, x: Any, options: EquilibriumOptions | None = None) -> EquilibriumResult:

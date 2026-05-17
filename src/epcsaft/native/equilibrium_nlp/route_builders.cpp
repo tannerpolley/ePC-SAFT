@@ -1095,6 +1095,35 @@ NeutralTwoPhaseEosNlpContract evaluate_reactive_two_phase_eos_nlp_contract(
     return out;
 }
 
+NeutralTwoPhaseEosNlpContract evaluate_reactive_lle_eos_nlp_contract(
+    const add_args& args,
+    double temperature,
+    double target_pressure,
+    const std::vector<double>& feed_amounts,
+    int balance_rows,
+    const std::vector<double>& balance_matrix_row_major,
+    const std::vector<double>& total_vector,
+    int reaction_rows,
+    const std::vector<double>& reaction_stoichiometry_row_major,
+    const std::vector<double>& log_equilibrium_constants
+) {
+    const NeutralTwoPhaseEosInitialPoint initial =
+        build_neutral_two_phase_eos_initial_point(feed_amounts, temperature, target_pressure, "Reactive LLE route");
+    return evaluate_reactive_two_phase_eos_nlp_contract(
+        args,
+        temperature,
+        target_pressure,
+        initial.phase_amounts,
+        initial.volumes,
+        balance_rows,
+        balance_matrix_row_major,
+        total_vector,
+        reaction_rows,
+        reaction_stoichiometry_row_major,
+        log_equilibrium_constants
+    );
+}
+
 ReactiveTwoPhaseEosPostsolve evaluate_reactive_two_phase_eos_postsolve(
     const add_args& args,
     double temperature,
@@ -1254,6 +1283,45 @@ ReactiveTwoPhaseEosPostsolve evaluate_reactive_two_phase_eos_postsolve(
         out.rejection_reason = "phase_distance";
     }
     return out;
+}
+
+ReactiveTwoPhaseEosRouteResult solve_reactive_lle_eos_route(
+    const add_args& args,
+    double temperature,
+    double target_pressure,
+    const std::vector<double>& feed_amounts,
+    int balance_rows,
+    const std::vector<double>& balance_matrix_row_major,
+    const std::vector<double>& total_vector,
+    int reaction_rows,
+    const std::vector<double>& reaction_stoichiometry_row_major,
+    const std::vector<double>& log_equilibrium_constants,
+    const IpoptSolveOptions& options,
+    double conserved_balance_tolerance,
+    double pressure_tolerance,
+    double reaction_stationarity_tolerance,
+    double phase_distance_tolerance
+) {
+    const NeutralTwoPhaseEosInitialPoint initial =
+        build_neutral_two_phase_eos_initial_point(feed_amounts, temperature, target_pressure, "Reactive LLE route");
+    return solve_reactive_two_phase_eos_route(
+        args,
+        temperature,
+        target_pressure,
+        initial.phase_amounts,
+        initial.volumes,
+        balance_rows,
+        balance_matrix_row_major,
+        total_vector,
+        reaction_rows,
+        reaction_stoichiometry_row_major,
+        log_equilibrium_constants,
+        options,
+        conserved_balance_tolerance,
+        pressure_tolerance,
+        reaction_stationarity_tolerance,
+        phase_distance_tolerance
+    );
 }
 
 ReactiveTwoPhaseEosRouteResult solve_reactive_two_phase_eos_route(

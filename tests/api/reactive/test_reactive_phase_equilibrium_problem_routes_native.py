@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 
 import epcsaft
+from epcsaft import _core
 
 
 def _toy_reactive_phase_case() -> tuple[
@@ -42,11 +43,26 @@ def _toy_reactive_phase_case() -> tuple[
 
 def test_reactive_phase_equilibrium_problem_requires_native_ipopt_route(monkeypatch) -> None:
     mix, feed, reaction = _toy_reactive_phase_case()
+    captured: dict[str, object] = {}
 
     def fail_if_staged(*_args, **_kwargs):
         raise AssertionError("ReactivePhaseEquilibriumProblem must not call the staged helper")
 
+    def native_gate(*args):
+        captured["args"] = args
+        return {
+            "backend": "ipopt",
+            "compiled": False,
+            "adapter_available": False,
+            "problem_name": "reactive_two_phase_eos",
+            "derivative_backend": "analytic_cppad",
+            "accepted": False,
+            "status": "ipopt_dependency_required",
+            "postsolve": {},
+        }
+
     monkeypatch.setattr(mix, "reactive_staged_equilibrium", fail_if_staged)
+    monkeypatch.setattr(_core, "_native_reactive_lle_eos_route_result", native_gate)
     problem = epcsaft.ReactivePhaseEquilibriumProblem(
         T=298.15,
         P=1.013e5,
@@ -60,6 +76,19 @@ def test_reactive_phase_equilibrium_problem_requires_native_ipopt_route(monkeypa
 
     with pytest.raises(epcsaft.InputError, match="native Ipopt reactive phase-equilibrium NLP route"):
         mix.solve_equilibrium(problem)
+
+    args = captured["args"]
+    assert args[0] is mix._native
+    assert args[1] == pytest.approx(298.15)
+    assert args[2] == pytest.approx(1.013e5)
+    assert args[3] == pytest.approx(feed.tolist())
+    assert args[4] == 1
+    assert args[5] == pytest.approx([1.0, 1.0])
+    assert args[6] == pytest.approx([1.0])
+    assert args[7] == 1
+    assert args[8] == pytest.approx([-1.0, 1.0])
+    assert args[9] == pytest.approx([-0.079259405371])
+
 
 def test_reactive_phase_equilibrium_problem_rejects_non_lle_production_kind() -> None:
     mix, feed, reaction = _toy_reactive_phase_case()
