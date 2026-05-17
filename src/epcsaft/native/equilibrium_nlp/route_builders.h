@@ -14,9 +14,12 @@ struct NeutralTwoPhaseEosNlpContract {
     std::string derivative_backend;
     int phase_count = 0;
     int species_count = 0;
+    int balance_row_count = 0;
+    int reaction_count = 0;
     int variable_count = 0;
     int constraint_count = 0;
     int jacobian_nonzero_count = 0;
+    std::vector<double> standard_mu_rt;
     std::vector<double> initial_point;
     std::vector<double> variable_lower_bounds;
     std::vector<double> variable_upper_bounds;
@@ -102,6 +105,20 @@ NeutralTwoPhaseEosNlpContract evaluate_electrolyte_lle_eos_nlp_contract(
     double temperature,
     double target_pressure,
     const std::vector<double>& feed_amounts
+);
+
+NeutralTwoPhaseEosNlpContract evaluate_reactive_two_phase_eos_nlp_contract(
+    const add_args& args,
+    double temperature,
+    double target_pressure,
+    const std::vector<std::vector<double>>& phase_amounts,
+    const std::vector<double>& volumes,
+    int balance_rows,
+    const std::vector<double>& balance_matrix_row_major,
+    const std::vector<double>& total_vector,
+    int reaction_rows,
+    const std::vector<double>& reaction_stoichiometry_row_major,
+    const std::vector<double>& log_equilibrium_constants
 );
 
 NeutralTwoPhaseEosNlpContract evaluate_neutral_bubble_p_eos_nlp_contract(

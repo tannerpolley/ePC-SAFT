@@ -805,6 +805,11 @@ of the homogeneous speciation NLP file. The helper solves the thermodynamic `nu 
 ideal Gibbs kernels and is covered through the native ideal-reaction smoke; this is groundwork for reactive phase NLP
 builders and does not promote broad reactive phase equilibrium yet.
 
+Task 9 continuation note: a private reaction-coupled two-phase EOS NLP contract now assembles conserved-balance rows
+instead of species material-balance rows and adds reaction standard-potential terms to the EOS Helmholtz/Gibbs objective.
+The contract reuses exact EOS phase gradients and pressure Jacobian blocks; it is still private route-builder
+infrastructure and does not yet expose an accepted public reactive phase-equilibrium solve.
+
 ### Task 10: Make Regression Ceres-Only
 
 **Files:**

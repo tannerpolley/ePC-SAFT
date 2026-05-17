@@ -625,9 +625,12 @@ py::dict neutral_two_phase_eos_nlp_contract_to_dict(
     out["derivative_backend"] = result.derivative_backend;
     out["phase_count"] = result.phase_count;
     out["species_count"] = result.species_count;
+    out["balance_row_count"] = result.balance_row_count;
+    out["reaction_count"] = result.reaction_count;
     out["variable_count"] = result.variable_count;
     out["constraint_count"] = result.constraint_count;
     out["jacobian_nonzero_count"] = result.jacobian_nonzero_count;
+    out["standard_mu_rt"] = result.standard_mu_rt;
     out["initial_point"] = result.initial_point;
     out["variable_lower_bounds"] = result.variable_lower_bounds;
     out["variable_upper_bounds"] = result.variable_upper_bounds;
@@ -1672,6 +1675,38 @@ PYBIND11_MODULE(_core, m) {
                 temperature,
                 target_pressure,
                 feed_amounts
+            )
+        );
+    });
+    m.def("_native_reactive_two_phase_eos_nlp_contract", [](
+        const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+        double temperature,
+        double target_pressure,
+        const std::vector<std::vector<double>>& phase_amounts,
+        const std::vector<double>& volumes,
+        int balance_rows,
+        const std::vector<double>& balance_matrix_row_major,
+        const std::vector<double>& total_vector,
+        int reaction_rows,
+        const std::vector<double>& reaction_stoichiometry_row_major,
+        const std::vector<double>& log_equilibrium_constants
+    ) {
+        if (!mixture) {
+            throw ValueError("Reactive two-phase EOS NLP contract requires a native mixture.");
+        }
+        return neutral_two_phase_eos_nlp_contract_to_dict(
+            epcsaft::native::equilibrium_nlp::evaluate_reactive_two_phase_eos_nlp_contract(
+                mixture->args(),
+                temperature,
+                target_pressure,
+                phase_amounts,
+                volumes,
+                balance_rows,
+                balance_matrix_row_major,
+                total_vector,
+                reaction_rows,
+                reaction_stoichiometry_row_major,
+                log_equilibrium_constants
             )
         );
     });

@@ -4,6 +4,7 @@
 #include "epcsaft_core_internal.h"
 #include "ipopt_adapter.h"
 #include "nlp_problem.h"
+#include "reaction_block.h"
 
 #include <algorithm>
 #include <cmath>
@@ -610,6 +611,335 @@ private:
     int species_count_ = 0;
 };
 
+class ReactiveTwoPhaseEosProblem final : public NlpProblem {
+public:
+    ReactiveTwoPhaseEosProblem(
+        add_args args,
+        double temperature,
+        double target_pressure,
+        std::vector<std::vector<double>> phase_amounts,
+        std::vector<double> volumes,
+        int balance_rows,
+        std::vector<double> balance_matrix_row_major,
+        std::vector<double> total_vector,
+        int reaction_rows,
+        const std::vector<double>& reaction_stoichiometry_row_major,
+        const std::vector<double>& log_equilibrium_constants
+    )
+        : args_(std::move(args)),
+          temperature_(temperature),
+          target_pressure_(target_pressure),
+          initial_phase_amounts_(std::move(phase_amounts)),
+          initial_volumes_(std::move(volumes)),
+          balance_rows_(balance_rows),
+          balance_matrix_row_major_(std::move(balance_matrix_row_major)),
+          total_vector_(std::move(total_vector)),
+          reaction_rows_(reaction_rows),
+          species_count_(species_count_from_phase_amounts(initial_phase_amounts_)),
+          standard_mu_rt_(standard_mu_rt_from_reactions(
+              species_count_,
+              reaction_rows_,
+              reaction_stoichiometry_row_major,
+              log_equilibrium_constants
+          )) {
+        if (initial_phase_amounts_.size() != 2) {
+            throw ValueError("Reactive EOS route builder currently requires exactly two phases.");
+        }
+        if (!std::isfinite(temperature_) || temperature_ <= 0.0 || !std::isfinite(target_pressure_)) {
+            throw ValueError("Reactive EOS route builder received invalid T/P specifications.");
+        }
+        if (balance_rows_ <= 0) {
+            throw ValueError("Reactive EOS route builder requires at least one balance row.");
+        }
+        require_size(initial_volumes_, initial_phase_amounts_.size(), "Reactive EOS route volume");
+        require_size(
+            balance_matrix_row_major_,
+            static_cast<std::size_t>(balance_rows_) * static_cast<std::size_t>(species_count_),
+            "Reactive EOS route balance matrix"
+        );
+        require_size(total_vector_, static_cast<std::size_t>(balance_rows_), "Reactive EOS route total vector");
+        require_size(standard_mu_rt_, static_cast<std::size_t>(species_count_), "Reactive EOS route standard potential");
+        for (const auto& amounts : initial_phase_amounts_) {
+            require_size(amounts, static_cast<std::size_t>(species_count_), "Reactive EOS route phase amount");
+            for (double amount : amounts) {
+                require_positive_finite(amount, "Reactive EOS route phase amount");
+            }
+        }
+        for (double volume : initial_volumes_) {
+            require_positive_finite(volume, "Reactive EOS route phase volume");
+        }
+        for (double value : balance_matrix_row_major_) {
+            if (!std::isfinite(value)) {
+                throw ValueError("Reactive EOS route balance matrix values must be finite.");
+            }
+        }
+        for (double value : total_vector_) {
+            if (!std::isfinite(value)) {
+                throw ValueError("Reactive EOS route conserved totals must be finite.");
+            }
+        }
+    }
+
+    std::string name() const override {
+        return "reactive_two_phase_eos";
+    }
+
+    int variable_count() const override {
+        return phase_count() * local_variable_count();
+    }
+
+    int constraint_count() const override {
+        return balance_rows_ + phase_count();
+    }
+
+    int jacobian_nonzero_count() const override {
+        return variable_count() * constraint_count();
+    }
+
+    NlpBounds bounds() const override {
+        NlpBounds out;
+        const double total_scale = conserved_total_scale();
+        const double amount_upper = std::max(1.0, 10.0 * total_scale);
+        const double volume_upper = std::max(1.0, 1.0e6 * total_scale);
+        out.variable_lower.assign(static_cast<std::size_t>(variable_count()), 1.0e-14);
+        out.variable_upper.reserve(static_cast<std::size_t>(variable_count()));
+        for (int phase = 0; phase < phase_count(); ++phase) {
+            for (int species = 0; species < species_count_; ++species) {
+                out.variable_upper.push_back(amount_upper);
+            }
+            out.variable_upper.push_back(volume_upper);
+        }
+        out.constraint_lower.assign(static_cast<std::size_t>(constraint_count()), 0.0);
+        out.constraint_upper.assign(static_cast<std::size_t>(constraint_count()), 0.0);
+        return out;
+    }
+
+    std::vector<double> initial_point() const override {
+        std::vector<double> out;
+        out.reserve(static_cast<std::size_t>(variable_count()));
+        for (std::size_t phase = 0; phase < initial_phase_amounts_.size(); ++phase) {
+            out.insert(out.end(), initial_phase_amounts_[phase].begin(), initial_phase_amounts_[phase].end());
+            out.push_back(initial_volumes_[phase]);
+        }
+        return out;
+    }
+
+    double objective(const std::vector<double>& variables) const override {
+        double value = 0.0;
+        const auto blocks = phase_blocks(variables);
+        const auto amounts = phase_amounts_from_variables(variables);
+        for (const EosPhaseBlockResult& block : blocks) {
+            value += block.objective;
+        }
+        for (const auto& phase_amounts : amounts) {
+            for (int species = 0; species < species_count_; ++species) {
+                value += phase_amounts[static_cast<std::size_t>(species)]
+                    * standard_mu_rt_[static_cast<std::size_t>(species)];
+            }
+        }
+        return value;
+    }
+
+    std::vector<double> objective_gradient(const std::vector<double>& variables) const override {
+        std::vector<double> out;
+        out.reserve(static_cast<std::size_t>(variable_count()));
+        const auto blocks = phase_blocks(variables);
+        for (const EosPhaseBlockResult& block : blocks) {
+            require_size(block.gradient, static_cast<std::size_t>(local_variable_count()), "Reactive EOS phase gradient");
+            for (int species = 0; species < species_count_; ++species) {
+                out.push_back(
+                    block.gradient[static_cast<std::size_t>(species)]
+                    + standard_mu_rt_[static_cast<std::size_t>(species)]
+                );
+            }
+            out.push_back(block.gradient[static_cast<std::size_t>(species_count_)]);
+        }
+        return out;
+    }
+
+    std::vector<double> constraints(const std::vector<double>& variables) const override {
+        std::vector<double> out(static_cast<std::size_t>(constraint_count()), 0.0);
+        const auto amounts = phase_amounts_from_variables(variables);
+        for (int row = 0; row < balance_rows_; ++row) {
+            out[static_cast<std::size_t>(row)] = -total_vector_[static_cast<std::size_t>(row)];
+            for (int species = 0; species < species_count_; ++species) {
+                const double coefficient = balance_matrix_row_major_[
+                    static_cast<std::size_t>(row) * static_cast<std::size_t>(species_count_)
+                    + static_cast<std::size_t>(species)
+                ];
+                for (int phase = 0; phase < phase_count(); ++phase) {
+                    out[static_cast<std::size_t>(row)] +=
+                        coefficient * amounts[static_cast<std::size_t>(phase)][static_cast<std::size_t>(species)];
+                }
+            }
+        }
+        const auto blocks = phase_blocks(variables);
+        for (int phase = 0; phase < phase_count(); ++phase) {
+            out[static_cast<std::size_t>(balance_rows_ + phase)] =
+                blocks[static_cast<std::size_t>(phase)].pressure_consistency_residual;
+        }
+        return out;
+    }
+
+    NlpJacobianStructure jacobian_structure() const override {
+        NlpJacobianStructure out;
+        out.rows.reserve(static_cast<std::size_t>(jacobian_nonzero_count()));
+        out.cols.reserve(static_cast<std::size_t>(jacobian_nonzero_count()));
+        for (int row = 0; row < constraint_count(); ++row) {
+            for (int col = 0; col < variable_count(); ++col) {
+                out.rows.push_back(row);
+                out.cols.push_back(col);
+            }
+        }
+        return out;
+    }
+
+    std::vector<double> jacobian_values(const std::vector<double>& variables) const override {
+        std::vector<double> out(
+            static_cast<std::size_t>(constraint_count()) * static_cast<std::size_t>(variable_count()),
+            0.0
+        );
+        for (int row = 0; row < balance_rows_; ++row) {
+            for (int phase = 0; phase < phase_count(); ++phase) {
+                const int phase_offset = phase * local_variable_count();
+                for (int species = 0; species < species_count_; ++species) {
+                    out[
+                        static_cast<std::size_t>(row) * static_cast<std::size_t>(variable_count())
+                        + static_cast<std::size_t>(phase_offset + species)
+                    ] = balance_matrix_row_major_[
+                        static_cast<std::size_t>(row) * static_cast<std::size_t>(species_count_)
+                        + static_cast<std::size_t>(species)
+                    ];
+                }
+            }
+        }
+        const auto blocks = phase_blocks(variables);
+        for (int phase = 0; phase < phase_count(); ++phase) {
+            const EosPhaseBlockResult& block = blocks[static_cast<std::size_t>(phase)];
+            require_size(
+                block.pressure_jacobian_row_major,
+                static_cast<std::size_t>(local_variable_count()),
+                "Reactive EOS pressure Jacobian"
+            );
+            const int row = balance_rows_ + phase;
+            const int col_offset = phase * local_variable_count();
+            for (int col = 0; col < local_variable_count(); ++col) {
+                out[
+                    static_cast<std::size_t>(row) * static_cast<std::size_t>(variable_count())
+                    + static_cast<std::size_t>(col_offset + col)
+                ] = block.pressure_jacobian_row_major[static_cast<std::size_t>(col)];
+            }
+        }
+        return out;
+    }
+
+    NlpScaling scaling() const override {
+        const double total_scale = conserved_total_scale();
+        NlpScaling out;
+        out.objective = 1.0 / total_scale;
+        out.variables.assign(static_cast<std::size_t>(variable_count()), 1.0 / total_scale);
+        out.constraints.assign(static_cast<std::size_t>(constraint_count()), 1.0 / total_scale);
+        return out;
+    }
+
+    int phase_count() const {
+        return 2;
+    }
+
+    int species_count() const {
+        return species_count_;
+    }
+
+    int balance_row_count() const {
+        return balance_rows_;
+    }
+
+    int reaction_count() const {
+        return reaction_rows_;
+    }
+
+    const std::vector<double>& standard_mu_rt() const {
+        return standard_mu_rt_;
+    }
+
+private:
+    static int species_count_from_phase_amounts(const std::vector<std::vector<double>>& phase_amounts) {
+        if (phase_amounts.empty() || phase_amounts[0].empty()) {
+            throw ValueError("Reactive EOS route builder requires at least one species.");
+        }
+        return static_cast<int>(phase_amounts[0].size());
+    }
+
+    int local_variable_count() const {
+        return species_count_ + 1;
+    }
+
+    double conserved_total_scale() const {
+        double scale = 0.0;
+        for (double value : total_vector_) {
+            scale += std::abs(value);
+        }
+        return std::max(1.0, scale);
+    }
+
+    std::vector<std::vector<double>> phase_amounts_from_variables(const std::vector<double>& variables) const {
+        require_size(variables, static_cast<std::size_t>(variable_count()), "Reactive EOS route variable");
+        std::vector<std::vector<double>> amounts(
+            static_cast<std::size_t>(phase_count()),
+            std::vector<double>(static_cast<std::size_t>(species_count_), 0.0)
+        );
+        for (int phase = 0; phase < phase_count(); ++phase) {
+            const std::size_t offset = static_cast<std::size_t>(phase * local_variable_count());
+            for (int species = 0; species < species_count_; ++species) {
+                amounts[static_cast<std::size_t>(phase)][static_cast<std::size_t>(species)] =
+                    variables[offset + static_cast<std::size_t>(species)];
+            }
+        }
+        return amounts;
+    }
+
+    std::vector<double> volumes_from_variables(const std::vector<double>& variables) const {
+        require_size(variables, static_cast<std::size_t>(variable_count()), "Reactive EOS route variable");
+        std::vector<double> volumes(static_cast<std::size_t>(phase_count()), 0.0);
+        for (int phase = 0; phase < phase_count(); ++phase) {
+            volumes[static_cast<std::size_t>(phase)] =
+                variables[static_cast<std::size_t>(phase * local_variable_count() + species_count_)];
+        }
+        return volumes;
+    }
+
+    std::vector<EosPhaseBlockResult> phase_blocks(const std::vector<double>& variables) const {
+        const auto amounts = phase_amounts_from_variables(variables);
+        const auto volumes = volumes_from_variables(variables);
+        std::vector<EosPhaseBlockResult> blocks;
+        blocks.reserve(static_cast<std::size_t>(phase_count()));
+        for (int phase = 0; phase < phase_count(); ++phase) {
+            blocks.push_back(
+                evaluate_eos_phase_block(
+                    args_,
+                    temperature_,
+                    target_pressure_,
+                    amounts[static_cast<std::size_t>(phase)],
+                    volumes[static_cast<std::size_t>(phase)]
+                )
+            );
+        }
+        return blocks;
+    }
+
+    add_args args_;
+    double temperature_ = 0.0;
+    double target_pressure_ = 0.0;
+    std::vector<std::vector<double>> initial_phase_amounts_;
+    std::vector<double> initial_volumes_;
+    int balance_rows_ = 0;
+    std::vector<double> balance_matrix_row_major_;
+    std::vector<double> total_vector_;
+    int reaction_rows_ = 0;
+    int species_count_ = 0;
+    std::vector<double> standard_mu_rt_;
+};
+
 NeutralTwoPhaseEosNlpContract make_nlp_contract(
     const NlpProblem& problem,
     int phase_count,
@@ -726,6 +1056,43 @@ NeutralTwoPhaseEosNlpContract evaluate_electrolyte_lle_eos_nlp_contract(
         kContractPhaseDistance
     );
     return make_nlp_contract(problem, problem.phase_count(), problem.species_count());
+}
+
+NeutralTwoPhaseEosNlpContract evaluate_reactive_two_phase_eos_nlp_contract(
+    const add_args& args,
+    double temperature,
+    double target_pressure,
+    const std::vector<std::vector<double>>& phase_amounts,
+    const std::vector<double>& volumes,
+    int balance_rows,
+    const std::vector<double>& balance_matrix_row_major,
+    const std::vector<double>& total_vector,
+    int reaction_rows,
+    const std::vector<double>& reaction_stoichiometry_row_major,
+    const std::vector<double>& log_equilibrium_constants
+) {
+    ReactiveTwoPhaseEosProblem problem(
+        args,
+        temperature,
+        target_pressure,
+        phase_amounts,
+        volumes,
+        balance_rows,
+        balance_matrix_row_major,
+        total_vector,
+        reaction_rows,
+        reaction_stoichiometry_row_major,
+        log_equilibrium_constants
+    );
+    NeutralTwoPhaseEosNlpContract out = make_nlp_contract(
+        problem,
+        problem.phase_count(),
+        problem.species_count()
+    );
+    out.balance_row_count = problem.balance_row_count();
+    out.reaction_count = problem.reaction_count();
+    out.standard_mu_rt = problem.standard_mu_rt();
+    return out;
 }
 
 IpoptSolveResult solve_neutral_two_phase_eos_ipopt(

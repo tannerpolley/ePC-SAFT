@@ -273,7 +273,9 @@ The failure list from the initial full-duration run has been retired. Each liste
   fixed-liquid electrolyte bubble pressure, and accepted-path Ceres equilibrium solve removal are implemented and tested.
   Broader electrolyte VLE routes are not promoted beyond the fixed-liquid bubble-pressure scope; runtime capabilities
   now keep those route names absent until a thermodynamic native Ipopt route is deliberately added. Broad reactive
-  phase-equilibrium route builders and their reaction-coupled acceptance tests remain open.
+  phase-equilibrium route builders and their reaction-coupled acceptance tests remain open, but private route-builder
+  coverage now includes the conserved-balance plus reaction-standard-potential two-phase EOS NLP contract needed for
+  that production route.
 
 ## Required Cleanup Still Open
 

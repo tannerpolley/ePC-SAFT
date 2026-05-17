@@ -878,3 +878,71 @@ def test_neutral_two_phase_eos_postsolve_reports_chemical_potential_gate() -> No
     assert payload["chemical_potential_consistency_norm"] > 1.0e-9
     assert payload["ln_fugacity_consistency_norm"] > 1.0e-9
     assert payload["phase_distance"] > 1.0e-3
+
+
+def test_reactive_two_phase_eos_contract_uses_conserved_balances_and_standard_potentials() -> None:
+    mix = _neutral_binary_mixture()
+    temperature = 300.0
+    phase_amounts = [
+        np.asarray([0.1, 0.4], dtype=float),
+        np.asarray([0.2, 0.3], dtype=float),
+    ]
+    volumes = [float(phase_amounts[0].sum() / 80.0), float(phase_amounts[1].sum() / 120.0)]
+    species_totals = phase_amounts[0] + phase_amounts[1]
+    target_pressure = mix.state(
+        T=temperature,
+        rho=phase_amounts[0].sum() / volumes[0],
+        x=phase_amounts[0] / phase_amounts[0].sum(),
+        phase="liquid",
+    ).pressure()
+
+    payload = _core._native_reactive_two_phase_eos_nlp_contract(
+        mix._native,
+        temperature,
+        target_pressure,
+        [phase.tolist() for phase in phase_amounts],
+        volumes,
+        1,
+        [1.0, 1.0],
+        [float(species_totals.sum())],
+        1,
+        [-1.0, 1.0],
+        [float(np.log(3.0))],
+    )
+    phase_system = _core._native_eos_phase_system(
+        mix._native,
+        temperature,
+        target_pressure,
+        [phase.tolist() for phase in phase_amounts],
+        volumes,
+        species_totals.tolist(),
+    )
+
+    standard_mu = np.asarray(payload["standard_mu_rt"], dtype=float)
+    base_gradient = np.asarray(phase_system["gradient"], dtype=float)
+    expected_gradient = base_gradient.copy()
+    expected_gradient[:2] += standard_mu
+    expected_gradient[3:5] += standard_mu
+    expected_objective = phase_system["objective"] + float(standard_mu @ species_totals)
+    contract_jacobian = np.asarray(payload["jacobian_values_at_initial"], dtype=float).reshape(3, 6)
+    phase_system_jacobian = np.asarray(phase_system["constraint_jacobian_row_major"], dtype=float).reshape(4, 6)
+
+    assert payload["problem_name"] == "reactive_two_phase_eos"
+    assert payload["derivative_backend"] == "analytic_cppad"
+    assert payload["phase_count"] == 2
+    assert payload["species_count"] == 2
+    assert payload["balance_row_count"] == 1
+    assert payload["reaction_count"] == 1
+    assert payload["variable_count"] == 6
+    assert payload["constraint_count"] == 3
+    assert payload["objective_at_initial"] == pytest.approx(expected_objective, rel=1.0e-12, abs=1.0e-10)
+    assert payload["gradient_at_initial"] == pytest.approx(expected_gradient, rel=1.0e-12, abs=1.0e-10)
+    assert payload["constraints_at_initial"][0] == pytest.approx(0.0, abs=1.0e-12)
+    assert payload["constraints_at_initial"][1:] == pytest.approx(
+        phase_system["constraints"][2:],
+        rel=1.0e-12,
+        abs=1.0e-8,
+    )
+    assert standard_mu[1] - standard_mu[0] == pytest.approx(-np.log(3.0))
+    assert contract_jacobian[0] == pytest.approx([1.0, 1.0, 0.0, 1.0, 1.0, 0.0])
+    assert contract_jacobian[1:] == pytest.approx(phase_system_jacobian[2:], rel=1.0e-12, abs=1.0e-8)
