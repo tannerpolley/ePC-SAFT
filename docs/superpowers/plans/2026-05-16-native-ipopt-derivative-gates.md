@@ -358,8 +358,8 @@ backend, Jacobian/gradient shape, route-gate, and JSON-safe diagnostic contracts
 prevention of the retired labels.
 
 Task 2 continuation note: stale broad API route-gate coverage for neutral `bubble_p`/`dew_p` was pruned after those
-pressure routes gained dedicated one-native-route-request and accepted-payload conversion tests. The broad API test now
-keeps only the still route-gated fixed-pressure `bubble_t`/`dew_t` temperature routes.
+pressure routes gained dedicated one-native-route-request and accepted-payload conversion tests. Follow-up fixed-pressure
+`bubble_t`/`dew_t` route coverage now lives in the route-specific bubble/dew tests as well.
 
 Task 2 continuation note: the broad `solve_equilibrium(problem)` API test no longer repeats TP-flash, stability, or
 dew-pressure native-Ipopt gate assertions. Route-specific tests own those solver gates, while the broad API test now
@@ -956,9 +956,9 @@ tests match the analytical/CppAD derivative gate.
 
 Task 12 continuation note: equilibrium cookbook and downstream local-install docs no longer describe implemented
 native-Ipopt neutral TP/LLE, fixed-temperature bubble/dew pressure, electrolyte LLE, or electrolyte bubble-pressure
-routes as globally native-Ipopt-gated. They now distinguish Ipopt-enabled native routes from stability, bubble/dew
-temperature, and broader reactive phase-equilibrium routes that remain gated. Scoped reactive electrolyte bubble
-pressure uses native speciation followed by the fixed-liquid native bubble route when Ipopt is compiled.
+routes as globally native-Ipopt-gated. They now distinguish Ipopt-enabled native routes from stability and broader
+reactive phase-equilibrium routes that remain gated. Scoped reactive electrolyte bubble pressure uses native speciation
+followed by the fixed-liquid native bubble route when Ipopt is compiled.
 
 Task 12 continuation note: stale tracked GoalBuddy artifacts for superseded native electrolyte, neutral LLE,
 reactive-equilibrium, and PR #126 repair stories were removed from active docs. This plan is now the authoritative
@@ -1060,8 +1060,8 @@ and status tokens.
 
 Task 2 continuation note: duplicate no-Ipopt native-gate tests for neutral TP flash, neutral LLE, neutral bubble/dew
 temperature, and one-salt electrolyte LLE were deleted. Retained coverage now lives in stronger tests that either verify
-one native route request is built before the Ipopt dependency gate, exercise typed/generic dispatch for still-gated
-temperature routes, or validate accepted native payload conversion.
+one native route request is built before the Ipopt dependency gate, exercise typed/generic dispatch for public facades,
+or validate accepted native payload conversion.
 
 Task 12 continuation note: `capabilities()["equilibrium"]` now reports implemented native Ipopt routes only. Stability
 and broad reactive phase-equilibrium routes remain public API contracts that fail loudly until their native builders

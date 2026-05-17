@@ -122,8 +122,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - Electrolyte/property runtime options now use `cppad` for explicit CppAD derivative requests, and the old generic
   AD option spelling is rejected outside Ceres-owned regression contexts.
 - Equilibrium cookbook and downstream local-install docs now distinguish Ipopt-enabled native routes from route-gated
-  stability, bubble/dew temperature, and broader reactive phase-equilibrium routes. Scoped reactive electrolyte bubble
-  pressure uses native speciation followed by the fixed-liquid native bubble route when Ipopt is compiled.
+  stability and broader reactive phase-equilibrium routes. Scoped reactive electrolyte bubble pressure uses native
+  speciation followed by the fixed-liquid native bubble route when Ipopt is compiled.
 - The public activity-coefficient contribution decomposition path now raises the package's typed `InputError` instead
   of a generic Python unsupported-operation exception, and the regression derivative table now describes neutral LLE as
   a native Ipopt route when compiled rather than an unowned route. Runtime capabilities omit the unimplemented

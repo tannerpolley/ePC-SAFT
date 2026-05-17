@@ -175,9 +175,12 @@ Capability status summary
    * - Neutral TP flash and LLE
      - Native Ipopt route when compiled
      - Requires an Ipopt-enabled build; Python does not provide an alternate solve loop.
-   * - Neutral stability and bubble/dew temperature
+   * - Neutral bubble/dew pressure and temperature
+     - Native Ipopt route when compiled
+     - Requires an Ipopt-enabled build; Python does not provide an alternate solve loop.
+   * - Neutral stability
      - Native Ipopt route required
-     - Fails loudly until native Ipopt route builders own production use.
+     - Fails loudly until native Ipopt stability route builders own production use.
    * - Electrolyte LLE
      - Native Ipopt route when compiled
      - Requires an Ipopt-enabled build.
