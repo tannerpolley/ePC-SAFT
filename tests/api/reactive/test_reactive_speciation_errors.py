@@ -79,6 +79,10 @@ def test_solve_reactive_speciation_result_mode_does_not_mask_native_ipopt_depend
             {"initial_x": [0.998, 0.001, 0.0005]},
             "initial_x length must match species length",
         ),
+        (
+            {"reactions": []},
+            "reactive speciation requires at least one reaction",
+        ),
     ],
 )
 def test_solve_reactive_speciation_rejects_invalid_chemistry_inputs(kwargs: dict[str, object], message: str) -> None:

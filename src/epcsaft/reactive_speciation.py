@@ -832,6 +832,8 @@ def _normalize_reactions(species: list[str], reactions: Any) -> list[ReactionDef
                         raise InputError(f"Unknown species '{label}' in reaction phase_stoichiometry.")
         _ = reaction.convention.native_standard_state_code
         out.append(reaction)
+    if not out:
+        raise InputError("reactive speciation requires at least one reaction.")
     return out
 
 

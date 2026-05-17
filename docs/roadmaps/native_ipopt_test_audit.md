@@ -245,6 +245,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
   shape, route-gate, and JSON-safe diagnostic contracts, while the text gate owns retired-label prevention.
 - Remaining reactive sweep signature-absence checks and a duplicate native regression debug backend assertion were
   removed. Current-surface field-set tests, route-gate tests, and the text gate now own that coverage.
+- A one-off reactive-electrolyte bubble no-reaction wrapper test was deleted after moving the empty-reaction guard to
+  the shared reactive-speciation validator and its existing invalid-input table.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
 

@@ -1203,6 +1203,10 @@ Task 8/9/12 continuation note: public `ePCSAFTMixture.equilibrium(...)` now acce
 longer accepted as backend aliases; callers select routes with `kind` or `phase_kind`, and staged reactive workflows no
 longer treat `backend` as a phase-route selector.
 
+Task 2 continuation note: the one-off reactive-electrolyte bubble no-reaction validation test was folded into the
+shared reactive-speciation invalid-input table. The owner path now rejects empty reaction sets before native route
+construction, and the wrapper-only duplicate file was deleted.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**
