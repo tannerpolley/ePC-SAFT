@@ -176,14 +176,14 @@ Capability status summary
      - Native Ipopt route when compiled
      - Requires an Ipopt-enabled build; Python does not provide an alternate solve loop.
    * - Neutral stability and bubble/dew temperature
-     - Route pending
-     - Requires native Ipopt route builders before production use.
+     - Native Ipopt route required
+     - Fails loudly until native Ipopt route builders own production use.
    * - Electrolyte LLE
      - Native Ipopt route when compiled
      - Requires an Ipopt-enabled build.
    * - Reactive speciation
      - Explicit Ipopt ideal route
-     - ``solver_backend="ipopt"`` supports homogeneous ``ideal_mole_fraction`` when Ipopt is compiled; activity and concentration routes are pending.
+     - ``solver_backend="ipopt"`` supports homogeneous ``ideal_mole_fraction`` when Ipopt is compiled; activity and concentration routes require their native EOS derivative NLP blocks.
    * - Electrolyte bubble pressure
      - Native Ipopt route when compiled
      - Fixed liquid composition with neutral vapor species; ions remain liquid-only.

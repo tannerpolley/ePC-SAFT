@@ -23,7 +23,7 @@ def _hydrocarbon_mixture() -> ePCSAFTMixture:
     return ePCSAFTMixture.from_params(params, species=["Methane", "Ethane", "Propane"])
 
 
-def _assert_stability_route_pending(excinfo: pytest.ExceptionInfo[epcsaft.InputError], route: str = "stability") -> None:
+def _assert_stability_native_ipopt_gate(excinfo: pytest.ExceptionInfo[epcsaft.InputError], route: str = "stability") -> None:
     message = str(excinfo.value)
     assert f"{route} requires a native Ipopt equilibrium stability NLP route" in message
 
@@ -41,7 +41,7 @@ def test_stability_requires_native_ipopt_route_after_validation() -> None:
             trial_phases=("vap",),
         )
 
-    _assert_stability_route_pending(excinfo)
+    _assert_stability_native_ipopt_gate(excinfo)
 
 
 @pytest.mark.parametrize(

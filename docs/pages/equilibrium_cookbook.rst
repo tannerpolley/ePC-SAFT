@@ -35,8 +35,8 @@ these fields as routing hints, not as proof that a physical case is valid.
      - Native Ipopt route when compiled
      - Uses native constrained-NLP route builders; no Python solve loop exists.
    * - Neutral stability, bubble/dew temperature
-     - Route pending
-     - Requires native Ipopt route builders before production use.
+     - Native Ipopt route required
+     - Fails loudly until native Ipopt route builders own production use.
    * - Electrolyte LLE
      - Native Ipopt route when compiled
      - Requires an Ipopt-enabled build; no alternate public optimizer path exists.
@@ -48,7 +48,7 @@ these fields as routing hints, not as proof that a physical case is valid.
      - Native Ipopt route when compiled
      - Fixed liquid composition with neutral vapor species; ions remain liquid-only.
    * - Reactive electrolyte bubble
-     - Route pending
+     - Native Ipopt route required
      - Requires the native Ipopt electrolyte bubble route builder after
        speciation.
    * - IPOPT
@@ -63,7 +63,7 @@ these fields as routing hints, not as proof that a physical case is valid.
      - Do not use when
    * - ``solver_backend="auto"``
      - You want the supported native default.
-     - You expect a route that is still pending to run.
+     - You expect a route without native Ipopt ownership to run.
    * - ``jacobian_backend="auto"``
      - You want the native chemical-equilibrium default: analytic, CppAD, or implicit sensitivities where available, clear failures otherwise.
      - You need strict failure when a specific derivative backend cannot run.
@@ -111,7 +111,7 @@ scripts.
 
 Neutral TP flash, neutral LLE, fixed-temperature bubble pressure, and
 fixed-temperature dew pressure route through native Ipopt when that extension is
-compiled. Stability and bubble/dew temperature methods remain route-pending.
+compiled. Stability and bubble/dew temperature methods remain native-Ipopt-gated.
 Downstream sweeps should inspect ``epcsaft.capabilities()`` or catch typed
 route errors instead of manufacturing alternate phase-equilibrium results.
 
@@ -322,8 +322,8 @@ IPOPT route status
 
 ``solver_backend="ipopt"`` is reserved for the native Ipopt constrained-NLP
 adapter. The old Python adapter has been removed. Implemented public routes use
-the native adapter when Ipopt is compiled; route-pending methods still raise
-``InputError``.
+the native adapter when Ipopt is compiled; methods without native Ipopt
+ownership raise ``InputError``.
 
 .. code-block:: python
 

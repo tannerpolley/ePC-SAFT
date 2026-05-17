@@ -37,7 +37,7 @@ def _methanol_cyclohexane_lle_feed() -> np.ndarray:
     return 0.5 * methanol_poor + 0.5 * methanol_rich
 
 
-def _assert_neutral_lle_route_pending(excinfo: pytest.ExceptionInfo[epcsaft.InputError]) -> None:
+def _assert_neutral_lle_native_ipopt_gate(excinfo: pytest.ExceptionInfo[epcsaft.InputError]) -> None:
     message = str(excinfo.value)
     assert "lle_flash requires a native Ipopt equilibrium NLP route" in message
 
@@ -94,7 +94,7 @@ def test_lle_flash_builds_one_native_route_request_before_ipopt_gate(monkeypatch
             options=epcsaft.EquilibriumOptions(max_iterations=19, tolerance=3.0e-8, timeout_seconds=4.0),
         )
 
-    _assert_neutral_lle_route_pending(excinfo)
+    _assert_neutral_lle_native_ipopt_gate(excinfo)
     assert len(calls) == 1
     call = calls[0]
     assert call["feed_amounts"] == pytest.approx(feed.tolist())

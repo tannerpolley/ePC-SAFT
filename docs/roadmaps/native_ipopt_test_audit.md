@@ -232,6 +232,9 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - Runtime capability smoke coverage no longer repeats the same per-route Ipopt dependency status assertions for every
   equilibrium route; adapter and route-builder tests own the dependency gate while the runtime smoke keeps route shape
   and backend coverage.
+- Executable tests now describe public equilibrium failures as native-Ipopt gates instead of route-pending status.
+  One duplicate nonexact-derivative route-gate assertion was deleted, and the text gate blocks the stale route-pending
+  token in active source, tests, and scripts.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
 

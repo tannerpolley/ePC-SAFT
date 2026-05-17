@@ -5,7 +5,7 @@ import pytest
 
 import epcsaft
 from epcsaft import ePCSAFTMixture
-from tests.equilibrium.electrolyte.test_electrolyte_lle_smokes import _assert_electrolyte_lle_route_pending
+from tests.equilibrium.electrolyte.test_electrolyte_lle_smokes import _assert_electrolyte_lle_native_ipopt_gate
 
 
 def _typed_problem_fixture() -> tuple[ePCSAFTMixture, np.ndarray]:
@@ -30,4 +30,4 @@ def test_electrolyte_lle_problem_requires_native_ipopt_route() -> None:
     with pytest.raises(epcsaft.InputError) as excinfo:
         mix.solve_equilibrium(problem)
 
-    _assert_electrolyte_lle_route_pending(excinfo)
+    _assert_electrolyte_lle_native_ipopt_gate(excinfo)

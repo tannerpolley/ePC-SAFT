@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 import epcsaft
-from tests.equilibrium.core.test_vle import _assert_tp_flash_route_pending
+from tests.equilibrium.core.test_vle import _assert_tp_flash_native_ipopt_gate
 
 
 def _toy_mixture() -> epcsaft.ePCSAFTMixture:
@@ -74,7 +74,7 @@ def test_staged_workflow_requires_native_ipopt_phase_route_after_fixed_constant_
             phase_kind="tp_flash",
         )
 
-    _assert_tp_flash_route_pending(excinfo)
+    _assert_tp_flash_native_ipopt_gate(excinfo)
 
 
 def test_reactive_phase_equilibrium_problem_is_public_generic_contract() -> None:

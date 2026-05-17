@@ -35,7 +35,7 @@ def _neutral_reactive_lle_fixture() -> tuple[ePCSAFTMixture, np.ndarray, epcsaft
     return mix, feed, reaction
 
 
-def _assert_reactive_phase_route_pending(excinfo: pytest.ExceptionInfo[epcsaft.InputError]) -> None:
+def _assert_reactive_phase_native_ipopt_gate(excinfo: pytest.ExceptionInfo[epcsaft.InputError]) -> None:
     message = str(excinfo.value)
     assert "native Ipopt reactive phase-equilibrium NLP route" in message
 
@@ -55,4 +55,4 @@ def test_neutral_reactive_lle_public_route_requires_native_ipopt() -> None:
             phase_options=epcsaft.EquilibriumOptions(max_iterations=80, tolerance=1.0e-8, min_composition=1.0e-12),
         )
 
-    _assert_reactive_phase_route_pending(excinfo)
+    _assert_reactive_phase_native_ipopt_gate(excinfo)

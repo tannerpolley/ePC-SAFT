@@ -5,7 +5,7 @@ import pytest
 
 import epcsaft
 from epcsaft import ePCSAFTMixture
-from tests.equilibrium.electrolyte.test_electrolyte_lle_smokes import _assert_electrolyte_lle_route_pending
+from tests.equilibrium.electrolyte.test_electrolyte_lle_smokes import _assert_electrolyte_lle_native_ipopt_gate
 
 
 def _case2_feed() -> np.ndarray:
@@ -39,9 +39,9 @@ def test_ascani_case2_mixed_salt_requires_native_ipopt_route() -> None:
             options=epcsaft.EquilibriumOptions(max_iterations=180, tolerance=1.0e-8),
         )
 
-    _assert_electrolyte_lle_route_pending(excinfo)
+    _assert_electrolyte_lle_native_ipopt_gate(excinfo)
 
-def test_auto_kind_routes_explicit_ionic_feed_to_pending_electrolyte_lle() -> None:
+def test_auto_kind_routes_explicit_ionic_feed_to_native_ipopt_lle_gate() -> None:
     mix = _case2_mixture()
 
     with pytest.raises(epcsaft.InputError) as excinfo:
@@ -53,4 +53,4 @@ def test_auto_kind_routes_explicit_ionic_feed_to_pending_electrolyte_lle() -> No
             options=epcsaft.EquilibriumOptions(max_iterations=180, tolerance=1.0e-8),
         )
 
-    _assert_electrolyte_lle_route_pending(excinfo)
+    _assert_electrolyte_lle_native_ipopt_gate(excinfo)

@@ -7,7 +7,7 @@ import pytest
 
 import epcsaft
 from epcsaft import _core
-from tests.equilibrium.core.test_stability import _assert_stability_route_pending
+from tests.equilibrium.core.test_stability import _assert_stability_native_ipopt_gate
 from tests.helpers.numeric import assert_allclose
 
 
@@ -269,4 +269,4 @@ def test_reactive_stability_requires_native_ipopt_stability_route_after_speciati
             options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-10),
         )
 
-    _assert_stability_route_pending(excinfo)
+    _assert_stability_native_ipopt_gate(excinfo)

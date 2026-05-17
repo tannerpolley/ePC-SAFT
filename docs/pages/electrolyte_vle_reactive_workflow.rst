@@ -47,7 +47,7 @@ The near-term reactive workflow is sequential and fixed-constant first:
    ``ReactionDefinition.log_equilibrium_constant`` or
    ``ReactionDefinition.from_literature_constant(...)``;
 2. evaluate native-Ipopt ideal reactive speciation where that route applies, or
-   hold activity-coupled speciation as route-pending;
+   fail loudly until activity-coupled speciation has native EOS derivative NLP blocks;
 3. hand the equilibrated composition to phase or electrolyte-equilibrium
    routes; and
 4. regress ePC-SAFT pure, binary, or electrolyte parameters against that fixed

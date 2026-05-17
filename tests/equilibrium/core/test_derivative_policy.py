@@ -4,7 +4,6 @@ import numpy as np
 import pytest
 
 import epcsaft
-from tests.equilibrium.core.test_vle import _assert_tp_flash_route_pending
 from tests.helpers.native_cases import _neutral_state
 
 
@@ -36,16 +35,6 @@ def test_equilibrium_options_reject_removed_autodiff_backend() -> None:
             z=feed,
             options=epcsaft.EquilibriumOptions(jacobian_backend="autodiff"),
         )
-
-
-def test_auto_equilibrium_diagnostics_reject_nonexact_derivative_route() -> None:
-    mix, feed = _neutral_mixture()
-
-    with pytest.raises(epcsaft.InputError) as excinfo:
-        mix.flash_tp(T=220.0, P=1.0e5, z=feed, options=epcsaft.EquilibriumOptions(jacobian_backend="auto"))
-
-    _assert_tp_flash_route_pending(excinfo)
-    assert "numerical" + "_derivative" not in str(excinfo.value).lower()
 
 
 def test_reactive_ideal_speciation_auto_uses_native_ipopt_route() -> None:

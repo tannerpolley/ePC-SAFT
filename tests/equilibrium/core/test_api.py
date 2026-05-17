@@ -7,8 +7,8 @@ import pytest
 
 import epcsaft
 from epcsaft import ePCSAFTMixture
-from tests.equilibrium.core.test_stability import _assert_stability_route_pending
-from tests.equilibrium.core.test_vle import _assert_tp_flash_route_pending
+from tests.equilibrium.core.test_stability import _assert_stability_native_ipopt_gate
+from tests.equilibrium.core.test_vle import _assert_tp_flash_native_ipopt_gate
 from tests.helpers.numeric import assert_allclose
 
 
@@ -80,8 +80,8 @@ def test_solve_equilibrium_accepts_typed_problem_objects() -> None:
             epcsaft.StabilityAnalysis(T=300.0, P=1.0e5, z=feed, parent_phase="liq", trial_phases=("liq",))
         )
 
-    _assert_tp_flash_route_pending(flash_exc)
-    _assert_stability_route_pending(stability_exc)
+    _assert_tp_flash_native_ipopt_gate(flash_exc)
+    _assert_stability_native_ipopt_gate(stability_exc)
 
     with pytest.raises(epcsaft.InputError, match=r"dew_p requires a native Ipopt equilibrium NLP route"):
         mix.solve_equilibrium(epcsaft.DewPoint(T=260.0, y=feed))

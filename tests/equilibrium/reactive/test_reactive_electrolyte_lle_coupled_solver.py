@@ -5,7 +5,7 @@ import pytest
 
 import epcsaft
 from epcsaft import ePCSAFTMixture
-from tests.equilibrium.reactive.test_reactive_lle_coupled_solver import _assert_reactive_phase_route_pending
+from tests.equilibrium.reactive.test_reactive_lle_coupled_solver import _assert_reactive_phase_native_ipopt_gate
 
 
 def _reactive_electrolyte_lle_fixture() -> tuple[
@@ -52,4 +52,4 @@ def test_reactive_electrolyte_lle_public_route_requires_native_ipopt() -> None:
             phase_options=epcsaft.EquilibriumOptions(max_iterations=80, tolerance=1.0e-8, min_composition=1.0e-12),
         )
 
-    _assert_reactive_phase_route_pending(excinfo)
+    _assert_reactive_phase_native_ipopt_gate(excinfo)

@@ -23,7 +23,7 @@ def _hydrocarbon_basis_mixture() -> ePCSAFTMixture:
     return ePCSAFTMixture.from_params(params, species=["Methane", "Ethane", "Propane"])
 
 
-def _assert_tp_flash_route_pending(excinfo: pytest.ExceptionInfo[epcsaft.InputError]) -> None:
+def _assert_tp_flash_native_ipopt_gate(excinfo: pytest.ExceptionInfo[epcsaft.InputError]) -> None:
     message = str(excinfo.value)
     assert "tp_flash requires a native Ipopt equilibrium NLP route" in message
 
@@ -80,7 +80,7 @@ def test_tp_flash_builds_one_native_route_request_before_ipopt_gate(monkeypatch:
             options=epcsaft.EquilibriumOptions(max_iterations=17, tolerance=2.0e-7, timeout_seconds=6.5),
         )
 
-    _assert_tp_flash_route_pending(excinfo)
+    _assert_tp_flash_native_ipopt_gate(excinfo)
     assert len(calls) == 1
     call = calls[0]
     assert call["feed_amounts"] == pytest.approx(feed.tolist())

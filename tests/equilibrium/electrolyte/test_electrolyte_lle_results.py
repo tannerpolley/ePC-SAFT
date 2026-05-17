@@ -14,7 +14,7 @@ from epcsaft.equilibrium_core.electrolyte_basis import (
     explicit_to_formula_composition,
     formula_to_explicit_composition,
 )
-from tests.equilibrium.core.test_stability import _assert_stability_route_pending
+from tests.equilibrium.core.test_stability import _assert_stability_native_ipopt_gate
 from tests.helpers.numeric import assert_allclose
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -141,4 +141,4 @@ def test_electrolyte_stability_requires_native_ipopt_route_after_validation() ->
             options=epcsaft.EquilibriumOptions(max_iterations=80, tolerance=1.0e-8),
         )
 
-    _assert_stability_route_pending(excinfo, route="electrolyte_stability")
+    _assert_stability_native_ipopt_gate(excinfo, route="electrolyte_stability")
