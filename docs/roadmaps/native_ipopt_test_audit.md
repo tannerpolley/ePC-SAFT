@@ -293,6 +293,8 @@ Still ongoing:
   the route-specific bubble/dew tests; it keeps the still route-gated `bubble_t`/`dew_t` temperature-route checks.
 - The broad `solve_equilibrium(problem)` test now checks only delegation to a problem object's `solve(mixture)` method
   instead of repeating TP-flash, stability, and dew-pressure native-Ipopt gate messages owned by route-specific tests.
+- Unused electrolyte-LLE result-test helpers and their CSV/JSON/path imports were removed; retained coverage is limited
+  to live electrolyte-basis and electrolyte-stability behavior.
 - Duplicate public-export and reactive-electrolyte fit-route absence assertions were pruned where broader runtime API
   coverage already protects the same surface.
 - Runtime, reactive-speciation, and staged reactive diagnostics no longer emit the negative
