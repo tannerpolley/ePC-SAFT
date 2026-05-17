@@ -36,14 +36,14 @@ class BuildSettings(NamedTuple):
 
 BUILD_PROFILES: dict[str, BuildProfile] = {
     "fast": BuildProfile(
-        enable_ipopt=False,
+        enable_ipopt=True,
         windows_parallel="4",
-        description="default native dependency profile: Ceres and CppAD enabled, Ipopt disabled",
+        description="default native dependency profile: Ceres, CppAD, and system Ipopt enabled",
     ),
     "full": BuildProfile(
-        enable_ipopt=False,
+        enable_ipopt=True,
         windows_parallel="4",
-        description="full native dependency profile: Ceres and CppAD enabled, Ipopt disabled",
+        description="full native dependency profile: Ceres, CppAD, and system Ipopt enabled",
     ),
     "ipopt": BuildProfile(
         enable_ipopt=True,

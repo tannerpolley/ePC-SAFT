@@ -107,6 +107,15 @@ bool association_block_enabled(
     return true;
 }
 
+bool has_active_association_sites(const add_args& args) {
+    for (int sites : args.assoc_num) {
+        if (sites > 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
 add_args without_solved_association(add_args args) {
     args.e_assoc.clear();
     args.vol_a.clear();
@@ -200,50 +209,72 @@ EosPhaseBlockResult evaluate_eos_phase_block(
         result.gradient.push_back(std::log(amounts[index] / volume) + mu.mu.total[index]);
     }
     result.gradient.push_back((target_pressure - eos_pressure) / rt);
-    double cppad_objective = 0.0;
-    std::vector<double> cppad_gradient;
-    std::vector<double> cppad_hessian;
-    eos_phase_objective_derivatives_cpp(
-        temperature,
-        target_pressure,
-        amounts,
-        volume,
-        args,
-        &cppad_objective,
-        &cppad_gradient,
-        &cppad_hessian
-    );
     const int nvars = static_cast<int>(amounts.size()) + 1;
-    if (cppad_gradient.size() != result.gradient.size()
-        || cppad_hessian.size() != static_cast<std::size_t>(nvars * nvars)) {
-        throw ValueError("EOS phase objective CppAD derivative shape did not match the phase variable model.");
-    }
-    const double objective_scale = std::max(1.0, std::abs(result.objective));
-    if (std::abs(cppad_objective - result.objective) > 1.0e-8 * objective_scale) {
-        throw ValueError("EOS phase objective CppAD value did not match the analytical block value.");
-    }
-    result.objective_curvature_backend = "cppad";
-    result.objective_curvature_rows = nvars;
-    result.objective_curvature_cols = nvars;
-    result.objective_curvature_row_major = std::move(cppad_hessian);
-    result.constraint_jacobian_backend = "cppad";
-    result.constraint_jacobian_rows = 1;
-    result.constraint_jacobian_cols = nvars;
-    result.constraint_jacobian_row_major.reserve(static_cast<std::size_t>(nvars));
-    const int volume_row = nvars - 1;
-    for (int col = 0; col < nvars; ++col) {
-        result.constraint_jacobian_row_major.push_back(
-            -rt * result.objective_curvature_row_major[
-                static_cast<std::size_t>(volume_row * nvars + col)
-            ]
+    if (has_active_association_sites(args)) {
+        const EosPhasePressureDerivativeResult pressure_derivatives =
+            eos_phase_pressure_derivatives_cpp(temperature, amounts, volume, args);
+        if (!pressure_derivatives.supported) {
+            const std::string message = pressure_derivatives.message.empty()
+                ? "EOS phase pressure derivatives were not available for associating phase."
+                : pressure_derivatives.message;
+            throw ValueError(message);
+        }
+        if (pressure_derivatives.pressure_jacobian_row_major.size() != static_cast<std::size_t>(nvars)) {
+            throw ValueError("EOS phase pressure derivative shape did not match the phase variable model.");
+        }
+        result.objective_curvature_backend = "unreported_association_implicit";
+        result.objective_curvature_rows = 0;
+        result.objective_curvature_cols = 0;
+        result.constraint_jacobian_backend = pressure_derivatives.backend;
+        result.constraint_jacobian_rows = 1;
+        result.constraint_jacobian_cols = nvars;
+        result.constraint_jacobian_row_major = pressure_derivatives.pressure_jacobian_row_major;
+        result.pressure_density_derivative = pressure_derivatives.pressure_density_derivative;
+    } else {
+        double cppad_objective = 0.0;
+        std::vector<double> cppad_gradient;
+        std::vector<double> cppad_hessian;
+        eos_phase_objective_derivatives_cpp(
+            temperature,
+            target_pressure,
+            amounts,
+            volume,
+            args,
+            &cppad_objective,
+            &cppad_gradient,
+            &cppad_hessian
         );
+        if (cppad_gradient.size() != result.gradient.size()
+            || cppad_hessian.size() != static_cast<std::size_t>(nvars * nvars)) {
+            throw ValueError("EOS phase objective CppAD derivative shape did not match the phase variable model.");
+        }
+        const double objective_scale = std::max(1.0, std::abs(result.objective));
+        if (std::abs(cppad_objective - result.objective) > 1.0e-8 * objective_scale) {
+            throw ValueError("EOS phase objective CppAD value did not match the analytical block value.");
+        }
+        result.objective_curvature_backend = "cppad";
+        result.objective_curvature_rows = nvars;
+        result.objective_curvature_cols = nvars;
+        result.objective_curvature_row_major = std::move(cppad_hessian);
+        result.constraint_jacobian_backend = "cppad";
+        result.constraint_jacobian_rows = 1;
+        result.constraint_jacobian_cols = nvars;
+        result.constraint_jacobian_row_major.reserve(static_cast<std::size_t>(nvars));
+        const int volume_row = nvars - 1;
+        for (int col = 0; col < nvars; ++col) {
+            result.constraint_jacobian_row_major.push_back(
+                -rt * result.objective_curvature_row_major[
+                    static_cast<std::size_t>(volume_row * nvars + col)
+                ]
+            );
+        }
+        result.pressure_density_derivative =
+            -result.constraint_jacobian_row_major[static_cast<std::size_t>(volume_row)] * volume / density;
     }
     result.pressure_jacobian_backend = result.constraint_jacobian_backend;
     result.pressure_jacobian_rows = result.constraint_jacobian_rows;
     result.pressure_jacobian_cols = result.constraint_jacobian_cols;
     result.pressure_jacobian_row_major = result.constraint_jacobian_row_major;
-    result.pressure_density_derivative =
-        -result.pressure_jacobian_row_major[static_cast<std::size_t>(volume_row)] * volume / density;
     return result;
 }
 

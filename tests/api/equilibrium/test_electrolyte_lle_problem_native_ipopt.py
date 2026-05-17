@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 import epcsaft
 from epcsaft import ePCSAFTMixture
-from tests.equilibrium.electrolyte.test_electrolyte_lle_smokes import _assert_electrolyte_lle_native_ipopt_gate
 
 
 def _typed_problem_fixture() -> tuple[ePCSAFTMixture, np.ndarray]:
@@ -18,16 +16,18 @@ def _typed_problem_fixture() -> tuple[ePCSAFTMixture, np.ndarray]:
     return mix, feed
 
 
-def test_electrolyte_lle_problem_requires_native_ipopt_route() -> None:
+def test_electrolyte_lle_problem_executes_native_ipopt_route() -> None:
     mix, feed = _typed_problem_fixture()
     problem = epcsaft.ElectrolyteLLEProblem(
         T=298.15,
         P=1.013e5,
         z=feed,
-        options=epcsaft.EquilibriumOptions(max_iterations=80, tolerance=1.0e-8, min_composition=1.0e-12),
+        options=epcsaft.EquilibriumOptions(max_iterations=500, tolerance=1.0e-8, min_composition=1.0e-12),
     )
 
-    with pytest.raises(epcsaft.InputError) as excinfo:
-        mix.solve_equilibrium(problem)
+    result = mix.solve_equilibrium(problem)
 
-    _assert_electrolyte_lle_native_ipopt_gate(excinfo)
+    assert result.problem_kind == "electrolyte_lle"
+    assert result.diagnostics["route_status"] == "accepted"
+    assert result.diagnostics["solver_status"] == "success"
+    assert result.diagnostics["solver_backend"] == "ipopt"

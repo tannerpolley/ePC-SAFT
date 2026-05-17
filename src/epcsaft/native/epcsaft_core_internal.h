@@ -72,6 +72,14 @@ struct ChargeGroups {
     vector<int> solvents;
 };
 
+struct EosPhasePressureDerivativeResult {
+    bool supported = false;
+    std::string backend = "unspecified";
+    std::string message;
+    double pressure_density_derivative = 0.0;
+    vector<double> pressure_jacobian_row_major;
+};
+
 struct DensityScanPoint {
     double nu = 0.0;
     double rho = 0.0;
@@ -207,6 +215,7 @@ using thermo_detail::DensityRootCandidate;
 using thermo_detail::DensityScanPoint;
 using thermo_detail::DielectricState;
 using thermo_detail::DispersionPolynomialState;
+using thermo_detail::EosPhasePressureDerivativeResult;
 using thermo_detail::MixtureState;
 
 ScalarContributionTerms make_scalar_terms(double hc, double disp, double assoc, double ion, double born, double total);
@@ -277,6 +286,12 @@ void eos_phase_temperature_variable_derivatives_cpp(
     double *objective,
     vector<double> *gradient,
     vector<double> *hessian_row_major
+);
+EosPhasePressureDerivativeResult eos_phase_pressure_derivatives_cpp(
+    double t,
+    const vector<double> &amounts,
+    double volume,
+    const add_args &cppargs
 );
 epcsaft::native::cppad_support::CppADDerivativeResult cppad_pressure_density_derivative_cpp(double t, double rho);
 PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_composition_sensitivity_cpp(

@@ -22,7 +22,7 @@ option(EPCSAFT_ENABLE_CERES "Enable Ceres Solver support required for native reg
 option(EPCSAFT_USE_SYSTEM_CERES "Use an installed Ceres Solver package instead of FetchContent" OFF)
 option(EPCSAFT_ENABLE_CPPAD "Enable package-wide CppAD support" ON)
 option(EPCSAFT_USE_SYSTEM_CPPAD "Use installed CppAD instead of FetchContent" OFF)
-option(EPCSAFT_ENABLE_IPOPT "Enable native Ipopt support for production equilibrium NLP solves" OFF)
+option(EPCSAFT_ENABLE_IPOPT "Enable native Ipopt support for production equilibrium NLP solves" ON)
 option(EPCSAFT_USE_SYSTEM_IPOPT "Use an installed Ipopt package for native equilibrium NLP solves" ON)
 set(EPCSAFT_IPOPT_ROOT "" CACHE PATH "Root directory for an installed Ipopt tree with include/, lib/, and bin/")
 option(EPCSAFT_WARNINGS_AS_ERRORS "Treat native warnings as errors" OFF)

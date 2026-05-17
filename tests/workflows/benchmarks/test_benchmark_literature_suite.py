@@ -33,9 +33,9 @@ def test_literature_benchmark_payload_tracks_executable_and_blocked_issue_119_ca
     assert payload["issue"] == 119
     assert payload["title"] == "Executable literature benchmark and downstream gate registry"
     assert payload["selected_cases"][0] == "gross_sadowski_pure_nonassociating"
-    assert payload["status_counts"] == {EXECUTABLE: 7, BLOCKED: 5}
-    assert len(payload["executable_cases"]) == 7
-    assert len(payload["blocked_cases"]) == 5
+    assert payload["status_counts"] == {EXECUTABLE: 8, BLOCKED: 4}
+    assert len(payload["executable_cases"]) == 8
+    assert len(payload["blocked_cases"]) == 4
 
     by_case = {row["id"]: row for row in payload["cases"]}
     assert by_case["gross_sadowski_pure_nonassociating"]["status"] == EXECUTABLE
@@ -43,6 +43,9 @@ def test_literature_benchmark_payload_tracks_executable_and_blocked_issue_119_ca
     assert by_case["gross_sadowski_pure_nonassociating"]["tolerances"] is not None
     assert by_case["figiel_2025_ssm_ds_born"]["status"] == EXECUTABLE
     assert by_case["figiel_2025_ssm_ds_born"]["expected"]["miac_probe"] == 0.7732309439080085
+    assert by_case["ascani_2022_distributed_ion_lle"]["status"] == EXECUTABLE
+    assert by_case["ascani_2022_distributed_ion_lle"]["expected"]["solver_backend"] == "ipopt"
+    assert by_case["ascani_2022_distributed_ion_lle"]["tolerances"]["phase_distance_min"] == 0.1
     assert by_case["khudaida_2026_salting_out_lle"]["status"] == EXECUTABLE
     assert by_case["baygi_mea_association_and_mea_water_binary"]["status"] == BLOCKED
     assert by_case["baygi_mea_association_and_mea_water_binary"]["expected"] is None
@@ -72,12 +75,12 @@ def test_literature_benchmark_payload_executes_only_executable_cases_with_inject
 
     assert payload["run_mode"] == "execute_executable_cases"
     assert payload["execution_summary"] == {
-        "attempted": 7,
-        "passed": 7,
+        "attempted": 8,
+        "passed": 8,
         "failed": 0,
-        "blocked": 5,
+        "blocked": 4,
     }
-    assert len(calls) == 7
+    assert len(calls) == 8
 
     by_case = {row["id"]: row for row in payload["cases"]}
     assert by_case["gross_sadowski_pure_nonassociating"]["status"] == EXECUTABLE

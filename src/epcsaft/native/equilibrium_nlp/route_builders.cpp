@@ -241,6 +241,50 @@ double chemical_potential_inf_norm(
     return norm;
 }
 
+double charge_projected_difference_inf_norm(
+    const std::vector<double>& first_values,
+    const std::vector<double>& second_values,
+    const std::vector<double>& charges,
+    std::size_t species_count
+) {
+    if (charges.empty()) {
+        double norm = 0.0;
+        for (std::size_t species = 0; species < species_count; ++species) {
+            norm = std::max(norm, std::abs(first_values[species] - second_values[species]));
+        }
+        return norm;
+    }
+    require_size(charges, species_count, "Electrolyte phase-equilibrium charge");
+    double charge_square_norm = 0.0;
+    double charge_weighted_difference = 0.0;
+    std::vector<double> differences(species_count, 0.0);
+    for (std::size_t species = 0; species < species_count; ++species) {
+        differences[species] = first_values[species] - second_values[species];
+        charge_square_norm += charges[species] * charges[species];
+        charge_weighted_difference += charges[species] * differences[species];
+    }
+    const double charge_shift = charge_square_norm > 0.0
+        ? -charge_weighted_difference / charge_square_norm
+        : 0.0;
+    double norm = 0.0;
+    for (std::size_t species = 0; species < species_count; ++species) {
+        norm = std::max(norm, std::abs(differences[species] + charge_shift * charges[species]));
+    }
+    return norm;
+}
+
+double electrochemical_potential_inf_norm(
+    const EosPhaseBlockResult& first,
+    const EosPhaseBlockResult& second,
+    const std::vector<double>& charges,
+    std::size_t species_count
+) {
+    if (first.gradient.size() < species_count || second.gradient.size() < species_count) {
+        throw ValueError("Electrolyte EOS postsolve phase gradient sizes did not match species count.");
+    }
+    return charge_projected_difference_inf_norm(first.gradient, second.gradient, charges, species_count);
+}
+
 std::vector<double> reduced_ln_fugacity_values(
     const add_args& args,
     const EosPhaseBlockResult& block,
@@ -271,15 +315,12 @@ double ln_fugacity_inf_norm(
     const add_args& args,
     const EosPhaseBlockResult& first,
     const EosPhaseBlockResult& second,
-    std::size_t species_count
+    std::size_t species_count,
+    const std::vector<double>& charges = {}
 ) {
     const std::vector<double> first_values = reduced_ln_fugacity_values(args, first, species_count);
     const std::vector<double> second_values = reduced_ln_fugacity_values(args, second, species_count);
-    double norm = 0.0;
-    for (std::size_t species = 0; species < species_count; ++species) {
-        norm = std::max(norm, std::abs(first_values[species] - second_values[species]));
-    }
-    return norm;
+    return charge_projected_difference_inf_norm(first_values, second_values, charges, species_count);
 }
 
 std::vector<std::vector<double>> neutral_phase_amounts_from_route_variables(
@@ -1604,7 +1645,8 @@ NeutralTwoPhaseEosPostsolve evaluate_neutral_two_phase_eos_postsolve(
     double material_tolerance,
     double pressure_tolerance,
     double chemical_potential_tolerance,
-    double phase_distance_tolerance
+    double phase_distance_tolerance,
+    const std::vector<double>& charges
 ) {
     require_positive_finite(material_tolerance, "Neutral EOS postsolve material tolerance");
     require_positive_finite(pressure_tolerance, "Neutral EOS postsolve pressure tolerance");
@@ -1621,7 +1663,7 @@ NeutralTwoPhaseEosPostsolve evaluate_neutral_two_phase_eos_postsolve(
         phase_amounts,
         volumes,
         feed_amounts,
-        {}
+        charges
     );
     if (system.phase_count != 2) {
         throw ValueError("Neutral EOS postsolve currently requires exactly two phases.");
@@ -1646,25 +1688,27 @@ NeutralTwoPhaseEosPostsolve evaluate_neutral_two_phase_eos_postsolve(
     out.pressure_consistency_norm = vector_infinity_norm(
         system.constraints,
         species_count,
-        system.constraints.size()
+        species_count + static_cast<std::size_t>(system.phase_count)
     );
-    out.chemical_potential_consistency_norm = chemical_potential_inf_norm(
-        system.phase_blocks[0],
-        system.phase_blocks[1],
-        species_count
-    );
+    out.chemical_potential_consistency_norm = charges.empty()
+        ? chemical_potential_inf_norm(system.phase_blocks[0], system.phase_blocks[1], species_count)
+        : electrochemical_potential_inf_norm(system.phase_blocks[0], system.phase_blocks[1], charges, species_count);
     out.ln_fugacity_consistency_norm = ln_fugacity_inf_norm(
         args,
         system.phase_blocks[0],
         system.phase_blocks[1],
-        species_count
+        species_count,
+        charges
     );
     out.phase_distance = phase_distance_inf_norm(out.phase_compositions[0], out.phase_compositions[1]);
 
+    const double effective_chemical_tolerance = charges.empty()
+        ? chemical_potential_tolerance
+        : std::max(chemical_potential_tolerance, 2.0 * std::sqrt(chemical_potential_tolerance));
     out.accepted = out.material_balance_norm <= material_tolerance
         && out.pressure_consistency_norm <= pressure_tolerance
-        && out.chemical_potential_consistency_norm <= chemical_potential_tolerance
-        && out.ln_fugacity_consistency_norm <= chemical_potential_tolerance
+        && out.chemical_potential_consistency_norm <= effective_chemical_tolerance
+        && out.ln_fugacity_consistency_norm <= effective_chemical_tolerance
         && out.phase_distance >= phase_distance_tolerance;
     if (out.accepted) {
         out.rejection_reason = "accepted";
@@ -1672,9 +1716,9 @@ NeutralTwoPhaseEosPostsolve evaluate_neutral_two_phase_eos_postsolve(
         out.rejection_reason = "material_balance";
     } else if (out.pressure_consistency_norm > pressure_tolerance) {
         out.rejection_reason = "pressure_consistency";
-    } else if (out.chemical_potential_consistency_norm > chemical_potential_tolerance) {
+    } else if (out.chemical_potential_consistency_norm > effective_chemical_tolerance) {
         out.rejection_reason = "chemical_potential_consistency";
-    } else if (out.ln_fugacity_consistency_norm > chemical_potential_tolerance) {
+    } else if (out.ln_fugacity_consistency_norm > effective_chemical_tolerance) {
         out.rejection_reason = "ln_fugacity_consistency";
     } else {
         out.rejection_reason = "phase_distance";
@@ -1731,6 +1775,10 @@ NeutralTwoPhaseEosRouteResult solve_neutral_two_phase_eos_route(
     out.solver_accepted = solve.accepted;
     out.solver_status = solve.solver_status;
     out.application_status = solve.application_status;
+    const auto last_exception = solve.diagnostics_string.find("last_callback_exception");
+    if (last_exception != solve.diagnostics_string.end()) {
+        out.last_callback_exception = last_exception->second;
+    }
     out.objective = solve.objective;
     out.variables = solve.variables;
     out.constraints = solve.constraints;
@@ -1752,7 +1800,8 @@ NeutralTwoPhaseEosRouteResult solve_neutral_two_phase_eos_route(
         material_tolerance,
         pressure_tolerance,
         chemical_potential_tolerance,
-        phase_distance_tolerance
+        phase_distance_tolerance,
+        charges
     );
     if (!charges.empty()) {
         out.postsolve.charge_balance_norm = phase_charge_inf_norm(out.phase_amounts, charges);

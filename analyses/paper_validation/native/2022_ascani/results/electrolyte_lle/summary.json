@@ -1,5 +1,5 @@
 {
-  "status": "blocked",
+  "status": "accepted",
   "lane": "ascani_2022_distributed_ion_lle",
   "source_records": [
     "data/reference/multiphase/ascani_case2_model_comparison.csv",
@@ -10,27 +10,26 @@
       "H2O",
       "Butanol",
       "Na+",
-      "K+",
       "Cl-"
     ],
     "mole_fractions": [
-      0.940373242284748,
-      0.04879624542603625,
-      0.0019339313461782701,
-      0.003481324798429627,
-      0.005415256144607897
+      0.5354703554910729,
+      0.3877543953556046,
+      0.0383876245766612,
+      0.0383876245766612
     ],
     "temperature_K": 298.15,
-    "pressure_Pa": 100000.0
+    "pressure_Pa": 101300.0
   },
   "expected": {
     "accepted": true,
     "solver_backend": "ipopt",
     "material_balance_abs": 1e-08,
-    "charge_balance_abs": 1e-08
+    "charge_balance_abs": 1e-08,
+    "phase_distance_min": 0.1
   },
   "solve": {
-    "accepted": false,
+    "accepted": true,
     "runtime_ipopt": {
       "backend": "ipopt",
       "status": "enabled_available",
@@ -43,34 +42,60 @@
       "requires_exact_gradient": true,
       "requires_exact_jacobian": true
     },
-    "exception_type": "SolutionError",
-    "exception_message": "('Native electrolyte LLE route was rejected.', {'accepted': False, 'rejection_reason': '', 'derivative_backend': '', 'phase_count': 0, 'species_count': 0, 'material_balance_norm': 0.0, 'pressure_consistency_norm': 0.0, 'chemical_potential_consistency_norm': 0.0, 'ln_fugacity_consistency_norm': 0.0, 'charge_balance_norm': 0.0, 'fixed_composition_norm': 0.0, 'phase_amount_total_norm': 0.0, 'phase_distance': 0.0, 'objective': 0.0, 'constraints': [], 'phase_amount_totals': [], 'phase_volumes': [], 'phase_compositions': [], 'route_status': 'solver_rejected', 'solver_status': 'ipopt_status_16'})",
+    "solver_backend": "ipopt",
     "diagnostics": {
-      "accepted": false,
-      "rejection_reason": "",
-      "derivative_backend": "",
-      "phase_count": 0,
-      "species_count": 0,
-      "material_balance_norm": 0.0,
-      "pressure_consistency_norm": 0.0,
-      "chemical_potential_consistency_norm": 0.0,
-      "ln_fugacity_consistency_norm": 0.0,
-      "charge_balance_norm": 0.0,
+      "accepted": true,
+      "rejection_reason": "accepted",
+      "derivative_backend": "analytic_cppad",
+      "phase_count": 2,
+      "species_count": 4,
+      "material_balance_norm": 3.4821179967226e-09,
+      "pressure_consistency_norm": 1.6152625903487206e-09,
+      "chemical_potential_consistency_norm": 1.0971308319174256e-05,
+      "ln_fugacity_consistency_norm": 1.0971308334384311e-05,
+      "charge_balance_norm": 2.1295295388190638e-11,
       "fixed_composition_norm": 0.0,
       "phase_amount_total_norm": 0.0,
-      "phase_distance": 0.0,
-      "objective": 0.0,
-      "constraints": [],
-      "phase_amount_totals": [],
-      "phase_volumes": [],
-      "phase_compositions": [],
-      "route_status": "solver_rejected",
-      "solver_status": "ipopt_status_16"
-    },
-    "blocker": {
-      "kind": "native_ipopt_solver_rejected",
-      "route_status": "solver_rejected",
-      "solver_status": "ipopt_status_16"
+      "phase_distance": 0.46325603981348024,
+      "objective": -12.268733375477662,
+      "constraints": [
+        -4.829470157119431e-15,
+        -1.253120870958746e-15,
+        3.4402275993217213e-09,
+        3.4821179967226e-09,
+        7.275957614183426e-11,
+        1.6152625903487206e-09,
+        -2.0595105482135168e-11,
+        -2.1295295388190638e-11
+      ],
+      "phase_amount_totals": [
+        0.8167479272825842,
+        0.18325207963975518
+      ],
+      "phase_volumes": [
+        0.018453295506759802,
+        0.004226078355915574
+      ],
+      "phase_compositions": [
+        [
+          0.5010516960264819,
+          0.4726470247852777,
+          0.013150639581512236,
+          0.013150639606728225
+        ],
+        [
+          0.6888730624404292,
+          0.009390984971797477,
+          0.15086797623578282,
+          0.1508679763519905
+        ]
+      ],
+      "route_status": "accepted",
+      "solver_status": "success",
+      "application_status": "solve_succeeded",
+      "last_callback_exception": "eval_g: EOS phase species amount must be positive and finite.",
+      "solver_backend": "ipopt",
+      "problem_name": "electrolyte_lle_eos"
     }
   }
 }

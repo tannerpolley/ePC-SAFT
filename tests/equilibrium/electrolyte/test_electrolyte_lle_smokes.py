@@ -82,16 +82,19 @@ def test_electrolyte_lle_builds_native_route_before_ipopt_gate(monkeypatch) -> N
 def test_electrolyte_lle_molality_feed_requires_native_ipopt_route() -> None:
     mix = _ascani_water_butanol_nacl_mixture()
 
-    with pytest.raises(epcsaft.InputError) as excinfo:
-        mix.equilibrium(
-            kind="electrolyte_lle",
-            T=298.15,
-            P=1.013e5,
-            solvent_feed={"H2O": 0.58, "Butanol": 0.42},
-            salt_molality={"NaCl": 1.0},
-        )
+    result = mix.equilibrium(
+        kind="electrolyte_lle",
+        T=298.15,
+        P=1.013e5,
+        solvent_feed={"H2O": 0.58, "Butanol": 0.42},
+        salt_molality={"NaCl": 1.0},
+    )
 
-    _assert_electrolyte_lle_native_ipopt_gate(excinfo)
+    assert result.backend == "native_equilibrium_nlp"
+    assert result.problem_kind == "electrolyte_lle"
+    assert result.diagnostics["route_status"] == "accepted"
+    assert result.diagnostics["solver_backend"] == "ipopt"
+    assert result.diagnostics["charge_balance_norm"] <= 1.0e-8
 
 
 def test_electrolyte_lle_rejects_non_neutral_direct_feed() -> None:

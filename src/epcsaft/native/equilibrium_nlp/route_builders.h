@@ -69,6 +69,7 @@ struct NeutralTwoPhaseEosRouteResult {
     std::string status;
     std::string solver_status;
     std::string application_status;
+    std::string last_callback_exception;
     double objective = 0.0;
     std::vector<double> variables;
     std::vector<double> constraints;
@@ -325,7 +326,8 @@ NeutralTwoPhaseEosPostsolve evaluate_neutral_two_phase_eos_postsolve(
     double material_tolerance,
     double pressure_tolerance,
     double chemical_potential_tolerance,
-    double phase_distance_tolerance
+    double phase_distance_tolerance,
+    const std::vector<double>& charges = {}
 );
 
 NeutralTwoPhaseEosRouteResult solve_neutral_two_phase_eos_route(

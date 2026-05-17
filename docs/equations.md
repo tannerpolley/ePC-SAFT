@@ -1494,7 +1494,7 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 - Description: Provides the total temperature differential of the residual Helmholtz energy.
 - Change note: Moved here from the removed standalone temperature-differential section so one downstream total-\(d\tilde a^\mathrm{res}/dT\) summary relation remains available.
 - LaTeX: `docs/latex/equations.tex:1402`
-- C++: `src/epcsaft/native/epcsaft_ares.cpp:2194` (ScalarContributionTerms temperature_derivative_residual_helmholtz_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/epcsaft_ares.cpp:2348` (ScalarContributionTerms temperature_derivative_residual_helmholtz_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
 
 ```tex
 \left(\frac{\partial\tilde{a}^\mathrm{res}}{\partial T}\right)_{\rho,x_{i}} =\left(\frac{\partial\tilde{a}^\mathrm{hc}}{\partial T}\right)_{\rho,x_{i}} +\left(\frac{\partial\tilde{a}^\mathrm{disp}}{\partial T}\right)_{\rho,x_{i}}

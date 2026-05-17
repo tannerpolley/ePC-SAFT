@@ -688,6 +688,7 @@ py::dict neutral_two_phase_eos_route_result_to_dict(
     out["status"] = result.status;
     out["solver_status"] = result.solver_status;
     out["application_status"] = result.application_status;
+    out["last_callback_exception"] = result.last_callback_exception;
     out["objective"] = result.objective;
     out["variables"] = result.variables;
     out["constraints"] = result.constraints;

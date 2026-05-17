@@ -35,7 +35,7 @@ def test_build_script_default_profile_requires_ceres_and_cppad() -> None:
     settings = build_epcsaft._resolve_settings(args)
 
     assert args.profile == "fast"
-    assert settings.enable_ipopt is False
+    assert settings.enable_ipopt is True
     assert settings.parallel == "4"
 
 
@@ -57,13 +57,13 @@ def test_build_script_profiles_resolve_optional_native_dependency_state() -> Non
         build_epcsaft._parser().parse_args(["--ipopt-dir", "C:/ipopt/lib/cmake/Ipopt"])
     )
 
-    assert full.enable_ipopt is False
+    assert full.enable_ipopt is True
     assert full.parallel == "4"
-    assert fast.enable_ipopt is False
+    assert fast.enable_ipopt is True
     assert fast.parallel == "4"
     assert ipopt.enable_ipopt is True
     assert ipopt.parallel == "4"
-    assert system_ceres.enable_ipopt is False
+    assert system_ceres.enable_ipopt is True
     assert system_ipopt.enable_ipopt is True
 
 
@@ -74,7 +74,7 @@ def test_package_and_dev_defaults_require_ceres_and_cppad() -> None:
 
     assert 'option(EPCSAFT_ENABLE_CERES "Enable Ceres Solver support required for native regression solves" ON)' in cmake_text
     assert 'option(EPCSAFT_ENABLE_CPPAD "Enable package-wide CppAD support" ON)' in cmake_text
-    assert 'option(EPCSAFT_ENABLE_IPOPT "Enable native Ipopt support for production equilibrium NLP solves" OFF)' in cmake_text
+    assert 'option(EPCSAFT_ENABLE_IPOPT "Enable native Ipopt support for production equilibrium NLP solves" ON)' in cmake_text
     assert "native regression builds require Ceres" in cmake_text
     assert "derivative-capable package builds require CppAD" in cmake_text
     assert "GIT_SHALLOW TRUE" in cmake_text
@@ -88,7 +88,7 @@ def test_package_and_dev_defaults_require_ceres_and_cppad() -> None:
     native_default = next(p for p in presets["configurePresets"] if p["name"] == "native-default")
     assert native_default["cacheVariables"]["EPCSAFT_ENABLE_CERES"] == "ON"
     assert native_default["cacheVariables"]["EPCSAFT_ENABLE_CPPAD"] == "ON"
-    assert native_default["cacheVariables"]["EPCSAFT_ENABLE_IPOPT"] == "OFF"
+    assert native_default["cacheVariables"]["EPCSAFT_ENABLE_IPOPT"] == "ON"
 
     native_required = next(p for p in presets["configurePresets"] if p["name"] == "native-required")
     assert native_required["cacheVariables"]["EPCSAFT_ENABLE_CERES"] == "ON"

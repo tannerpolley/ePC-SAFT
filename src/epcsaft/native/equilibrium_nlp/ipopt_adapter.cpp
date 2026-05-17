@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <exception>
 #include <sstream>
 
 #ifdef EPCSAFT_HAS_IPOPT
@@ -106,12 +107,20 @@ std::string solver_status_name(Ipopt::SolverReturn status) {
             return "success";
         case Ipopt::MAXITER_EXCEEDED:
             return "max_iterations_exceeded";
+        case Ipopt::CPUTIME_EXCEEDED:
+            return "cpu_time_exceeded";
+        case Ipopt::WALLTIME_EXCEEDED:
+            return "wall_time_exceeded";
+        case Ipopt::STOP_AT_TINY_STEP:
+            return "tiny_step_detected";
         case Ipopt::STOP_AT_ACCEPTABLE_POINT:
             return "acceptable_point";
         case Ipopt::LOCAL_INFEASIBILITY:
             return "local_infeasibility";
         case Ipopt::USER_REQUESTED_STOP:
             return "user_requested_stop";
+        case Ipopt::FEASIBLE_POINT_FOUND:
+            return "feasible_point_found";
         case Ipopt::DIVERGING_ITERATES:
             return "diverging_iterates";
         case Ipopt::RESTORATION_FAILURE:
@@ -120,6 +129,16 @@ std::string solver_status_name(Ipopt::SolverReturn status) {
             return "error_in_step_computation";
         case Ipopt::INVALID_NUMBER_DETECTED:
             return "invalid_number_detected";
+        case Ipopt::TOO_FEW_DEGREES_OF_FREEDOM:
+            return "too_few_degrees_of_freedom";
+        case Ipopt::INVALID_OPTION:
+            return "invalid_option";
+        case Ipopt::OUT_OF_MEMORY:
+            return "out_of_memory";
+        case Ipopt::INTERNAL_ERROR:
+            return "internal_error";
+        case Ipopt::UNASSIGNED:
+            return "unassigned";
         default:
             return "ipopt_status_" + std::to_string(static_cast<int>(status));
     }
@@ -135,6 +154,20 @@ std::string application_status_name(Ipopt::ApplicationReturnStatus status) {
             return "maximum_iterations_exceeded";
         case Ipopt::Infeasible_Problem_Detected:
             return "infeasible_problem_detected";
+        case Ipopt::Search_Direction_Becomes_Too_Small:
+            return "search_direction_too_small";
+        case Ipopt::Diverging_Iterates:
+            return "diverging_iterates";
+        case Ipopt::User_Requested_Stop:
+            return "user_requested_stop";
+        case Ipopt::Feasible_Point_Found:
+            return "feasible_point_found";
+        case Ipopt::Maximum_CpuTime_Exceeded:
+            return "maximum_cpu_time_exceeded";
+        case Ipopt::Maximum_WallTime_Exceeded:
+            return "maximum_wall_time_exceeded";
+        case Ipopt::Not_Enough_Degrees_Of_Freedom:
+            return "not_enough_degrees_of_freedom";
         case Ipopt::Invalid_Problem_Definition:
             return "invalid_problem_definition";
         case Ipopt::Invalid_Option:
@@ -143,6 +176,12 @@ std::string application_status_name(Ipopt::ApplicationReturnStatus status) {
             return "invalid_number_detected";
         case Ipopt::Unrecoverable_Exception:
             return "unrecoverable_exception";
+        case Ipopt::NonIpopt_Exception_Thrown:
+            return "non_ipopt_exception_thrown";
+        case Ipopt::Insufficient_Memory:
+            return "insufficient_memory";
+        case Ipopt::Internal_Error:
+            return "internal_error";
         default:
             return "ipopt_application_status_" + std::to_string(static_cast<int>(status));
     }
@@ -258,8 +297,16 @@ public:
         if (n != problem_.variable_count()) {
             return false;
         }
-        obj_value = problem_.objective(vector_from_raw(x, n));
-        return std::isfinite(obj_value);
+        try {
+            obj_value = problem_.objective(vector_from_raw(x, n));
+            return std::isfinite(obj_value);
+        } catch (const std::exception& exc) {
+            record_callback_exception("eval_f", exc.what());
+            return false;
+        } catch (...) {
+            record_callback_exception("eval_f", "unknown exception");
+            return false;
+        }
     }
 
     bool eval_grad_f(
@@ -272,12 +319,20 @@ public:
         if (n != problem_.variable_count()) {
             return false;
         }
-        const std::vector<double> gradient = problem_.objective_gradient(vector_from_raw(x, n));
-        if (gradient.size() != static_cast<std::size_t>(n) || !all_finite(gradient)) {
+        try {
+            const std::vector<double> gradient = problem_.objective_gradient(vector_from_raw(x, n));
+            if (gradient.size() != static_cast<std::size_t>(n) || !all_finite(gradient)) {
+                return false;
+            }
+            std::copy(gradient.begin(), gradient.end(), grad_f);
+            return true;
+        } catch (const std::exception& exc) {
+            record_callback_exception("eval_grad_f", exc.what());
+            return false;
+        } catch (...) {
+            record_callback_exception("eval_grad_f", "unknown exception");
             return false;
         }
-        std::copy(gradient.begin(), gradient.end(), grad_f);
-        return true;
     }
 
     bool eval_g(
@@ -291,12 +346,20 @@ public:
         if (n != problem_.variable_count() || m != problem_.constraint_count()) {
             return false;
         }
-        const std::vector<double> values = problem_.constraints(vector_from_raw(x, n));
-        if (values.size() != static_cast<std::size_t>(m) || !all_finite(values)) {
+        try {
+            const std::vector<double> values = problem_.constraints(vector_from_raw(x, n));
+            if (values.size() != static_cast<std::size_t>(m) || !all_finite(values)) {
+                return false;
+            }
+            std::copy(values.begin(), values.end(), g);
+            return true;
+        } catch (const std::exception& exc) {
+            record_callback_exception("eval_g", exc.what());
+            return false;
+        } catch (...) {
+            record_callback_exception("eval_g", "unknown exception");
             return false;
         }
-        std::copy(values.begin(), values.end(), g);
-        return true;
     }
 
     bool eval_jac_g(
@@ -321,12 +384,20 @@ public:
             }
             return true;
         }
-        const std::vector<double> jacobian = problem_.jacobian_values(vector_from_raw(x, n));
-        if (jacobian.size() != static_cast<std::size_t>(nele_jac) || !all_finite(jacobian)) {
+        try {
+            const std::vector<double> jacobian = problem_.jacobian_values(vector_from_raw(x, n));
+            if (jacobian.size() != static_cast<std::size_t>(nele_jac) || !all_finite(jacobian)) {
+                return false;
+            }
+            std::copy(jacobian.begin(), jacobian.end(), values);
+            return true;
+        } catch (const std::exception& exc) {
+            record_callback_exception("eval_jac_g", exc.what());
+            return false;
+        } catch (...) {
+            record_callback_exception("eval_jac_g", "unknown exception");
             return false;
         }
-        std::copy(jacobian.begin(), jacobian.end(), values);
-        return true;
     }
 
     bool eval_h(
@@ -394,6 +465,10 @@ public:
     }
 
 private:
+    void record_callback_exception(const std::string& callback, const std::string& message) {
+        result_.diagnostics_string["last_callback_exception"] = callback + ": " + message;
+    }
+
     const NlpProblem& problem_;
     IpoptSolveOptions options_;
     NlpBounds bounds_;

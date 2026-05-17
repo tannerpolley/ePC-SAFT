@@ -693,6 +693,71 @@ def _accepted_native_neutral_two_phase_result(
             diagnostics["solver_status"] = solver_status
         raise SolutionError(f"Native {route_family} {route_label} route was rejected.", diagnostics)
 
+    if route_family == "electrolyte":
+        postsolve = route.get("postsolve", {})
+        if not isinstance(postsolve, Mapping) or not bool(postsolve.get("accepted", False)):
+            diagnostics = dict(postsolve) if isinstance(postsolve, Mapping) else {}
+            diagnostics["route_status"] = str(route.get("status", ""))
+            diagnostics["solver_status"] = str(route.get("solver_status", ""))
+            raise SolutionError(f"Native electrolyte {route_label} postsolve was rejected.", diagnostics)
+        phase_compositions = np.asarray(postsolve.get("phase_compositions", ()), dtype=float)
+        phase_amount_totals = np.asarray(postsolve.get("phase_amount_totals", ()), dtype=float).reshape(-1)
+        phase_volumes = np.asarray(postsolve.get("phase_volumes", ()), dtype=float).reshape(-1)
+        if (
+            phase_compositions.ndim != 2
+            or phase_compositions.shape[0] != 2
+            or phase_compositions.shape[1] != int(mixture.ncomp)
+            or phase_amount_totals.size != 2
+            or phase_volumes.size != 2
+            or not np.all(np.isfinite(phase_compositions))
+            or not np.all(np.isfinite(phase_amount_totals))
+            or not np.all(np.isfinite(phase_volumes))
+            or np.any(phase_amount_totals <= 0.0)
+            or np.any(phase_volumes <= 0.0)
+        ):
+            raise SolutionError("Native electrolyte LLE route accepted without a valid retained phase split.")
+        total_amount = float(np.sum(phase_amount_totals))
+        phase_order = [0, 1]
+        if phase_labels == ("aq", "org"):
+            charges = np.abs(_mixture_charges(mixture))
+            if charges.size == phase_compositions.shape[1] and np.any(charges > 0.0):
+                ion_fractions = phase_compositions @ (charges > 0.0).astype(float)
+                aqueous_index = int(np.argmax(ion_fractions))
+                phase_order = [aqueous_index, 1 - aqueous_index]
+        phases = []
+        for output_index, label in enumerate(phase_labels):
+            index = phase_order[output_index]
+            density = float(phase_amount_totals[index] / phase_volumes[index])
+            phases.append(
+                EquilibriumPhase(
+                    label,
+                    composition=phase_compositions[index],
+                    density=density,
+                    temperature=T,
+                    pressure=P,
+                    phase_fraction=float(phase_amount_totals[index] / total_amount),
+                    diagnostics={
+                        "amount_total": float(phase_amount_totals[index]),
+                        "volume": float(phase_volumes[index]),
+                    },
+                )
+            )
+        diagnostics = dict(postsolve)
+        diagnostics["route_status"] = str(route.get("status", ""))
+        diagnostics["solver_status"] = str(route.get("solver_status", ""))
+        diagnostics["application_status"] = str(route.get("application_status", ""))
+        diagnostics["last_callback_exception"] = str(route.get("last_callback_exception", ""))
+        diagnostics["solver_backend"] = str(route.get("backend", "ipopt"))
+        diagnostics["problem_name"] = str(route.get("problem_name", "electrolyte_lle_eos"))
+        return EquilibriumResult(
+            backend="native_equilibrium_nlp",
+            problem_kind=problem_kind,
+            phases=tuple(phases),
+            stable=False,
+            split_detected=float(postsolve.get("phase_distance", 0.0)) >= phase_distance_tolerance,
+            diagnostics=diagnostics,
+        )
+
     result_payload = _core._native_neutral_two_phase_eos_result(
         mixture._native,
         T,

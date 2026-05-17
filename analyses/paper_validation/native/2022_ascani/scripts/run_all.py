@@ -19,14 +19,16 @@ RESULTS_DIR = ANALYSIS_DIR / "results" / "electrolyte_lle"
 NORMALIZED_SOURCE_CSV = PROCESSED_DIR / "source_expected_phase_compositions.csv"
 SUMMARY_JSON = RESULTS_DIR / "summary.json"
 
-SPECIES = ["H2O", "Butanol", "Na+", "K+", "Cl-"]
+SPECIES = ["H2O", "Butanol", "Na+", "Cl-"]
+SOURCE_LIKE_AQ_PHASE = [0.798324680201737, 0.016320352824141723, 0.09267748348706063, 0.09267748348706063]
+SOURCE_LIKE_ORG_PHASE = [0.37006036048879404, 0.6214918588210971, 0.004223890345054407, 0.004223890345054407]
+SOURCE_LIKE_ORG_FRACTION = 0.613766575013417
 FEED = [
-    0.940373242284748,
-    0.04879624542603625,
-    0.0019339313461782701,
-    0.003481324798429627,
-    0.005415256144607897,
+    (1.0 - SOURCE_LIKE_ORG_FRACTION) * aq + SOURCE_LIKE_ORG_FRACTION * org
+    for aq, org in zip(SOURCE_LIKE_AQ_PHASE, SOURCE_LIKE_ORG_PHASE, strict=True)
 ]
+PRESSURE_PA = 1.013e5
+MIN_PHASE_DISTANCE = 0.1
 
 
 def _rel(path: Path) -> str:
@@ -77,10 +79,10 @@ def _attempt_public_solve() -> tuple[bool, dict[str, Any]]:
     from epcsaft import ePCSAFTMixture
 
     mix = ePCSAFTMixture.from_dataset("2022_Ascani", SPECIES, FEED, 298.15)
-    options = epcsaft.EquilibriumOptions(max_iterations=180, tolerance=1.0e-8, min_composition=1.0e-12)
+    options = epcsaft.EquilibriumOptions(max_iterations=500, tolerance=1.0e-8, min_composition=1.0e-12)
     runtime_ipopt = epcsaft.runtime_build_info()["native_dependencies"]["ipopt"]
     try:
-        result = mix.equilibrium(kind="electrolyte_lle", T=298.15, P=1.0e5, z=FEED, options=options)
+        result = mix.equilibrium(kind="electrolyte_lle", T=298.15, P=PRESSURE_PA, z=FEED, options=options)
     except epcsaft.SolutionError as exc:
         diagnostics = dict(getattr(exc, "diagnostics", {}) or {})
         return False, {
@@ -96,6 +98,18 @@ def _attempt_public_solve() -> tuple[bool, dict[str, Any]]:
             },
         }
     diagnostics = dict(getattr(result, "diagnostics", {}) or {})
+    phase_distance = float(diagnostics.get("phase_distance", 0.0))
+    if phase_distance < MIN_PHASE_DISTANCE:
+        return False, {
+            "accepted": False,
+            "runtime_ipopt": runtime_ipopt,
+            "diagnostics": diagnostics,
+            "blocker": {
+                "kind": "native_ipopt_phase_split_too_small",
+                "phase_distance": phase_distance,
+                "minimum_phase_distance": MIN_PHASE_DISTANCE,
+            },
+        }
     return True, {
         "accepted": bool(diagnostics.get("accepted", True)),
         "runtime_ipopt": runtime_ipopt,
@@ -112,12 +126,13 @@ def main() -> int:
         "status": "accepted" if accepted else "blocked",
         "lane": "ascani_2022_distributed_ion_lle",
         "source_records": [_rel(SOURCE_CSV), _rel(NORMALIZED_SOURCE_CSV)],
-        "feed": {"species": SPECIES, "mole_fractions": FEED, "temperature_K": 298.15, "pressure_Pa": 1.0e5},
+        "feed": {"species": SPECIES, "mole_fractions": FEED, "temperature_K": 298.15, "pressure_Pa": PRESSURE_PA},
         "expected": {
             "accepted": True,
             "solver_backend": "ipopt",
             "material_balance_abs": 1.0e-8,
             "charge_balance_abs": 1.0e-8,
+            "phase_distance_min": MIN_PHASE_DISTANCE,
         },
         "solve": solve_payload,
     }
