@@ -539,6 +539,10 @@ two-liquid initial point from the feed, submits exactly one Ipopt route call, an
 native two-phase payloads into `liq1`/`liq2` results. User-provided `initial_phases` remain validation input only, not a
 solver seed or retry mechanism. Local no-Ipopt builds still fail loudly with the native Ipopt ownership message.
 
+Task 8/9 continuation note: `equilibrium_curve(...)` no longer reuses an accepted split as the next route seed and now
+rejects user-supplied `initial_phases`. Ordered curve calls use each route builder's canonical initial point instead of
+carrying a Python-level continuation seed across points.
+
 Task 8 continuation note: private native fixed-temperature bubble/dew pressure NLP contracts now exist as route-builder
 scaffolds. Each contract uses one pressure variable, two EOS phase blocks, fixed composition rows for the specified
 phase, unit phase-amount scaling rows, pressure-consistency rows with exact pressure-variable Jacobian entries, and one

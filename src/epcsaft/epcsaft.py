@@ -1046,11 +1046,11 @@ class ePCSAFTMixture:
         )
 
     def equilibrium_curve(self, points, *, kind="electrolyte_lle", T=None, P=None, options=None, initial_phases=None):
-        """Solve an ordered equilibrium curve, reusing each accepted split as the next seed."""
-        from .equilibrium import initial_phases_from_result
+        """Solve an ordered equilibrium curve with route-owned canonical initial points."""
 
+        if initial_phases is not None:
+            raise InputError("equilibrium_curve uses route-owned canonical initial points; initial_phases is not accepted.")
         results = []
-        seed = initial_phases
         for point in points:
             payload = dict(point)
             if "z" not in payload and "solvent_feed" not in payload:
@@ -1060,12 +1060,9 @@ class ePCSAFTMixture:
                 T=payload.pop("T", T),
                 P=payload.pop("P", P),
                 options=payload.pop("options", options),
-                initial_phases=seed,
                 **payload,
             )
             results.append(result)
-            if result.split_detected:
-                seed = initial_phases_from_result(result)
         return results
 
     def equilibrium_sweep(

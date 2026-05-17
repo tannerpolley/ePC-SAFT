@@ -96,6 +96,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
   fixture now lives with the `ElectrolyteLLEProblem` problem-object test.
 - The no-reaction mixed reactive-regression objective status test was removed. Target-family accounting is covered in
   diagnostics tests, and retained regression setup tests now exercise a real nonideal native derivative-block gate.
+- `equilibrium_curve(...)` no longer carries accepted phase splits forward as Python-level seeds; curve points use
+  route-owned canonical initial points, and user-supplied phase seeds are rejected before route execution.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
 
