@@ -272,7 +272,6 @@ def test_fit_pure_ion_accepts_d_born_and_born_user_options(monkeypatch):
     assert len(calls) == 1
     assert calls[0]["optimization_names"] == ("d_born",)
     assert result.provenance_report["parameter_sources"]["Na+.d_born"] == "ion_activity"
-    assert result.provenance_report["warnings"] == []
 
 def test_fit_pure_ion_passes_explicit_mean_ionic_pair_label_to_native_backend(monkeypatch):
     calls = _patch_native_generic_ceres_runner(monkeypatch)

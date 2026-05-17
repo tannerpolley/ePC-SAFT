@@ -384,7 +384,6 @@ def validate_regression_provenance(
         "fixed_parameters": [],
         "parameter_sources": parameter_sources,
         "data_sources_by_parameter": data_sources,
-        "warnings": [],
         "backend_policy": "native_regression_only",
     }
 

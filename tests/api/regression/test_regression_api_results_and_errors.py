@@ -32,7 +32,6 @@ def test_provenance_validation_rejects_indirect_dborn_without_electrostatic_data
             )
         ],
     )
-    assert report["warnings"] == []
     assert report["parameter_sources"]["MEAH+.d_born"] == "explicit_override"
 
 def test_provenance_validation_gates_ion_involving_binary_interactions():
@@ -73,7 +72,6 @@ def test_provenance_validation_gates_ion_involving_binary_interactions():
         species=["MEAH+", "MEACOO-"],
         charges=[1.0, -1.0],
     )
-    assert report["warnings"] == []
     assert report["data_sources_by_parameter"]["MEAH+:MEACOO-.k_ij"] == ["direct_electrolyte_activity"]
 
 def test_write_fit_result_updates_only_target_pure_row(tmp_path):
