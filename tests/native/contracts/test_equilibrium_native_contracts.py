@@ -7,27 +7,8 @@ import pytest
 
 import epcsaft
 from epcsaft import _core, ePCSAFTMixture
-from tests.equilibrium.core.test_stability import _assert_stability_route_pending
-from tests.equilibrium.core.test_vle import _assert_tp_flash_route_pending
-from tests.equilibrium.electrolyte.test_electrolyte_lle_smokes import _assert_electrolyte_lle_route_pending
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-
-
-def _hydrocarbon_mixture() -> ePCSAFTMixture:
-    params = {
-        "m": np.asarray([1.0, 1.6069, 2.0020]),
-        "s": np.asarray([3.7039, 3.5206, 3.6184]),
-        "e": np.asarray([150.03, 191.42, 208.11]),
-        "k_ij": np.asarray(
-            [
-                [0.0, 3.0e-4, 1.15e-2],
-                [3.0e-4, 0.0, 5.10e-3],
-                [1.15e-2, 5.10e-3, 0.0],
-            ]
-        ),
-    }
-    return ePCSAFTMixture.from_params(params, species=["Methane", "Ethane", "Propane"])
 
 
 def _electrolyte_mixture() -> ePCSAFTMixture:
@@ -37,52 +18,6 @@ def _electrolyte_mixture() -> ePCSAFTMixture:
 
 def test_native_equilibrium_entrypoint_is_exposed() -> None:
     assert hasattr(_core, "_evaluate_electrolyte_lle_residual_native")
-
-
-def test_public_tp_flash_requires_native_ipopt_route() -> None:
-    mix = _hydrocarbon_mixture()
-
-    with pytest.raises(epcsaft.InputError) as excinfo:
-        mix.equilibrium(kind="tp_flash", T=220.0, P=1.0e5, z=[0.1, 0.3, 0.6], backend="native")
-
-    _assert_tp_flash_route_pending(excinfo)
-
-
-def test_public_electrolyte_stability_requires_native_ipopt_route() -> None:
-    mix = _electrolyte_mixture()
-
-    with pytest.raises(epcsaft.InputError) as excinfo:
-        mix.equilibrium(
-            kind="electrolyte_stability",
-            T=298.15,
-            P=1.013e5,
-            z=[0.55, 0.40, 0.025, 0.025],
-            backend="native",
-            options=epcsaft.EquilibriumOptions(max_iterations=60, tolerance=1.0e-8),
-        )
-
-    _assert_stability_route_pending(excinfo, route="electrolyte_stability")
-
-
-def test_public_electrolyte_lle_requires_native_ipopt_route() -> None:
-    mix = _electrolyte_mixture()
-    aq = np.asarray([0.798324680201737, 0.016320352824141723, 0.09267748348706063, 0.09267748348706063], dtype=float)
-    org = np.asarray([0.37006036048879404, 0.6214918588210971, 0.004223890345054407, 0.004223890345054407], dtype=float)
-    beta_org = 0.613766575013417
-    feed = (1.0 - beta_org) * aq + beta_org * org
-
-    with pytest.raises(epcsaft.InputError) as excinfo:
-        mix.equilibrium(
-            kind="electrolyte_lle",
-            T=298.15,
-            P=1.013e5,
-            z=feed,
-            backend="native",
-            initial_phases={"aq": aq, "org": org, "phase_fraction": beta_org},
-            options=epcsaft.EquilibriumOptions(max_iterations=80, tolerance=1.0e-8),
-        )
-
-    _assert_electrolyte_lle_route_pending(excinfo)
 
 
 def test_native_electrolyte_lle_residual_evaluator_reports_cppad_implicit_derivatives() -> None:

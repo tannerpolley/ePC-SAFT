@@ -312,6 +312,10 @@ Task 2 continuation note: duplicate distributed-ion electrolyte LLE route-pendin
 route-gate coverage remains in `test_electrolyte_lle_solver_contracts.py`, while the result-file test keeps basis and
 stability assertions without a second identical LLE pending assertion.
 
+Task 2 continuation note: duplicate public route-pending checks were pruned from the native equilibrium contract file.
+The route-specific public tests still own neutral TP flash, stability, and electrolyte LLE route-gate behavior; native
+contract coverage stays focused on native residual and dependency-boundary evidence.
+
 ### Task 3: Build Dependency Boundary
 
 **Files:**

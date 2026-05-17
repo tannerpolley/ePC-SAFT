@@ -88,6 +88,9 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - The retired tracked `docs/goals/**` GoalBuddy boards were removed from active docs. The only referenced benchmark
   evidence was condensed into `docs/roadmaps/native_associating_binary_ceres_benchmark.md`, and the text gate now blocks
   the stale derivative-proof phrases that appeared only in historical board state.
+- Duplicate public route-pending checks were pruned from the native equilibrium contract file. Route-specific public
+  tests still own TP flash, stability, and electrolyte LLE route-gate behavior, while the native contract file keeps the
+  native residual and dependency-boundary checks.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
 
