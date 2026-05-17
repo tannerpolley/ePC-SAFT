@@ -11,6 +11,7 @@ import numpy as np
 
 from ._types import InputError, SolutionError
 from .equilibrium_core.electrolyte_basis import build_electrolyte_basis
+from .equilibrium_core.native_requests import neutral_two_phase_eos_tolerances
 from .equilibrium_core.native_results import (
     native_route_solved_pressure,
     native_route_summed_phase_amounts,
@@ -849,14 +850,6 @@ def _explicit_to_formula_composition(composition: np.ndarray, basis: dict[str, A
     return out / total
 
 
-def _neutral_two_phase_eos_tolerances(P: float, options: EquilibriumOptions) -> tuple[float, float, float, float]:
-    material_tolerance = options.tolerance
-    pressure_tolerance = max(abs(P) * options.tolerance, options.tolerance)
-    chemical_potential_tolerance = options.tolerance
-    phase_distance_tolerance = max(10.0 * options.min_composition, 1.0e-8)
-    return material_tolerance, pressure_tolerance, chemical_potential_tolerance, phase_distance_tolerance
-
-
 def _accepted_native_neutral_two_phase_result(
     mixture: Any,
     *,
@@ -942,7 +935,7 @@ def _native_neutral_fixed_temperature_pressure(
         P=pressure,
         feed=feed,
         route=route,
-        tolerances=_neutral_two_phase_eos_tolerances(pressure, options),
+        tolerances=neutral_two_phase_eos_tolerances(pressure, options),
         route_label=route_label,
         problem_kind=problem_kind,
         phase_labels=("liq", "vap"),
@@ -959,7 +952,7 @@ def _native_neutral_tp_flash(
 ) -> EquilibriumResult:
     from . import _core
 
-    tolerances = _neutral_two_phase_eos_tolerances(P, options)
+    tolerances = neutral_two_phase_eos_tolerances(P, options)
     route = _core._native_neutral_tp_flash_eos_route_result(
         mixture._native,
         T,
@@ -994,7 +987,7 @@ def _native_neutral_lle_flash(
 ) -> EquilibriumResult:
     from . import _core
 
-    tolerances = _neutral_two_phase_eos_tolerances(P, options)
+    tolerances = neutral_two_phase_eos_tolerances(P, options)
     route = _core._native_neutral_lle_eos_route_result(
         mixture._native,
         T,
@@ -1400,7 +1393,7 @@ def electrolyte_lle_flash_native(
     _electrolyte_formula_basis(mixture, feed, feed_diagnostics)
     from . import _core
 
-    route_tolerances = _neutral_two_phase_eos_tolerances(P, opts)
+    route_tolerances = neutral_two_phase_eos_tolerances(P, opts)
     material_tolerance, pressure_tolerance, chemical_potential_tolerance, phase_distance_tolerance = route_tolerances
     charge_tolerance = min(opts.tolerance, 1.0e-8)
     route = _core._native_electrolyte_lle_eos_route_result(

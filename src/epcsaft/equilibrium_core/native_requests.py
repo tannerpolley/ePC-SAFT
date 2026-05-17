@@ -8,6 +8,14 @@ from typing import Any
 import numpy as np
 
 
+def neutral_two_phase_eos_tolerances(P: float, options: Any) -> tuple[float, float, float, float]:
+    material_tolerance = float(options.tolerance)
+    pressure_tolerance = max(abs(float(P)) * material_tolerance, material_tolerance)
+    chemical_potential_tolerance = material_tolerance
+    phase_distance_tolerance = max(10.0 * float(options.min_composition), 1.0e-8)
+    return material_tolerance, pressure_tolerance, chemical_potential_tolerance, phase_distance_tolerance
+
+
 def build_reactive_speciation_native_request(
     *,
     T: float,
