@@ -7,7 +7,7 @@ from typing import Any
 
 import numpy as np
 
-from epcsaft._types import InputError
+from epcsaft._types import InputError, SolutionError
 
 
 @dataclass(frozen=True, slots=True)
@@ -94,6 +94,153 @@ def build_electrolyte_basis(
     )
 
 
+def electrolyte_feed_from_molality_inputs(
+    species: Any,
+    charges: Any,
+    molar_masses: Any,
+    *,
+    solvent_feed: Any,
+    salt_molality: Any,
+    basis_mass_kg: float = 1.0,
+) -> np.ndarray:
+    """Convert mixed-solvent salt molality input into explicit species mole fractions."""
+    labels = [str(item) for item in species]
+    z = np.asarray(charges, dtype=float).flatten()
+    mw = np.asarray(molar_masses, dtype=float).flatten()
+    if z.size != len(labels):
+        raise InputError("species and charges must have matching lengths for molality feed conversion.")
+    if mw.size != len(labels):
+        raise InputError("molar_masses must include one value per species.")
+    basis_mass = _positive_scalar(basis_mass_kg, "basis_mass_kg")
+    solvent_x = normalize_solvent_feed(labels, z, solvent_feed)
+    salt_items = normalize_salt_molality(salt_molality)
+    neutral_mw = float(np.sum(solvent_x * mw))
+    if not np.isfinite(neutral_mw) or neutral_mw <= 0.0:
+        raise InputError("solvent_feed produced an invalid salt-free solvent molecular weight.")
+    moles = np.zeros(len(labels), dtype=float)
+    moles += solvent_x * (basis_mass / neutral_mw)
+    cation_indices = tuple(int(i) for i, charge in enumerate(z) if float(charge) > 1.0e-12)
+    anion_indices = tuple(int(i) for i, charge in enumerate(z) if float(charge) < -1.0e-12)
+    for salt_label, molality in salt_items.items():
+        pair = _pair_for_salt_label(tuple(labels), z, cation_indices, anion_indices, salt_label)
+        salt_moles = float(molality) * basis_mass
+        moles[int(pair["cation"])] += salt_moles * float(pair["cation_stoich"])
+        moles[int(pair["anion"])] += salt_moles * float(pair["anion_stoich"])
+    total = float(np.sum(moles))
+    if total <= 0.0:
+        raise InputError("Computed electrolyte feed has non-positive total moles.")
+    feed = moles / total
+    charge = float(np.dot(feed, z))
+    if abs(charge) > 1.0e-10:
+        raise InputError(f"molality-derived electrolyte feed must be charge neutral; charge balance is {charge}.")
+    return feed
+
+
+def normalize_solvent_feed(species: list[str], charges: np.ndarray, solvent_feed: Any) -> np.ndarray:
+    neutral_indices = [i for i, charge in enumerate(charges) if abs(float(charge)) <= 1.0e-12]
+    if not neutral_indices:
+        raise InputError("solvent_feed requires at least one neutral solvent species.")
+    solvent_x = np.zeros(len(species), dtype=float)
+    if isinstance(solvent_feed, dict):
+        for label, value in solvent_feed.items():
+            try:
+                index = species.index(str(label))
+            except ValueError as exc:
+                raise InputError(f"solvent_feed species '{label}' is not present in the mixture.") from exc
+            if index not in neutral_indices:
+                raise InputError(f"solvent_feed species '{label}' is ionic; expected neutral solvents only.")
+            solvent_x[index] = float(value)
+    else:
+        values = np.asarray(solvent_feed, dtype=float).flatten()
+        if values.size != len(neutral_indices):
+            raise InputError("solvent_feed must be a dict or a vector with one entry per neutral solvent species.")
+        for index, value in zip(neutral_indices, values):
+            solvent_x[index] = float(value)
+    if not np.all(np.isfinite(solvent_x)) or np.any(solvent_x < 0.0):
+        raise InputError("solvent_feed must contain finite non-negative values.")
+    total = float(np.sum(solvent_x))
+    if total <= 0.0:
+        raise InputError("solvent_feed must have a positive sum.")
+    return solvent_x / total
+
+
+def normalize_salt_molality(salt_molality: Any) -> dict[str, float]:
+    if not isinstance(salt_molality, dict) or not salt_molality:
+        raise InputError("salt_molality must be a non-empty dict like {'NaCl': 1.0}.")
+    out: dict[str, float] = {}
+    for label, value in salt_molality.items():
+        molality = float(value)
+        if not np.isfinite(molality) or molality < 0.0:
+            raise InputError("salt_molality values must be finite and non-negative.")
+        out[str(label)] = molality
+    return out
+
+
+def electrolyte_formula_basis(
+    species: Any,
+    charges: Any,
+    feed: Any,
+    *,
+    salt_labels: tuple[str, ...] = (),
+) -> dict[str, Any]:
+    z = np.asarray(charges, dtype=float).flatten()
+    labels = tuple(str(item) for item in species)
+    neutral_indices = tuple(int(i) for i, charge in enumerate(z) if abs(float(charge)) <= 1.0e-12)
+    cation_indices = tuple(int(i) for i, charge in enumerate(z) if float(charge) > 1.0e-12)
+    anion_indices = tuple(int(i) for i, charge in enumerate(z) if float(charge) < -1.0e-12)
+    if len(neutral_indices) < 2:
+        raise InputError("electrolyte_lle requires at least two neutral solvent species.")
+    if not cation_indices or not anion_indices:
+        raise InputError("electrolyte_lle requires at least one cation and one anion.")
+    payload = build_electrolyte_basis(labels, z, feed, salt_labels=salt_labels).to_dict()
+    return {
+        "neutral_indices": tuple(payload["neutral_indices"]),
+        "charged_indices": tuple(payload["charged_indices"]),
+        "cation_indices": tuple(payload["cation_indices"]),
+        "anion_indices": tuple(payload["anion_indices"]),
+        "salt_pairs": tuple(payload["salt_pairs"]),
+        "formula_feed": np.asarray(payload["formula_feed"], dtype=float),
+        "e_matrix": np.asarray(payload["e_matrix"], dtype=float),
+        "basis_rank": int(payload["basis_rank"]),
+        "variable_model": str(payload["variable_model"]),
+    }
+
+
+def formula_to_explicit_composition(
+    formula_composition: Any,
+    basis: dict[str, Any],
+    ncomp: int,
+) -> tuple[np.ndarray, float]:
+    formula = np.asarray(formula_composition, dtype=float)
+    explicit = np.zeros(int(ncomp), dtype=float)
+    neutral_indices = basis["neutral_indices"]
+    salt_pairs = basis["salt_pairs"]
+    for pos, index in enumerate(neutral_indices):
+        explicit[int(index)] += float(formula[pos])
+    offset = len(neutral_indices)
+    for salt_pos, pair in enumerate(salt_pairs):
+        amount = float(formula[offset + salt_pos])
+        explicit[int(pair["cation"])] += amount * float(pair.get("cation_stoich", 1.0))
+        explicit[int(pair["anion"])] += amount * float(pair.get("anion_stoich", 1.0))
+    total = float(np.sum(explicit))
+    if total <= 0.0:
+        raise SolutionError("Formula-basis electrolyte phase expanded to a non-positive explicit composition.")
+    return explicit / total, total
+
+
+def explicit_to_formula_composition(composition: Any, basis: dict[str, Any]) -> np.ndarray:
+    comp = np.asarray(composition, dtype=float)
+    values = [float(comp[index]) for index in basis["neutral_indices"]]
+    values.extend(
+        float(comp[int(pair["cation"])]) / float(pair.get("cation_stoich", 1.0)) for pair in basis["salt_pairs"]
+    )
+    out = np.asarray(values, dtype=float)
+    total = float(np.sum(out))
+    if total <= 0.0:
+        raise InputError("Explicit electrolyte composition cannot be represented on the formula basis.")
+    return out / total
+
+
 def _independent_counterion_pairs(
     species: tuple[str, ...],
     charges: np.ndarray,
@@ -146,6 +293,15 @@ def _pair_for_salt_label(
         raise InputError(f"Could not uniquely map salt '{salt_label}' onto independent electrolyte ions.")
     cation_i, anion_i = matches[0]
     return _pair_payload(species, charges, cation_i, anion_i)
+
+
+def _positive_scalar(value: Any, label: str) -> float:
+    if value is None:
+        raise InputError(f"{label} is required.")
+    out = float(value)
+    if not np.isfinite(out) or out <= 0.0:
+        raise InputError(f"{label} must be a positive finite scalar.")
+    return out
 
 
 def _pair_payload(species: tuple[str, ...], charges: np.ndarray, cation_i: int, anion_i: int) -> dict[str, Any]:

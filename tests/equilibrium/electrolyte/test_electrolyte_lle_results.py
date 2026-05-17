@@ -9,8 +9,11 @@ import pytest
 
 import epcsaft
 from epcsaft import ePCSAFTMixture
-from epcsaft.equilibrium import _explicit_to_formula_composition, _formula_to_explicit_composition
-from epcsaft.equilibrium_core.electrolyte_basis import build_electrolyte_basis
+from epcsaft.equilibrium_core.electrolyte_basis import (
+    build_electrolyte_basis,
+    explicit_to_formula_composition,
+    formula_to_explicit_composition,
+)
 from tests.equilibrium.core.test_stability import _assert_stability_route_pending
 from tests.helpers.numeric import assert_allclose
 
@@ -84,8 +87,8 @@ def test_divalent_two_to_one_salt_basis_reconstructs_charge_neutral_formula() ->
         "neutral_indices": tuple(payload["neutral_indices"]),
         "salt_pairs": tuple(payload["salt_pairs"]),
     }
-    formula = _explicit_to_formula_composition(feed, basis_dict)
-    explicit, _scale = _formula_to_explicit_composition(formula, basis_dict, len(species))
+    formula = explicit_to_formula_composition(feed, basis_dict)
+    explicit, _scale = formula_to_explicit_composition(formula, basis_dict, len(species))
 
     assert payload["salt_pairs"][0]["label"] == "MgCl2"
     assert payload["salt_pairs"][0]["cation_stoich"] == 1
@@ -105,8 +108,8 @@ def test_one_to_two_salt_basis_reconstructs_charge_neutral_formula() -> None:
         "neutral_indices": tuple(payload["neutral_indices"]),
         "salt_pairs": tuple(payload["salt_pairs"]),
     }
-    formula = _explicit_to_formula_composition(feed, basis_dict)
-    explicit, _scale = _formula_to_explicit_composition(formula, basis_dict, len(species))
+    formula = explicit_to_formula_composition(feed, basis_dict)
+    explicit, _scale = formula_to_explicit_composition(formula, basis_dict, len(species))
 
     assert payload["salt_pairs"][0]["label"] == "Na2SO4"
     assert payload["salt_pairs"][0]["cation_stoich"] == 2

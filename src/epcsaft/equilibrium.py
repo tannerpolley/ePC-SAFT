@@ -10,7 +10,11 @@ from typing import Any, Literal
 import numpy as np
 
 from ._types import InputError, SolutionError
-from .equilibrium_core.electrolyte_basis import build_electrolyte_basis
+from .equilibrium_core.electrolyte_basis import (
+    electrolyte_feed_from_molality_inputs,
+    electrolyte_formula_basis,
+    normalize_salt_molality,
+)
 from .equilibrium_core.native_requests import neutral_two_phase_eos_tolerances
 from .equilibrium_core.native_results import (
     native_route_solved_pressure,
@@ -523,31 +527,14 @@ def electrolyte_feed_from_molality(
     mw = np.asarray(mixture.parameters.get("MW", []), dtype=float).flatten()
     if mw.size != len(species):
         raise InputError("mixture parameters must include one MW value per species.")
-    basis_mass_kg = _positive_scalar(basis_mass_kg, "basis_mass_kg", "electrolyte_feed_from_molality")
-    solvent_x = _normalize_solvent_feed(species, charges, solvent_feed)
-    salt_items = _normalize_salt_molality(salt_molality)
-    neutral_mw = float(np.sum(solvent_x * mw))
-    if not np.isfinite(neutral_mw) or neutral_mw <= 0.0:
-        raise InputError("solvent_feed produced an invalid salt-free solvent molecular weight.")
-    moles = np.zeros(len(species), dtype=float)
-    neutral_moles = basis_mass_kg / neutral_mw
-    moles += solvent_x * neutral_moles
-    for salt_label, molality in salt_items.items():
-        cation_i, anion_i = _species_pair_for_salt(species, charges, salt_label)
-        z_cat = round(abs(float(charges[cation_i])))
-        z_an = round(abs(float(charges[anion_i])))
-        gcd_z = int(np.gcd(z_cat, z_an))
-        nu_cation = z_an // gcd_z
-        nu_anion = z_cat // gcd_z
-        salt_moles = float(molality) * basis_mass_kg
-        moles[cation_i] += salt_moles * nu_cation
-        moles[anion_i] += salt_moles * nu_anion
-    total = float(np.sum(moles))
-    if total <= 0.0:
-        raise InputError("Computed electrolyte feed has non-positive total moles.")
-    feed = moles / total
-    _require_charge_neutral(feed, charges, "molality-derived electrolyte feed")
-    return feed
+    return electrolyte_feed_from_molality_inputs(
+        species,
+        charges,
+        mw,
+        solvent_feed=solvent_feed,
+        salt_molality=salt_molality,
+        basis_mass_kg=basis_mass_kg,
+    )
 
 
 def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -> EquilibriumOptions:
@@ -694,160 +681,16 @@ def _normalize_electrolyte_feed(
     feed = electrolyte_feed_from_molality(mixture, solvent_feed=solvent_feed, salt_molality=salt_molality)
     return feed, {
         "composition_basis": "molality",
-        "salt_molality": dict(_normalize_salt_molality(salt_molality)),
+        "salt_molality": dict(normalize_salt_molality(salt_molality)),
         "solvent_feed": _json_like(solvent_feed),
     }
-
-
-def _normalize_solvent_feed(species: list[str], charges: np.ndarray, solvent_feed: Any) -> np.ndarray:
-    neutral_indices = [i for i, charge in enumerate(charges) if abs(float(charge)) <= 1.0e-12]
-    if not neutral_indices:
-        raise InputError("solvent_feed requires at least one neutral solvent species.")
-    solvent_x = np.zeros(len(species), dtype=float)
-    if isinstance(solvent_feed, dict):
-        for label, value in solvent_feed.items():
-            try:
-                index = species.index(str(label))
-            except ValueError as exc:
-                raise InputError(f"solvent_feed species '{label}' is not present in the mixture.") from exc
-            if index not in neutral_indices:
-                raise InputError(f"solvent_feed species '{label}' is ionic; expected neutral solvents only.")
-            solvent_x[index] = float(value)
-    else:
-        values = np.asarray(solvent_feed, dtype=float).flatten()
-        if values.size != len(neutral_indices):
-            raise InputError("solvent_feed must be a dict or a vector with one entry per neutral solvent species.")
-        for index, value in zip(neutral_indices, values):
-            solvent_x[index] = float(value)
-    if not np.all(np.isfinite(solvent_x)) or np.any(solvent_x < 0.0):
-        raise InputError("solvent_feed must contain finite non-negative values.")
-    total = float(np.sum(solvent_x))
-    if total <= 0.0:
-        raise InputError("solvent_feed must have a positive sum.")
-    return solvent_x / total
-
-
-def _normalize_salt_molality(salt_molality: Any) -> dict[str, float]:
-    if not isinstance(salt_molality, dict) or not salt_molality:
-        raise InputError("salt_molality must be a non-empty dict like {'NaCl': 1.0}.")
-    out: dict[str, float] = {}
-    for label, value in salt_molality.items():
-        molality = float(value)
-        if not np.isfinite(molality) or molality < 0.0:
-            raise InputError("salt_molality values must be finite and non-negative.")
-        out[str(label)] = molality
-    return out
-
-
-def _species_pair_for_salt(species: list[str], charges: np.ndarray, salt_label: str) -> tuple[int, int]:
-    normalized = _salt_label_token(salt_label)
-    cation_indices = [i for i, charge in enumerate(charges) if float(charge) > 1.0e-12]
-    anion_indices = [i for i, charge in enumerate(charges) if float(charge) < -1.0e-12]
-    matches: list[tuple[int, int]] = []
-    for cation_i in cation_indices:
-        for anion_i in anion_indices:
-            cation_stoich, anion_stoich = _salt_stoichiometry(charges[cation_i], charges[anion_i])
-            cation_label = _ion_stem(species[cation_i], charges[cation_i])
-            anion_label = _ion_stem(species[anion_i], charges[anion_i])
-            pair_label = _salt_label_token(
-                cation_label
-                + ("" if cation_stoich == 1 else str(cation_stoich))
-                + anion_label
-                + ("" if anion_stoich == 1 else str(anion_stoich))
-            )
-            if pair_label == normalized:
-                matches.append((cation_i, anion_i))
-    if len(matches) != 1:
-        raise InputError(f"Could not uniquely map salt_molality key '{salt_label}' onto mixture ions.")
-    return matches[0]
-
-
-def _salt_label_token(label: Any) -> str:
-    return "".join(ch for ch in str(label) if ch.isalnum()).lower()
-
-
-def _ion_stem(label: str, charge: float | None = None) -> str:
-    text = str(label)
-    stripped = text.replace("+", "").replace("-", "")
-    if charge is not None and ("+" in text or "-" in text):
-        charge_int = round(abs(float(charge)))
-        suffix = str(charge_int)
-        if charge_int > 1 and stripped.endswith(suffix):
-            stripped = stripped[: -len(suffix)]
-    return stripped
-
-
-def _salt_stoichiometry(cation_charge: float, anion_charge: float) -> tuple[int, int]:
-    cation_int = round(abs(float(cation_charge)))
-    anion_int = round(abs(float(anion_charge)))
-    if cation_int <= 0 or anion_int <= 0:
-        raise InputError("electrolyte salt stoichiometry requires non-zero ion charges.")
-    if (
-        abs(float(cation_int) - abs(float(cation_charge))) > 1.0e-12
-        or abs(float(anion_int) - abs(float(anion_charge))) > 1.0e-12
-    ):
-        raise InputError("electrolyte salt stoichiometry currently requires integer ion charges.")
-    gcd = int(np.gcd(cation_int, anion_int))
-    return anion_int // gcd, cation_int // gcd
 
 
 def _electrolyte_formula_basis(mixture: Any, feed: np.ndarray, feed_diagnostics: dict[str, Any]) -> dict[str, Any]:
     charges = _mixture_charges(mixture)
     species = list(mixture.species)
-    neutral_indices = [i for i, charge in enumerate(charges) if abs(float(charge)) <= 1.0e-12]
-    cation_indices = [i for i, charge in enumerate(charges) if float(charge) > 1.0e-12]
-    anion_indices = [i for i, charge in enumerate(charges) if float(charge) < -1.0e-12]
-    if len(neutral_indices) < 2:
-        raise InputError("electrolyte_lle requires at least two neutral solvent species.")
-    if not cation_indices or not anion_indices:
-        raise InputError("electrolyte_lle requires at least one cation and one anion.")
     salt_labels = tuple(feed_diagnostics.get("salt_molality", {}).keys())
-    basis = build_electrolyte_basis(species, charges, feed, salt_labels=tuple(salt_labels))
-    payload = basis.to_dict()
-    return {
-        "neutral_indices": tuple(payload["neutral_indices"]),
-        "charged_indices": tuple(payload["charged_indices"]),
-        "cation_indices": tuple(payload["cation_indices"]),
-        "anion_indices": tuple(payload["anion_indices"]),
-        "salt_pairs": tuple(payload["salt_pairs"]),
-        "formula_feed": np.asarray(payload["formula_feed"], dtype=float),
-        "e_matrix": np.asarray(payload["e_matrix"], dtype=float),
-        "basis_rank": int(payload["basis_rank"]),
-        "variable_model": str(payload["variable_model"]),
-    }
-
-
-def _formula_to_explicit_composition(
-    formula_composition: np.ndarray, basis: dict[str, Any], ncomp: int
-) -> tuple[np.ndarray, float]:
-    formula = np.asarray(formula_composition, dtype=float)
-    explicit = np.zeros(int(ncomp), dtype=float)
-    neutral_indices = basis["neutral_indices"]
-    salt_pairs = basis["salt_pairs"]
-    for pos, index in enumerate(neutral_indices):
-        explicit[int(index)] += float(formula[pos])
-    offset = len(neutral_indices)
-    for salt_pos, pair in enumerate(salt_pairs):
-        amount = float(formula[offset + salt_pos])
-        explicit[int(pair["cation"])] += amount * float(pair.get("cation_stoich", 1.0))
-        explicit[int(pair["anion"])] += amount * float(pair.get("anion_stoich", 1.0))
-    total = float(np.sum(explicit))
-    if total <= 0.0:
-        raise SolutionError("Formula-basis electrolyte phase expanded to a non-positive explicit composition.")
-    return explicit / total, total
-
-
-def _explicit_to_formula_composition(composition: np.ndarray, basis: dict[str, Any]) -> np.ndarray:
-    comp = np.asarray(composition, dtype=float)
-    values = [float(comp[index]) for index in basis["neutral_indices"]]
-    values.extend(
-        float(comp[int(pair["cation"])]) / float(pair.get("cation_stoich", 1.0)) for pair in basis["salt_pairs"]
-    )
-    out = np.asarray(values, dtype=float)
-    total = float(np.sum(out))
-    if total <= 0.0:
-        raise InputError("Explicit electrolyte composition cannot be represented on the formula basis.")
-    return out / total
+    return electrolyte_formula_basis(species, charges, feed, salt_labels=salt_labels)
 
 
 def _accepted_native_neutral_two_phase_result(
