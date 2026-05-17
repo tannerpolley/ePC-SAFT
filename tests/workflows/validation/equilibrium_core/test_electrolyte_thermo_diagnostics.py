@@ -97,7 +97,7 @@ def test_khudaida_aad_matrix_records_package_surface_gap_to_paper() -> None:
     assert diagnostics["tables"] == ["table_9", "table_10"]
     assert diagnostics["max_package_grand_aad"] > diagnostics["max_paper_epcsaft_grand_aad"]
     assert diagnostics["rows_compared"] == 6
-    assert "package_missing_count" in diagnostics
+    assert "package_nonfinite_count" in diagnostics
     json.dumps(diagnostics, allow_nan=False)
 
 
@@ -187,7 +187,7 @@ def test_khudaida_digitized_paper_epcsaft_matrix_summary_covers_all_lle_figures(
     assert diagnostics["rows_compared"] == 39
     assert 0 < diagnostics["finite_rows_compared"] <= diagnostics["rows_compared"]
     assert (
-        diagnostics["package_missing_or_invalid_rows"]
+        diagnostics["package_unusable_rows"]
         == diagnostics["rows_compared"] - diagnostics["finite_rows_compared"]
     )
     assert np.isfinite(diagnostics["max_organic_salt_free_grand_aad"])

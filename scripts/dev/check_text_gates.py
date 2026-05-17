@@ -254,6 +254,9 @@ def _source_blocked_terms(rel: str) -> tuple[str, ...]:
         "step" + "_norm" + "\": none,",
         "diagnostic" + "_residual" + "_score",
         "diagnostic" + "_fields",
+        "package" + "_status",
+        "comparison" + "_status",
+        "package" + "_missing",
     )
     if rel.startswith(("src/", "scripts/")):
         terms += (

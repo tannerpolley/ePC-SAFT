@@ -177,7 +177,7 @@ def compare_khudaida_aad_tables() -> dict[str, Any]:
     rows_compared = []
     max_package = 0.0
     max_paper = 0.0
-    package_missing = 0
+    package_nonfinite = 0
     for table_name in ("table_9", "table_10"):
         rows = _read_csv(table_dir / f"{table_name}.csv")
         by_temp = {}
@@ -188,7 +188,7 @@ def compare_khudaida_aad_tables() -> dict[str, Any]:
             package = models["ePC-SAFT (package)"]
             paper = models["ePC-SAFT (paper)"]
             if package is None:
-                package_missing += 1
+                package_nonfinite += 1
             else:
                 max_package = max(max_package, package)
             if paper is not None:
@@ -200,7 +200,7 @@ def compare_khudaida_aad_tables() -> dict[str, Any]:
                     "package_grand_aad": package,
                     "paper_epcsaft_grand_aad": paper,
                     "package_minus_paper": package - paper if package is not None and paper is not None else None,
-                    "package_status": "finite" if package is not None else "missing_or_rejected",
+                    "package_aad_state": "finite" if package is not None else "nonfinite_or_rejected",
                 }
             )
 
@@ -209,7 +209,7 @@ def compare_khudaida_aad_tables() -> dict[str, Any]:
             "dataset": DATASET,
             "tables": ["table_9", "table_10"],
             "rows_compared": len(rows_compared),
-            "package_missing_count": package_missing,
+            "package_nonfinite_count": package_nonfinite,
             "max_package_grand_aad": max_package,
             "max_paper_epcsaft_grand_aad": max_paper,
             "rows": rows_compared,
@@ -294,7 +294,7 @@ def compare_khudaida_digitized_paper_to_package(*, figure: int) -> dict[str, Any
             rows.append(
                 {
                     **base_row,
-                    "comparison_status": "missing_package_model_row",
+                    "comparison_state": "package_model_row_absent",
                     "package_converged": None,
                     "package_residual_norm": None,
                 }
@@ -307,7 +307,7 @@ def compare_khudaida_digitized_paper_to_package(*, figure: int) -> dict[str, Any
             rows.append(
                 {
                     **base_row,
-                    "comparison_status": "invalid_package_model_row",
+                    "comparison_state": "package_model_row_invalid",
                     "package_converged": _optional_bool(model_row.get("converged")),
                     "package_residual_norm": _optional_finite_float(model_row.get("residual_norm")),
                 }
@@ -318,7 +318,7 @@ def compare_khudaida_digitized_paper_to_package(*, figure: int) -> dict[str, Any
         rows.append(
             {
                 **base_row,
-                "comparison_status": "compared",
+                "comparison_state": "compared",
                 "package_water_salt_free": float(package[0]),
                 "package_ethanol_salt_free": float(package[1]),
                 "package_isobutanol_salt_free": float(package[2]),
@@ -348,7 +348,7 @@ def compare_khudaida_digitized_paper_to_package(*, figure: int) -> dict[str, Any
             "digitized_rows": len(digitized_rows),
             "rows_compared": len(rows),
             "finite_rows_compared": len(errors),
-            "package_missing_or_invalid_rows": invalid_count,
+            "package_unusable_rows": invalid_count,
             "component_aad": {
                 "water": _finite_or_none(component_aad[0]),
                 "ethanol": _finite_or_none(component_aad[1]),
@@ -394,7 +394,7 @@ def summarize_khudaida_digitized_paper_matrix() -> dict[str, Any]:
     )
     rows_compared = int(sum(int(item["rows_compared"]) for item in comparisons))
     finite_rows_compared = int(sum(int(item["finite_rows_compared"]) for item in comparisons))
-    invalid_rows = int(sum(int(item["package_missing_or_invalid_rows"]) for item in comparisons))
+    invalid_rows = int(sum(int(item["package_unusable_rows"]) for item in comparisons))
     tolerance = 2.0e-2
     return _json_like(
         {
@@ -403,7 +403,7 @@ def summarize_khudaida_digitized_paper_matrix() -> dict[str, Any]:
             "missing_data": missing_data,
             "rows_compared": rows_compared,
             "finite_rows_compared": finite_rows_compared,
-            "package_missing_or_invalid_rows": invalid_rows,
+            "package_unusable_rows": invalid_rows,
             "max_organic_salt_free_grand_aad": max_grand,
             "max_organic_salt_free_max_abs_error": max_abs,
             "per_figure": comparisons,
