@@ -27,7 +27,6 @@ def test_evaluate_reactive_regression_objective_accepts_speciation_rows(monkeypa
             charge_residual=0.0,
             reaction_residuals=[],
             named_reaction_residuals={},
-            state_failure_count=0,
             diagnostics={},
         )
 

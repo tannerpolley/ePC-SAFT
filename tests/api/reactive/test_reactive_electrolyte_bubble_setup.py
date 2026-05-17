@@ -22,13 +22,11 @@ def _successful_chemical_result() -> ReactiveSpeciationResult:
         charge_residual=0.0,
         reaction_residuals=[],
         named_reaction_residuals={},
-        state_failure_count=0,
         diagnostics={
             "native_success": True,
             "mass_residual_norm": 0.0,
             "charge_residual_abs": 0.0,
             "reaction_residual_norm": 0.0,
-            "state_failure_count": 0,
         },
     )
 
@@ -90,7 +88,6 @@ def test_reactive_electrolyte_bubble_accepts_phase_handoff_speciation_residuals(
         charge_residual=1.0e-14,
         reaction_residuals=[3.7e-6],
         named_reaction_residuals={"toy": 3.7e-6},
-        state_failure_count=0,
         diagnostics={
             "native_success": False,
             "mass_residual_norm": 0.0,
@@ -145,7 +142,6 @@ def test_reactive_electrolyte_bubble_respects_configured_phase_handoff_tolerance
         charge_residual=1.0e-14,
         reaction_residuals=[3.7e-6],
         named_reaction_residuals={"toy": 3.7e-6},
-        state_failure_count=0,
         diagnostics={
             "native_success": False,
             "mass_residual_norm": 0.0,
@@ -204,7 +200,6 @@ def test_reactive_electrolyte_bubble_sweep_preserves_phase_handoff_tolerances(mo
         charge_residual=1.0e-14,
         reaction_residuals=[3.7e-6],
         named_reaction_residuals={"toy": 3.7e-6},
-        state_failure_count=0,
         diagnostics={
             "native_success": False,
             "mass_residual_norm": 0.0,

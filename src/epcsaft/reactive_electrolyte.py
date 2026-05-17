@@ -163,7 +163,7 @@ def solve_reactive_electrolyte_bubble(
         partial_pressures=bubble.partial_pressures,
         fugacity_residual=bubble.fugacity_residual,
         fugacity_residual_norm=bubble.fugacity_residual_norm,
-        state_failure_count=int(chemical.state_failure_count) + int(bubble.diagnostics.get("state_failure_count", 0)),
+        state_failure_count=int(bubble.diagnostics.get("state_failure_count", 0)),
         penalty_residuals=[],
         diagnostics=diagnostics,
     )
@@ -235,27 +235,23 @@ def _speciation_phase_handoff_diagnostics(
             max((abs(value) for value in result.reaction_residuals), default=0.0),
         )
     )
-    state_failure_count = int(diagnostics.get("state_failure_count", result.state_failure_count))
     residuals_finite = all(math.isfinite(value) for value in (mass_norm, charge_norm, reaction_norm))
     residuals_within_tolerance = (
         mass_norm <= mass_tolerance and charge_norm <= charge_tolerance and reaction_norm <= reaction_tolerance
     )
     if result.success:
         reason = "strict_success"
-    elif state_failure_count > 0:
-        reason = "state_failures"
     elif not residuals_finite:
         reason = "nonfinite_residuals"
     elif residuals_within_tolerance:
         reason = "residuals_within_phase_handoff_tolerances"
     else:
         reason = "residuals_exceed_phase_handoff_tolerances"
-    success = bool(result.success or (state_failure_count == 0 and residuals_finite and residuals_within_tolerance))
+    success = bool(result.success or (residuals_finite and residuals_within_tolerance))
     return {
         "success": success,
         "reason": reason,
         "native_success": bool(diagnostics.get("native_success", result.success)),
-        "state_failure_count": state_failure_count,
         "mass_residual_norm": mass_norm,
         "charge_residual_abs": charge_norm,
         "reaction_residual_norm": reaction_norm,

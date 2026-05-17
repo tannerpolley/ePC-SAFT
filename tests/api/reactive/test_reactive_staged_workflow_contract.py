@@ -40,7 +40,6 @@ def _successful_speciation_result() -> epcsaft.ReactiveSpeciationResult:
         charge_residual=0.0,
         reaction_residuals=[0.0],
         named_reaction_residuals={"literature_a_to_b": 0.0},
-        state_failure_count=0,
         diagnostics={"phase_equilibrium_handoff": {}},
     )
 

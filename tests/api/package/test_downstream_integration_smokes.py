@@ -58,7 +58,6 @@ def _generic_chemical_payload(species: tuple[str, ...]) -> dict[str, object]:
         charge_residual=0.0,
         reaction_residuals=[0.0],
         named_reaction_residuals={"fixed_reaction": 0.0},
-        state_failure_count=0,
         diagnostics={
             "backend": "native",
             "derivative_policy": {

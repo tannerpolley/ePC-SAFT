@@ -273,7 +273,6 @@ class ReactiveSpeciationResult:
     charge_residual: float
     reaction_residuals: list[float]
     named_reaction_residuals: dict[str, float]
-    state_failure_count: int
     diagnostics: dict[str, Any]
 
     def __post_init__(self) -> None:
@@ -293,7 +292,6 @@ class ReactiveSpeciationResult:
             "named_reaction_residuals",
             {str(k): float(v) for k, v in self.named_reaction_residuals.items()},
         )
-        object.__setattr__(self, "state_failure_count", int(self.state_failure_count))
         object.__setattr__(self, "diagnostics", dict(self.diagnostics))
 
     def to_dict(self) -> dict[str, Any]:
@@ -307,7 +305,6 @@ class ReactiveSpeciationResult:
             "charge_residual": self.charge_residual,
             "reaction_residuals": list(self.reaction_residuals),
             "named_reaction_residuals": dict(self.named_reaction_residuals),
-            "state_failure_count": self.state_failure_count,
             "diagnostics": _json_like(self.diagnostics),
         }
 
@@ -581,7 +578,6 @@ def _solve_reactive_speciation_native(
         charge_residual=charge_residual,
         reaction_residuals=reaction_residuals,
         named_reaction_residuals=named_reaction_residuals,
-        state_failure_count=int(diagnostics.get("state_failure_count", 0)),
         diagnostics=diagnostics,
     )
     if not success and options.error_mode != "result":
@@ -778,7 +774,6 @@ def _structured_failure_result(
         charge_residual=0.0,
         reaction_residuals=[],
         named_reaction_residuals={},
-        state_failure_count=0,
         diagnostics=diagnostics,
     )
 

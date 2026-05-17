@@ -23,13 +23,11 @@ def _successful_chemical_result() -> ReactiveSpeciationResult:
         charge_residual=0.0,
         reaction_residuals=[],
         named_reaction_residuals={},
-        state_failure_count=0,
         diagnostics={
             "native_success": True,
             "mass_residual_norm": 0.0,
             "charge_residual_abs": 0.0,
             "reaction_residual_norm": 0.0,
-            "state_failure_count": 0,
         },
     )
 

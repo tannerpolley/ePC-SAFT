@@ -483,6 +483,10 @@ state/density/activity evaluation counters after the hidden state-closure path w
 report actual residual/Jacobian counters on the private residual evaluator and solver/derivative evidence on the native
 Ipopt ideal-speciation route.
 
+Task 6/12 continuation note: `ReactiveSpeciationResult` no longer exposes a stale state-failure counter after
+homogeneous speciation moved behind the native Ipopt/derivative gate. Reactive electrolyte bubble results still report
+their own bubble-route state-failure count, but speciation-to-phase handoff now uses residual-family diagnostics only.
+
 ### Task 7: Build EOS Phase Blocks For Equilibrium
 
 **Files:**

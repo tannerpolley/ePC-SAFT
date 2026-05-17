@@ -19,7 +19,6 @@ def test_explicit_staged_kind_remains_separate_from_production_reactive_lle(monk
             charge_residual=0.0,
             reaction_residuals=[0.0],
             named_reaction_residuals={"methanol_to_cyclohexane": 0.0},
-            state_failure_count=0,
             diagnostics={"phase_equilibrium_handoff": {}},
         )
         return epcsaft.ReactiveStagedEquilibriumResult(
