@@ -31,8 +31,8 @@ def test_ceres_pure_neutral_regression_owns_optimizer_loop() -> None:
     assert result.success, result.message
     assert result.optimizer_backend == "ceres"
     assert result.backend == "ceres"
-    assert result.derivative_backend != "numerical" + "_derivative"
-    assert result.jacobian_backend != "numerical" + "_derivative"
+    assert result.derivative_backend == "cppad_implicit"
+    assert result.jacobian_backend == "cppad_implicit"
     assert result.python_objective_used is False
     assert result.objective_final < result.objective_initial
     assert any(abs(result.fitted_values[name] - initial_guess[name]) > 1.0e-8 for name in ("m", "s", "e"))

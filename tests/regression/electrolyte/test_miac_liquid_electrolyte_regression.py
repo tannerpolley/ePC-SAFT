@@ -12,7 +12,6 @@ from scripts._epcsaft_oop import as_mixture
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 FIXTURE = REPO_ROOT / "tests" / "fixtures" / "literature" / "figiel_2025" / "miac_liquid_electrolyte.json"
-DISALLOWED_BACKENDS = {"numerical" + "_derivative", "fd", "numerical" + "_jacobian"}
 
 
 def _load_fixture() -> dict:
@@ -48,8 +47,6 @@ def test_miac_liquid_electrolyte_regression_uses_native_ceres_without_nonexact_d
     assert result.optimizer_backend == "ceres"
     assert result.derivative_backend == "cppad_implicit"
     assert result.jacobian_backend == "cppad_implicit"
-    assert result.derivative_backend.lower() not in DISALLOWED_BACKENDS
-    assert result.jacobian_backend.lower() not in DISALLOWED_BACKENDS
     assert result.python_objective_used is False
     assert result.objective_final <= result.objective_initial
     assert result.parameter_movement.keys() == {"d_born", "f_solv"}
@@ -92,4 +89,4 @@ def test_miac_liquid_electrolyte_figiel_outputs_and_coverage_matrix_are_finite()
     assert derivatives["backend"] in {"analytic", "cppad"}
     assert np.all(np.isfinite(derivatives["a_born_d_d_born"]))
     assert np.all(np.isfinite(derivatives["a_born_d_f_solv"]))
-    assert not (backend_labels & DISALLOWED_BACKENDS)
+    assert backend_labels <= {"analytic", "cppad", "analytic_implicit", "cppad_implicit", "out_of_scope"}

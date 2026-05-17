@@ -10,7 +10,6 @@ from tests.helpers.binary_regression_cases import ethanol_water_jced2021_vle_rec
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 FIXTURE = REPO_ROOT / "tests" / "fixtures" / "literature" / "binary_kij" / "ethanol_water_jced2021_100kpa.json"
-DISALLOWED_BACKENDS = {"numerical" + "_derivative", "fd", "numerical" + "_jacobian"}
 
 
 def _load_fixture() -> dict:
@@ -47,8 +46,8 @@ def test_literature_binary_kij_regression_matches_reference_band() -> None:
     assert result.optimizer_backend == "ceres"
     assert result.problem.mode == "binary_pair"
     assert result.problem.fit_targets == ("k_ij",)
-    assert result.derivative_backend.lower() not in DISALLOWED_BACKENDS
-    assert result.jacobian_backend.lower() not in DISALLOWED_BACKENDS
+    assert result.derivative_backend == "cppad_implicit"
+    assert result.jacobian_backend == "cppad_implicit"
     assert result.objective_final < result.objective_initial
     assert abs(result.parameter_movement["k_ij"]) > 1.0e-5
     assert result.initial_parameters == {"k_ij": pytest.approx(fixture["initial_k_ij"])}
