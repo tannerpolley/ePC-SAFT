@@ -237,6 +237,11 @@ def _source_blocked_terms(rel: str) -> tuple[str, ...]:
         "hessian" + "_callback" + "_available",
         "hessian" + "_includes" + "_second" + "_residual" + "_derivatives",
         "requires" + "_exact" + "_hessian",
+        "solver" + "_hessian" + "_mode",
+        "activity" + "_derivative" + "_policy",
+        "activity" + "_fixed" + "_point",
+        "activity" + "_or" + "_fugacity" + "_terms" + "_in" + "_residual",
+        "activity" + "_derivative" + "_in" + "_jacobian",
     )
     if rel.startswith(("src/", "scripts/")):
         terms += (
