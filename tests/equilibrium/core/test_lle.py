@@ -202,14 +202,19 @@ def test_lle_flash_converts_accepted_native_route_payload(monkeypatch: pytest.Mo
     assert result.phases[1].fugacity_coefficient == pytest.approx(np.exp(result.phases[1].ln_fugacity_coefficient))
 
 
-def test_equilibrium_options_expose_explicit_solver_backend_controls() -> None:
+def test_equilibrium_options_public_surface_is_current_fields() -> None:
     option_fields = {field.name for field in fields(epcsaft.EquilibriumOptions)}
 
-    assert "solver_backend" in option_fields
-    assert "timeout_seconds" in option_fields
-    assert "max_seed_attempts" not in option_fields
-    assert "max_density_failures" not in option_fields
-    assert "max_total_objective_evaluations" not in option_fields
+    assert option_fields == {
+        "max_iterations",
+        "tolerance",
+        "min_composition",
+        "include_phase_diagnostics",
+        "stability_precheck",
+        "jacobian_backend",
+        "solver_backend",
+        "timeout_seconds",
+    }
     assert epcsaft.EquilibriumOptions().solver_backend == "auto"
     assert epcsaft.EquilibriumOptions().timeout_seconds is None
 
@@ -243,18 +248,17 @@ def test_lle_flash_rejects_invalid_options_through_public_api(options, match) ->
         )
 
 
-@pytest.mark.parametrize("removed_key", ["max_seed_attempts", "max_density_failures", "max_total_objective_evaluations"])
-def test_lle_flash_rejects_removed_solver_budget_option_dict_keys(removed_key: str) -> None:
+def test_lle_flash_rejects_unknown_option_dict_keys() -> None:
     mix = _methanol_cyclohexane_mixture()
     feed = _methanol_cyclohexane_lle_feed()
 
-    with pytest.raises(epcsaft.InputError, match=removed_key):
+    with pytest.raises(epcsaft.InputError, match="unknown_solver_control"):
         mix.equilibrium(
             kind="lle_flash",
             T=298.15,
             P=1.013e5,
             z=feed,
-            options={removed_key: 1},
+            options={"unknown_solver_control": 1},
         )
 
 

@@ -1007,6 +1007,10 @@ Task 2/8/9/12 continuation note: retained analysis scripts no longer pass public
 manual-damping/best-effort controls, and a repo test blocks those public-route keywords while leaving private native
 residual/Jacobian payloads untouched.
 
+Task 2/8/9/12 continuation note: duplicate tests for individual retired equilibrium option keys were deleted. The
+retained core LLE coverage asserts the full current `EquilibriumOptions` field set and a generic unknown-option error
+instead of preserving one test per legacy compatibility key.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**

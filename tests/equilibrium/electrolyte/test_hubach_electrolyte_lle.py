@@ -55,33 +55,3 @@ def test_hubach_fixture_matches_lithium_canonical_option_surface() -> None:
     assert model["born_model"]["bulk_mode"] == "mix"
     assert model["born_model"]["mu_born_model"]["differential_mode"] == 0
     assert model["born_model"]["mu_born_model"]["comp_dep_delta_d"] is True
-
-
-def test_hubach_cold_start_rejects_removed_option_dict_keys() -> None:
-    feed = _row0_feed()
-    mix = _hubach_mixture(feed)
-
-    with pytest.raises(epcsaft.InputError, match="force_seed_solve"):
-        mix.equilibrium(
-            kind="electrolyte_lle",
-            T=T_K,
-            P=P_PA,
-            z=feed,
-            options={
-                "force_seed_solve": True,
-            },
-        )
-
-
-def test_hubach_rejects_removed_density_diagnostics_option() -> None:
-    feed = _row0_feed()
-    mix = _hubach_mixture(feed)
-
-    with pytest.raises(epcsaft.InputError, match="density_diagnostics"):
-        mix.equilibrium(
-            kind="electrolyte_lle",
-            T=T_K,
-            P=P_PA,
-            z=feed,
-            options={"density_diagnostics": "full"},
-        )

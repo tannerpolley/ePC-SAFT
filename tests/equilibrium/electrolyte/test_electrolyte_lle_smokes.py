@@ -99,13 +99,6 @@ def test_equilibrium_options_default_max_iterations_remains_explicit() -> None:
     assert options.max_iterations == 180
 
 
-def test_equilibrium_options_do_not_expose_removed_density_route_controls() -> None:
-    option_fields = set(epcsaft.EquilibriumOptions.__dataclass_fields__)
-
-    assert "density_diagnostics" not in option_fields
-    assert "experimental_coupled_density_lle" not in option_fields
-
-
 def test_electrolyte_lle_rejects_non_neutral_direct_feed() -> None:
     mix = _ascani_water_butanol_nacl_mixture()
 

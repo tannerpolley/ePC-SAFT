@@ -41,7 +41,6 @@ def test_ascani_case2_mixed_salt_requires_native_ipopt_route() -> None:
 
     _assert_electrolyte_lle_route_pending(excinfo)
 
-
 def test_auto_kind_routes_explicit_ionic_feed_to_pending_electrolyte_lle() -> None:
     mix = _case2_mixture()
 
@@ -55,31 +54,3 @@ def test_auto_kind_routes_explicit_ionic_feed_to_pending_electrolyte_lle() -> No
         )
 
     _assert_electrolyte_lle_route_pending(excinfo)
-
-
-def test_electrolyte_lle_rejects_removed_solver_budget_options() -> None:
-    mix = _case2_mixture()
-
-    with pytest.raises(epcsaft.InputError, match="max_seed_attempts"):
-        mix.equilibrium(
-            kind="electrolyte_lle",
-            T=298.15,
-            P=1.0e5,
-            z=_case2_feed(),
-            options={"max_seed_attempts": 1},
-        )
-
-
-def test_electrolyte_lle_rejects_removed_option_dict_keys() -> None:
-    mix = _case2_mixture()
-
-    with pytest.raises(epcsaft.InputError, match="force_seed_solve"):
-        mix.equilibrium(
-            kind="electrolyte_lle",
-            T=298.15,
-            P=1.0e5,
-            z=_case2_feed(),
-            options={
-                "force_seed_solve": True,
-            },
-        )
