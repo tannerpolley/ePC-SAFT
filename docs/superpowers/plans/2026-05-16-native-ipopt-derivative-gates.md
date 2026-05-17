@@ -567,12 +567,12 @@ integration remains open.
 - Add new route builders under `src/epcsaft/native/equilibrium_nlp/`.
 - Modify neutral equilibrium tests.
 
-- [ ] Implement native Ipopt route builders for neutral TP flash, VLE, LLE, bubble, and dew workflows.
-- [ ] Use one canonical initial point per route.
-- [ ] Remove accepted-path bisection/bracketing/scalar-search/golden-section behavior.
-- [ ] Add postsolve gates for material balance, phase distance, pressure consistency, and chemical-potential/fugacity consistency.
-- [ ] Delete or rewrite legacy tests that assert old diagnostics.
-- [ ] Commit as `Replace neutral equilibrium with native Ipopt NLPs`.
+- [x] Implement native Ipopt route builders for neutral TP flash, VLE, LLE, bubble, and dew workflows.
+- [x] Use one canonical initial point per route.
+- [x] Remove accepted-path bisection/bracketing/scalar-search/golden-section behavior.
+- [x] Add postsolve gates for material balance, phase distance, pressure consistency, and chemical-potential/fugacity consistency.
+- [x] Delete or rewrite legacy tests that assert old diagnostics.
+- [x] Commit route slices replacing neutral equilibrium with native Ipopt NLPs.
 
 Task 8 progress note: the public `EquilibriumOptions.solver_backend` contract no longer accepts explicit `newton`; public selection is limited to `auto` for the still-existing internal native routes and `ipopt` for explicit native-Ipopt requests while the route builders are being replaced.
 
@@ -633,11 +633,11 @@ Task 8/9 continuation note: `equilibrium_curve(...)` no longer reuses an accepte
 longer exposes a user phase-seed keyword. Ordered curve calls use each route builder's canonical initial point instead
 of carrying a Python-level continuation seed across points.
 
-Task 8 continuation note: private native fixed-temperature bubble/dew pressure NLP contracts now exist as route-builder
-scaffolds. Each contract uses one pressure variable, two EOS phase blocks, fixed composition rows for the specified
-phase, unit phase-amount scaling rows, pressure-consistency rows with exact pressure-variable Jacobian entries, and one
-deterministic initial point. These contracts are not public accepted routes yet; public bubble/dew methods remain
-native-Ipopt route-gated until a full accepted solve and postsolve proof exists.
+Task 8 continuation note: at this checkpoint, private native fixed-temperature bubble/dew pressure NLP contracts existed
+as route-builder scaffolds. Each contract used one pressure variable, two EOS phase blocks, fixed composition rows for
+the specified phase, unit phase-amount scaling rows, pressure-consistency rows with exact pressure-variable Jacobian
+entries, and one deterministic initial point. Later Task 8 slices promoted these contracts to public native route-result
+dispatch.
 
 Task 8 continuation note: the private fixed-temperature bubble/dew pressure contracts now have route-result plumbing
 through the generic native Ipopt adapter. Local no-Ipopt builds return the explicit `ipopt_dependency_required` gate, while
@@ -703,6 +703,12 @@ through the native Ipopt stability binding. The native NLP adds a charge-balance
 composition row, uses the charge-neutral feed as its canonical initial point, and keeps the exact objective gradient on
 the CppAD-implicit fugacity-composition sensitivity surface. Python validates charge neutrality, calls the native route,
 and converts accepted payloads into `StabilityResult`; local no-Ipopt builds still raise the typed dependency gate.
+
+Task 8 closure note: current public neutral TP flash, neutral LLE, neutral stability, and fixed-temperature/fixed-pressure
+neutral bubble/dew routes all validate in Python, submit exactly one native Ipopt route-result request, and convert
+accepted native payloads without Python-owned iterations, retry loops, bracketing, scalar search, or fallback solves.
+Runtime capabilities list those implemented native Ipopt routes, route-specific tests cover canonical initial points and
+postsolve acceptance gates, and legacy diagnostic-only route-gate tests have been pruned.
 
 ### Task 9: Replace Electrolyte And Reactive Phase Equilibrium Routes
 

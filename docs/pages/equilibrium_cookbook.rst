@@ -112,8 +112,8 @@ scripts.
    else:
        print("neutral LLE needs an Ipopt-enabled native build")
 
-Neutral TP flash, neutral LLE, fixed-temperature bubble/dew pressure, and
-fixed-pressure bubble/dew temperature, and neutral stability route through
+Neutral TP flash, neutral LLE, neutral stability, fixed-temperature
+bubble/dew pressure, and fixed-pressure bubble/dew temperature route through
 native Ipopt when that extension is compiled.
 Downstream sweeps should inspect ``epcsaft.capabilities()`` or catch typed
 route errors instead of manufacturing alternate phase-equilibrium results.
