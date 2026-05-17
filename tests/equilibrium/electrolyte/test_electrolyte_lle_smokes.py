@@ -94,22 +94,8 @@ def test_electrolyte_lle_molality_feed_requires_native_ipopt_route() -> None:
     _assert_electrolyte_lle_native_ipopt_gate(excinfo)
 
 
-def test_equilibrium_options_default_max_iterations_remains_explicit() -> None:
-    options = epcsaft.EquilibriumOptions()
-
-    assert options.max_iterations == 180
-
-
 def test_electrolyte_lle_rejects_non_neutral_direct_feed() -> None:
     mix = _ascani_water_butanol_nacl_mixture()
 
     with pytest.raises(epcsaft.InputError, match="charge neutral"):
         mix.equilibrium(kind="electrolyte_lle", T=298.15, P=1.013e5, z=[0.55, 0.40, 0.04, 0.01])
-
-
-def test_neutral_lle_keeps_rejecting_ionic_mixtures() -> None:
-    feed = np.asarray([0.55, 0.40, 0.025, 0.025], dtype=float)
-    mix = _ascani_water_butanol_nacl_mixture(feed)
-
-    with pytest.raises(epcsaft.InputError, match="ion-containing"):
-        mix.equilibrium(kind="lle_flash", T=298.15, P=1.013e5, z=feed)

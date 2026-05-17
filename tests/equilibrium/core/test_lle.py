@@ -228,6 +228,7 @@ def test_equilibrium_options_public_surface_is_current_fields() -> None:
     }
     assert epcsaft.EquilibriumOptions().solver_backend == "auto"
     assert epcsaft.EquilibriumOptions().timeout_seconds is None
+    assert epcsaft.EquilibriumOptions().max_iterations == 180
 
 
 @pytest.mark.parametrize(

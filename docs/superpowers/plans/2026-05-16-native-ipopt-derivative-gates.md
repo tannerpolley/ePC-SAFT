@@ -376,6 +376,9 @@ Task 2 continuation note: duplicate reactive-speciation derivative-gate tests fo
 activity-output, and zero-iteration legacy-result paths were removed. Retained tests still cover activity and
 concentration derivative gates, native ideal Ipopt routes, sweep result handling, and result-mode gate propagation.
 
+Task 2 continuation note: duplicate electrolyte smoke assertions were pruned. The default equilibrium-option value now
+lives with the public option-surface test, and neutral LLE ionic-mixture rejection remains covered by the core LLE test.
+
 ### Task 3: Build Dependency Boundary
 
 **Files:**
