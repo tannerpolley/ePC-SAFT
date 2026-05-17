@@ -43,22 +43,6 @@ def _assert_neutral_lle_route_pending(excinfo: pytest.ExceptionInfo[epcsaft.Inpu
     assert "No package-owned alternate LLE solver is available" in message
 
 
-def test_lle_flash_requires_native_ipopt_after_validation() -> None:
-    mix = _methanol_cyclohexane_mixture()
-    feed = _methanol_cyclohexane_lle_feed()
-
-    with pytest.raises(epcsaft.InputError) as excinfo:
-        mix.equilibrium(
-            kind="lle_flash",
-            T=298.15,
-            P=1.013e5,
-            z=feed,
-            options=epcsaft.EquilibriumOptions(max_iterations=240, tolerance=1.0e-10),
-        )
-
-    _assert_neutral_lle_route_pending(excinfo)
-
-
 def test_lle_flash_builds_one_native_route_request_before_ipopt_gate(monkeypatch: pytest.MonkeyPatch) -> None:
     mix = _methanol_cyclohexane_mixture()
     feed = _methanol_cyclohexane_lle_feed()

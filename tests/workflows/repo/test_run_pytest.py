@@ -209,11 +209,10 @@ def test_slice_targets_use_grouped_test_subpackages():
     assert all(target.count("/") >= 2 for target in all_targets)
     assert "tests/api/runtime/test_runtime_exports_and_metadata.py" in run_pytest.API_TEST_TARGETS
     assert (
-        "tests/equilibrium/core/test_vle.py::"
-        "test_ternary_hydrocarbon_basis_tp_flash_requires_native_ipopt_route"
+        "tests/equilibrium/core/test_vle.py::test_tp_flash_builds_one_native_route_request_before_ipopt_gate"
     ) in run_pytest.GENERIC_TEST_TARGETS
     assert (
-        "tests/equilibrium/core/test_lle.py::test_lle_flash_requires_native_ipopt_after_validation"
+        "tests/equilibrium/core/test_lle.py::test_lle_flash_builds_one_native_route_request_before_ipopt_gate"
         in run_pytest.GENERIC_TEST_TARGETS
     )
     assert (

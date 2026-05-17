@@ -959,6 +959,11 @@ diagnostic or a negative neutral-route status. The retained diagnostics describe
 derivative policy, residual audits, and phase-route diagnostics only; the executable text gate blocks the removed field
 and status tokens.
 
+Task 2 continuation note: duplicate no-Ipopt route-pending tests for neutral TP flash, neutral LLE, neutral bubble/dew
+temperature, and one-salt electrolyte LLE were deleted. Retained coverage now lives in stronger tests that either verify
+one native route request is built before the Ipopt dependency gate, exercise typed/generic dispatch for still-gated
+temperature routes, or validate accepted native payload conversion.
+
 Task 12 continuation note: `capabilities()["equilibrium"]` now reports implemented native Ipopt routes only. Stability,
 reactive electrolyte bubble, and reactive phase-equilibrium routes remain public API contracts that fail loudly until
 their native builders land, but they no longer appear as false/pending capability rows. Implemented routes without a

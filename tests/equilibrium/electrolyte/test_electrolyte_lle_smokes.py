@@ -20,22 +20,6 @@ def _assert_electrolyte_lle_route_pending(excinfo: pytest.ExceptionInfo[epcsaft.
     assert "No package-owned alternate LLE solver is available" in message
 
 
-def test_one_salt_electrolyte_lle_direct_feed_requires_native_ipopt_route() -> None:
-    feed = np.asarray([0.55, 0.40, 0.025, 0.025], dtype=float)
-    mix = _ascani_water_butanol_nacl_mixture(feed)
-
-    with pytest.raises(epcsaft.InputError) as excinfo:
-        mix.equilibrium(
-            kind="electrolyte_lle",
-            T=298.15,
-            P=1.013e5,
-            z=feed,
-            options=epcsaft.EquilibriumOptions(include_phase_diagnostics=True),
-        )
-
-    _assert_electrolyte_lle_route_pending(excinfo)
-
-
 def test_electrolyte_lle_builds_native_route_before_ipopt_gate(monkeypatch) -> None:
     feed = np.asarray([0.55, 0.40, 0.025, 0.025], dtype=float)
     mix = _ascani_water_butanol_nacl_mixture(feed)

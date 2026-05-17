@@ -13,14 +13,10 @@ GENERIC_TEST_TARGETS = (
     "tests/api/parameters/test_parameter_templates.py::test_runtime_options_accept_cppad_modes_and_preserve_explicit_overrides",
     "tests/api/regression/test_regression_api_native_backends.py::test_public_pure_neutral_regression_is_robust_to_distinct_initial_guesses",
     "tests/regression/core/test_hydrocarbon.py::test_methane_reference_parameters_keep_native_objective_pinned",
-    "tests/equilibrium/core/test_vle.py::test_ternary_hydrocarbon_basis_tp_flash_requires_native_ipopt_route",
-    "tests/equilibrium/core/test_lle.py::test_lle_flash_requires_native_ipopt_after_validation",
+    "tests/equilibrium/core/test_vle.py::test_tp_flash_builds_one_native_route_request_before_ipopt_gate",
+    "tests/equilibrium/core/test_lle.py::test_lle_flash_builds_one_native_route_request_before_ipopt_gate",
     "tests/equilibrium/core/test_lle.py::test_lle_flash_requested_ipopt_requires_native_ipopt_route",
     "tests/equilibrium/core/test_stability.py::test_stability_requires_native_ipopt_route_after_validation",
-    (
-        "tests/equilibrium/electrolyte/test_electrolyte_lle_smokes.py::"
-        "test_one_salt_electrolyte_lle_direct_feed_requires_native_ipopt_route"
-    ),
     (
         "tests/equilibrium/electrolyte/test_electrolyte_lle_smokes.py::"
         "test_electrolyte_lle_builds_native_route_before_ipopt_gate"
@@ -54,12 +50,12 @@ EQUILIBRIUM_CONFIDENCE_TEST_TARGETS = (
     ),
 )
 EQUILIBRIUM_API_TEST_TARGETS = (
-    "tests/equilibrium/core/test_vle.py::test_ternary_hydrocarbon_basis_tp_flash_requires_native_ipopt_route",
-    "tests/equilibrium/core/test_lle.py::test_lle_flash_requires_native_ipopt_after_validation",
+    "tests/equilibrium/core/test_vle.py::test_tp_flash_builds_one_native_route_request_before_ipopt_gate",
+    "tests/equilibrium/core/test_lle.py::test_lle_flash_builds_one_native_route_request_before_ipopt_gate",
     "tests/equilibrium/core/test_stability.py::test_stability_requires_native_ipopt_route_after_validation",
     (
         "tests/equilibrium/electrolyte/test_electrolyte_lle_smokes.py::"
-        "test_one_salt_electrolyte_lle_direct_feed_requires_native_ipopt_route"
+        "test_electrolyte_lle_builds_native_route_before_ipopt_gate"
     ),
     "tests/api/runtime/test_runtime_exports_and_metadata.py::test_runtime_build_info_and_capabilities_are_json_like",
     (
