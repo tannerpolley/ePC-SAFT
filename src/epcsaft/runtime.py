@@ -624,7 +624,6 @@ def capabilities() -> dict[str, object]:
                 "backend": "batch_residual_evaluation_context",
                 "mixed_pressure_speciation_residual_context": {
                     "available": True,
-                    "status": "diagnostic_residual_context",
                     "production_optimizer": False,
                     "optimizer": None,
                     "fit_role": "diagnostic residual context, not a production optimizer",
