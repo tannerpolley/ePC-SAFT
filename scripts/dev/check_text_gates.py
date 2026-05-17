@@ -82,6 +82,12 @@ def _blocked_terms() -> tuple[str, ...]:
     twenty_fourth = "perturbation" + " differencing"
     twenty_fifth = "differential_mode" + '": "' + "numerical"
     twenty_sixth = "residual" + "_evaluation" + "_only"
+    twenty_seventh = "central" + " perturbation"
+    twenty_eighth = "central" + " perturbations"
+    twenty_ninth = "density" + "-perturbation"
+    thirtieth = "local density " + "perturbation"
+    thirty_first = "perturbation" + " slope"
+    thirty_second = "perturbation" + " slopes"
     return (
         first,
         second,
@@ -109,6 +115,12 @@ def _blocked_terms() -> tuple[str, ...]:
         twenty_fourth,
         twenty_fifth,
         twenty_sixth,
+        twenty_seventh,
+        twenty_eighth,
+        twenty_ninth,
+        thirtieth,
+        thirty_first,
+        thirty_second,
     )
 
 

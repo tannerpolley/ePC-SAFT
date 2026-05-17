@@ -158,7 +158,7 @@ LITERATURE_CASES: OrderedDict[str, BenchmarkCase] = OrderedDict(
                 status=EXECUTABLE,
                 package_surface=(
                     "tests/regression/literature/test_ethanol_water_binary_vle_regression.py",
-                    "docs/goals/native-eos-association-ceres-benchmark/notes/final_benchmark_report.md",
+                    "docs/roadmaps/native_associating_binary_ceres_benchmark.md",
                 ),
                 validation_paths=("tests/regression/literature/test_ethanol_water_binary_vle_regression.py",),
                 notes="The current executable associating-system benchmark is the Stage 0-approved ethanol/water surrogate because no normalized repo-contained MEA/water binary fixture was found.",

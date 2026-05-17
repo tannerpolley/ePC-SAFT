@@ -85,6 +85,9 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
   remain request/result surfaces instead of owning production solve algorithms.
 - Duplicate distributed-ion electrolyte LLE route-pending checks were removed; mixed-salt public route-gate coverage
   remains in the route-specific solver-contract test file.
+- The retired tracked `docs/goals/**` GoalBuddy boards were removed from active docs. The only referenced benchmark
+  evidence was condensed into `docs/roadmaps/native_associating_binary_ceres_benchmark.md`, and the text gate now blocks
+  the stale derivative-proof phrases that appeared only in historical board state.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
 
