@@ -372,6 +372,10 @@ Task 2 continuation note: unused native chemical-equilibrium API test helpers fo
 manual log-K reconstruction were removed. The retained tests keep the active residual-evaluator, Ipopt route, and
 reactive-stability gate coverage.
 
+Task 2 continuation note: duplicate reactive-speciation derivative-gate tests for activity-coupled,
+activity-output, and zero-iteration legacy-result paths were removed. Retained tests still cover activity and
+concentration derivative gates, native ideal Ipopt routes, sweep result handling, and result-mode gate propagation.
+
 ### Task 3: Build Dependency Boundary
 
 **Files:**

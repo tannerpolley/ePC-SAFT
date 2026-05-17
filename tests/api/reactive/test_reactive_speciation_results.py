@@ -81,16 +81,6 @@ def test_solve_reactive_speciation_concentration_standard_state_reaches_native_d
     _assert_reactive_speciation_native_derivative_route_required(excinfo)
 
 
-def test_concentration_standard_state_with_no_activity_output_reaches_native_derivative_gate() -> None:
-    with pytest.raises(epcsaft.InputError) as excinfo:
-        epcsaft.solve_reactive_speciation(
-            **_salt_speciation_request("concentration"),
-            options=epcsaft.ReactiveSpeciationOptions(activity_output="never"),
-        )
-
-    _assert_reactive_speciation_native_derivative_route_required(excinfo)
-
-
 def test_reactive_speciation_sweep_auto_uses_native_ipopt_ideal_route_when_compiled() -> None:
     from epcsaft import _core
 

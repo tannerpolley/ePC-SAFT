@@ -22,40 +22,6 @@ def _salt_speciation_mixture() -> epcsaft.ePCSAFTMixture:
     return epcsaft.ePCSAFTMixture.from_params(params, species=["H2O", "NaCl", "Na+", "Cl-"])
 
 
-def test_solve_reactive_speciation_auto_reaches_native_derivative_gate_before_result_payload() -> None:
-    species = ["H2O", "NaCl", "Na+", "Cl-"]
-    mix = _salt_speciation_mixture()
-
-    with pytest.raises(epcsaft.InputError) as excinfo:
-        epcsaft.solve_reactive_speciation(
-            species=species,
-            mixture_factory=lambda x, T, P: mix,
-            T=298.15,
-            P=1.0e5,
-            balances={
-                "water_total": {"H2O": 1.0},
-                "sodium_total": {"NaCl": 1.0, "Na+": 1.0},
-                "chloride_total": {"NaCl": 1.0, "Cl-": 1.0},
-            },
-            totals={"water_total": 0.998, "sodium_total": 0.0015, "chloride_total": 0.0015},
-            reactions=[
-                epcsaft.ReactionDefinition(
-                    stoichiometry={"NaCl": -1.0, "Na+": 1.0, "Cl-": 1.0},
-                    log_equilibrium_constant=100.0,
-                    name="salt_dissociation",
-                    standard_state="mole_fraction_activity",
-                )
-            ],
-            initial_x=[0.998, 0.001, 0.0005, 0.0005],
-            options=epcsaft.ReactiveSpeciationOptions(
-                max_iterations=0,
-                tolerance=1.0e-12,
-            ),
-        )
-
-    _assert_reactive_speciation_native_derivative_route_required(excinfo)
-
-
 def test_solve_reactive_speciation_result_mode_does_not_mask_native_derivative_gate() -> None:
     species = ["H2O", "NaCl", "Na+", "Cl-"]
     mix = _salt_speciation_mixture()
