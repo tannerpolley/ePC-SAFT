@@ -1802,8 +1802,8 @@
     \tilde{a}^{\mathrm{res}}=\tilde{a}^{h c}+\tilde{a}^{\text {disp }}+\tilde{a}^{\text {assoc }}+\tilde{a}^{\text {DH }}+\tilde{a}^{\text {Born }}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_ares.cpp"
-      line: 1362
-      comment_line: 1361
+      line: 1364
+      comment_line: 1363
       context: "AresContributions ares_contributions_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs) {"
 - eqid: "dares_dT"
   section: "Residual Helmholtz Energy"
@@ -1823,8 +1823,8 @@
         +\left(\frac{\partial\tilde{a}^\mathrm{Born}}{\partial T}\right)_{\rho,x_{i}}
   cpp_refs:
     - file: "src/epcsaft/native/epcsaft_ares.cpp"
-      line: 2109
-      comment_line: 2108
+      line: 2194
+      comment_line: 2193
       context: "ScalarContributionTerms temperature_derivative_residual_helmholtz_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {"
 - eqid: "ares_hc"
   section: "Residual Helmholtz Energy"
@@ -2106,7 +2106,7 @@
     - file: "src/epcsaft/native/epcsaft_ares.cpp"
       line: 781
       comment_line: 780
-      context: "template <typename Scalar>"
+      context: "template <typename Scalar, typename TemperatureScalar>"
 - eqid: "dh_ares_dadrho"
   section: "Residual Helmholtz Energy"
   subsection: "Debye and Huckel Contribution"
@@ -2215,7 +2215,7 @@
     - file: "src/epcsaft/native/epcsaft_ares.cpp"
       line: 854
       comment_line: 853
-      context: "template <typename Scalar>"
+      context: "template <typename Scalar, typename TemperatureScalar>"
 - eqid: "born_ares_dadrho"
   section: "Residual Helmholtz Energy"
   subsection: "Born Contribution"

@@ -125,10 +125,10 @@ static Scalar scalar_dielc_parameter_cpp(
     );
 }
 
-template <typename Scalar>
+template <typename Scalar, typename TemperatureScalar>
 static Scalar ion_diameter_scalar_cpp(
     int i,
-    double t,
+    const TemperatureScalar &t,
     const add_args &cppargs,
     const Scalar &sigma_i,
     const Scalar &epsilon_i
@@ -149,10 +149,10 @@ static Scalar ion_diameter_scalar_cpp(
     throw ValueError("Unknown d_ion_mode. Supported values are 0, 1, 2.");
 }
 
-template <typename Scalar>
+template <typename Scalar, typename TemperatureScalar>
 static Scalar ion_born_radius_scalar_cpp(
     int i,
-    double t,
+    const TemperatureScalar &t,
     const add_args &cppargs,
     const Scalar &sigma_i,
     const Scalar &epsilon_i,
@@ -188,9 +188,9 @@ static Scalar ion_born_radius_scalar_cpp(
     throw ValueError("Unknown d_Born_mode. Supported values are 0, 1, 2, 3.");
 }
 
-template <typename Scalar>
+template <typename Scalar, typename TemperatureScalar>
 static MixtureStateScalar<Scalar> mixture_state_scalar_cpp(
-    double t,
+    const TemperatureScalar &t,
     const Scalar &rho,
     const vector<Scalar> &x,
     const add_args &cppargs,
@@ -778,9 +778,9 @@ static AssociationImplicitTermsScalar<Scalar> association_implicit_terms_scalar_
 }
 
 // EqID: ares_dh
-template <typename Scalar>
+template <typename Scalar, typename TemperatureScalar>
 static Scalar ares_ion_scalar_cpp(
-    double t,
+    const TemperatureScalar &t,
     const MixtureStateScalar<Scalar> &thermo,
     const vector<Scalar> &x,
     const add_args &cppargs,
@@ -838,7 +838,7 @@ static Scalar ares_ion_scalar_cpp(
         Scalar chi = 3.0 / scalar_pow(ka, 3) * (1.5 + scalar_log(1.0 + ka) - 2.0 * (1.0 + ka) + 0.5 * scalar_pow(1.0 + ka, 2));
         chi_sum += x[i] * cppargs.z[i] * cppargs.z[i] * chi;
     }
-    double K0 = E_CHRG * E_CHRG / (12.0 * PI * kb * t * perm_vac);
+    Scalar K0 = scalar_constant<Scalar>(E_CHRG * E_CHRG / (12.0 * PI * kb * perm_vac)) / t;
     return -K0 * kappa / eps * chi_sum;
 }
 
@@ -851,9 +851,9 @@ static double ares_ion_cpp(double t, const IonIntermediateState &ion_state) {
 }
 
 // EqID: ares_born
-template <typename Scalar>
+template <typename Scalar, typename TemperatureScalar>
 static Scalar ares_born_scalar_cpp(
-    double t,
+    const TemperatureScalar &t,
     const vector<Scalar> &x,
     const add_args &cppargs,
     int component_target_kind = -1,
@@ -939,7 +939,8 @@ static Scalar ares_born_scalar_cpp(
             );
             charge_radius_sum += x[i] * cppargs.z[i] * cppargs.z[i] / d_born_i;
         }
-        return -E_CHRG * E_CHRG / (4.0 * PI * kb * t * perm_vac) * (1.0 - 1.0 / eps) * charge_radius_sum;
+        Scalar Kborn = scalar_constant<Scalar>(E_CHRG * E_CHRG / (4.0 * PI * kb * perm_vac)) / t;
+        return -Kborn * (1.0 - 1.0 / eps) * charge_radius_sum;
     }
 
     const bool use_ssm = (cppargs.born_solvation_shell_model != 0);
@@ -1002,7 +1003,8 @@ static Scalar ares_born_scalar_cpp(
         Scalar ds_term = use_ds ? ((1.0 - 1.0 / eps_ion) * gap) : scalar_constant<Scalar>(0.0);
         sum_bracket += x[i] * z2 * (base_term + ds_term);
     }
-    return -E_CHRG * E_CHRG / (4.0 * PI * kb * t * perm_vac) * sum_bracket;
+    Scalar Kborn = scalar_constant<Scalar>(E_CHRG * E_CHRG / (4.0 * PI * kb * perm_vac)) / t;
+    return -Kborn * sum_bracket;
 }
 
 static double ares_born_cpp(double t, const BornIntermediateState &born_state) {
@@ -1019,9 +1021,9 @@ static double ares_born_cpp(double t, const BornIntermediateState &born_state) {
     throw ValueError("Unknown born_model. Supported values are 0, 1, 2.");
 }
 
-template <typename Scalar>
+template <typename Scalar, typename TemperatureScalar>
 static AresContributionsScalar<Scalar> ares_contributions_scalar_cpp(
-    double t,
+    const TemperatureScalar &t,
     const Scalar &rho,
     const vector<Scalar> &x,
     const add_args &cppargs,
@@ -1526,6 +1528,89 @@ void eos_phase_objective_derivatives_cpp(
     (void)gradient;
     (void)hessian_row_major;
     throw ValueError("EOS phase objective Hessian requires CppAD support.");
+#endif
+}
+
+void eos_phase_temperature_variable_derivatives_cpp(
+    double t,
+    double target_pressure,
+    const vector<double> &amounts,
+    double volume,
+    const add_args &cppargs,
+    double *objective,
+    vector<double> *gradient,
+    vector<double> *hessian_row_major
+) {
+#ifdef EPCSAFT_HAS_CPPAD
+    using CppADScalar = CppAD::AD<double>;
+    if (!objective || !gradient || !hessian_row_major) {
+        throw ValueError("EOS phase variable-temperature derivative output buffers must be valid.");
+    }
+    if (!cppargs.assoc_num.empty()) {
+        for (int sites : cppargs.assoc_num) {
+            if (sites > 0) {
+                throw ValueError("unsupported: EOS phase temperature route Hessian requires association implicit variables.");
+            }
+        }
+    }
+    if (!cppargs.z.empty() && cppargs.born_model > 1) {
+        throw ValueError("unsupported: EOS phase temperature route Hessian supports direct Born model=1 formulas only.");
+    }
+    const int ncomp = static_cast<int>(amounts.size());
+    const int nvars = ncomp + 2;
+    std::vector<CppADScalar> variables(static_cast<std::size_t>(nvars));
+    for (int index = 0; index < ncomp; ++index) {
+        variables[static_cast<std::size_t>(index)] = amounts[static_cast<std::size_t>(index)];
+    }
+    variables[static_cast<std::size_t>(ncomp)] = volume;
+    variables[static_cast<std::size_t>(ncomp + 1)] = t;
+    CppAD::Independent(variables);
+
+    CppADScalar total_amount = scalar_constant<CppADScalar>(0.0);
+    for (int index = 0; index < ncomp; ++index) {
+        total_amount += variables[static_cast<std::size_t>(index)];
+    }
+    const CppADScalar phase_volume = variables[static_cast<std::size_t>(ncomp)];
+    const CppADScalar temperature = variables[static_cast<std::size_t>(ncomp + 1)];
+    const CppADScalar rho = total_amount / phase_volume;
+    std::vector<CppADScalar> composition(static_cast<std::size_t>(ncomp));
+    for (int index = 0; index < ncomp; ++index) {
+        composition[static_cast<std::size_t>(index)] = variables[static_cast<std::size_t>(index)] / total_amount;
+    }
+
+    CppADScalar ideal = scalar_constant<CppADScalar>(0.0);
+    for (int index = 0; index < ncomp; ++index) {
+        const CppADScalar amount = variables[static_cast<std::size_t>(index)];
+        ideal += amount * (CppAD::log(amount / phase_volume) - scalar_constant<CppADScalar>(1.0));
+    }
+    const auto contributions = ares_detail::ares_contributions_scalar_cpp(temperature, rho, composition, cppargs);
+    const CppADScalar residual = total_amount
+        * (contributions.hc + contributions.disp + contributions.assoc + contributions.ion + contributions.born);
+    const CppADScalar pressure_work = target_pressure * phase_volume / (kb * N_AV * temperature);
+    std::vector<CppADScalar> outputs(1);
+    outputs[0] = ideal + residual + pressure_work;
+
+    CppAD::ADFun<double> function(variables, outputs);
+    std::vector<double> point(amounts.begin(), amounts.end());
+    point.push_back(volume);
+    point.push_back(t);
+    auto value = function.Forward(0, point);
+    auto jacobian = function.Jacobian(point);
+    auto hessian = function.Hessian(point, 0);
+
+    *objective = value.at(0);
+    *gradient = std::move(jacobian);
+    *hessian_row_major = std::move(hessian);
+#else
+    (void)t;
+    (void)target_pressure;
+    (void)amounts;
+    (void)volume;
+    (void)cppargs;
+    (void)objective;
+    (void)gradient;
+    (void)hessian_row_major;
+    throw ValueError("EOS phase variable-temperature Hessian requires CppAD support.");
 #endif
 }
 

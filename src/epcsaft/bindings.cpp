@@ -1647,6 +1647,38 @@ PYBIND11_MODULE(_core, m) {
             )
         );
     });
+    m.def("_native_neutral_bubble_t_eos_nlp_contract", [](
+        const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+        double target_pressure,
+        const std::vector<double>& liquid_composition
+    ) {
+        if (!mixture) {
+            throw ValueError("Neutral bubble temperature EOS NLP contract requires a native mixture.");
+        }
+        return neutral_two_phase_eos_nlp_contract_to_dict(
+            epcsaft::native::equilibrium_nlp::evaluate_neutral_bubble_t_eos_nlp_contract(
+                mixture->args(),
+                target_pressure,
+                liquid_composition
+            )
+        );
+    });
+    m.def("_native_neutral_dew_t_eos_nlp_contract", [](
+        const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+        double target_pressure,
+        const std::vector<double>& vapor_composition
+    ) {
+        if (!mixture) {
+            throw ValueError("Neutral dew temperature EOS NLP contract requires a native mixture.");
+        }
+        return neutral_two_phase_eos_nlp_contract_to_dict(
+            epcsaft::native::equilibrium_nlp::evaluate_neutral_dew_t_eos_nlp_contract(
+                mixture->args(),
+                target_pressure,
+                vapor_composition
+            )
+        );
+    });
     m.def("_native_neutral_two_phase_eos_route_result", [](
         const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
         double temperature,
@@ -1862,6 +1894,66 @@ PYBIND11_MODULE(_core, m) {
             epcsaft::native::equilibrium_nlp::solve_neutral_dew_p_eos_route(
                 mixture->args(),
                 temperature,
+                vapor_composition,
+                options,
+                phase_total_tolerance,
+                pressure_tolerance,
+                chemical_potential_tolerance,
+                phase_distance_tolerance
+            )
+        );
+    });
+    m.def("_native_neutral_bubble_t_eos_route_result", [](
+        const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+        double target_pressure,
+        const std::vector<double>& liquid_composition,
+        int max_iterations,
+        double tolerance,
+        double timeout_seconds,
+        double phase_total_tolerance,
+        double pressure_tolerance,
+        double chemical_potential_tolerance,
+        double phase_distance_tolerance
+    ) {
+        if (!mixture) {
+            throw ValueError("Neutral bubble temperature EOS route result requires a native mixture.");
+        }
+        const epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
+            ipopt_solve_options_from_scalars(max_iterations, tolerance, timeout_seconds);
+        return neutral_two_phase_eos_route_result_to_dict(
+            epcsaft::native::equilibrium_nlp::solve_neutral_bubble_t_eos_route(
+                mixture->args(),
+                target_pressure,
+                liquid_composition,
+                options,
+                phase_total_tolerance,
+                pressure_tolerance,
+                chemical_potential_tolerance,
+                phase_distance_tolerance
+            )
+        );
+    });
+    m.def("_native_neutral_dew_t_eos_route_result", [](
+        const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+        double target_pressure,
+        const std::vector<double>& vapor_composition,
+        int max_iterations,
+        double tolerance,
+        double timeout_seconds,
+        double phase_total_tolerance,
+        double pressure_tolerance,
+        double chemical_potential_tolerance,
+        double phase_distance_tolerance
+    ) {
+        if (!mixture) {
+            throw ValueError("Neutral dew temperature EOS route result requires a native mixture.");
+        }
+        const epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
+            ipopt_solve_options_from_scalars(max_iterations, tolerance, timeout_seconds);
+        return neutral_two_phase_eos_route_result_to_dict(
+            epcsaft::native::equilibrium_nlp::solve_neutral_dew_t_eos_route(
+                mixture->args(),
+                target_pressure,
                 vapor_composition,
                 options,
                 phase_total_tolerance,

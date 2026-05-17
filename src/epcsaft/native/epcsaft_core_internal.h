@@ -268,6 +268,16 @@ void eos_phase_objective_derivatives_cpp(
     vector<double> *gradient,
     vector<double> *hessian_row_major
 );
+void eos_phase_temperature_variable_derivatives_cpp(
+    double t,
+    double target_pressure,
+    const vector<double> &amounts,
+    double volume,
+    const add_args &cppargs,
+    double *objective,
+    vector<double> *gradient,
+    vector<double> *hessian_row_major
+);
 epcsaft::native::cppad_support::CppADDerivativeResult cppad_pressure_density_derivative_cpp(double t, double rho);
 PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_composition_sensitivity_cpp(
     double t,

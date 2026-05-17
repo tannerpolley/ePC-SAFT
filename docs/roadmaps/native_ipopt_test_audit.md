@@ -292,7 +292,8 @@ Still ongoing:
   reactive-speciation tests still cover activity-coupled, concentration-standard-state, and result-mode native derivative
   gates.
 - The broad public-equilibrium API test no longer repeats neutral `bubble_p`/`dew_p` route-gate assertions now owned by
-  the route-specific bubble/dew tests; it keeps the still route-gated `bubble_t`/`dew_t` temperature-route checks.
+  the route-specific bubble/dew tests; fixed-pressure `bubble_t`/`dew_t` now have route-specific native contract and
+  public dispatch checks as well.
 - The broad `solve_equilibrium(problem)` test now checks only delegation to a problem object's `solve(mixture)` method
   instead of repeating TP-flash, stability, and dew-pressure native-Ipopt gate messages owned by route-specific tests.
 - Unused electrolyte-LLE result-test helpers and their CSV/JSON/path imports were removed; retained coverage is limited

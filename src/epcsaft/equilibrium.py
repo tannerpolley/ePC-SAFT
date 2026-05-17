@@ -18,6 +18,7 @@ from .equilibrium_core.electrolyte_basis import (
 from .equilibrium_core.native_requests import neutral_two_phase_eos_tolerances
 from .equilibrium_core.native_results import (
     native_route_solved_pressure,
+    native_route_solved_temperature,
     native_route_summed_phase_amounts,
     neutral_two_phase_payload_to_result,
 )
@@ -757,6 +758,55 @@ def _native_neutral_fixed_temperature_pressure(
     )
 
 
+def _native_neutral_fixed_pressure_temperature(
+    mixture: Any,
+    *,
+    P: float,
+    composition: np.ndarray,
+    options: EquilibriumOptions,
+    route_label: str,
+    route_binding: str,
+    problem_kind: str,
+) -> EquilibriumResult:
+    from . import _core
+
+    route_tolerances = (
+        options.tolerance,
+        max(P * options.tolerance, options.tolerance),
+        options.tolerance,
+        max(10.0 * options.min_composition, 1.0e-8),
+    )
+    route = getattr(_core, route_binding)(
+        mixture._native,
+        P,
+        composition.tolist(),
+        options.max_iterations,
+        options.tolerance,
+        _native_timeout_seconds(options),
+        *route_tolerances,
+    )
+    if str(route.get("status", "")) == "ipopt_dependency_required":
+        _raise_native_ipopt_equilibrium_required(route_label)
+
+    temperature = native_route_solved_temperature(route, route_label) if bool(route.get("accepted", False)) else 1.0
+    feed = (
+        native_route_summed_phase_amounts(route, mixture.ncomp, route_label)
+        if bool(route.get("accepted", False))
+        else composition
+    )
+    return _accepted_native_neutral_two_phase_result(
+        mixture,
+        T=temperature,
+        P=P,
+        feed=feed,
+        route=route,
+        tolerances=neutral_two_phase_eos_tolerances(P, options),
+        route_label=route_label,
+        problem_kind=problem_kind,
+        phase_labels=("liq", "vap"),
+    )
+
+
 def _native_neutral_tp_flash(
     mixture: Any,
     *,
@@ -1088,19 +1138,35 @@ def dew_p(mixture: Any, *, T: float, y: Any, options: EquilibriumOptions | None 
 def bubble_t(mixture: Any, *, P: float, x: Any, options: EquilibriumOptions | None = None) -> EquilibriumResult:
     """Solve a neutral bubble temperature at fixed liquid composition and pressure."""
     opts = _normalize_options(options)
-    _normalize_feed(x, mixture.ncomp, opts.min_composition, "bubble_t")
+    composition = _normalize_feed(x, mixture.ncomp, opts.min_composition, "bubble_t")
     _reject_ion_containing_mixture(mixture)
-    _positive_scalar(P, "P", "bubble_t")
-    _raise_native_ipopt_equilibrium_required("bubble_t")
+    pressure = _positive_scalar(P, "P", "bubble_t")
+    return _native_neutral_fixed_pressure_temperature(
+        mixture,
+        P=pressure,
+        composition=composition,
+        options=opts,
+        route_label="bubble_t",
+        route_binding="_native_neutral_bubble_t_eos_route_result",
+        problem_kind="neutral_bubble_t",
+    )
 
 
 def dew_t(mixture: Any, *, P: float, y: Any, options: EquilibriumOptions | None = None) -> EquilibriumResult:
     """Solve a neutral dew temperature at fixed vapor composition and pressure."""
     opts = _normalize_options(options)
-    _normalize_feed(y, mixture.ncomp, opts.min_composition, "dew_t")
+    composition = _normalize_feed(y, mixture.ncomp, opts.min_composition, "dew_t")
     _reject_ion_containing_mixture(mixture)
-    _positive_scalar(P, "P", "dew_t")
-    _raise_native_ipopt_equilibrium_required("dew_t")
+    pressure = _positive_scalar(P, "P", "dew_t")
+    return _native_neutral_fixed_pressure_temperature(
+        mixture,
+        P=pressure,
+        composition=composition,
+        options=opts,
+        route_label="dew_t",
+        route_binding="_native_neutral_dew_t_eos_route_result",
+        problem_kind="neutral_dew_t",
+    )
 
 
 def tp_flash(

@@ -83,6 +83,66 @@ def test_bubble_p_builds_one_native_route_request_before_ipopt_gate(monkeypatch:
     assert call["phase_distance_tolerance"] > 0.0
 
 
+def test_bubble_t_builds_one_native_route_request_before_ipopt_gate(monkeypatch: pytest.MonkeyPatch) -> None:
+    mix = _hydrocarbon_mixture()
+    calls: list[dict[str, object]] = []
+
+    def fake_route(
+        _native,
+        target_pressure,
+        liquid_composition,
+        max_iterations,
+        tolerance,
+        timeout_seconds,
+        phase_total_tolerance,
+        pressure_tolerance,
+        chemical_potential_tolerance,
+        phase_distance_tolerance,
+    ):
+        calls.append(
+            {
+                "target_pressure": target_pressure,
+                "liquid_composition": liquid_composition,
+                "max_iterations": max_iterations,
+                "tolerance": tolerance,
+                "timeout_seconds": timeout_seconds,
+                "phase_total_tolerance": phase_total_tolerance,
+                "pressure_tolerance": pressure_tolerance,
+                "chemical_potential_tolerance": chemical_potential_tolerance,
+                "phase_distance_tolerance": phase_distance_tolerance,
+            }
+        )
+        return {
+            "backend": "ipopt",
+            "compiled": False,
+            "ran": False,
+            "accepted": False,
+            "status": "ipopt_dependency_required",
+            "postsolve": {"accepted": False},
+        }
+
+    monkeypatch.setattr(_core, "_native_neutral_bubble_t_eos_route_result", fake_route)
+
+    with pytest.raises(epcsaft.InputError, match=r"bubble_t requires a native Ipopt equilibrium NLP route"):
+        mix.bubble_t(
+            P=1.0e5,
+            x=[0.2, 0.3, 0.5],
+            options=epcsaft.EquilibriumOptions(max_iterations=17, tolerance=4.0e-8, timeout_seconds=2.5),
+        )
+
+    assert len(calls) == 1
+    call = calls[0]
+    assert call["target_pressure"] == pytest.approx(1.0e5)
+    assert call["liquid_composition"] == pytest.approx([0.2, 0.3, 0.5])
+    assert call["max_iterations"] == 17
+    assert call["tolerance"] == pytest.approx(4.0e-8)
+    assert call["timeout_seconds"] == pytest.approx(2.5)
+    assert call["phase_total_tolerance"] > 0.0
+    assert call["pressure_tolerance"] == pytest.approx(4.0e-3)
+    assert call["chemical_potential_tolerance"] > 0.0
+    assert call["phase_distance_tolerance"] > 0.0
+
+
 def test_dew_p_converts_accepted_native_route_payload(monkeypatch: pytest.MonkeyPatch) -> None:
     mix = _hydrocarbon_mixture()
     vapor_composition = [0.1, 0.3, 0.6]
@@ -184,3 +244,103 @@ def test_dew_p_converts_accepted_native_route_payload(monkeypatch: pytest.Monkey
     assert [phase.label for phase in result.phases] == ["liq", "vap"]
     assert result.phases[1].composition == pytest.approx(vapor_composition)
     assert result.phases[0].pressure == pytest.approx(solved_pressure)
+
+
+def test_dew_t_converts_accepted_native_route_payload(monkeypatch: pytest.MonkeyPatch) -> None:
+    mix = _hydrocarbon_mixture()
+    vapor_composition = [0.1, 0.3, 0.6]
+    route_amounts = [[0.5, 0.35, 0.15], [0.1, 0.3, 0.6]]
+    route_volumes = [0.001, 0.02]
+    fixed_pressure = 2.5e5
+    solved_temperature = 245.0
+
+    def fake_route(
+        _native,
+        target_pressure,
+        received_vapor_composition,
+        max_iterations,
+        tolerance,
+        timeout_seconds,
+        phase_total_tolerance,
+        pressure_tolerance,
+        chemical_potential_tolerance,
+        phase_distance_tolerance,
+    ):
+        assert target_pressure == pytest.approx(fixed_pressure)
+        assert received_vapor_composition == pytest.approx(vapor_composition)
+        assert max_iterations > 0
+        assert tolerance > 0.0
+        assert timeout_seconds == 0.0
+        assert phase_total_tolerance > 0.0
+        assert pressure_tolerance > 0.0
+        assert chemical_potential_tolerance > 0.0
+        assert phase_distance_tolerance > 0.0
+        return {
+            "backend": "ipopt",
+            "compiled": True,
+            "ran": True,
+            "accepted": True,
+            "status": "accepted",
+            "variables": [*route_amounts[0], route_volumes[0], *route_amounts[1], route_volumes[1], solved_temperature],
+            "phase_amounts": route_amounts,
+            "phase_volumes": route_volumes,
+            "postsolve": {"accepted": True},
+        }
+
+    def fake_result(
+        _native,
+        temperature,
+        pressure,
+        phase_amounts,
+        phase_volumes,
+        feed_amounts,
+        material_tolerance,
+        pressure_tolerance,
+        chemical_potential_tolerance,
+        phase_distance_tolerance,
+    ):
+        assert temperature == pytest.approx(solved_temperature)
+        assert pressure == pytest.approx(fixed_pressure)
+        assert phase_amounts == route_amounts
+        assert phase_volumes == route_volumes
+        assert feed_amounts == pytest.approx([0.6, 0.65, 0.75])
+        assert material_tolerance > 0.0
+        assert pressure_tolerance > 0.0
+        assert chemical_potential_tolerance > 0.0
+        assert phase_distance_tolerance > 0.0
+        return {
+            "accepted": True,
+            "backend": "native_equilibrium_nlp",
+            "problem_kind": "neutral_two_phase_eos",
+            "stable": False,
+            "split_detected": True,
+            "phases": [
+                {
+                    "label": "phase_0",
+                    "composition": [0.5, 0.35, 0.15],
+                    "density": 750.0,
+                    "temperature": solved_temperature,
+                    "pressure": fixed_pressure,
+                    "phase_fraction": 0.5,
+                },
+                {
+                    "label": "phase_1",
+                    "composition": vapor_composition,
+                    "density": 20.0,
+                    "temperature": solved_temperature,
+                    "pressure": fixed_pressure,
+                    "phase_fraction": 0.5,
+                },
+            ],
+        }
+
+    monkeypatch.setattr(_core, "_native_neutral_dew_t_eos_route_result", fake_route)
+    monkeypatch.setattr(_core, "_native_neutral_two_phase_eos_result", fake_result)
+
+    result = mix.dew_t(P=fixed_pressure, y=vapor_composition)
+
+    assert result.backend == "native_equilibrium_nlp"
+    assert result.problem_kind == "neutral_dew_t"
+    assert [phase.label for phase in result.phases] == ["liq", "vap"]
+    assert result.phases[1].composition == pytest.approx(vapor_composition)
+    assert result.phases[0].temperature == pytest.approx(solved_temperature)

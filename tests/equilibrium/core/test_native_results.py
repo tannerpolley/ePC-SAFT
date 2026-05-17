@@ -8,6 +8,7 @@ import pytest
 import epcsaft
 from epcsaft.equilibrium_core.native_results import (
     native_route_solved_pressure,
+    native_route_solved_temperature,
     native_route_summed_phase_amounts,
     neutral_two_phase_payload_to_result,
 )
@@ -98,8 +99,13 @@ def test_native_route_result_helpers_validate_fixed_temperature_payloads() -> No
 
     assert np.allclose(native_route_summed_phase_amounts(route, 2, "bubble_p"), [0.9, 1.1])
     assert native_route_solved_pressure(route, "bubble_p") == pytest.approx(1.0e5)
+    assert native_route_solved_temperature({**route, "variables": [0.7, 0.3, 0.2, 0.8, 300.0]}, "bubble_t") == (
+        pytest.approx(300.0)
+    )
 
     with pytest.raises(epcsaft.SolutionError, match="positive P"):
         native_route_solved_pressure({"variables": [0.0]}, "bubble_p")
+    with pytest.raises(epcsaft.SolutionError, match="positive T"):
+        native_route_solved_temperature({"variables": [0.0]}, "bubble_t")
     with pytest.raises(epcsaft.SolutionError, match="positive feed"):
         native_route_summed_phase_amounts({"phase_amounts": [[1.0, -1.0], [1.0, 0.5]]}, 2, "bubble_p")

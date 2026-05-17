@@ -316,6 +316,59 @@ def test_neutral_fixed_temperature_pressure_route_contract_pins_specified_phase(
     assert upper_bounds[liquid_volume_col] < lower_bounds[vapor_volume_col]
 
 
+@pytest.mark.parametrize(
+    ("binding_name", "problem_name"),
+    [
+        ("_native_neutral_bubble_t_eos_nlp_contract", "neutral_bubble_t_eos"),
+        ("_native_neutral_dew_t_eos_nlp_contract", "neutral_dew_t_eos"),
+    ],
+)
+def test_neutral_fixed_pressure_temperature_route_contract_pins_specified_phase(
+    binding_name: str,
+    problem_name: str,
+) -> None:
+    mix = _neutral_binary_mixture()
+    pressure = 1.0e5
+    composition = np.asarray([0.35, 0.65], dtype=float)
+
+    payload = getattr(_core, binding_name)(
+        mix._native,
+        pressure,
+        composition.tolist(),
+    )
+
+    initial = np.asarray(payload["initial_point"], dtype=float)
+    jacobian = np.asarray(payload["jacobian_values_at_initial"], dtype=float).reshape(
+        payload["constraint_count"],
+        payload["variable_count"],
+    )
+    local_variable_count = composition.size + 1
+    temperature_col = payload["variable_count"] - 1
+    first_amounts = initial[: composition.size]
+    second_amounts = initial[local_variable_count : local_variable_count + composition.size]
+    fixed_amounts = first_amounts if "bubble" in problem_name else second_amounts
+
+    assert payload["problem_name"] == problem_name
+    assert payload["derivative_backend"] == "analytic_cppad"
+    assert payload["phase_count"] == 2
+    assert payload["species_count"] == composition.size
+    assert payload["variable_count"] == 2 * local_variable_count + 1
+    assert payload["constraint_count"] == 2 * composition.size + 4
+    assert payload["jacobian_nonzero_count"] == payload["variable_count"] * payload["constraint_count"]
+    assert np.all(initial > 0.0)
+    assert initial[temperature_col] == pytest.approx(300.0)
+    assert fixed_amounts / fixed_amounts.sum() == pytest.approx(composition)
+    assert payload["constraints_at_initial"][: composition.size + 1] == pytest.approx([0.0, 0.0, 0.0])
+    pressure_row_start = composition.size + 1
+    assert np.isfinite(jacobian[pressure_row_start, temperature_col])
+    assert np.isfinite(jacobian[pressure_row_start + 1, temperature_col])
+    assert payload["constraint_lower_bounds"][-1] > 0.0
+    assert payload["constraint_upper_bounds"][-1] > payload["constraint_lower_bounds"][-1]
+    assert payload["constraints_at_initial"][-1] >= payload["constraint_lower_bounds"][-1]
+    assert jacobian[-1, local_variable_count - 1] == pytest.approx(-1.0)
+    assert jacobian[-1, 2 * local_variable_count - 1] == pytest.approx(1.0)
+
+
 def test_electrolyte_bubble_pressure_contract_adds_phase_charge_rows() -> None:
     mix = _ionic_mixture()
     temperature = 298.15
@@ -374,6 +427,60 @@ def test_neutral_fixed_temperature_pressure_route_result_uses_ipopt_adapter_gate
     payload = getattr(_core, binding_name)(
         mix._native,
         300.0,
+        [0.35, 0.65],
+        30,
+        1.0e-8,
+        0.0,
+        1.0e-7,
+        1.0e-5,
+        1.0e-7,
+        1.0e-4,
+    )
+
+    assert payload["backend"] == "ipopt"
+    assert payload["problem_name"] == problem_name
+    assert payload["derivative_backend"] == "analytic_cppad"
+    assert payload["exact_gradient_required"] is True
+    assert payload["exact_jacobian_required"] is True
+    if not payload["compiled"]:
+        assert payload["ran"] is False
+        assert payload["solver_accepted"] is False
+        assert payload["accepted"] is False
+        assert payload["status"] == "ipopt_dependency_required"
+        assert payload["phase_amounts"] == []
+        assert payload["phase_volumes"] == []
+        assert "fixed_composition_norm" in payload["postsolve"]
+        assert "phase_amount_total_norm" in payload["postsolve"]
+        return
+
+    assert payload["ran"] is True
+    if not payload["solver_accepted"]:
+        assert payload["accepted"] is False
+        assert payload["status"] == "solver_rejected"
+        return
+
+    assert np.asarray(payload["variables"], dtype=float).shape == (7,)
+    assert np.asarray(payload["phase_amounts"], dtype=float).shape == (2, 2)
+    assert np.asarray(payload["phase_volumes"], dtype=float).shape == (2,)
+    assert payload["postsolve"]["derivative_backend"] == "analytic_cppad"
+    assert payload["status"] in {"accepted", "solver_rejected", "postsolve_rejected"}
+
+
+@pytest.mark.parametrize(
+    ("binding_name", "problem_name"),
+    [
+        ("_native_neutral_bubble_t_eos_route_result", "neutral_bubble_t_eos"),
+        ("_native_neutral_dew_t_eos_route_result", "neutral_dew_t_eos"),
+    ],
+)
+def test_neutral_fixed_pressure_temperature_route_result_uses_ipopt_adapter_gate(
+    binding_name: str,
+    problem_name: str,
+) -> None:
+    mix = _neutral_binary_mixture()
+    payload = getattr(_core, binding_name)(
+        mix._native,
+        1.0e5,
         [0.35, 0.65],
         30,
         1.0e-8,

@@ -664,6 +664,14 @@ Task 8 continuation note: the reduced log fugacity residual now participates in 
 acceptance using the existing chemical-potential tolerance. This makes the chemical-potential/fugacity consistency gate
 literal in the native result path while preserving the single deterministic Ipopt route and typed rejection diagnostics.
 
+Task 8 continuation note: public fixed-pressure `bubble_t` and `dew_t` now validate inputs, submit exactly one native
+route-result call, preserve the local no-Ipopt dependency gate, and convert accepted native payloads using the
+temperature solved by the native NLP. The new route-builder contracts use one shared temperature variable, two EOS phase
+blocks, fixed composition rows for the specified phase, unit phase-amount scaling rows, pressure-consistency rows,
+chemical-potential equality rows, and the phase-volume separation guard. Temperature-coupled objective, pressure, and
+chemical-potential Jacobian entries come from CppAD curvature through the native EOS residual path; Python does not own
+iterations, temperature search, retry logic, residual packing, or acceptance.
+
 ### Task 9: Replace Electrolyte And Reactive Phase Equilibrium Routes
 
 **Files:**

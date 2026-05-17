@@ -100,3 +100,17 @@ def native_route_solved_pressure(route: Mapping[str, Any], route_label: str) -> 
     if not np.isfinite(pressure) or pressure <= 0.0:
         raise SolutionError(f"Native neutral {route_label} route must be a finite positive P value.")
     return pressure
+
+
+def native_route_solved_temperature(route: Mapping[str, Any], route_label: str) -> float:
+    """Return the final temperature variable from a native fixed-pressure route."""
+    try:
+        variables = np.asarray(route["variables"], dtype=float).flatten()
+    except (KeyError, TypeError, ValueError) as exc:
+        raise SolutionError(f"Native neutral {route_label} route did not return solver variables.") from exc
+    if variables.size == 0:
+        raise SolutionError(f"Native neutral {route_label} route returned no solver variables.")
+    temperature = float(variables[-1])
+    if not np.isfinite(temperature) or temperature <= 0.0:
+        raise SolutionError(f"Native neutral {route_label} route must be a finite positive T value.")
+    return temperature
