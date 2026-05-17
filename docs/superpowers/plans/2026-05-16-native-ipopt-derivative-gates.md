@@ -408,12 +408,12 @@ Task 6 continuation note: public `solve_reactive_speciation`, `mixture.chemical_
 - Modify: relevant native EOS derivative files.
 - Add tests under `tests/native/equilibrium/`.
 
-- [ ] Add phase amount, composition, and volume/density variables.
-- [ ] Add Helmholtz/free-energy phase terms.
-- [ ] Add EOS pressure consistency constraints where required.
-- [ ] Use CppAD/analytical derivatives for objective and constraints.
-- [ ] Add single-phase and two-phase consistency tests.
-- [ ] Commit as `Add EOS phase NLP blocks`.
+- [x] Add phase amount, composition, and volume/density variables.
+- [x] Add Helmholtz/free-energy phase terms.
+- [x] Add EOS pressure consistency constraints where required.
+- [x] Use CppAD/analytical derivatives for objective and constraints.
+- [x] Add single-phase and two-phase consistency tests.
+- [x] Commit as `Add EOS phase NLP blocks`.
 
 Task 7 progress note: the first EOS phase-block slice adds a native `eos_phase_block` helper under
 `equilibrium_nlp/` with phase species amounts, phase volume, composition, molar density, residual Helmholtz,
