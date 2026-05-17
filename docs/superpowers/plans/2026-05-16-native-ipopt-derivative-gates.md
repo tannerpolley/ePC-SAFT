@@ -361,6 +361,10 @@ Task 2 continuation note: stale broad API route-gate coverage for neutral `bubbl
 pressure routes gained dedicated one-native-route-request and accepted-payload conversion tests. The broad API test now
 keeps only the still route-gated fixed-pressure `bubble_t`/`dew_t` temperature routes.
 
+Task 2 continuation note: the broad `solve_equilibrium(problem)` API test no longer repeats TP-flash, stability, or
+dew-pressure native-Ipopt gate assertions. Route-specific tests own those solver gates, while the broad API test now
+checks only the public delegation contract that problem objects provide a `solve(mixture)` method.
+
 ### Task 3: Build Dependency Boundary
 
 **Files:**

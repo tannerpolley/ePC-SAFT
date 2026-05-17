@@ -7,8 +7,6 @@ import pytest
 
 import epcsaft
 from epcsaft import ePCSAFTMixture
-from tests.equilibrium.core.test_stability import _assert_stability_native_ipopt_gate
-from tests.equilibrium.core.test_vle import _assert_tp_flash_native_ipopt_gate
 from tests.helpers.numeric import assert_allclose
 
 
@@ -67,22 +65,14 @@ def test_equilibrium_dispatch_rejects_temperature_bubble_dew_until_native_ipopt_
         mix.equilibrium(kind=kind, **kwargs)
 
 
-def test_solve_equilibrium_accepts_typed_problem_objects() -> None:
+def test_solve_equilibrium_delegates_to_problem_solve() -> None:
     mix = _hydrocarbon_mixture()
-    feed = np.asarray([0.1, 0.3, 0.6])
 
-    with pytest.raises(epcsaft.InputError) as flash_exc:
-        mix.solve_equilibrium(epcsaft.TPFlash(T=220.0, P=1.0e5, z=feed))
-    with pytest.raises(epcsaft.InputError) as stability_exc:
-        mix.solve_equilibrium(
-            epcsaft.StabilityAnalysis(T=300.0, P=1.0e5, z=feed, parent_phase="liq", trial_phases=("liq",))
-        )
+    class Problem:
+        def solve(self, mixture):
+            return mixture
 
-    _assert_tp_flash_native_ipopt_gate(flash_exc)
-    _assert_stability_native_ipopt_gate(stability_exc)
-
-    with pytest.raises(epcsaft.InputError, match=r"dew_p requires a native Ipopt equilibrium NLP route"):
-        mix.solve_equilibrium(epcsaft.DewPoint(T=260.0, y=feed))
+    assert mix.solve_equilibrium(Problem()) is mix
 
 
 def test_equilibrium_phase_exposes_ln_and_coefficient_fugacity_fields() -> None:
