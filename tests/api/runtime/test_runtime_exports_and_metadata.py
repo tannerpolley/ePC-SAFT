@@ -124,6 +124,15 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     equilibrium = capabilities["equilibrium"]
     assert "reactive_electrolyte_bubble" not in equilibrium
     assert "reactive_phase_equilibrium" not in equilibrium
+    unpromoted_electrolyte_vle_routes = {
+        "electrolyte_bubble_temperature",
+        "electrolyte_dew_pressure",
+        "electrolyte_dew_temperature",
+        "electrolyte_tp_flash",
+        "electrolyte_vle",
+    }
+    assert unpromoted_electrolyte_vle_routes.isdisjoint(equilibrium)
+    assert unpromoted_electrolyte_vle_routes.isdisjoint(ipopt["public_routes"])
 
     neutral_tp = equilibrium["neutral_tp_flash"]
     assert neutral_tp["available"] is ipopt["available"]

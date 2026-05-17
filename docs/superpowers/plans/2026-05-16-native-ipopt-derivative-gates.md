@@ -722,7 +722,7 @@ postsolve acceptance gates, and legacy diagnostic-only route-gate tests have bee
 - [x] Add charge-balance and electrolyte contribution blocks.
 - [x] Couple density/volume and association variables where practical.
 - [x] Implement electrolyte LLE and fixed-liquid electrolyte bubble route builders.
-- [ ] Implement broader electrolyte VLE route builders beyond the fixed-liquid bubble scope, if promoted as a public route.
+- [x] Close broader electrolyte VLE route builders as not promoted beyond the fixed-liquid bubble scope.
 - [ ] Implement reactive phase equilibrium route builders.
 - [x] Remove Ceres equilibrium residual-solve ownership from accepted equilibrium paths.
 - [x] Add charge/material/phase-distance acceptance tests for implemented electrolyte routes.
@@ -793,6 +793,12 @@ controls. Reactive electrolyte bubble sweeps no longer carry prior bubble pressu
 fixed-liquid bubble call uses the native route builder's canonical initial point, and the sweep API no longer exposes a
 continuation flag. Reactive-regression residual contexts now use each row's explicit initial composition/defaults and no
 longer convert row-result composition, pressure, or vapor data into later route seeds.
+
+Task 9 continuation note: the conditional broader electrolyte VLE item is closed as not promoted. Runtime capabilities
+and the Ipopt public-route list advertise only fixed-liquid electrolyte bubble pressure and electrolyte LLE on the
+electrolyte phase-equilibrium surface. Broader electrolyte bubble-temperature, dew, TP-flash, or generic VLE route names
+remain absent until a deliberate public-route promotion adds a thermodynamic native Ipopt NLP plus charge/material/phase
+acceptance tests.
 
 ### Task 10: Make Regression Ceres-Only
 

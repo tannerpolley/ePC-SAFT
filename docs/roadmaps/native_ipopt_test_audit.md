@@ -271,7 +271,9 @@ The failure list from the initial full-duration run has been retired. Each liste
 - Reactive electrolyte batch regression is no longer described as a production optimizer in runtime capabilities; it is a diagnostic residual context until native Ceres owns that route.
 - Task 9 is partially closed: charge/electrolyte blocks, association-variable phase-system coupling, electrolyte LLE,
   fixed-liquid electrolyte bubble pressure, and accepted-path Ceres equilibrium solve removal are implemented and tested.
-  Broad reactive phase-equilibrium route builders and their reaction-coupled acceptance tests remain open.
+  Broader electrolyte VLE routes are not promoted beyond the fixed-liquid bubble-pressure scope; runtime capabilities
+  now keep those route names absent until a thermodynamic native Ipopt route is deliberately added. Broad reactive
+  phase-equilibrium route builders and their reaction-coupled acceptance tests remain open.
 
 ## Required Cleanup Still Open
 
