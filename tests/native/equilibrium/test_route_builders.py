@@ -946,3 +946,57 @@ def test_reactive_two_phase_eos_contract_uses_conserved_balances_and_standard_po
     assert standard_mu[1] - standard_mu[0] == pytest.approx(-np.log(3.0))
     assert contract_jacobian[0] == pytest.approx([1.0, 1.0, 0.0, 1.0, 1.0, 0.0])
     assert contract_jacobian[1:] == pytest.approx(phase_system_jacobian[2:], rel=1.0e-12, abs=1.0e-8)
+
+
+def test_reactive_two_phase_eos_route_result_uses_native_ipopt_gate() -> None:
+    mix = _neutral_binary_mixture()
+    temperature = 300.0
+    phase_amounts = [
+        np.asarray([0.1, 0.4], dtype=float),
+        np.asarray([0.2, 0.3], dtype=float),
+    ]
+    volumes = [float(phase_amounts[0].sum() / 80.0), float(phase_amounts[1].sum() / 120.0)]
+    species_totals = phase_amounts[0] + phase_amounts[1]
+    target_pressure = mix.state(
+        T=temperature,
+        rho=phase_amounts[0].sum() / volumes[0],
+        x=phase_amounts[0] / phase_amounts[0].sum(),
+        phase="liquid",
+    ).pressure()
+
+    payload = _core._native_reactive_two_phase_eos_route_result(
+        mix._native,
+        temperature,
+        target_pressure,
+        [phase.tolist() for phase in phase_amounts],
+        volumes,
+        1,
+        [1.0, 1.0],
+        [float(species_totals.sum())],
+        1,
+        [-1.0, 1.0],
+        [float(np.log(3.0))],
+        10,
+        1.0e-8,
+        0.0,
+    )
+
+    assert payload["backend"] == "ipopt"
+    assert payload["problem_name"] == "reactive_two_phase_eos"
+    assert payload["derivative_backend"] == "analytic_cppad"
+    assert payload["exact_gradient_required"] is True
+    assert payload["exact_jacobian_required"] is True
+    assert payload["phase_count"] == 2
+    assert payload["species_count"] == 2
+    assert payload["balance_row_count"] == 1
+    assert payload["reaction_count"] == 1
+    standard_mu = np.asarray(payload["standard_mu_rt"], dtype=float)
+    assert standard_mu[1] - standard_mu[0] == pytest.approx(-np.log(3.0))
+    if not payload["compiled"]:
+        assert payload["ran"] is False
+        assert payload["accepted"] is False
+        assert payload["status"] == "ipopt_dependency_required"
+        return
+
+    assert payload["ran"] is True
+    assert payload["status"] in {"accepted", "solver_rejected"}

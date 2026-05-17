@@ -77,6 +77,33 @@ struct NeutralTwoPhaseEosRouteResult {
     NeutralTwoPhaseEosPostsolve postsolve;
 };
 
+struct ReactiveTwoPhaseEosRouteResult {
+    bool compiled = false;
+    bool adapter_available = false;
+    bool ran = false;
+    bool solver_accepted = false;
+    bool accepted = false;
+    bool exact_gradient_required = true;
+    bool exact_jacobian_required = true;
+    std::string backend = "ipopt";
+    std::string adapter_kind = "native_tnlp_adapter";
+    std::string problem_name = "reactive_two_phase_eos";
+    std::string derivative_backend = "analytic_cppad";
+    std::string status;
+    std::string solver_status;
+    std::string application_status;
+    int phase_count = 0;
+    int species_count = 0;
+    int balance_row_count = 0;
+    int reaction_count = 0;
+    double objective = 0.0;
+    std::vector<double> standard_mu_rt;
+    std::vector<double> variables;
+    std::vector<double> constraints;
+    std::vector<std::vector<double>> phase_amounts;
+    std::vector<double> phase_volumes;
+};
+
 NeutralTwoPhaseEosNlpContract evaluate_neutral_two_phase_eos_nlp_contract(
     const add_args& args,
     double temperature,
@@ -119,6 +146,21 @@ NeutralTwoPhaseEosNlpContract evaluate_reactive_two_phase_eos_nlp_contract(
     int reaction_rows,
     const std::vector<double>& reaction_stoichiometry_row_major,
     const std::vector<double>& log_equilibrium_constants
+);
+
+ReactiveTwoPhaseEosRouteResult solve_reactive_two_phase_eos_route(
+    const add_args& args,
+    double temperature,
+    double target_pressure,
+    const std::vector<std::vector<double>>& phase_amounts,
+    const std::vector<double>& volumes,
+    int balance_rows,
+    const std::vector<double>& balance_matrix_row_major,
+    const std::vector<double>& total_vector,
+    int reaction_rows,
+    const std::vector<double>& reaction_stoichiometry_row_major,
+    const std::vector<double>& log_equilibrium_constants,
+    const IpoptSolveOptions& options
 );
 
 NeutralTwoPhaseEosNlpContract evaluate_neutral_bubble_p_eos_nlp_contract(

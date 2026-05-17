@@ -1095,6 +1095,68 @@ NeutralTwoPhaseEosNlpContract evaluate_reactive_two_phase_eos_nlp_contract(
     return out;
 }
 
+ReactiveTwoPhaseEosRouteResult solve_reactive_two_phase_eos_route(
+    const add_args& args,
+    double temperature,
+    double target_pressure,
+    const std::vector<std::vector<double>>& phase_amounts,
+    const std::vector<double>& volumes,
+    int balance_rows,
+    const std::vector<double>& balance_matrix_row_major,
+    const std::vector<double>& total_vector,
+    int reaction_rows,
+    const std::vector<double>& reaction_stoichiometry_row_major,
+    const std::vector<double>& log_equilibrium_constants,
+    const IpoptSolveOptions& options
+) {
+    ReactiveTwoPhaseEosProblem problem(
+        args,
+        temperature,
+        target_pressure,
+        phase_amounts,
+        volumes,
+        balance_rows,
+        balance_matrix_row_major,
+        total_vector,
+        reaction_rows,
+        reaction_stoichiometry_row_major,
+        log_equilibrium_constants
+    );
+    const IpoptAdapterInfo adapter = native_ipopt_adapter_info();
+    ReactiveTwoPhaseEosRouteResult out;
+    out.compiled = adapter.compiled;
+    out.adapter_available = adapter.adapter_available;
+    out.adapter_kind = adapter.adapter_kind;
+    out.exact_gradient_required = adapter.exact_gradient_required;
+    out.exact_jacobian_required = adapter.exact_jacobian_required;
+    out.phase_count = problem.phase_count();
+    out.species_count = problem.species_count();
+    out.balance_row_count = problem.balance_row_count();
+    out.reaction_count = problem.reaction_count();
+    out.standard_mu_rt = problem.standard_mu_rt();
+    if (!adapter.compiled) {
+        out.status = "ipopt_dependency_required";
+        return out;
+    }
+
+    const IpoptSolveResult solve = solve_ipopt_nlp(problem, options);
+    out.ran = solve.solver_ran;
+    out.solver_accepted = solve.accepted;
+    out.accepted = solve.accepted;
+    out.solver_status = solve.solver_status;
+    out.application_status = solve.application_status;
+    out.objective = solve.objective;
+    out.variables = solve.variables;
+    out.constraints = solve.constraints;
+    out.status = solve.accepted ? "accepted" : "solver_rejected";
+    if (solve.accepted) {
+        const auto species_count = static_cast<std::size_t>(problem.species_count());
+        out.phase_amounts = neutral_phase_amounts_from_route_variables(solve.variables, species_count);
+        out.phase_volumes = neutral_phase_volumes_from_route_variables(solve.variables, species_count);
+    }
+    return out;
+}
+
 IpoptSolveResult solve_neutral_two_phase_eos_ipopt(
     const add_args& args,
     double temperature,

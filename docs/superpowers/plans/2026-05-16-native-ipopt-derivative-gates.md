@@ -810,6 +810,11 @@ instead of species material-balance rows and adds reaction standard-potential te
 The contract reuses exact EOS phase gradients and pressure Jacobian blocks; it is still private route-builder
 infrastructure and does not yet expose an accepted public reactive phase-equilibrium solve.
 
+Task 9 continuation note: the private reaction-coupled two-phase EOS contract now has a native Ipopt route-result
+entrypoint that routes through the generic Ipopt adapter and returns the same hard dependency gate when Ipopt is not
+compiled. The route-result surface remains private until reactive postsolve acceptance and public facade wiring are
+implemented.
+
 ### Task 10: Make Regression Ceres-Only
 
 **Files:**
