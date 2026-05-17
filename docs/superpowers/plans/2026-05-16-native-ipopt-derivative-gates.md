@@ -1014,6 +1014,9 @@ instead of preserving one test per legacy compatibility key.
 Task 2/8/9/12 continuation note: reactive bubble seed-control and LLE problem-object surface checks were folded into
 exact field-set coverage instead of repeated missing-field assertions.
 
+Task 2/12 continuation note: reactive-regression row/options/result surface checks now use one compact current-surface
+assertion instead of three individual removed-field tests.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import inspect
+from dataclasses import MISSING, fields
 
 import numpy as np
 import pytest
@@ -16,18 +16,26 @@ def _tiny_base_parameters() -> dict[str, np.ndarray]:
     }
 
 
-def test_reactive_electrolyte_row_requires_pressure_not_seed() -> None:
-    removed = "P" + "_seed"
-    signature = inspect.signature(epcsaft.ReactiveElectrolyteRow)
+def test_reactive_electrolyte_regression_public_surfaces_are_current() -> None:
+    row_fields = fields(epcsaft.ReactiveElectrolyteRow)
+    row_names = tuple(field.name for field in row_fields)
+    option_names = tuple(field.name for field in fields(epcsaft.ReactiveElectrolyteBatchOptions))
+    result_names = tuple(field.name for field in fields(epcsaft.ReactiveElectrolyteRowResult))
+    removed = {
+        "P" + "_seed",
+        "warm_start_rows",
+        "warm_start_objective",
+        "warm_start_used",
+        "warm_start_source",
+        "warm_start_failed",
+        "cache_stats",
+    }
 
-    assert removed not in epcsaft.ReactiveElectrolyteRow.__dataclass_fields__
-    assert signature.parameters["P"].default is inspect._empty
-    with pytest.raises(TypeError):
-        epcsaft.ReactiveElectrolyteRow(
-            row_id="missing-pressure",
-            T=298.15,
-            totals={"A": 1.0},
-        )
+    assert row_names[:3] == ("row_id", "T", "P")
+    assert row_fields[2].default is MISSING
+    assert option_names == ("penalty_value", "failure_residual_mode", "include_state_outputs")
+    assert result_names[-3:] == ("source", "split", "metadata")
+    assert removed.isdisjoint((*row_names, *option_names, *result_names))
 
 
 def test_reactive_electrolyte_legacy_row_rejects_pressure_seed_key() -> None:
@@ -45,22 +53,6 @@ def test_reactive_electrolyte_legacy_row_rejects_pressure_seed_key() -> None:
             default_reactions=(),
             default_vapor_species=None,
         )
-
-
-def test_reactive_electrolyte_batch_options_do_not_expose_warm_start_controls() -> None:
-    fields = epcsaft.ReactiveElectrolyteBatchOptions.__dataclass_fields__
-
-    assert "warm_start_rows" not in fields
-    assert "warm_start_objective" not in fields
-
-
-def test_reactive_electrolyte_row_result_does_not_expose_warm_start_status() -> None:
-    fields = epcsaft.ReactiveElectrolyteRowResult.__dataclass_fields__
-
-    assert "warm_start_used" not in fields
-    assert "warm_start_source" not in fields
-    assert "warm_start_failed" not in fields
-    assert "cache_stats" not in fields
 
 
 def _native_mixed_pressure_speciation_batch() -> tuple[epcsaft.ReactiveElectrolyteBatch, float]:

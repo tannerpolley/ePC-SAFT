@@ -182,6 +182,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
   preserving one assertion per retired compatibility key.
 - Reactive bubble seed-control and LLE problem-object surface checks were folded into exact field-set coverage.
 - A duplicate staged reactive LLE test was folded into the stronger reaction-coordinate and split-diagnostic test.
+- Reactive-regression row/options/result surface checks now use one compact current-surface assertion instead of three
+  separate removed-field tests.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
 
