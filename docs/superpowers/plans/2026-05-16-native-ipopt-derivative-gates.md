@@ -328,6 +328,11 @@ Task 2 continuation note: a duplicate TP-flash route-pending test for `include_p
 Positive option acceptance is already covered by electrolyte route-gate tests and invalid option typing is covered by
 the shared equilibrium option validation.
 
+Task 2 continuation note: a duplicate TP-flash route-pending test for `stability_precheck=False` was removed.
+Explicit stability-option validation remains covered in the core stability tests, invalid option typing remains covered
+by shared option validation, and the route-specific TP-flash test still verifies the native route payload before the
+local no-Ipopt gate.
+
 ### Task 3: Build Dependency Boundary
 
 **Files:**

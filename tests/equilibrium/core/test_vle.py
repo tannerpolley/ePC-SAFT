@@ -195,18 +195,3 @@ def test_tp_flash_converts_accepted_native_route_payload(monkeypatch: pytest.Mon
     assert result.split_detected is True
     assert [phase.label for phase in result.phases] == ["phase_0", "phase_1"]
     assert result.phases[0].fugacity_coefficient == pytest.approx(np.exp(result.phases[0].ln_fugacity_coefficient))
-
-
-def test_tp_flash_accepts_stability_precheck_option_before_route_gate() -> None:
-    mix = _hydrocarbon_basis_mixture()
-
-    with pytest.raises(epcsaft.InputError) as excinfo:
-        mix.equilibrium(
-            kind="tp_flash",
-            T=300.0,
-            P=1.0e5,
-            z=[0.1, 0.3, 0.6],
-            options=epcsaft.EquilibriumOptions(stability_precheck=False),
-        )
-
-    _assert_tp_flash_route_pending(excinfo)
