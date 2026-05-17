@@ -1140,6 +1140,9 @@ with the native bubble route for scoped supported inputs.
 Task 2 continuation note: remaining reactive sweep signature-absence checks and a duplicate native regression debug
 backend assertion were removed. Current-surface field-set tests, route-gate tests, and the text gate own those contracts.
 
+Task 2 continuation note: the tracked test-audit cleanup queue now lists only still-open cleanup streams instead of
+mixing completed dependency, solver-loop, Eigen, and quick-gate work into the open item list.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**

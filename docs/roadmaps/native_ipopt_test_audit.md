@@ -267,10 +267,7 @@ The failure list from the initial full-duration run has been retired. Each liste
 ## Required Cleanup Still Open
 
 - Delete or rewrite tests that only protect duplicate route-gate or status/debug behavior.
-- Add passing tracked gates for no legacy numerical package/dev/test dependency after dependency cleanup. Done in the Task 3 dependency slices.
-- Add passing tracked gates for no Python production solve loop after native Ipopt routes exist. Done for public Python solver surfaces.
-- Add passing tracked gates for no Eigen nonlinear optimizer route while still allowing Eigen linear algebra. Done for native regression sources, with Ceres non-exact derivative sources gated separately.
-- Move any slow scientific matrix coverage that is not already opt-in out of the quick gate. Done for the current quick slice; continue checking when adding new validation tests.
+- Move any new slow scientific matrix coverage out of the quick gate as validation tests are added.
 - Continue replacing optional-backend skip behavior with required-backend validation as solver routes move to Ipopt and regression routes become Ceres-only.
 
 ## Task 2 Status
