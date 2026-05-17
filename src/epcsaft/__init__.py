@@ -49,7 +49,6 @@ _EXPORT_GROUPS = {
         "dew_p",
         "dew_t",
         "electrolyte_feed_from_molality",
-        "initial_phases_from_result",
     ),
     "epcsaft.implicit_sensitivity": (
         "ImplicitSolveResult",

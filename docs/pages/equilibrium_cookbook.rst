@@ -177,9 +177,9 @@ parameter fits.
 Electrolyte LLE
 ---------------
 
-Use stability first. Provide explicit charge-neutral ``initial_phases`` so the
-native Ipopt LLE route has a well-defined request payload once that production
-builder is wired.
+Use stability first. If the feed is unstable, call the native electrolyte LLE
+route with the feed specification only. The native Ipopt route builder owns the
+canonical initial point; user-provided phase seeds are rejected.
 
 .. code-block:: python
 
@@ -190,16 +190,10 @@ builder is wired.
    feed = np.asarray([0.9549141, 0.0290154, 0.00603255, 0.00501896, 0.00501896])
    mixture = epcsaft.ePCSAFTMixture.from_dataset("2024_Hubach", species, feed, 294.15)
 
-   initial_phases = {
-       "aq": np.asarray([0.9762254, 0.0147531, 0.00108794, 0.00396628, 0.00396628]),
-       "org": np.asarray([0.55, 0.30, 0.10, 0.025, 0.025]),
-       "phase_fraction": 0.05,
-   }
    result = mixture.electrolyte_lle_tp(
        T=294.15,
        P=101325.0,
        z=feed,
-       initial_phases=initial_phases,
        options=epcsaft.EquilibriumOptions(
            max_iterations=180,
            timeout_seconds=15.0,

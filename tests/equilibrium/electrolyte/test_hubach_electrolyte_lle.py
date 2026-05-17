@@ -8,7 +8,6 @@ import pytest
 
 import epcsaft
 from epcsaft import ePCSAFTMixture
-from epcsaft.equilibrium_core.electrolyte_seeds import charge_neutral_lle_seed_from_org_phase
 from tests.helpers.numeric import assert_allclose
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -22,14 +21,6 @@ def _row0_feed() -> np.ndarray:
     with (FIXTURE_DIR / "feed_compositions.csv").open(newline="", encoding="utf-8") as handle:
         row = next(csv.DictReader(handle))
     return np.asarray([float(row[name]) for name in SPECIES], dtype=float)
-
-
-def _row0_initial_phases() -> dict[str, object]:
-    with (FIXTURE_DIR / "initial_phase_guesses.csv").open(newline="", encoding="utf-8") as handle:
-        row = next(csv.DictReader(handle))
-    aq = np.asarray([float(row["aq_" + name]) for name in SPECIES], dtype=float)
-    org = np.asarray([float(row["org_" + name]) for name in SPECIES], dtype=float)
-    return {"aq": aq, "org": org, "phase_fraction": float(row["beta_org"])}
 
 
 def _hubach_mixture(feed: np.ndarray) -> ePCSAFTMixture:
@@ -64,24 +55,6 @@ def test_hubach_fixture_matches_lithium_canonical_option_surface() -> None:
     assert model["born_model"]["bulk_mode"] == "mix"
     assert model["born_model"]["mu_born_model"]["differential_mode"] == 0
     assert model["born_model"]["mu_born_model"]["comp_dep_delta_d"] is True
-
-
-def test_hubach_seed_helper_constructs_charge_neutral_material_balanced_guess() -> None:
-    feed = _row0_feed()
-    mix = _hubach_mixture(feed)
-    org = np.asarray([0.55, 0.30, 0.10, 0.025, 0.025], dtype=float)
-
-    seed = charge_neutral_lle_seed_from_org_phase(feed, org, 0.05, mix.parameters["z"])
-    payload = seed.to_initial_phases()
-    aq = payload["aq"]
-    org_out = payload["org"]
-    beta = payload["phase_fraction"]
-
-    assert_allclose((1.0 - beta) * aq + beta * org_out, feed, atol=1.0e-12)
-    assert abs(float(np.dot(aq, mix.parameters["z"]))) <= 1.0e-8
-    assert abs(float(np.dot(org_out, mix.parameters["z"]))) <= 1.0e-8
-    assert org_out[1] + org_out[2] > aq[1] + aq[2]
-    assert aq[0] > org_out[0]
 
 
 def test_hubach_cold_start_rejects_removed_option_dict_keys() -> None:

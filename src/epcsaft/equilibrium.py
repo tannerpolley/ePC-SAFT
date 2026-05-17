@@ -186,7 +186,6 @@ class ElectrolyteLLEProblem(EquilibriumProblem):
     solvent_feed: Mapping[str, float] | None = None
     salt_molality: Mapping[str, float] | None = None
     options: EquilibriumOptions | None = None
-    initial_phases: Any | None = None
 
     def solve(self, mixture):
         return mixture.electrolyte_lle_tp(
@@ -195,7 +194,6 @@ class ElectrolyteLLEProblem(EquilibriumProblem):
             z=self.z,
             solvent_feed=self.solvent_feed,
             salt_molality=self.salt_molality,
-            initial_phases=self.initial_phases,
             options=self.options,
         )
 
@@ -496,7 +494,6 @@ def electrolyte_lle_flash(
     z: Any = None,
     solvent_feed: Any = None,
     salt_molality: Any = None,
-    initial_phases: Any = None,
     options: EquilibriumOptions | None = None,
 ) -> EquilibriumResult:
     """Run the public electrolyte LLE route."""
@@ -507,7 +504,6 @@ def electrolyte_lle_flash(
         z=z,
         solvent_feed=solvent_feed,
         salt_molality=salt_molality,
-        initial_phases=initial_phases,
         options=options,
     )
 
@@ -1384,18 +1380,6 @@ def _reaction_phase_stoichiometry_matrix(
     return matrix, "phase_tagged_cross_phase"
 
 
-def initial_phases_from_result(result: EquilibriumResult) -> dict[str, object]:
-    """Build electrolyte LLE ``initial_phases`` from an accepted aq/org result."""
-    phases = {phase.label: phase for phase in result.phases}
-    if "aq" not in phases or "org" not in phases:
-        raise InputError("initial_phases_from_result requires an electrolyte LLE result with aq and org phases.")
-    return {
-        "aq": phases["aq"].composition.copy(),
-        "org": phases["org"].composition.copy(),
-        "phase_fraction": float(phases["org"].phase_fraction),
-    }
-
-
 def bubble_p(mixture: Any, *, T: float, x: Any, options: EquilibriumOptions | None = None) -> EquilibriumResult:
     """Solve a neutral bubble pressure at fixed liquid composition and temperature."""
     opts = _normalize_options(options)
@@ -1539,7 +1523,6 @@ def electrolyte_lle_flash_native(
     z: Any = None,
     solvent_feed: Any = None,
     salt_molality: Any = None,
-    initial_phases: Any = None,
     options: EquilibriumOptions | None = None,
 ) -> EquilibriumResult:
     """Validate an electrolyte LLE request and require the native Ipopt route."""
@@ -1556,9 +1539,7 @@ def electrolyte_lle_flash_native(
     )
     charges = _mixture_charges(mixture)
     _require_charge_neutral(feed, charges, "electrolyte_lle feed")
-    basis_payload = _electrolyte_formula_basis(mixture, feed, feed_diagnostics)
-    if initial_phases is not None:
-        _electrolyte_initial_phase_seed(mixture, feed, basis_payload, initial_phases, opts)
+    _electrolyte_formula_basis(mixture, feed, feed_diagnostics)
     from . import _core
 
     route_tolerances = _neutral_two_phase_eos_tolerances(P, opts)

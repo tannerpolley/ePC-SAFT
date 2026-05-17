@@ -48,7 +48,7 @@ package surface and the current facade/import-boundary behavior.
   `ReactiveSpeciationProblem`, `ReactivePhaseEquilibriumProblem`,
   `ReactiveElectrolyteBubbleProblem`.
 - Route helpers: `bubble_p`, `bubble_t`, `dew_p`, `dew_t`,
-  `electrolyte_feed_from_molality`, `initial_phases_from_result`.
+  `electrolyte_feed_from_molality`.
 
 ### Reactive Workflow API
 

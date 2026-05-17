@@ -98,6 +98,10 @@ def _blocked_terms() -> tuple[str, ...]:
     fortieth = "numeric" + " differentiation"
     forty_first = "numerical" + " differentiation"
     forty_second = "numerical" + "-" + "differentiation"
+    forty_third = "initial" + "_phases" + "_from" + "_result"
+    forty_fourth = "charge" + "_neutral" + "_lle" + "_seed"
+    forty_fifth = "solvent" + "_endpoint" + "_seed"
+    forty_sixth = "electrolyte" + "_seeds"
     return (
         first,
         second,
@@ -141,6 +145,10 @@ def _blocked_terms() -> tuple[str, ...]:
         fortieth,
         forty_first,
         forty_second,
+        forty_third,
+        forty_fourth,
+        forty_fifth,
+        forty_sixth,
     )
 
 

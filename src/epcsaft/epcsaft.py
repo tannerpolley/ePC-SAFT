@@ -445,7 +445,6 @@ class ePCSAFTMixture:
         z=None,
         solvent_feed=None,
         salt_molality=None,
-        initial_phases=None,
         options=None,
     ):
         """Validate a charge-constrained electrolyte LLE request."""
@@ -458,7 +457,6 @@ class ePCSAFTMixture:
             z=z,
             solvent_feed=solvent_feed,
             salt_molality=salt_molality,
-            initial_phases=initial_phases,
             options=options,
         )
 
@@ -829,6 +827,10 @@ class ePCSAFTMixture:
                     options=options,
                 )
             if route["route"] == "electrolyte_lle":
+                if initial_phases is not None:
+                    raise InputError(
+                        "electrolyte_lle uses route-owned canonical initial points; initial_phases is not accepted."
+                    )
                 try:
                     result = self.electrolyte_lle_tp(
                         T=T,
@@ -836,7 +838,6 @@ class ePCSAFTMixture:
                         z=z,
                         solvent_feed=solvent_feed,
                         salt_molality=salt_molality,
-                        initial_phases=initial_phases,
                         options=options,
                     )
                 except SolutionError as exc:
@@ -979,13 +980,16 @@ class ePCSAFTMixture:
                 raise InputError("parent_phase and trial_phases are only supported for kind='stability'.")
             if backend not in (None, "native", "electrolyte_lle"):
                 raise InputError("Electrolyte LLE backend must be None, 'native', or 'electrolyte_lle'.")
+            if initial_phases is not None:
+                raise InputError(
+                    "electrolyte_lle uses route-owned canonical initial points; initial_phases is not accepted."
+                )
             return self.electrolyte_lle_tp(
                 T=T,
                 P=P,
                 z=z,
                 solvent_feed=solvent_feed,
                 salt_molality=salt_molality,
-                initial_phases=initial_phases,
                 options=options,
             )
         if kind == "electrolyte_stability":

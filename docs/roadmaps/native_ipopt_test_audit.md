@@ -166,6 +166,9 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
   bubble sweeps no longer expose continuation controls, and reactive-regression residual contexts keep composition warm
   starts where needed without converting pressure/vapor row results into bubble-route seeds. Bubble-pressure route
   initialization remains owned by the native Ipopt route builder.
+- Public electrolyte LLE no longer accepts user phase seeds or exports electrolyte LLE seed-helper wrappers. The route
+  builder owns the canonical initial point, while private native residual-surface tests keep explicit evaluator phase
+  payloads where needed for diagnostic Jacobian coverage.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
 

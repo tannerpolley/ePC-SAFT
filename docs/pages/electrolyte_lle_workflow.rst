@@ -8,11 +8,12 @@ Recommended workflow
 --------------------
 
 1. Run ``kind="electrolyte_stability"`` to confirm whether the feed is unstable.
-2. If ``min_tpd`` is negative, provide explicit charge-neutral
-   ``initial_phases`` so the future native Ipopt route has a well-defined
-   request payload.
-3. For curves, solve one point with accepted phase data and use continuation
-   only after the native route builder owns that production path.
+2. If ``min_tpd`` is negative, call ``kind="electrolyte_lle"`` with the feed
+   specification only. The native route builder owns the canonical initial
+   point for the production solve.
+3. For curves, pass independent feed/specification points. Ordered curve calls
+   use each route builder's canonical initial point instead of caller-provided
+   phase seeds.
 
 Bounded diagnostic runs
 -----------------------
@@ -47,25 +48,26 @@ than asking the package to return an unaccepted phase result.
        diagnostics = exc.args[1]
        gate = diagnostics["acceptance_gate"]
 
-Native IPOPT plan
------------------
+Native Ipopt route
+------------------
 
 ``EquilibriumOptions`` accepts ``solver_backend="auto" | "ipopt"``. The
-default ``auto`` validates the public request shape and then raises while the
-native Ipopt electrolyte LLE route builder is pending. ``solver_backend="ipopt"``
-is reserved for that native constrained-NLP adapter and also raises until the
-route is implemented.
+default ``auto`` validates the public request shape and uses the native Ipopt
+electrolyte LLE route when the extension was built with Ipopt. Local builds
+without Ipopt raise a typed dependency error before any package-owned solve
+loop can run.
 
-The planned native adapter will expose material balance, charge balance, phase
-amounts, thermodynamic objective terms, and derivative callbacks as formal NLP
-blocks. The old Python IPOPT bridge has been removed.
+The native adapter exposes material balance, charge balance, phase amounts,
+thermodynamic objective terms, and derivative callbacks as formal NLP blocks.
+The old Python IPOPT bridge has been removed.
 
 Solver-selection policy
 -----------------------
 
 ``solver_backend="auto"`` remains conservative and does not switch to any
-package-owned solve loop while the native adapter is pending. Treat electrolyte
-LLE calls as route-gated until the native Ipopt implementation lands.
+package-owned solve loop. Treat electrolyte LLE calls as native Ipopt routes:
+if the native route cannot run, the package raises instead of accepting a
+caller-provided phase seed or alternate Python solve path.
 
 Hubach-style example
 --------------------
@@ -84,19 +86,12 @@ Hubach-style example
        0.005018962146953909,
        0.005018962146953909,
    ])
-   initial_phases = {
-       "aq": np.asarray([0.9762253659128125, 0.014753086358215556, 0.0010879432090689022, 0.003966275944161999, 0.003966275944161999]),
-       "org": np.asarray([0.55, 0.30, 0.10, 0.025, 0.025]),
-       "phase_fraction": 0.05,
-   }
-
    mix = ePCSAFTMixture.from_dataset("2024_Hubach", species, feed, 294.15)
    result = mix.equilibrium(
        kind="electrolyte_lle",
        T=294.15,
        P=1.013e5,
        z=feed,
-       initial_phases=initial_phases,
        options=epcsaft.EquilibriumOptions(
            max_iterations=180,
            tolerance=1.0e-8,

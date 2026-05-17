@@ -795,7 +795,7 @@ Task 12 continuation note: the tracked source/test/script text gate now also blo
 
 Task 12 continuation note: public neutral LLE no longer executes the transitional Ceres residual route from `lle_flash` or `lle_tp`. The public adapter validates feed, mixture, scalar inputs, and optional phase seeds, then raises until a native Ipopt constrained NLP route owns production neutral LLE; lower-level native residual-surface coverage remains private diagnostic coverage.
 
-Task 12 continuation note: public electrolyte LLE no longer executes the transitional Ceres residual route from `electrolyte_lle` or `electrolyte_lle_tp`. The public adapter validates ion-containing mixtures, charge-neutral feeds, electrolyte formula bases, molality/direct-feed inputs, and optional `aq`/`org` phase seeds, then raises until a native Ipopt constrained NLP route owns production electrolyte LLE; lower-level native residual-surface coverage remains private diagnostic coverage.
+Task 12 continuation note: public electrolyte LLE no longer executes the transitional Ceres residual route from `electrolyte_lle` or `electrolyte_lle_tp`. The public adapter validates ion-containing mixtures, charge-neutral feeds, electrolyte formula bases, and molality/direct-feed inputs, then dispatches to the native Ipopt route when compiled or raises the native Ipopt dependency gate. Public `aq`/`org` phase seeds are rejected because the route builder owns the canonical initial point; lower-level native residual-surface coverage remains private diagnostic coverage.
 
 Task 12 continuation note: public neutral TP flash no longer executes the native package-owned TP flash route from `tp_flash`, `flash_tp`, typed `TPFlash`, or neutral `auto` dispatch. The public adapter validates feed, mixture, and scalar inputs, then raises until a native Ipopt constrained NLP route owns production TP flash. Neutral equilibrium benchmark coverage was narrowed to property-state timing so benchmark scripts do not exercise disabled public flash/LLE routes.
 
@@ -956,6 +956,11 @@ Task 12 continuation note: derivative coverage matrices no longer carry the redu
 Out-of-scope rows are represented by `classification="out_of_scope"` and `backend="out_of_scope"`, while supported rows
 carry only the implemented derivative backend and production classification. The executable text gate blocks the retired
 column name in active source, tests, and scripts.
+
+Task 9/12 continuation note: public electrolyte LLE no longer accepts user `initial_phases` or exports electrolyte seed
+helper wrappers. The direct `electrolyte_lle`/`electrolyte_lle_tp` route and curve facade now use route-owned canonical
+initial points only, while private native residual-surface request payloads may still carry evaluator phase data where
+the residual/Jacobian diagnostic contract explicitly requires it.
 
 ### Task 13: Final Validation And Cleanup
 

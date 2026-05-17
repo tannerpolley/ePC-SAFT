@@ -257,13 +257,16 @@ def _solve_phase_route(
             trial_phases=phase_kwargs.get("trial_phases"),
         )
     if route == "electrolyte_lle":
+        if phase_kwargs.get("initial_phases") is not None:
+            raise InputError(
+                "electrolyte_lle uses route-owned canonical initial points; initial_phases is not accepted."
+            )
         return mixture.electrolyte_lle_tp(
             T=T,
             P=P,
             z=z,
             solvent_feed=phase_kwargs.get("solvent_feed"),
             salt_molality=phase_kwargs.get("salt_molality"),
-            initial_phases=phase_kwargs.get("initial_phases"),
             options=phase_options,
         )
     if route == "electrolyte_stability":

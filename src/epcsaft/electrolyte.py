@@ -5,7 +5,6 @@ from .equilibrium import (
     ElectrolyteBubblePoint,
     ElectrolyteLLEProblem,
     electrolyte_feed_from_molality,
-    initial_phases_from_result,
 )
 
 __all__ = [
@@ -14,5 +13,4 @@ __all__ = [
     "ElectrolyteBubbleResult",
     "ElectrolyteLLEProblem",
     "electrolyte_feed_from_molality",
-    "initial_phases_from_result",
 ]
