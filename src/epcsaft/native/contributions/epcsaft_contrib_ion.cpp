@@ -111,7 +111,7 @@ ContributionDadxResult dadx_ion_cpp(const IonIntermediateState &ion_state, doubl
 
     int dh_model = cppargs.DH_model;
     if (dh_model == 2) {
-        throw ValueError("DH_model=2 (Bjerrum treatment) is reserved and not implemented.");
+        throw ValueError("DH_model=2 (Bjerrum treatment) is reserved; no active public route is available.");
     }
     if ((dh_model != 0) && (dh_model != 1)) {
         throw ValueError("Unknown DH_model. Supported values are 0, 1, and reserved 2.");

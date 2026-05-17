@@ -77,7 +77,7 @@ class EquilibriumProblem:
 
     def solve(self, mixture):
         """Solve this problem with a mixture instance."""
-        raise NotImplementedError("EquilibriumProblem subclasses define solve(mixture).")
+        raise InputError("EquilibriumProblem is abstract; instantiate a concrete equilibrium problem class.")
 
 
 @dataclass(frozen=True, slots=True)

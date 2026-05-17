@@ -808,10 +808,10 @@ DielectricState dielectric_state_cpp(const vector<double> &x, const add_args &cp
 vector<double> contribution_dadx_cppad_cpp(AresContributionKind kind, double t, double rho, const vector<double> &x, const add_args &cppargs) {
     int ncomp = static_cast<int>(x.size());
     if (kind == AresContributionKind::ASSOC) {
-        throw ValueError("CppAD differential_mode is not implemented for this contribution yet.");
+        throw ValueError("CppAD differential_mode requires an association contribution tape route.");
     }
     if (kind == AresContributionKind::BORN && cppargs.born_model == 2) {
-        throw ValueError("CppAD differential_mode is not implemented for the SSM/DS Born composition derivative yet.");
+        throw ValueError("CppAD differential_mode requires an SSM/DS Born composition derivative tape route.");
     }
 
     vector<double> dadx(ncomp, 0.0);

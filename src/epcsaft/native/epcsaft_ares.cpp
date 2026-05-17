@@ -907,7 +907,7 @@ static Scalar ares_born_scalar_cpp(
 #endif
     }
     if (cppargs.born_eps_mode == 1) {
-        throw ValueError("unsupported: CppAD Born reference-solvent dielectric routing is not implemented.");
+        throw ValueError("unsupported: CppAD Born reference-solvent dielectric routing requires a tape route.");
     }
     if (cppargs.born_model == 1) {
         Scalar charge_radius_sum = scalar_constant<Scalar>(0.0);

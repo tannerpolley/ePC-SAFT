@@ -886,8 +886,12 @@ speciation, neutral TP/LLE/bubble/dew pressure, electrolyte LLE, and fixed-liqui
 is compiled. Bubble/dew temperature, stability, and coupled reactive phase routes remain route-gated.
 
 Task 12 continuation note: public activity-coefficient contribution decomposition now fails through the package's typed
-`InputError` instead of a generic `NotImplementedError`, and the regression derivative table now treats neutral LLE as
-an Ipopt-enabled native route with internal exact derivative callbacks rather than a pending route.
+`InputError` instead of a generic Python unsupported-operation exception, and the regression derivative table now treats
+neutral LLE as an Ipopt-enabled native route with internal exact derivative callbacks rather than a pending route.
+
+Task 12 continuation note: active source no longer uses generic "not implemented" wording for derivative gates,
+reserved Bjerrum routing, the abstract equilibrium base class, or the retained CppAD route-gated native paths. These
+surfaces now state the positive required route or typed abstract/problem boundary.
 
 ### Task 13: Final Validation And Cleanup
 

@@ -121,8 +121,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - Equilibrium cookbook and downstream local-install docs now distinguish Ipopt-enabled native routes from route-gated
   stability, bubble/dew temperature, and reactive-electrolyte bubble routes.
 - The public activity-coefficient contribution decomposition path now raises the package's typed `InputError` instead
-  of a generic `NotImplementedError`, and the regression derivative table now describes neutral LLE as a native Ipopt
-  route when compiled rather than a pending route.
+  of a generic Python unsupported-operation exception, and the regression derivative table now describes neutral LLE as
+  a native Ipopt route when compiled rather than a pending route.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
 

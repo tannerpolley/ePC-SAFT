@@ -1331,11 +1331,11 @@ class ePCSAFTState:
                 parameter_order=parameter_order,
                 source_equation_ids=("pressure_from_z", "ares_disp"),
             )
-        _unsupported_derivative("pressure parameter derivatives are not implemented for this state.")
+        _unsupported_derivative("pressure parameter derivatives require an analytic or CppAD route for this state.")
 
     def density_pressure_derivative_result(self):
         """Return density pressure derivatives when production support exists."""
-        _unsupported_derivative("density-root implicit pressure derivatives are not implemented.")
+        _unsupported_derivative("density-root implicit pressure derivatives require an analytic or CppAD implicit route.")
 
     def ares_composition_derivative_result(self):
         """Return residual-Helmholtz composition derivatives in the public result shape."""
@@ -1406,7 +1406,9 @@ class ePCSAFTState:
                 value_basis="residual_chemical_potential",
                 source_equation_ids=("mu_res", "ares_disp"),
             )
-        _unsupported_derivative("chemical-potential parameter derivatives are not implemented for this state.")
+        _unsupported_derivative(
+            "chemical-potential parameter derivatives require an analytic or CppAD route for this state."
+        )
 
     def ln_fugacity_composition_derivative_result(self):
         """Return ln-fugacity composition derivatives for pressure-based native states."""
@@ -1427,7 +1429,12 @@ class ePCSAFTState:
             _unsupported_derivative(f"phase-state ln-fugacity composition sensitivity backend failed: {exc}")
         if not bool(raw.get("supported", False)):
             _unsupported_derivative(
-                str(raw.get("message", "phase-state ln-fugacity composition sensitivities are not implemented."))
+                str(
+                    raw.get(
+                        "message",
+                        "phase-state ln-fugacity composition sensitivities require a CppAD implicit route.",
+                    )
+                )
             )
         shape = [int(raw["shape"][0]), int(raw["shape"][1])]
         if shape != [ncomp, ncomp]:
@@ -1494,7 +1501,9 @@ class ePCSAFTState:
             )
         born = self.born_ssmds_liquid_derivatives()
         if not bool(born.get("supported", False)):
-            _unsupported_derivative(str(born.get("message", "ln-fugacity parameter derivatives are not implemented.")))
+            _unsupported_derivative(
+                str(born.get("message", "ln-fugacity parameter derivatives require an analytic or CppAD route."))
+            )
         jacobian = np.concatenate(
             [
                 np.asarray(born["lnfug_d_d_born"], dtype=float),
@@ -1520,7 +1529,7 @@ class ePCSAFTState:
     def activity_composition_derivative_result(self, species=None):
         """Return activity-coefficient composition derivatives when production support exists."""
         _ = self._mixture.species if species is None else [str(s) for s in species]
-        _unsupported_derivative("activity-coefficient composition Jacobians are not implemented.")
+        _unsupported_derivative("activity-coefficient composition Jacobians require an analytic or CppAD route.")
 
     def activity_parameter_derivative_result(self, species=None):
         """Return activity-coefficient parameter derivatives where production support exists."""
@@ -1533,7 +1542,9 @@ class ePCSAFTState:
         except _DERIVATIVE_VALUE_ERRORS:
             value = np.asarray([], dtype=float)
         if not bool(born.get("supported", False)):
-            _unsupported_derivative(str(born.get("message", "activity parameter derivatives are not implemented.")))
+            _unsupported_derivative(
+                str(born.get("message", "activity parameter derivatives require an analytic or CppAD route."))
+            )
         jacobian = np.concatenate(
             [
                 np.asarray(born["lngamma_d_d_born"], dtype=float),
@@ -2635,7 +2646,7 @@ def create_struct(params):
 
     cppargs.DH_model = 2 if bjeruum else 1
     if cppargs.DH_model == 2:
-        raise ValueError("Bjerrum treatment is reserved and not implemented (DH_model=2).")
+        raise ValueError("Bjerrum treatment is reserved; DH_model=2 has no active public route.")
     if cppargs.DH_model < 0 or cppargs.DH_model > 2:
         raise ValueError("Unknown DH_model. Supported values are 0, 1, and reserved 2.")
     if "assoc_num" in params:

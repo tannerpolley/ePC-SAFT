@@ -129,7 +129,7 @@ The default install should keep the lightweight runtime usable. Heavy or
 platform-sensitive dependencies belong behind optional dependency groups,
 feature flags, or runtime capability checks. For example, Ipopt-dependent
 workflows must fail with actionable diagnostics when native Ipopt is not
-compiled or the native adapter route is not implemented, instead of making the
+compiled or the native adapter route is not available, instead of making the
 base package import fail.
 
 Native build capabilities should be reported through ``capabilities()`` and
