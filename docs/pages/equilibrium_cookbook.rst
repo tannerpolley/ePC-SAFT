@@ -48,9 +48,9 @@ these fields as routing hints, not as proof that a physical case is valid.
      - Native Ipopt route when compiled
      - Fixed liquid composition with neutral vapor species; ions remain liquid-only.
    * - Reactive electrolyte bubble
-     - Native Ipopt route required
-     - Requires the native Ipopt electrolyte bubble route builder after
-       speciation.
+     - Staged native route when compiled
+     - Uses native speciation followed by the native fixed-liquid electrolyte
+       bubble route for scoped supported inputs.
    * - IPOPT
      - Optional native constrained-NLP backend
      - Owns implemented equilibrium routes when the extension is compiled.

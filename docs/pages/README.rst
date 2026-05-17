@@ -186,8 +186,9 @@ inputs.
 Important boundaries:
 
 - Electrolyte bubble pressure requires an Ipopt-enabled native build.
-- Reactive electrolyte bubble pressure requires native speciation followed by
-  a native Ipopt electrolyte bubble route builder.
+- Scoped reactive electrolyte bubble pressure uses native speciation followed
+  by the native Ipopt fixed-liquid electrolyte bubble route when Ipopt is
+  compiled.
 - IPOPT is optional and explicit opt-in.
 - Downstream case-study models should own their own data, balances, run
   matrices, and acceptance criteria.

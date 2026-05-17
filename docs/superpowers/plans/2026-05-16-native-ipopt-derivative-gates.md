@@ -949,7 +949,8 @@ tests match the analytical/CppAD derivative gate.
 Task 12 continuation note: equilibrium cookbook and downstream local-install docs no longer describe implemented
 native-Ipopt neutral TP/LLE, fixed-temperature bubble/dew pressure, electrolyte LLE, or electrolyte bubble-pressure
 routes as globally native-Ipopt-gated. They now distinguish Ipopt-enabled native routes from stability, bubble/dew
-temperature, and reactive-electrolyte bubble routes that remain gated.
+temperature, and broader reactive phase-equilibrium routes that remain gated. Scoped reactive electrolyte bubble
+pressure uses native speciation followed by the fixed-liquid native bubble route when Ipopt is compiled.
 
 Task 12 continuation note: stale tracked GoalBuddy artifacts for superseded native electrolyte, neutral LLE,
 reactive-equilibrium, and PR #126 repair stories were removed from active docs. This plan is now the authoritative
@@ -1054,9 +1055,10 @@ temperature, and one-salt electrolyte LLE were deleted. Retained coverage now li
 one native route request is built before the Ipopt dependency gate, exercise typed/generic dispatch for still-gated
 temperature routes, or validate accepted native payload conversion.
 
-Task 12 continuation note: `capabilities()["equilibrium"]` now reports implemented native Ipopt routes only. Stability,
-reactive electrolyte bubble, and reactive phase-equilibrium routes remain public API contracts that fail loudly until
-their native builders land, but they no longer appear as false/pending capability rows. Implemented routes without a
+Task 12 continuation note: `capabilities()["equilibrium"]` now reports implemented native Ipopt routes only. Stability
+and broad reactive phase-equilibrium routes remain public API contracts that fail loudly until their native builders
+land, but they no longer appear as false/pending capability rows. Scoped reactive electrolyte bubble pressure is
+documented as a staged native route rather than a top-level equilibrium capability row. Implemented routes without a
 compiled Ipopt dependency now report `ipopt_dependency_required`, and problem-object capability metadata carries the
 public problem classes separately.
 
@@ -1133,7 +1135,7 @@ and the executable text gate now blocks the retired stability diagnostic labels 
 
 Task 12 continuation note: the reactive electrolyte VLE workflow documentation now matches the implemented
 fixed-liquid native Ipopt bubble route. It describes reactive electrolyte bubble pressure as native speciation composed
-with the native bubble route for scoped supported inputs instead of saying the whole public entry point is pending.
+with the native bubble route for scoped supported inputs.
 
 ### Task 13: Final Validation And Cleanup
 
