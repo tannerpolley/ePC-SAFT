@@ -980,6 +980,11 @@ Task 8/9/12 continuation note: public reactive `phase_kwargs` no longer carries 
 data. Unknown phase-route keys now use the normal unsupported-key path; the text gate blocks reintroducing public
 `phase_kwargs` phase-seed branches while private native residual/Jacobian payloads remain separate.
 
+Task 6/12 continuation note: public homogeneous reactive-speciation sweeps no longer expose a `continuation` mode,
+`warm_start` solve hook, `continuation_state` result payload, or runtime continuation-state capability flag. Each sweep
+point supplies its own explicit `initial_x`; reactive-regression residual diagnostics may still pass cached compositions
+as explicit row inputs until the native Ceres fit route owns that workflow.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**

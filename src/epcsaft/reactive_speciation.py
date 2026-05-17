@@ -285,7 +285,6 @@ class ReactiveSpeciationResult:
     named_reaction_residuals: dict[str, float]
     state_failure_count: int
     diagnostics: dict[str, Any]
-    continuation_state: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "success", bool(self.success))
@@ -306,7 +305,6 @@ class ReactiveSpeciationResult:
         )
         object.__setattr__(self, "state_failure_count", int(self.state_failure_count))
         object.__setattr__(self, "diagnostics", dict(self.diagnostics))
-        object.__setattr__(self, "continuation_state", _json_like(dict(self.continuation_state)))
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-like result payload."""
@@ -321,7 +319,6 @@ class ReactiveSpeciationResult:
             "named_reaction_residuals": dict(self.named_reaction_residuals),
             "state_failure_count": self.state_failure_count,
             "diagnostics": _json_like(self.diagnostics),
-            "continuation_state": _json_like(self.continuation_state),
         }
 
 
@@ -336,7 +333,6 @@ def solve_reactive_speciation(
     reactions: Any,
     initial_x: Any,
     options: ReactiveSpeciationOptions | None = None,
-    warm_start: Any = None,
 ) -> ReactiveSpeciationResult:
     """Solve homogeneous reactive speciation through the accepted native route."""
     opts = _normalize_options(options)
@@ -344,12 +340,7 @@ def solve_reactive_speciation(
     labels = [str(label) for label in species]
     if not labels:
         raise InputError("species must include at least one label.")
-    initial, initial_source = _initial_composition_from_inputs(
-        initial_x=initial_x,
-        warm_start=warm_start,
-        ncomp=len(labels),
-        min_value=opts.min_mole_fraction,
-    )
+    initial = _normalize_required_initial_composition(initial_x, len(labels), opts.min_mole_fraction)
     balance_matrix, total_vector, balance_names = _normalize_balances(labels, balances, totals)
     reaction_defs = _normalize_reactions(labels, reactions)
     if opts.jacobian_backend == "cppad":
@@ -366,7 +357,7 @@ def solve_reactive_speciation(
         balance_names=balance_names,
         reactions=reaction_defs,
         initial_x=initial,
-        initial_x_source=initial_source,
+        initial_x_source="initial_x",
         options=opts,
         requested_solver_backend=requested_solver_backend,
     )
@@ -380,25 +371,19 @@ def solve_reactive_speciation_sweep(
     balances: Mapping[str, Mapping[str, float]],
     reactions: Any,
     options: ReactiveSpeciationOptions | None = None,
-    continuation: str = "auto",
 ) -> list[ReactiveSpeciationResult]:
     """Solve an ordered reactive-speciation sweep with fixed-shape results."""
 
     opts = _normalize_options(options)
-    mode = str(continuation).strip().lower()
-    if mode not in {"auto", "none"}:
-        raise InputError("continuation must be 'auto' or 'none'.")
     labels = [str(label) for label in species]
     if not labels:
         raise InputError("species must include at least one label.")
     reaction_defs = _normalize_reactions(labels, reactions)
     results: list[ReactiveSpeciationResult] = []
-    warm_start: dict[str, Any] | None = None
     for index, point in enumerate(points):
         try:
             if "T" not in point or "P" not in point or "totals" not in point:
                 raise InputError("Each reactive speciation sweep point requires T, P, and totals.")
-            point_warm_start = warm_start if mode == "auto" else None
             result = solve_reactive_speciation(
                 species=labels,
                 mixture_factory=mixture_factory,
@@ -409,7 +394,6 @@ def solve_reactive_speciation_sweep(
                 reactions=reaction_defs,
                 initial_x=point.get("initial_x"),
                 options=opts,
-                warm_start=point_warm_start,
             )
         except Exception as exc:
             if opts.error_mode != "result":
@@ -422,8 +406,6 @@ def solve_reactive_speciation_sweep(
                 options=opts,
             )
         results.append(result)
-        if result.success:
-            warm_start = dict(result.continuation_state)
     return results
 
 
@@ -594,7 +576,6 @@ def _solve_reactive_speciation_native(
             "backend": "native",
             "activity_output": str(options.activity_output),
             "initial_x_source": str(initial_x_source),
-            "continuation_used": str(initial_x_source) != "initial_x",
             "requested_solver_backend": str(requested_solver_backend or options.solver_backend),
             "selected_solver_backend": str(diagnostics.get("selected_solver_backend", "native_ipopt")),
             "solver_selection_reason": str(
@@ -629,12 +610,6 @@ def _solve_reactive_speciation_native(
         named_reaction_residuals=named_reaction_residuals,
         state_failure_count=int(diagnostics.get("state_failure_count", 0)),
         diagnostics=diagnostics,
-        continuation_state=_continuation_state(
-            x=x,
-            T=T,
-            P=P,
-            diagnostics=diagnostics,
-        ),
     )
     if not success and options.error_mode != "result":
         raise SolutionError(message, _json_like(diagnostics))
@@ -812,38 +787,10 @@ def _reaction_standard_state_summary(reactions: list[ReactionDefinition]) -> str
     return first
 
 
-def _initial_composition_from_inputs(
-    *,
-    initial_x: Any,
-    warm_start: Any,
-    ncomp: int,
-    min_value: float,
-) -> tuple[np.ndarray, str]:
-    if warm_start is not None:
-        if isinstance(warm_start, Mapping):
-            for key in ("composition", "x"):
-                if key in warm_start:
-                    value = warm_start[key]
-                    if isinstance(value, Mapping):
-                        value = list(value.values())
-                    return _normalize_composition(value, ncomp, min_value), "previous_successful_result"
-        return _normalize_composition(warm_start, ncomp, min_value), "warm_start"
+def _normalize_required_initial_composition(initial_x: Any, ncomp: int, min_value: float) -> np.ndarray:
     if initial_x is None:
-        raise InputError("initial_x is required when no warm_start composition is supplied.")
-    return _normalize_composition(initial_x, ncomp, min_value), "initial_x"
-
-
-def _continuation_state(
-    *, x: Mapping[str, float], T: float, P: float, diagnostics: Mapping[str, Any]
-) -> dict[str, Any]:
-    composition = {str(label): float(value) for label, value in x.items()}
-    return {
-        "composition": composition,
-        "T": float(T),
-        "P": float(P),
-        "density_solve_count": int(diagnostics.get("density_solve_count", 0)),
-        "activity_evaluation_count": int(diagnostics.get("activity_evaluation_count", 0)),
-    }
+        raise InputError("initial_x is required.")
+    return _normalize_composition(initial_x, ncomp, min_value)
 
 
 def _structured_failure_result(
@@ -868,7 +815,6 @@ def _structured_failure_result(
         "backend": "python_sweep",
         "selected_solver_backend": "not_run",
         "initial_x_source": "failure_payload",
-        "continuation_used": False,
     }
     return ReactiveSpeciationResult(
         success=False,
@@ -881,7 +827,6 @@ def _structured_failure_result(
         named_reaction_residuals={},
         state_failure_count=0,
         diagnostics=diagnostics,
-        continuation_state={},
     )
 
 

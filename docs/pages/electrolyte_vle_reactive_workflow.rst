@@ -104,12 +104,11 @@ residuals. ``mass_tolerance``, ``charge_tolerance``, and
 when omitted.
 
 For repeated nearby states, use ``solve_reactive_speciation_sweep(...)`` with
-``continuation="auto"``. Each successful result carries a
-``continuation_state`` containing the composition and lightweight counters for
-the next point. Failed points return fixed-shape diagnostic result objects when
-``error_mode="result"`` is selected, so downstream sweeps can continue.
-Speciation diagnostics report iteration, residual, Jacobian, density, state,
-and activity-evaluation counts.
+an explicit ``initial_x`` for each point. The sweep does not reuse a prior
+solution as a hidden starting point; failed points return fixed-shape diagnostic
+result objects when ``error_mode="result"`` is selected, so downstream sweeps can
+continue. Speciation diagnostics report iteration, residual, Jacobian, density,
+state, and activity-evaluation counts.
 
 Reactive stability handoff
 --------------------------

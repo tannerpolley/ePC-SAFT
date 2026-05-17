@@ -38,7 +38,7 @@ def test_reactive_speciation_capabilities_gate_nonideal_standard_states() -> Non
     assert reactive["backend"] == "native_ipopt_equilibrium_nlp"
     assert reactive["status"] == ("available" if ipopt["available"] else "ipopt_dependency_required")
     assert reactive["sweep_available"] is ipopt["available"]
-    assert reactive["continuation_state_available"] is ipopt["available"]
+    assert "continuation_state_available" not in reactive
     assert reactive["jacobian_auto_supported_standard_states"] == ["ideal_mole_fraction"]
     assert reactive["implemented_standard_states"] == ["ideal_mole_fraction"]
     removed_standard_state_field = "route" + "_gated" + "_standard" + "_states"

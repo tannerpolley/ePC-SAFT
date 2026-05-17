@@ -558,7 +558,6 @@ def capabilities() -> dict[str, object]:
                 "backend": "native_ipopt_equilibrium_nlp",
                 "status": ipopt_route_status,
                 "sweep_available": ipopt_route_available,
-                "continuation_state_available": ipopt_route_available,
                 "activity_output_modes": ["auto", "always", "never"],
                 "jacobian_auto_policy": "native_ipopt_ideal_mole_fraction_analytic_else_raise",
                 "jacobian_auto_supported_standard_states": ["ideal_mole_fraction"],

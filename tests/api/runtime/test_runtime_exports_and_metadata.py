@@ -169,7 +169,7 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert reactive_speciation["backend"] == "native_ipopt_equilibrium_nlp"
     assert reactive_speciation["status"] == ("available" if ipopt["available"] else "ipopt_dependency_required")
     assert reactive_speciation["sweep_available"] is ipopt["available"]
-    assert reactive_speciation["continuation_state_available"] is ipopt["available"]
+    assert "continuation_state_available" not in reactive_speciation
     assert reactive_speciation["solver_backends"] == ["auto", "ipopt"]
     assert reactive_speciation["ipopt_routes"] == ["reactive_speciation:ideal_mole_fraction"]
     assert reactive_speciation["ideal_speciation_nlp_available"] is ipopt["available"]

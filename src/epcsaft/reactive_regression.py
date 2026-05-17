@@ -713,7 +713,6 @@ class ReactiveElectrolyteRegressionContext:
                         reactions=row.reactions or self.batch.reactions,
                         initial_x=_row_seed_x(row, self.species, seed),
                         options=self.batch.reactive_speciation_options,
-                        warm_start=seed.get("warm_start") if seed else None,
                     )
                     row_result = _row_result_from_speciation(
                         context=self,
@@ -1451,12 +1450,7 @@ def _failed_row_result(
 
 
 def _row_seed_from_result(row_result: ReactiveElectrolyteRowResult) -> dict[str, Any]:
-    seed = {
-        "composition": dict(row_result.composition),
-    }
-    if row_result.composition:
-        seed["warm_start"] = {"x": dict(row_result.composition)}
-    return seed
+    return {"composition": dict(row_result.composition)}
 
 
 def _pack_row_residuals(
