@@ -149,16 +149,16 @@ Use ``capabilities()`` before wiring high-level downstream workflows:
    import epcsaft
 
    caps = epcsaft.capabilities()
-   assert caps["equilibrium"]["neutral_tp_flash"]["available"]
-   assert caps["equilibrium"]["electrolyte_bubble_pressure"]["available"]
-   assert not caps["equilibrium"]["reactive_electrolyte_bubble"]["available"]
+   assert caps["equilibrium"]["neutral_tp_flash"]["status"] in {"available", "ipopt_dependency_required"}
+   assert caps["equilibrium"]["electrolyte_bubble_pressure"]["status"] in {"available", "ipopt_dependency_required"}
+   assert "reactive_electrolyte_bubble" not in caps["equilibrium"]
+   assert "ReactiveElectrolyteBubbleProblem" in caps["equilibrium"]["problem_objects"]["classes"]
 
 Native EOS/property calls and native regression helpers are available.
-Equilibrium routes are declared public contracts, but production solves are
-gated on native Ipopt route builders and an Ipopt-enabled build. Homogeneous
-ideal reactive speciation, neutral two-phase routes, and fixed-liquid
-electrolyte LLE/bubble routes are native Ipopt routes when that extension is
-compiled.
+Implemented equilibrium capability entries are native Ipopt routes gated only
+by whether the current install was compiled with Ipopt. Public route names that
+still lack a production native route builder remain public contracts, but they
+are not advertised as implemented capabilities.
 
 For routing examples and the production/opt-in solver table, see
 :doc:`equilibrium_cookbook`.

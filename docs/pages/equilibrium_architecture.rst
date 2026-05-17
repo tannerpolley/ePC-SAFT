@@ -10,11 +10,11 @@ The recommended direct API remains method based:
 * ``mixture.chemical_equilibrium(...)``
 
 Neutral ``mixture.bubble_p(...)`` and ``mixture.dew_p(...)`` remain public API
-names, but they currently fail loudly until the native Ipopt route builders own
-those solves.
-``mixture.electrolyte_bubble_p(...)`` and
-``mixture.reactive_electrolyte_bubble_p(...)`` follow the same route-pending
-policy until native Ipopt electrolyte bubble builders land.
+names and are implemented native Ipopt pressure routes when Ipopt is compiled.
+``mixture.electrolyte_bubble_p(...)`` follows the same native Ipopt dependency
+boundary. Public routes that still lack a production native route builder fail
+loudly at the route boundary and are not advertised as implemented
+``capabilities()["equilibrium"]`` entries.
 
 For agents or workflow builders that need a serializable problem object, use
 ``mixture.solve_equilibrium(problem)`` with one of:
@@ -27,6 +27,7 @@ For agents or workflow builders that need a serializable problem object, use
 * ``ElectrolyteLLEProblem``
 * ``ElectrolyteBubblePoint``
 * ``ReactiveSpeciationProblem``
+* ``ReactivePhaseEquilibriumProblem``
 * ``ReactiveElectrolyteBubbleProblem``
 
 Example
@@ -46,10 +47,13 @@ Solver Selection
 ``solver_backend="auto"`` is conservative: it may use a validated native
 default only where one exists, and otherwise raises at the route boundary.
 ``ipopt`` is the explicit native constrained-NLP backend for production
-equilibrium routes as they land. The current public Ipopt route is homogeneous
-ideal reactive speciation; broader multiphase, electrolyte, and EOS-coupled
-equilibrium routes remain route-builder work. Use ``epcsaft.capabilities()`` to
-check which optional solver paths are available in the current install.
+equilibrium routes as they land. Current implemented native Ipopt capability
+entries cover homogeneous ideal reactive speciation, neutral TP/LLE, neutral
+bubble/dew pressure, electrolyte LLE, and fixed-liquid electrolyte bubble
+pressure when Ipopt is compiled. Stability, temperature bubble/dew, and
+reactive phase-equilibrium solves remain route-builder work. Use
+``epcsaft.capabilities()`` to check implemented solver paths in the current
+install.
 
 The convex Gibbs formulation is limited to homogeneous ideal reaction or
 speciation subkernels and validation tests. Full ePC-SAFT multiphase,

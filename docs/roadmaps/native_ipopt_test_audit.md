@@ -156,6 +156,9 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
   gate blocks the retired empty-field label.
 - Runtime Ipopt dependency probing now reports `native_extension_missing` or `ipopt_probe_missing` instead of a generic
   configuration-status fallback, and the executable text gate blocks the retired fallback label.
+- Equilibrium capabilities now list implemented native Ipopt routes only. Unimplemented stability, reactive bubble, and
+  reactive phase-equilibrium routes remain public API contracts that fail loudly, but they are no longer advertised as
+  available-false capability rows. Implemented but locally uncompiled Ipopt routes use `ipopt_dependency_required`.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
 

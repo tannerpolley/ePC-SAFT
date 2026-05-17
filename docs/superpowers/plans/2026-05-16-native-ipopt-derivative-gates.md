@@ -940,6 +940,12 @@ diagnostic or a negative neutral-route status. The retained diagnostics describe
 derivative policy, residual audits, and phase-route diagnostics only; the executable text gate blocks the removed field
 and status tokens.
 
+Task 12 continuation note: `capabilities()["equilibrium"]` now reports implemented native Ipopt routes only. Stability,
+reactive electrolyte bubble, and reactive phase-equilibrium routes remain public API contracts that fail loudly until
+their native builders land, but they no longer appear as false/pending capability rows. Implemented routes without a
+compiled Ipopt dependency now report `ipopt_dependency_required`, and problem-object capability metadata carries the
+public problem classes separately.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**

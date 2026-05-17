@@ -35,32 +35,24 @@ def test_reactive_speciation_capabilities_gate_nonideal_standard_states() -> Non
     ipopt = capabilities["optimizers"]["ipopt"]
 
     assert reactive["available"] is ipopt["available"]
-    assert reactive["backend"] == "native_ipopt_equilibrium_nlp_required"
-    assert reactive["status"] == ("available" if ipopt["available"] else "route_pending")
+    assert reactive["backend"] == "native_ipopt_equilibrium_nlp"
+    assert reactive["status"] == ("available" if ipopt["available"] else "ipopt_dependency_required")
     assert reactive["sweep_available"] is ipopt["available"]
     assert reactive["continuation_state_available"] is ipopt["available"]
     assert reactive["jacobian_auto_supported_standard_states"] == ["ideal_mole_fraction"]
-    assert set(reactive["route_gated_standard_states"]) == {
-        "mole_fraction_activity",
-        "thermodynamic_activity",
-        "concentration",
-        "apparent",
-    }
+    assert reactive["implemented_standard_states"] == ["ideal_mole_fraction"]
+    removed_standard_state_field = "route" + "_gated" + "_standard" + "_states"
+    assert removed_standard_state_field not in reactive
     assert "derivative_gap_status" not in reactive
 
 
-def test_reactive_phase_equilibrium_capabilities_state_reaction_scope() -> None:
-    reactive = epcsaft.capabilities()["equilibrium"]["reactive_phase_equilibrium"]
+def test_equilibrium_capabilities_omit_unimplemented_route_contracts() -> None:
+    equilibrium = epcsaft.capabilities()["equilibrium"]
 
-    assert reactive["available"] is False
-    assert reactive["status"] == "route_pending"
-    assert reactive["backend"] == "native_ipopt_equilibrium_nlp_required"
-    assert {"reactive_lle", "reactive_electrolyte_lle"}.issubset(set(reactive["methods"]))
-    assert reactive["problem_class"] == "ReactivePhaseEquilibriumProblem"
-    assert "same_phase_activity_reaction" in reactive["supported_reaction_scopes"]
-    assert "phase_tagged_cross_phase_quotient" in reactive["supported_reaction_scopes"]
+    assert "neutral_stability" not in equilibrium
+    assert "electrolyte_stability" not in equilibrium
+    assert "reactive_electrolyte_bubble" not in equilibrium
+    assert "reactive_phase_equilibrium" not in equilibrium
+    assert "ReactivePhaseEquilibriumProblem" in equilibrium["problem_objects"]["classes"]
     removed_scope_field = "unsupported" + "_reaction" + "_scopes"
-    assert removed_scope_field not in reactive
-    assert reactive["cross_phase_reaction_quotients"]["available"] is True
-    assert reactive["cross_phase_reaction_quotients"]["status"] == "validated_for_pending_ipopt_route"
-    assert reactive["cross_phase_reaction_quotients"]["api"] == "ReactionDefinition.phase_stoichiometry"
+    assert removed_scope_field not in str(equilibrium)

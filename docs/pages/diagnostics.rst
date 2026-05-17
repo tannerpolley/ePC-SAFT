@@ -5,11 +5,12 @@ Runtime Capabilities
 --------------------
 
 ``epcsaft.capabilities()`` reports installed runtime features, solver backends,
-and package workflow status. The important backend labels are:
+and implemented package workflows. The important backend labels are:
 
 * ``native``: production native runtime path.
-* ``native_ipopt_equilibrium_nlp_required``: public route name is declared, but
-  execution is gated until the native Ipopt NLP route builder owns the solve.
+* ``native_ipopt_equilibrium_nlp``: implemented production equilibrium route
+  owned by the native Ipopt NLP layer. If Ipopt is not compiled in the current
+  install, the route status is ``ipopt_dependency_required``.
 * ``batch_residual_evaluation_context``: Python batches rows and formats
   diagnostics for a residual context; this is not a production optimizer.
 

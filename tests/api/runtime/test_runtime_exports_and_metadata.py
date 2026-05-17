@@ -120,67 +120,59 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert capabilities["optimizers"]["ceres"]["available"] is ceres["available"]
     assert capabilities["optimizers"]["ceres"]["production"] is ceres["available"]
     assert capabilities["optimizers"]["ceres"]["native_hot_loop"] is ceres["available"]
-    neutral_tp = capabilities["equilibrium"]["neutral_tp_flash"]
+    equilibrium = capabilities["equilibrium"]
+    assert "neutral_stability" not in equilibrium
+    assert "electrolyte_stability" not in equilibrium
+    assert "reactive_electrolyte_bubble" not in equilibrium
+    assert "reactive_phase_equilibrium" not in equilibrium
+
+    neutral_tp = equilibrium["neutral_tp_flash"]
     assert neutral_tp["available"] is ipopt["available"]
     assert neutral_tp["backend"] == "native_ipopt_equilibrium_nlp"
     assert neutral_tp["methods"] == ["tp_flash", "flash_tp"]
-    assert neutral_tp["status"] == ("available" if ipopt["available"] else "route_pending")
-    assert capabilities["equilibrium"]["neutral_bubble_dew"] == {
+    assert neutral_tp["status"] == ("available" if ipopt["available"] else "ipopt_dependency_required")
+    assert equilibrium["neutral_bubble_dew"] == {
         "available": ipopt["available"],
         "backend": "native_ipopt_equilibrium_nlp",
-        "methods": ["bubble_p", "bubble_t", "dew_p", "dew_t"],
-        "available_methods": ["bubble_p", "dew_p"] if ipopt["available"] else [],
-        "route_gated_methods": ["bubble_t", "dew_t"],
-        "status": "partially_available" if ipopt["available"] else "route_pending",
+        "methods": ["bubble_p", "dew_p"],
+        "status": "available" if ipopt["available"] else "ipopt_dependency_required",
     }
-    neutral_lle = capabilities["equilibrium"]["neutral_lle_flash"]
+    neutral_lle = equilibrium["neutral_lle_flash"]
     assert neutral_lle["available"] is ipopt["available"]
     assert neutral_lle["backend"] == "native_ipopt_equilibrium_nlp"
     assert neutral_lle["methods"] == ["lle_flash", "lle_tp"]
-    assert neutral_lle["status"] == ("available" if ipopt["available"] else "route_pending")
-    neutral_stability = capabilities["equilibrium"]["neutral_stability"]
-    assert neutral_stability["available"] is False
-    assert neutral_stability["backend"] == "native_ipopt_equilibrium_nlp_required"
-    assert neutral_stability["methods"] == ["stability", "stability_tp"]
-    assert neutral_stability["status"] == "route_pending"
-    electrolyte_bubble = capabilities["equilibrium"]["electrolyte_bubble_pressure"]
+    assert neutral_lle["status"] == ("available" if ipopt["available"] else "ipopt_dependency_required")
+    electrolyte_bubble = equilibrium["electrolyte_bubble_pressure"]
     assert electrolyte_bubble["available"] is ipopt["available"]
     assert electrolyte_bubble["backend"] == "native_ipopt_equilibrium_nlp"
-    assert electrolyte_bubble["status"] == ("available" if ipopt["available"] else "route_pending")
+    assert electrolyte_bubble["status"] == ("available" if ipopt["available"] else "ipopt_dependency_required")
     assert electrolyte_bubble["scope"] == "fixed liquid composition with neutral vapor species; ions remain liquid-only"
-    electrolyte_lle = capabilities["equilibrium"]["electrolyte_lle"]
+    electrolyte_lle = equilibrium["electrolyte_lle"]
     assert electrolyte_lle["available"] is ipopt["available"]
     assert electrolyte_lle["backend"] == "native_ipopt_equilibrium_nlp"
     assert electrolyte_lle["methods"] == ["electrolyte_lle", "electrolyte_lle_tp"]
-    assert electrolyte_lle["status"] == ("available" if ipopt["available"] else "route_pending")
+    assert electrolyte_lle["status"] == ("available" if ipopt["available"] else "ipopt_dependency_required")
     assert electrolyte_lle["full_constrained_nlp_available"] is ipopt["available"]
-    electrolyte_stability = capabilities["equilibrium"]["electrolyte_stability"]
-    assert electrolyte_stability["available"] is False
-    assert electrolyte_stability["backend"] == "native_ipopt_equilibrium_nlp_required"
-    assert electrolyte_stability["methods"] == ["electrolyte_stability", "electrolyte_stability_tp"]
-    assert electrolyte_stability["status"] == "route_pending"
-    reactive_bubble = capabilities["equilibrium"]["reactive_electrolyte_bubble"]
-    assert reactive_bubble["available"] is False
-    assert reactive_bubble["backend"] == "native_ipopt_equilibrium_nlp_required"
-    assert reactive_bubble["status"] == "route_pending"
-    reactive_speciation = capabilities["equilibrium"]["reactive_speciation"]
+    reactive_speciation = equilibrium["reactive_speciation"]
     assert reactive_speciation["available"] is ipopt["available"]
-    assert reactive_speciation["backend"] == "native_ipopt_equilibrium_nlp_required"
-    assert reactive_speciation["status"] == ("available" if ipopt["available"] else "route_pending")
+    assert reactive_speciation["backend"] == "native_ipopt_equilibrium_nlp"
+    assert reactive_speciation["status"] == ("available" if ipopt["available"] else "ipopt_dependency_required")
     assert reactive_speciation["sweep_available"] is ipopt["available"]
     assert reactive_speciation["continuation_state_available"] is ipopt["available"]
     assert reactive_speciation["solver_backends"] == ["auto", "ipopt"]
     assert reactive_speciation["ipopt_routes"] == ["reactive_speciation:ideal_mole_fraction"]
     assert reactive_speciation["ideal_speciation_nlp_available"] is ipopt["available"]
-    assert reactive_speciation["full_constrained_nlp_available"] is False
+    assert reactive_speciation["implemented_standard_states"] == ["ideal_mole_fraction"]
     assert (
         reactive_speciation["jacobian_auto_policy"]
         == "native_ipopt_ideal_mole_fraction_analytic_else_raise"
     )
     assert reactive_speciation["jacobian_auto_supported_standard_states"] == ["ideal_mole_fraction"]
+    removed_standard_state_field = "route" + "_gated" + "_standard" + "_states"
+    assert removed_standard_state_field not in reactive_speciation
+    assert "full_constrained_nlp_available" not in reactive_speciation
     assert "derivative_gap_status" not in reactive_speciation
     assert reactive_speciation["auto_request"] == "ideal_mole_fraction_routes_to_native_ipopt"
-    assert reactive_speciation["explicit_cppad_request_raises_until_implemented"] is True
     assert capabilities["regression"]["pure_neutral"]["backend"] == "native_ceres"
     reactive_regression = capabilities["regression"]["reactive_electrolyte_residuals"]
     assert reactive_regression["available"] is True
@@ -193,7 +185,8 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert batch_context["methods"] == ["evaluate_objective"]
     assert batch_context["fit_route"]["status"] == "route_pending"
     assert batch_context["fit_route"]["optimizer"] == "native_ceres"
-    assert capabilities["equilibrium"]["problem_objects"]["entrypoint"] == "mixture.solve_equilibrium(problem)"
+    assert equilibrium["problem_objects"]["entrypoint"] == "mixture.solve_equilibrium(problem)"
+    assert "ReactivePhaseEquilibriumProblem" in equilibrium["problem_objects"]["classes"]
     assert (
         capabilities["equilibrium"]["contribution_maps"]["activity_coefficient_term_decomposition_available"] is False
     )
