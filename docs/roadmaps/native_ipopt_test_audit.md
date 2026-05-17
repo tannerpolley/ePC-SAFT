@@ -118,6 +118,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
   retained benchmark comparison path is optional external JSON baseline reporting against supported cases.
 - Electrolyte/property runtime options now use `cppad` for explicit CppAD derivative requests, and the old generic
   AD option spelling is rejected outside Ceres-owned regression contexts.
+- Equilibrium cookbook and downstream local-install docs now distinguish Ipopt-enabled native routes from route-gated
+  stability, bubble/dew temperature, and reactive-electrolyte bubble routes.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
 

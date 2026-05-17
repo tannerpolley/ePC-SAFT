@@ -31,27 +31,29 @@ these fields as routing hints, not as proof that a physical case is valid.
    * - Capability
      - Status
      - Use
-   * - Neutral TP flash, LLE, stability
+   * - Neutral TP flash and LLE
+     - Native Ipopt route when compiled
+     - Uses native constrained-NLP route builders; no Python solve loop exists.
+   * - Neutral stability, bubble/dew temperature
      - Route pending
-     - Requires native Ipopt constrained-NLP route builders.
+     - Requires native Ipopt route builders before production use.
    * - Electrolyte LLE
-     - Route pending
-     - Requires the native Ipopt electrolyte LLE route builder.
+     - Native Ipopt route when compiled
+     - Requires an Ipopt-enabled build; no alternate public optimizer path exists.
    * - Reactive speciation
      - Explicit Ipopt ideal route
      - Homogeneous ``ideal_mole_fraction`` chemical equilibrium when Ipopt is
        compiled; activity and concentration standard states are route-gated.
    * - Electrolyte bubble pressure
-     - Route pending
-     - Requires the native Ipopt electrolyte bubble route builder.
+     - Native Ipopt route when compiled
+     - Fixed liquid composition with neutral vapor species; ions remain liquid-only.
    * - Reactive electrolyte bubble
      - Route pending
      - Requires the native Ipopt electrolyte bubble route builder after
        speciation.
    * - IPOPT
      - Optional native constrained-NLP backend
-     - Wired for homogeneous ideal reactive speciation; broader routes are
-       still route-builder work.
+     - Owns implemented equilibrium routes when the extension is compiled.
 
 .. list-table::
    :header-rows: 1
@@ -99,15 +101,19 @@ scripts.
    )
 
    z = np.asarray([0.55, 0.45])
-   stability = mixture.stability_tp(T=298.15, P=101325.0, z=z)
-   lle = mixture.lle_tp(T=298.15, P=101325.0, z=z)
-   assert lle.split_detected
-   print(lle.phase_labels, lle.diagnostics)
+   caps = epcsaft.capabilities()
+   if caps["equilibrium"]["neutral_lle_flash"]["available"]:
+       lle = mixture.lle_tp(T=298.15, P=101325.0, z=z)
+       assert lle.split_detected
+       print(lle.phase_labels, lle.diagnostics)
+   else:
+       print("neutral LLE needs an Ipopt-enabled native build")
 
-Neutral TP flash, neutral LLE, stability, and neutral bubble/dew public methods
-now raise until native Ipopt route builders own those constrained equilibrium
-NLPs. Downstream sweeps should catch the typed route-pending errors and treat
-them as missing production routes, not accepted phase-equilibrium results.
+Neutral TP flash, neutral LLE, fixed-temperature bubble pressure, and
+fixed-temperature dew pressure route through native Ipopt when that extension is
+compiled. Stability and bubble/dew temperature methods remain route-pending.
+Downstream sweeps should inspect ``epcsaft.capabilities()`` or catch typed
+route errors instead of manufacturing alternate phase-equilibrium results.
 
 Derivative policy
 -----------------
@@ -323,8 +329,8 @@ IPOPT route status
 ------------------
 
 ``solver_backend="ipopt"`` is reserved for the native Ipopt constrained-NLP
-adapter. The old Python adapter has been removed. Until the native adapter is
-wired to public equilibrium routes, an explicit IPOPT request raises
+adapter. The old Python adapter has been removed. Implemented public routes use
+the native adapter when Ipopt is compiled; route-pending methods still raise
 ``InputError``.
 
 .. code-block:: python
@@ -337,5 +343,5 @@ wired to public equilibrium routes, an explicit IPOPT request raises
            options=epcsaft.EquilibriumOptions(solver_backend="ipopt"),
        )
    except epcsaft.InputError as exc:
-       print("IPOPT was requested before the native adapter was routed:", exc)
+       print("IPOPT route is unavailable in this build or for this method:", exc)
 

@@ -847,6 +847,11 @@ Task 12 continuation note: electrolyte/property runtime option spelling now uses
 requests. The generic legacy AD spelling is rejected outside Ceres-owned regression contexts so user options, docs, and
 tests match the analytical/CppAD derivative gate.
 
+Task 12 continuation note: equilibrium cookbook and downstream local-install docs no longer describe implemented
+native-Ipopt neutral TP/LLE, fixed-temperature bubble/dew pressure, electrolyte LLE, or electrolyte bubble-pressure
+routes as globally route-pending. They now distinguish Ipopt-enabled native routes from stability, bubble/dew
+temperature, and reactive-electrolyte bubble routes that remain gated.
+
 Task 12 continuation note: stale tracked GoalBuddy artifacts for superseded native electrolyte, neutral LLE,
 reactive-equilibrium, and PR #126 repair stories were removed from active docs. This plan is now the authoritative
 tracked handoff for native Ipopt equilibrium, native Ceres regression, derivative gates, and solver-cleanup work.
