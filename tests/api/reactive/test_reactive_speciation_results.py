@@ -94,6 +94,9 @@ def test_concentration_standard_state_with_no_activity_output_reaches_native_der
 def test_reactive_speciation_sweep_auto_uses_native_ipopt_ideal_route_when_compiled() -> None:
     from epcsaft import _core
 
+    assert "warm_start" not in inspect.signature(epcsaft.solve_reactive_speciation).parameters
+    assert "continuation" not in inspect.signature(epcsaft.solve_reactive_speciation_sweep).parameters
+
     mix = epcsaft.ePCSAFTMixture.from_params(
         {
             "m": np.asarray([1.0, 1.0]),
@@ -133,11 +136,6 @@ def test_reactive_speciation_sweep_auto_uses_native_ipopt_ideal_route_when_compi
     assert all(result.diagnostics["selected_solver_backend"] == "native_ipopt" for result in results)
     assert all(result.diagnostics["initial_x_source"] == "initial_x" for result in results)
     assert all("continuation_used" not in result.diagnostics for result in results)
-
-
-def test_reactive_speciation_public_contract_has_no_sweep_continuation_surface() -> None:
-    assert "warm_start" not in inspect.signature(epcsaft.solve_reactive_speciation).parameters
-    assert "continuation" not in inspect.signature(epcsaft.solve_reactive_speciation_sweep).parameters
 
 
 def test_reactive_speciation_sweep_preserves_input_validation_failure_shape() -> None:
