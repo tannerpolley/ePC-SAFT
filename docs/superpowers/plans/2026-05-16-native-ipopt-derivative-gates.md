@@ -1012,8 +1012,9 @@ rather than returning an accepted single-phase-like postsolve.
 
 Task 8/9 continuation note: runtime capabilities now list implemented public native-Ipopt route builders instead of
 claiming all non-speciation equilibrium routes are unavailable. The route list covers homogeneous ideal reactive
-speciation, neutral TP/LLE/bubble/dew pressure, fixed-pressure bubble/dew temperature, electrolyte LLE, and fixed-liquid
-electrolyte bubble pressure when Ipopt is compiled. Stability and coupled reactive phase routes remain route-gated.
+speciation, neutral TP/LLE/bubble/dew pressure, fixed-pressure bubble/dew temperature, neutral/electrolyte stability,
+electrolyte LLE, and fixed-liquid electrolyte bubble pressure when Ipopt is compiled. Coupled reactive stability and
+coupled reactive phase routes remain route-gated.
 
 Task 12 continuation note: public activity-coefficient contribution decomposition now fails through the package's typed
 `InputError` instead of a generic Python unsupported-operation exception, and the regression derivative table now treats
@@ -1085,12 +1086,12 @@ temperature, and one-salt electrolyte LLE were deleted. Retained coverage now li
 one native route request is built before the Ipopt dependency gate, exercise typed/generic dispatch for public facades,
 or validate accepted native payload conversion.
 
-Task 12 continuation note: `capabilities()["equilibrium"]` now reports implemented native Ipopt routes only. Stability
-and broad reactive phase-equilibrium routes remain public API contracts that fail loudly until their native builders
-land, but they no longer appear as false/pending capability rows. Scoped reactive electrolyte bubble pressure is
-documented as a staged native route rather than a top-level equilibrium capability row. Implemented routes without a
-compiled Ipopt dependency now report `ipopt_dependency_required`, and problem-object capability metadata carries the
-public problem classes separately.
+Task 12 continuation note: `capabilities()["equilibrium"]` now reports implemented native Ipopt routes only. Coupled
+reactive stability and broad reactive phase-equilibrium routes remain public API contracts that fail loudly until their
+native builders land, but they no longer appear as false/pending capability rows. Neutral and electrolyte stability are
+implemented native Ipopt route boundaries. Scoped reactive electrolyte bubble pressure is documented as a staged native
+route rather than a top-level equilibrium capability row. Implemented routes without a compiled Ipopt dependency now
+report `ipopt_dependency_required`, and problem-object capability metadata carries the public problem classes separately.
 
 Task 12 continuation note: derivative coverage matrices no longer carry the redundant negative applicability column.
 Out-of-scope rows are represented by `classification="out_of_scope"` and `backend="out_of_scope"`, while supported rows

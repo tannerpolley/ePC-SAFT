@@ -770,7 +770,7 @@ class ePCSAFTMixture:
             if charges.size and np.any(np.abs(charges) > 1.0e-12):
                 if parent_phase is not None or trial_phases is not None:
                     raise InputError("parent_phase and trial_phases are not supported for ionic reactive_stability.")
-                _raise_native_ipopt_stability_required("electrolyte_stability")
+                _raise_native_ipopt_stability_required("reactive_stability")
             else:
                 if parent_phase is not None:
                     _normalize_parent_phases(parent_phase)

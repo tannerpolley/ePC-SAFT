@@ -9,6 +9,7 @@ import epcsaft
 from epcsaft import _core
 from tests.equilibrium.core.test_stability import _assert_stability_native_ipopt_gate
 from tests.helpers.numeric import assert_allclose
+from tests.helpers.runtime_cases import _ionic_params
 
 
 def _methanol_cyclohexane_mixture(kij: float = 0.051) -> epcsaft.ePCSAFTMixture:
@@ -188,6 +189,35 @@ def test_reactive_stability_requires_native_ipopt_stability_route_before_speciat
             ],
             parent_phase="liq",
             trial_phases=("liq",),
+            options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-10),
+        )
+
+    _assert_stability_native_ipopt_gate(excinfo, route="reactive_stability")
+
+
+def test_ionic_reactive_stability_uses_reactive_route_gate() -> None:
+    params = _ionic_params()
+    params["assoc_scheme"] = [None, None, None]
+    params["e_assoc"] = np.zeros(3)
+    params["vol_a"] = np.zeros(3)
+    mix = epcsaft.ePCSAFTMixture.from_params(params, species=["water", "Na+", "Cl-"])
+
+    with pytest.raises(epcsaft.InputError) as excinfo:
+        mix.equilibrium(
+            kind="reactive_stability",
+            T=298.15,
+            P=1.0e5,
+            z=[0.9998, 1.0e-4, 1.0e-4],
+            balances={"total": {"water": 1.0, "Na+": 1.0, "Cl-": 1.0}},
+            totals={"total": 1.0},
+            reactions=[
+                epcsaft.ReactionDefinition(
+                    {"Na+": -1.0, "Cl-": 1.0},
+                    0.0,
+                    name="ionic_probe",
+                    standard_state="ideal_mole_fraction",
+                )
+            ],
             options=epcsaft.ReactiveSpeciationOptions(tolerance=1.0e-10),
         )
 
