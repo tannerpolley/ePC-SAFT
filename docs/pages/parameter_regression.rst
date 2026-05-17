@@ -617,7 +617,7 @@ Derivative availability
 
    * - Method
      - Current Jacobian access
-     - Hessian status
+     - Second-derivative exposure
    * - Runtime ``dadt()``, ``dadx()``, ``z(return_contribution_terms=True)``, ``mures(return_contribution_terms=True)``
      - Analytical where available, CppAD where implemented; unsupported derivative paths raise clearly
      - Not exposed
@@ -628,8 +628,8 @@ Derivative availability
      - Binary ``k_ij`` fitting uses native Ceres ``cppad_implicit`` Jacobians; other generic residual families raise until analytic or CppAD coverage is implemented
      - Solver-internal only; exact Hessian callbacks are not exposed
    * - Neutral LLE
-     - Native stability and seed checks remain available; solve derivative callbacks raise until residual coverage is implemented
-     - Route pending
+     - Native Ipopt constrained-NLP route when compiled; exact gradient/Jacobian callbacks are route-internal
+     - Ipopt limited-memory Hessian handling is solver-internal
    * - Chemical equilibrium / reactive speciation
      - Explicit native Ipopt ideal-mole-fraction route uses analytic derivatives when Ipopt is compiled; activity/concentration paths raise until EOS derivative NLP blocks exist
      - Ipopt limited-memory Hessian handling is solver-internal

@@ -74,7 +74,7 @@ values when the native runtime evaluates them as inactive.
 Activity coefficients are available through ``state.activity_coefficient(...)``.
 Additive activity-coefficient term decomposition is not currently exposed by
 the native activity API, so ``state.activity_coefficient_contributions()``
-raises ``NotImplementedError`` instead of returning invented terms.
+raises ``InputError`` instead of returning invented terms.
 
 Reactive Regression Benchmarks
 ------------------------------

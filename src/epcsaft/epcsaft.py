@@ -1987,7 +1987,7 @@ class ePCSAFTState:
 
     def activity_coefficient_contributions(self, *args, **kwargs):
         """Reject unsupported additive activity-coefficient decomposition explicitly."""
-        raise NotImplementedError(
+        raise InputError(
             "Activity coefficients are available through activity_coefficient(), but additive "
             "hard_chain/dispersion/association/ionic/born activity-coefficient contributions are not exposed by "
             "the native activity API."

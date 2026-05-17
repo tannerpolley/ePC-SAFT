@@ -885,6 +885,10 @@ claiming all non-speciation equilibrium routes are unavailable. The route list c
 speciation, neutral TP/LLE/bubble/dew pressure, electrolyte LLE, and fixed-liquid electrolyte bubble pressure when Ipopt
 is compiled. Bubble/dew temperature, stability, and coupled reactive phase routes remain route-gated.
 
+Task 12 continuation note: public activity-coefficient contribution decomposition now fails through the package's typed
+`InputError` instead of a generic `NotImplementedError`, and the regression derivative table now treats neutral LLE as
+an Ipopt-enabled native route with internal exact derivative callbacks rather than a pending route.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**

@@ -176,7 +176,7 @@ def test_state_contribution_map_aliases_use_public_family_names():
 def test_activity_coefficient_contribution_map_is_explicitly_unsupported():
     state, _species = _ionic_state()
 
-    with pytest.raises(NotImplementedError, match="Activity coefficients are available"):
+    with pytest.raises(epcsaft.InputError, match="Activity coefficients are available"):
         state.activity_coefficient_contributions()
 
 def test_dadrho_hierarchy_identities_hold_for_neutral_and_ionic_states():
