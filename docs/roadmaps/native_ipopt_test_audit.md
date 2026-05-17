@@ -102,9 +102,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
   already sets `solver_backend="ipopt"` and verifies the exact route payload before the local no-Ipopt gate.
 - A duplicate TP-flash route-pending test for `include_phase_diagnostics=True` was removed. Positive option acceptance
   remains covered by electrolyte route gates and invalid option typing remains covered by shared option validation.
-- A duplicate TP-flash route-pending test for `stability_precheck=False` was removed. Explicit stability-option
-  validation remains covered by core stability tests, invalid option typing remains covered by shared option validation,
-  and the route-specific TP-flash test still verifies the native route payload before the local no-Ipopt gate.
+- A duplicate TP-flash route-pending test for the retired stability-precheck option was removed. The route-specific
+  TP-flash test still verifies the native route payload before the local no-Ipopt gate.
 - The no-reaction mixed reactive-regression objective status test was removed. Target-family accounting is covered in
   diagnostics tests, and retained regression setup tests now exercise a real nonideal native derivative-block gate.
 - `equilibrium_curve(...)` no longer carries accepted phase splits forward as Python-level seeds; curve points use

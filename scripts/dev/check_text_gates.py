@@ -228,6 +228,7 @@ def _source_blocked_terms(rel: str) -> tuple[str, ...]:
         "phase" + "_kwargs.get(\"initial" + "_phases\")",
         "phase" + "_kwargs={\"initial" + "_phases\"",
         "package" + "-owned alternate",
+        "stability" + "_precheck",
     )
     if rel.startswith(("src/", "scripts/")):
         terms += (

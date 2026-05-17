@@ -328,10 +328,8 @@ Task 2 continuation note: a duplicate TP-flash route-pending test for `include_p
 Positive option acceptance is already covered by electrolyte route-gate tests and invalid option typing is covered by
 the shared equilibrium option validation.
 
-Task 2 continuation note: a duplicate TP-flash route-pending test for `stability_precheck=False` was removed.
-Explicit stability-option validation remains covered in the core stability tests, invalid option typing remains covered
-by shared option validation, and the route-specific TP-flash test still verifies the native route payload before the
-local no-Ipopt gate.
+Task 2 continuation note: a duplicate TP-flash route-pending test for the retired stability-precheck option was removed.
+The route-specific TP-flash test still verifies the native route payload before the local no-Ipopt gate.
 
 ### Task 3: Build Dependency Boundary
 
@@ -810,6 +808,8 @@ Task 12 continuation note: obsolete PR #126 and issue-specific Ceres-equilibrium
 Task 12 continuation note: public route-pending errors for neutral flash/LLE/stability, electrolyte LLE/bubble, reactive speciation, and reactive phase equilibrium now state the native Ipopt ownership requirement directly without naming retired solver routes as compatibility context.
 
 Task 12 continuation note: public route-gate errors now keep only the positive native-Ipopt requirement. Tests no longer assert the old alternate-solver compatibility wording, and the executable text gate blocks that wording from active source, tests, and scripts.
+
+Task 8/12 continuation note: `EquilibriumOptions` no longer exposes the unused stability precheck toggle. Native route builders own stability decisions, and the executable text gate blocks the old option name from active source, tests, and scripts.
 
 Task 12 continuation note: reactive-regression runtime capability labels now describe structured residual-evaluation contexts instead of naming Python orchestration as a solver backend. The metadata keeps the route explicitly non-optimizer without a redundant status label until native Ceres derivative coverage owns the production fit.
 
