@@ -9,6 +9,7 @@ from typing import Any
 import numpy as np
 
 from ._types import InputError, SolutionError
+from .equilibrium_core.native_requests import build_reactive_speciation_native_request
 from .implicit_sensitivity import (
     ImplicitSolveResult,
     implicit_backend_for_residual_backend,
@@ -495,31 +496,16 @@ def _solve_reactive_speciation_native(
         raise InputError("native reactive speciation backend requires mixture_factory to return an ePCSAFTMixture.")
     if list(getattr(mixture, "species", species)) != species:
         raise InputError("native reactive speciation backend requires mixture species to match the species argument.")
-    reaction_matrix = np.asarray(
-        [[float(reaction.stoichiometry.get(label, 0.0)) for label in species] for reaction in reactions],
-        dtype=float,
+    request = build_reactive_speciation_native_request(
+        T=T,
+        P=P,
+        initial_x=initial_x,
+        balance_matrix=balance_matrix,
+        total_vector=total_vector,
+        species=species,
+        reactions=reactions,
+        options=options,
     )
-    request = {
-        "T": float(T),
-        "P": float(P),
-        "initial_x": np.asarray(initial_x, dtype=float).tolist(),
-        "balance_matrix": np.asarray(balance_matrix, dtype=float).reshape(-1).tolist(),
-        "balance_rows": int(balance_matrix.shape[0]),
-        "total_vector": np.asarray(total_vector, dtype=float).tolist(),
-        "reaction_stoichiometry": reaction_matrix.reshape(-1).tolist(),
-        "reaction_rows": int(reaction_matrix.shape[0]),
-        "log_equilibrium_constants": [float(reaction.log_equilibrium_constant) for reaction in reactions],
-        "reaction_standard_states": [reaction.convention.native_standard_state_code for reaction in reactions],
-        "options": {
-            "max_iterations": int(options.max_iterations),
-            "tolerance": float(options.tolerance),
-            "min_mole_fraction": float(options.min_mole_fraction),
-            "jacobian_backend": str(options.jacobian_backend),
-            "solver_backend": str(options.solver_backend),
-            "phase": str(options.phase),
-            "activity_output": str(options.activity_output),
-        },
-    }
     try:
         payload = _core._solve_chemical_equilibrium_native(native, request)
     except _core.NativeValueError as exc:
