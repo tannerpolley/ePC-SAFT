@@ -5,17 +5,6 @@ import json
 import epcsaft
 
 
-def test_capabilities_report_cppad_without_legacy_forward_backend() -> None:
-    derivatives = epcsaft.capabilities()["derivatives"]
-
-    assert "numerical" + "_derivative" not in derivatives
-    assert derivatives["cppad"]["scope"] == (
-        "package-wide AD substrate; production derivative routes are listed in coverage_matrix"
-    )
-    assert "autodiff" not in derivatives
-    assert "eigen_forward" not in derivatives
-
-
 def test_derivative_coverage_matrix_has_required_contract_and_no_nonexact_derivative() -> None:
     coverage = epcsaft.capabilities()["derivatives"]["coverage_matrix"]
 

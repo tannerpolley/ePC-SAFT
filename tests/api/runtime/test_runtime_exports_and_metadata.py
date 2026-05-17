@@ -6,9 +6,7 @@ import numpy as np
 import pytest
 
 import epcsaft
-from epcsaft import runtime
-from epcsaft import _core
-from epcsaft import ePCSAFTMixture
+from epcsaft import _core, ePCSAFTMixture, runtime
 from tests.helpers.runtime_cases import (
     _assert_array,
     _ionic_params,
@@ -110,6 +108,7 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert cppad["compiled"] is True
     assert cppad["available"] is True
     assert "numerical" + "_derivative" not in capabilities["derivatives"]
+    assert "autodiff" not in capabilities["derivatives"]
     assert "eigen_forward" not in capabilities["derivatives"]
     assert capabilities["derivatives"]["cppad"] == {
         **cppad,
