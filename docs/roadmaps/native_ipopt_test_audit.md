@@ -196,8 +196,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
   of redundant pass/reported/split status strings.
 - Python equilibrium facades no longer fabricate rejected, empty-start, or accepted route-status defaults when a
   native route omits that metadata; diagnostics now preserve only non-empty route fields returned by native code.
-- Reactive-regression summary payloads no longer add objective-only fit/covariance status placeholders;
-  summaries keep success flags, termination reason, covariance availability, and objective metrics.
+- Reactive-regression objective-only summary payloads no longer add fit/covariance status placeholders;
+  summaries keep objective metrics plus fit metadata only when a native fit result exists.
 - Reactive-speciation diagnostics no longer synthesize solved density, bubble-pressure, association-coupling, or
   best-state metadata for ideal native routes; those fields now appear only when a native route returns real evidence.
 - Reactive-speciation sweep input-validation failures no longer fabricate backend or selected-solver labels; those

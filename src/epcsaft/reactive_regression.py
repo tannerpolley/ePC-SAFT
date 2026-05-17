@@ -931,7 +931,6 @@ def summarize_regression_result(
             "objective_final": float(objective_result.objective),
             "gradient_norm": None,
             "step_norm": None,
-            "covariance_available": False,
         }
     batch = objective_result.batch_result
     row_norms: list[tuple[str, float]] = []

@@ -175,3 +175,4 @@ def test_evaluate_reactive_regression_objective_accepts_speciation_rows(monkeypa
     assert "validation" in summary["by_source"]
     assert "holdout" in summary["train_validation"]
     assert summary["fit_success"] is None
+    assert "covariance_available" not in summary

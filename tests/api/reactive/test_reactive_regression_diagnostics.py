@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import numpy as np
@@ -123,3 +124,4 @@ def test_reactive_regression_reporting_helpers_write_outputs(monkeypatch, tmp_pa
     assert residuals_csv.exists()
     assert params_csv.exists()
     assert "objective" in summary.read_text(encoding="utf-8")
+    assert "covariance_available" not in json.loads(summary.read_text(encoding="utf-8"))
