@@ -473,6 +473,11 @@ Task 6 continuation note: the `apparent` reaction-constant convention no longer 
 
 Task 6 continuation note: Python no longer pre-gates `solver_backend="auto"` reactive-speciation requests solely because a reaction uses activity or concentration standard states. Those requests now build the native chemical-equilibrium payload and fail at the native exact-derivative boundary until the EOS/activity derivative NLP blocks are registered. The obsolete no-reaction mixed-objective status test was deleted, and retained reactive-regression tests now exercise either the real Ipopt dependency gate for ideal routes or the native derivative-block gate for nonideal routes.
 
+Task 6 continuation note: the private native chemical-equilibrium residual evaluator no longer carries hidden
+activity/concentration coefficient evaluation code after the exact-derivative gate. Nonideal residual requests still
+fail at the EOS derivative NLP block boundary, while the retained residual/Jacobian diagnostic surface is explicitly
+ideal homogeneous speciation only.
+
 ### Task 7: Build EOS Phase Blocks For Equilibrium
 
 **Files:**

@@ -17,8 +17,6 @@ constexpr int STANDARD_STATE_MOLE_FRACTION_ACTIVITY = 0;
 constexpr int STANDARD_STATE_IDEAL_MOLE_FRACTION = 1;
 constexpr int STANDARD_STATE_CONCENTRATION = 2;
 
-bool has_ionic_species(const std::shared_ptr<ePCSAFTMixtureNative>& mixture);
-
 int phase_token_to_int_chemical(const std::string& phase) {
     if (phase == "liq" || phase == "liquid" || phase == "aq" || phase == "org") {
         return 0;
@@ -37,24 +35,6 @@ double max_abs_chemical(const std::vector<double>& values) {
     return out;
 }
 
-bool standard_states_need_concentration(const std::vector<int>& standard_states) {
-    for (int value : standard_states) {
-        if (value == STANDARD_STATE_CONCENTRATION) {
-            return true;
-        }
-    }
-    return false;
-}
-
-bool standard_states_need_activity(const std::vector<int>& standard_states) {
-    for (int value : standard_states) {
-        if (value == STANDARD_STATE_MOLE_FRACTION_ACTIVITY) {
-            return true;
-        }
-    }
-    return false;
-}
-
 bool standard_states_all_ideal_mole_fraction(const std::vector<int>& standard_states) {
     for (int value : standard_states) {
         if (value != STANDARD_STATE_IDEAL_MOLE_FRACTION) {
@@ -62,19 +42,6 @@ bool standard_states_all_ideal_mole_fraction(const std::vector<int>& standard_st
         }
     }
     return true;
-}
-
-std::string activity_model_for_standard_states(
-    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
-    const std::vector<int>& standard_states
-) {
-    if (standard_states_need_activity(standard_states)) {
-        return has_ionic_species(mixture) ? "epcsaft_component_activity" : "epcsaft_neutral_fugacity_activity";
-    }
-    if (standard_states_need_concentration(standard_states)) {
-        return "concentration";
-    }
-    return "ideal";
 }
 
 std::string standard_state_label(int value) {
@@ -150,108 +117,6 @@ std::vector<double> composition_from_moles(const std::vector<double>& n, double 
     return x;
 }
 
-bool has_ionic_species(const std::shared_ptr<ePCSAFTMixtureNative>& mixture) {
-    const std::vector<double>& charges = mixture->args().z;
-    for (double charge : charges) {
-        if (std::abs(charge) > 1.0e-12) {
-            return true;
-        }
-    }
-    return false;
-}
-
-std::vector<double> component_rich_reference_composition(
-    std::size_t ncomp,
-    std::size_t rich_index,
-    double min_mole_fraction
-) {
-    if (rich_index >= ncomp) {
-        throw ValueError("component-rich activity reference index is out of range.");
-    }
-    const double floor = std::max(min_mole_fraction, 1.0e-14);
-    std::vector<double> out(ncomp, floor);
-    out[rich_index] = std::max(floor, 1.0 - floor * static_cast<double>(ncomp - 1));
-    double total = std::accumulate(out.begin(), out.end(), 0.0);
-    if (!std::isfinite(total) || total <= 0.0) {
-        throw ValueError("component-rich activity reference composition is invalid.");
-    }
-    for (double& item : out) {
-        item /= total;
-    }
-    return out;
-}
-
-std::vector<double> neutral_fugacity_activity_coefficients(
-    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
-    double t,
-    double p,
-    const std::vector<double>& x,
-    int phase_int,
-    double min_mole_fraction
-) {
-    double rho = mixture->solve_density_scoped(t, p, x, phase_int, "chemical_equilibrium");
-    std::shared_ptr<ePCSAFTStateNative> state = mixture->state(t, x, phase_int, false, 0.0, true, rho);
-    std::vector<double> ln_phi = state->ln_fugacity_coefficient();
-    if (ln_phi.size() != x.size()) {
-        throw ValueError("native fugacity coefficient payload length does not match composition.");
-    }
-
-    std::vector<double> gamma(x.size(), 1.0);
-    for (std::size_t i = 0; i < x.size(); ++i) {
-        std::vector<double> x_ref = component_rich_reference_composition(x.size(), i, min_mole_fraction);
-        double rho_ref = mixture->solve_density_scoped(
-            t,
-            p,
-            x_ref,
-            phase_int,
-            "chemical_equilibrium_reference"
-        );
-        std::shared_ptr<ePCSAFTStateNative> ref = mixture->state(t, x_ref, phase_int, false, 0.0, true, rho_ref);
-        std::vector<double> ln_phi_ref = ref->ln_fugacity_coefficient();
-        if (ln_phi_ref.size() != x.size()) {
-            throw ValueError("native fugacity reference payload length does not match composition.");
-        }
-        const double ln_gamma = std::max(-700.0, std::min(700.0, ln_phi[i] - ln_phi_ref[i]));
-        gamma[i] = std::exp(ln_gamma);
-    }
-    return gamma;
-}
-
-std::vector<double> activity_coefficients(
-    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
-    double t,
-    double p,
-    const std::vector<double>& x,
-    int phase_int,
-    const std::string& activity_model,
-    double min_mole_fraction,
-    int* state_failure_count
-) {
-    if (activity_model == "ideal" || activity_model == "concentration") {
-        return std::vector<double>(x.size(), 1.0);
-    }
-    try {
-        if (activity_model == "epcsaft_neutral_fugacity_activity") {
-            return neutral_fugacity_activity_coefficients(mixture, t, p, x, phase_int, min_mole_fraction);
-        }
-        if (activity_model != "epcsaft_component_activity") {
-            throw ValueError("unknown chemical equilibrium activity model.");
-        }
-        double rho = mixture->solve_density_scoped(t, p, x, phase_int, "chemical_equilibrium");
-        std::shared_ptr<ePCSAFTStateNative> state = mixture->state(t, x, phase_int, false, 0.0, true, rho);
-        ActivityCoefficientNative activity = state->activity_coefficient_native(false, false, -1);
-        if (activity.component_activity_coefficients.size() != x.size()) {
-            throw ValueError("native activity coefficient payload length does not match composition.");
-        }
-        return activity.component_activity_coefficients;
-    } catch (...) {
-        if (state_failure_count != nullptr) {
-            *state_failure_count += 1;
-        }
-        throw;
-    }
-}
-
 struct ChemicalEvaluation {
     std::vector<double> n;
     std::vector<double> x;
@@ -266,9 +131,7 @@ struct ChemicalEvaluation {
 struct ChemicalEvaluationCounters {
     int residual_evaluations = 0;
     int jacobian_evaluations = 0;
-    int state_evaluations = 0;
     int activity_evaluations = 0;
-    int density_solves = 0;
 };
 
 struct ChemicalDerivativeSelection {
@@ -301,16 +164,13 @@ ChemicalDerivativeSelection select_chemical_derivative_backend(
     );
 }
 
-bool should_evaluate_activity_coefficients(
-    const std::vector<int>& standard_states,
-    const ChemicalEquilibriumOptionsNative& options
-) {
+bool should_evaluate_activity_coefficients(const ChemicalEquilibriumOptionsNative& options) {
     const std::string mode = options.activity_output;
     if (mode == "always") {
         return true;
     }
     if (mode == "auto" || mode == "never") {
-        return standard_states_need_activity(standard_states);
+        return false;
     }
     throw ValueError("chemical equilibrium activity_output must be 'auto', 'always', or 'never'.");
 }
@@ -436,8 +296,6 @@ Eigen::MatrixXd cppad_ideal_log_amount_jacobian(
 
 ChemicalEvaluation evaluate_chemical(
     const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
-    double t,
-    double p,
     const Eigen::VectorXd& log_n,
     const Eigen::MatrixXd& balances,
     const Eigen::VectorXd& totals,
@@ -445,34 +303,22 @@ ChemicalEvaluation evaluate_chemical(
     const Eigen::VectorXd& log_k,
     const std::vector<int>& reaction_standard_states,
     const ChemicalEquilibriumOptionsNative& options,
-    int phase_int,
-    const std::string& activity_model,
-    int* state_failure_count,
     ChemicalEvaluationCounters* counters
 ) {
+    if (!standard_states_all_ideal_mole_fraction(reaction_standard_states)) {
+        throw ValueError("chemical residual evaluation requires registered EOS derivative NLP blocks.");
+    }
     ChemicalEvaluation out;
     if (counters != nullptr) {
         counters->residual_evaluations += 1;
     }
     out.n = moles_from_log_amounts(log_n);
     out.x = composition_from_moles(out.n, options.min_mole_fraction);
-    const bool evaluate_activity = should_evaluate_activity_coefficients(reaction_standard_states, options);
-    if (evaluate_activity) {
+    if (should_evaluate_activity_coefficients(options)) {
         if (counters != nullptr) {
             counters->activity_evaluations += 1;
-            counters->state_evaluations += 1;
-            counters->density_solves += 1;
         }
-        out.gamma = activity_coefficients(
-            mixture,
-            t,
-            p,
-            out.x,
-            phase_int,
-            activity_model,
-            options.min_mole_fraction,
-            state_failure_count
-        );
+        out.gamma = std::vector<double>(out.x.size(), 1.0);
     }
 
     Eigen::VectorXd n_vec = Eigen::Map<const Eigen::VectorXd>(out.n.data(), static_cast<Eigen::Index>(out.n.size()));
@@ -486,46 +332,15 @@ ChemicalEvaluation evaluate_chemical(
         }
     }
 
-    double molar_density = 0.0;
-    if (standard_states_need_concentration(reaction_standard_states)) {
-        try {
-            if (counters != nullptr) {
-                counters->density_solves += 1;
-                counters->state_evaluations += 1;
-            }
-            molar_density = mixture->solve_density_scoped(
-                t,
-                p,
-                out.x,
-                phase_int,
-                "chemical_equilibrium_concentration_standard_state"
-            );
-        } catch (...) {
-            if (state_failure_count != nullptr) {
-                *state_failure_count += 1;
-            }
-            throw;
-        }
-    }
-
     Eigen::VectorXd reaction(reactions.rows());
     for (Eigen::Index r = 0; r < reactions.rows(); ++r) {
         double value = -log_k[r];
         const int standard_state = reaction_standard_states[static_cast<std::size_t>(r)];
+        if (standard_state != STANDARD_STATE_IDEAL_MOLE_FRACTION) {
+            throw ValueError("chemical residual evaluation requires registered EOS derivative NLP blocks.");
+        }
         for (Eigen::Index i = 0; i < reactions.cols(); ++i) {
-            double species_activity = out.x[static_cast<std::size_t>(i)];
-            if (standard_state == STANDARD_STATE_IDEAL_MOLE_FRACTION) {
-                species_activity = out.x[static_cast<std::size_t>(i)];
-            } else if (standard_state == STANDARD_STATE_CONCENTRATION) {
-                species_activity = out.x[static_cast<std::size_t>(i)] * molar_density;
-            } else if (standard_state == STANDARD_STATE_MOLE_FRACTION_ACTIVITY) {
-                if (out.gamma.size() != out.x.size()) {
-                    throw ValueError("activity-coupled reaction residual requires activity coefficients.");
-                }
-                species_activity = out.x[static_cast<std::size_t>(i)] * out.gamma[static_cast<std::size_t>(i)];
-            } else {
-                throw ValueError("reaction standard state code is outside the native speciation contract.");
-            }
+            const double species_activity = out.x[static_cast<std::size_t>(i)];
             value += reactions(r, i) * std::log(std::max(species_activity, options.min_mole_fraction));
         }
         reaction[r] = value;
@@ -542,19 +357,13 @@ ChemicalEvaluation evaluate_chemical(
 
 Eigen::MatrixXd chemical_residual_jacobian(
     const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
-    double t,
-    double p,
     const Eigen::VectorXd& log_n,
     const ChemicalEvaluation& current,
     const Eigen::MatrixXd& balances,
-    const Eigen::VectorXd& totals,
     const Eigen::MatrixXd& reactions,
     const Eigen::VectorXd& log_k,
     const std::vector<int>& reaction_standard_states,
     const ChemicalEquilibriumOptionsNative& options,
-    int phase_int,
-    const std::string& activity_model,
-    int* state_failure_count,
     ChemicalEvaluationCounters* counters,
     ChemicalDerivativeSelection* selection
 ) {
@@ -587,14 +396,8 @@ Eigen::MatrixXd chemical_residual_jacobian(
         );
     }
     (void)mixture;
-    (void)t;
-    (void)p;
     (void)log_n;
-    (void)totals;
     (void)log_k;
-    (void)phase_int;
-    (void)activity_model;
-    (void)state_failure_count;
     throw ValueError("chemical-equilibrium residual jacobian has no registered analytical or CppAD backend.");
 }
 
@@ -687,8 +490,10 @@ ChemicalResidualEvaluationNative evaluate_chemical_equilibrium_residual_native(
         }
     }
 
-    const int phase_int = phase_token_to_int_chemical(options.phase);
-    const std::string activity_model = activity_model_for_standard_states(mixture, reaction_standard_states);
+    (void)t;
+    (void)p;
+    (void)phase_token_to_int_chemical(options.phase);
+    const std::string activity_model = "ideal";
     ChemicalDerivativeSelection derivative_selection = select_chemical_derivative_backend(
         options,
         reaction_standard_states
@@ -697,8 +502,6 @@ ChemicalResidualEvaluationNative evaluate_chemical_equilibrium_residual_native(
     ChemicalEvaluationCounters counters;
     ChemicalEvaluation current = evaluate_chemical(
         mixture,
-        t,
-        p,
         log_n,
         balances,
         totals,
@@ -706,26 +509,17 @@ ChemicalResidualEvaluationNative evaluate_chemical_equilibrium_residual_native(
         log_k,
         reaction_standard_states,
         options,
-        phase_int,
-        activity_model,
-        &state_failure_count,
         &counters
     );
     Eigen::MatrixXd jac = chemical_residual_jacobian(
         mixture,
-        t,
-        p,
         log_n,
         current,
         balances,
-        totals,
         reactions,
         log_k,
         reaction_standard_states,
         options,
-        phase_int,
-        activity_model,
-        &state_failure_count,
         &counters,
         &derivative_selection
     );
@@ -772,9 +566,9 @@ ChemicalResidualEvaluationNative evaluate_chemical_equilibrium_residual_native(
     out.diagnostics_int["state_failure_count"] = state_failure_count;
     out.diagnostics_int["residual_evaluation_count"] = counters.residual_evaluations;
     out.diagnostics_int["jacobian_evaluation_count"] = counters.jacobian_evaluations;
-    out.diagnostics_int["state_evaluation_count"] = counters.state_evaluations;
+    out.diagnostics_int["state_evaluation_count"] = 0;
     out.diagnostics_int["activity_evaluation_count"] = counters.activity_evaluations;
-    out.diagnostics_int["density_solve_count"] = counters.density_solves;
+    out.diagnostics_int["density_solve_count"] = 0;
     out.diagnostics_double["residual_norm"] = current.residual_norm;
     out.diagnostics_double["objective"] = out.objective;
     out.diagnostics_vector["phase_handoff_composition"] = current.x;
