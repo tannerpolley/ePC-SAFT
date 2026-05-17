@@ -686,13 +686,6 @@ def _normalize_electrolyte_feed(
     }
 
 
-def _electrolyte_formula_basis(mixture: Any, feed: np.ndarray, feed_diagnostics: dict[str, Any]) -> dict[str, Any]:
-    charges = _mixture_charges(mixture)
-    species = list(mixture.species)
-    salt_labels = tuple(feed_diagnostics.get("salt_molality", {}).keys())
-    return electrolyte_formula_basis(species, charges, feed, salt_labels=salt_labels)
-
-
 def _accepted_native_neutral_two_phase_result(
     mixture: Any,
     *,
@@ -944,7 +937,7 @@ def reactive_phase_equilibrium(
             options=solver_options,
         )
         _require_charge_neutral(feed, charges, "reactive_electrolyte_lle feed")
-        _electrolyte_formula_basis(mixture, feed, feed_diagnostics)
+        electrolyte_formula_basis(mixture.species, charges, feed, salt_labels=tuple(feed_diagnostics.get("salt_molality", {})))
     else:
         if extra_phase_kwargs.get("solvent_feed") is not None or extra_phase_kwargs.get("salt_molality") is not None:
             raise InputError("solvent_feed and salt_molality require reactive_electrolyte_lle.")
@@ -1205,7 +1198,7 @@ def electrolyte_stability(
     )
     charges = _mixture_charges(mixture)
     _require_charge_neutral(feed, charges, "electrolyte_stability feed")
-    _electrolyte_formula_basis(mixture, feed, feed_diagnostics)
+    electrolyte_formula_basis(mixture.species, charges, feed, salt_labels=tuple(feed_diagnostics.get("salt_molality", {})))
     _raise_native_ipopt_stability_required("electrolyte_stability")
 
 
@@ -1233,7 +1226,7 @@ def electrolyte_lle_flash_native(
     )
     charges = _mixture_charges(mixture)
     _require_charge_neutral(feed, charges, "electrolyte_lle feed")
-    _electrolyte_formula_basis(mixture, feed, feed_diagnostics)
+    electrolyte_formula_basis(mixture.species, charges, feed, salt_labels=tuple(feed_diagnostics.get("salt_molality", {})))
     from . import _core
 
     route_tolerances = neutral_two_phase_eos_tolerances(P, opts)
