@@ -1284,6 +1284,25 @@ with source distribution, wheel build, wheel install, and wheel smoke import pas
 reported Ceres and CppAD enabled and Ipopt disabled, so this final local pass proves the dependency gate and package
 boundary but not an accepted Ipopt-enabled solve on this machine.
 
+#### Checkpoint Handoff - 2026-05-17
+
+Branch: `codex/native-ipopt-derivative-gates`
+
+Latest confirmed implementation commit before final validation documentation: `5d01617d Close obsolete test cleanup queue`.
+
+Current checkpoint expectation for the next thread:
+- Start by running `git status --short --branch` and `git log --oneline -5`.
+- Do not implement new feature work before verifying whether the final Task 13 validation note is committed.
+- If the working tree is dirty only because this checkpoint or final-validation note changed, review that diff, run the
+  cleanup hook, and commit the documentation-only checkpoint.
+- If package-boundary evidence is missing or contradicted by local state, rerun
+  `uv run python scripts/dev/build_dist.py` before claiming final validation.
+- Keep the Ipopt caveat explicit: the default fast local build has `Ipopt=OFF`; do not claim accepted Ipopt-enabled
+  production solves unless the documented Ipopt profile is rerun or that earlier Ipopt proof is explicitly accepted as
+  sufficient for the current handoff.
+- Preserve the strict gates: exact derivatives only, Ipopt owns production equilibrium routes, Ceres owns production
+  regression routes, and public package workflows must not use custom Python/native solver loops.
+
 ---
 
 ## Acceptance Criteria

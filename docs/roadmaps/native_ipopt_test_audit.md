@@ -219,7 +219,7 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - `EquilibriumOptions.timeout_seconds` is now wired through public neutral/electrolyte equilibrium facades into the
   native Ipopt adapter as a wall-clock option instead of being a normalized-but-unused public control.
 - Duplicate retired-token absence assertions were removed from focused native/API tests. The source text gate now owns
-  active-source prevention for retired `not_available` and public Hessian-kind labels, while the retained tests assert
+  active-source prevention for retired missing-derivative and public Hessian-kind labels, while the retained tests assert
   the positive derivative backend, capability path, and Jacobian/gradient contracts.
 - Runtime capability and reactive workflow tests now avoid repeated old-field absence checks for Hessian strategies,
   continuation state, derivative-gap status, not-applicable rows, and benchmark-attempt diagnostics. The executable text
