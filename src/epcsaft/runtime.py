@@ -457,7 +457,6 @@ def capabilities() -> dict[str, object]:
                 "adapter_source_available": bool(ipopt.get("adapter_source_available", False)),
                 "adapter_kind": ipopt.get("adapter_kind", "native_tnlp_adapter"),
                 "public_routes": ipopt_public_routes,
-                "full_constrained_nlp_available": ipopt_route_available,
             },
         },
         "equilibrium": {
@@ -500,7 +499,6 @@ def capabilities() -> dict[str, object]:
                 "ipopt_available": bool(ipopt["available"]),
                 "explicit_ipopt_request": "routes_to_native_ipopt_when_compiled",
                 "ipopt_formulation": "thermodynamic_constrained_nlp",
-                "full_constrained_nlp_available": ipopt_route_available,
             },
             "electrolyte_bubble_pressure": {
                 "available": ipopt_route_available,

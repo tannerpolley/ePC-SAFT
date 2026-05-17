@@ -98,7 +98,6 @@ def test_runtime_build_info_and_capabilities_are_json_like():
         "electrolyte_lle",
         "electrolyte_bubble_pressure",
     ]
-    assert ipopt["full_constrained_nlp_available"] is ipopt["available"]
     assert info["native_dependencies"]["ipopt"]["available"] is ipopt["available"]
     cppad = info["native_dependencies"]["cppad"]
     assert cppad["backend"] == "cppad"
@@ -146,7 +145,6 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert electrolyte_lle["available"] is ipopt["available"]
     assert electrolyte_lle["backend"] == "native_ipopt_equilibrium_nlp"
     assert electrolyte_lle["methods"] == ["electrolyte_lle", "electrolyte_lle_tp"]
-    assert electrolyte_lle["full_constrained_nlp_available"] is ipopt["available"]
     reactive_speciation = equilibrium["reactive_speciation"]
     assert reactive_speciation["available"] is ipopt["available"]
     assert reactive_speciation["backend"] == "native_ipopt_equilibrium_nlp"
@@ -160,7 +158,6 @@ def test_runtime_build_info_and_capabilities_are_json_like():
         == "native_ipopt_ideal_mole_fraction_analytic_else_raise"
     )
     assert reactive_speciation["jacobian_auto_supported_standard_states"] == ["ideal_mole_fraction"]
-    assert "full_constrained_nlp_available" not in reactive_speciation
     assert reactive_speciation["auto_request"] == "ideal_mole_fraction_routes_to_native_ipopt"
     assert capabilities["regression"]["pure_neutral"]["backend"] == "native_ceres"
     reactive_regression = capabilities["regression"]["reactive_electrolyte_residuals"]

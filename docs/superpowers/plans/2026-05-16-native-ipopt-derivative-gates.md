@@ -341,6 +341,10 @@ Task 2/12 continuation note: runtime, reactive-speciation, and staged reactive d
 `unsupported_derivative_behavior` field. Accepted derivative backends and auto policy carry the derivative contract, and
 the text gate blocks the retired field in active source/tests/scripts.
 
+Task 2/12 continuation note: runtime Ipopt capabilities no longer emit the redundant
+`full_constrained_nlp_available` flag. Ipopt availability, public routes, and constrained-NLP formulations carry that
+contract, and the text gate blocks the retired field in active source/tests/scripts.
+
 ### Task 3: Build Dependency Boundary
 
 **Files:**

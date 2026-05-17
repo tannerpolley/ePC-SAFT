@@ -31,7 +31,6 @@ def test_runtime_capabilities_report_public_ipopt_routes() -> None:
         "electrolyte_lle",
         "electrolyte_bubble_pressure",
     ]
-    assert ipopt["full_constrained_nlp_available"] is ipopt["available"]
 
 
 def test_native_ipopt_quadratic_smoke_is_gated_by_compiled_dependency() -> None:
