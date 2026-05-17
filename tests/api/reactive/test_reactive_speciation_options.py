@@ -175,7 +175,9 @@ def test_reactive_speciation_requested_ipopt_handles_charged_ideal_constraint_wh
     assert result.charge_residual == pytest.approx(0.0, abs=1.0e-10)
     assert result.diagnostics["charge_constraint_in_nlp"] is True
 
-def test_reactive_speciation_auto_requires_native_ipopt_route() -> None:
+def test_reactive_speciation_auto_routes_ideal_speciation_to_native_ipopt_when_compiled() -> None:
+    from epcsaft import _core
+
     mix = epcsaft.ePCSAFTMixture.from_params(
         {
             "m": np.asarray([1.0, 1.0]),
@@ -184,23 +186,59 @@ def test_reactive_speciation_auto_requires_native_ipopt_route() -> None:
         },
         species=["A", "B"],
     )
+    kwargs = {
+        "species": ["A", "B"],
+        "mixture_factory": lambda x, T, P: mix,
+        "T": 298.15,
+        "P": 1.0e5,
+        "balances": {"total": {"A": 1.0, "B": 1.0}},
+        "totals": {"total": 1.0},
+        "reactions": [
+            epcsaft.ReactionDefinition(
+                {"A": -1.0, "B": 1.0},
+                log_equilibrium_constant=math.log(3.0),
+                standard_state="ideal_mole_fraction",
+            )
+        ],
+        "initial_x": [0.5, 0.5],
+    }
+
+    if not _core._native_ipopt_smoke()["compiled"]:
+        with pytest.raises(epcsaft.SolutionError, match=r"EPCSAFT_ENABLE_IPOPT=ON"):
+            epcsaft.solve_reactive_speciation(**kwargs)
+        return
+
+    result = epcsaft.solve_reactive_speciation(**kwargs)
+
+    assert result.success is True
+    assert result.diagnostics["requested_solver_backend"] == "auto"
+    assert result.diagnostics["selected_solver_backend"] == "native_ipopt"
+    assert result.diagnostics["solver_selection_reason"] == "auto_selected_native_ipopt"
+
+
+def test_reactive_speciation_auto_gates_activity_coupled_state() -> None:
+    mix = _salt_speciation_mixture()
 
     with pytest.raises(epcsaft.InputError) as excinfo:
         epcsaft.solve_reactive_speciation(
-            species=["A", "B"],
+            species=["H2O", "NaCl", "Na+", "Cl-"],
             mixture_factory=lambda x, T, P: mix,
             T=298.15,
             P=1.0e5,
-            balances={"total": {"A": 1.0, "B": 1.0}},
-            totals={"total": 1.0},
+            balances={
+                "water_total": {"H2O": 1.0},
+                "sodium_total": {"NaCl": 1.0, "Na+": 1.0},
+                "chloride_total": {"NaCl": 1.0, "Cl-": 1.0},
+            },
+            totals={"water_total": 0.998, "sodium_total": 0.0015, "chloride_total": 0.0015},
             reactions=[
                 epcsaft.ReactionDefinition(
-                    {"A": -1.0, "B": 1.0},
-                    log_equilibrium_constant=math.log(3.0),
-                    standard_state="ideal_mole_fraction",
+                    stoichiometry={"NaCl": -1.0, "Na+": 1.0, "Cl-": 1.0},
+                    log_equilibrium_constant=0.0,
+                    standard_state="mole_fraction_activity",
                 )
             ],
-            initial_x=[0.5, 0.5],
+            initial_x=[0.998, 0.001, 0.0005, 0.0005],
         )
 
     _assert_reactive_speciation_route_pending(excinfo)

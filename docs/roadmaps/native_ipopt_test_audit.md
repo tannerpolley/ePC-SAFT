@@ -106,7 +106,7 @@ The failure list from the initial full-duration run has been retired. Each liste
 
 - The first Task 3 slice removed the legacy numerical package from the test dependency group.
 - The first Task 3 slice deleted the legacy Rezaee fitting script and its generated fit outputs.
-- The second Task 3 slice removed the Python IPOPT adapter, added native system Ipopt discovery, and added doctor/build status reporting. The native Ipopt adapter is present; public route wiring is currently limited to explicit homogeneous ideal reactive speciation.
+- The second Task 3 slice removed the Python IPOPT adapter, added native system Ipopt discovery, and added doctor/build status reporting. The native Ipopt adapter is present; public route wiring currently covers homogeneous ideal reactive speciation through both `solver_backend="auto"` and explicit `solver_backend="ipopt"` when Ipopt is compiled.
 - The third Task 3 slice made Ceres and CppAD mandatory native dependencies for dev-script, package-backend, and CMake builds, excluded vendored Ceres install rules from package artifacts, and validated the actual local extension with Ceres enabled.
 - Public `EquilibriumOptions` now accepts only `auto` and explicit `ipopt`; `ReactiveSpeciationOptions` has the same public solver selector shape.
 - Native homogeneous chemical-equilibrium solves now dispatch only to the explicit Ipopt ideal-speciation NLP. Remaining known custom bracket/root behavior is in density closure diagnostics, which stay evidence-gated rather than accepted as a general equilibrium solver route.

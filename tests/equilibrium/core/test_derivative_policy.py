@@ -49,7 +49,9 @@ def test_auto_equilibrium_diagnostics_reject_nonexact_derivative_route() -> None
     assert "numerical" + "_derivative" not in str(excinfo.value).lower()
 
 
-def test_reactive_ideal_speciation_auto_requires_native_ipopt_route() -> None:
+def test_reactive_ideal_speciation_auto_uses_native_ipopt_route() -> None:
+    from epcsaft import _core
+
     mix = epcsaft.ePCSAFTMixture.from_params(
         {
             "m": np.asarray([1.0, 1.0]),
@@ -58,25 +60,32 @@ def test_reactive_ideal_speciation_auto_requires_native_ipopt_route() -> None:
         },
         species=["A", "B"],
     )
+    kwargs = {
+        "T": 298.15,
+        "P": 1.0e5,
+        "balances": {"total": {"A": 1.0, "B": 1.0}},
+        "totals": {"total": 1.0},
+        "reactions": [
+            epcsaft.ReactionDefinition(
+                {"A": -1.0, "B": 1.0},
+                np.log(3.0),
+                standard_state="ideal_mole_fraction",
+            )
+        ],
+        "initial_x": [0.5, 0.5],
+        "options": epcsaft.ReactiveSpeciationOptions(jacobian_backend="auto", tolerance=1.0e-10),
+    }
 
-    with pytest.raises(epcsaft.InputError) as excinfo:
-        mix.chemical_equilibrium(
-            T=298.15,
-            P=1.0e5,
-            balances={"total": {"A": 1.0, "B": 1.0}},
-            totals={"total": 1.0},
-            reactions=[
-                epcsaft.ReactionDefinition(
-                    {"A": -1.0, "B": 1.0},
-                    np.log(3.0),
-                    standard_state="ideal_mole_fraction",
-                )
-            ],
-            initial_x=[0.5, 0.5],
-            options=epcsaft.ReactiveSpeciationOptions(jacobian_backend="auto", tolerance=1.0e-10),
-        )
+    if not _core._native_ipopt_smoke()["compiled"]:
+        with pytest.raises(epcsaft.SolutionError, match=r"EPCSAFT_ENABLE_IPOPT=ON"):
+            mix.chemical_equilibrium(**kwargs)
+        return
 
-    _assert_reactive_speciation_route_pending(excinfo)
+    result = mix.chemical_equilibrium(**kwargs)
+
+    assert result.success is True
+    assert result.diagnostics["requested_solver_backend"] == "auto"
+    assert result.diagnostics["selected_solver_backend"] == "native_ipopt"
 
 
 def test_activity_coupled_reactive_speciation_auto_requires_native_ipopt_route() -> None:
@@ -113,7 +122,7 @@ def test_explicit_cppad_reactive_speciation_fails_until_supported() -> None:
         species=["A", "B"],
     )
 
-    with pytest.raises(epcsaft.InputError) as excinfo:
+    with pytest.raises(epcsaft.InputError, match="CppAD reactive-speciation Jacobians"):
         mix.chemical_equilibrium(
             T=298.15,
             P=1.0e5,
@@ -129,5 +138,3 @@ def test_explicit_cppad_reactive_speciation_fails_until_supported() -> None:
             initial_x=[0.5, 0.5],
             options=epcsaft.ReactiveSpeciationOptions(jacobian_backend="cppad"),
         )
-
-    _assert_reactive_speciation_route_pending(excinfo)

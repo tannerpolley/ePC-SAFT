@@ -50,8 +50,8 @@ these fields as routing hints, not as proof that a physical case is valid.
        speciation.
    * - IPOPT
      - Optional native constrained-NLP backend
-     - Wired for explicit homogeneous ideal reactive speciation; broader routes
-       are still route-builder work.
+     - Wired for homogeneous ideal reactive speciation; broader routes are
+       still route-builder work.
 
 .. list-table::
    :header-rows: 1
@@ -61,7 +61,7 @@ these fields as routing hints, not as proof that a physical case is valid.
      - Do not use when
    * - ``solver_backend="auto"``
      - You want the supported native default.
-     - You expect IPOPT to run automatically.
+     - You expect a route that is still pending to run.
    * - ``jacobian_backend="auto"``
      - You want the native chemical-equilibrium default: analytic, CppAD, or implicit sensitivities where available, clear failures otherwise.
      - You need strict failure when a specific derivative backend cannot run.
@@ -268,10 +268,10 @@ initial composition. Use ``error_mode="result"`` only for diagnostic sweeps.
    print(result.diagnostics["jacobian_backend"])
 
 With ``jacobian_backend="auto"``, the native chemical-equilibrium residual uses
-the analytic derivative path for the explicit native-Ipopt
-``ideal_mole_fraction`` route. Activity- and concentration-coupled routes raise
-until their EOS derivative NLP blocks exist. Check these fields before treating
-a result as a production reactive-speciation solve:
+the analytic derivative path for the native-Ipopt ``ideal_mole_fraction`` route.
+Activity- and concentration-coupled routes raise until their EOS derivative NLP
+blocks exist. Check these fields before treating a result as a production
+reactive-speciation solve:
 
 - ``diagnostics["solver_language"] == "c++"``
 - ``diagnostics["activity_model"]``

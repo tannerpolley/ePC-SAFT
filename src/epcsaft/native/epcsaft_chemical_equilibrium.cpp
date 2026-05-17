@@ -737,6 +737,14 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
     if (options.solver_backend != "auto" && options.solver_backend != "ipopt") {
         throw ValueError("chemical equilibrium solver_backend must be 'auto' or 'ipopt'.");
     }
+    if (options.jacobian_backend != "auto"
+        && options.jacobian_backend != "analytic"
+        && options.jacobian_backend != "cppad") {
+        throw ValueError("chemical equilibrium jacobian_backend must be 'auto', 'analytic', or 'cppad'.");
+    }
+    if (options.jacobian_backend == "cppad") {
+        throw ValueError("CppAD chemical-equilibrium NLP derivatives require a registered CppAD route.");
+    }
     std::vector<double> initial = normalize_composition_chemical(initial_x, options.min_mole_fraction);
     if (options.solver_backend != "ipopt") {
         throw ValueError("chemical equilibrium solve requires solver_backend='ipopt'.");

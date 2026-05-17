@@ -131,9 +131,11 @@ Use ``EPCSAFT_PEP517_IPOPT_DIR`` instead when the install provides an
 Runtime processes that execute Ipopt on Windows must expose the Ipopt ``bin``
 directory through both ``PATH`` and ``EPCSAFT_RUNTIME_DLL_DIRS``.
 
-IPOPT is explicit opt-in only. It is not selected by ``solver_backend="auto"``.
-Public equilibrium routes still require the native adapter work before they can
-use Ipopt as a production solver.
+IPOPT remains opt-in at build time. When Ipopt is compiled, the public
+``solver_backend="auto"`` selector uses the native ideal reactive-speciation
+route where its assumptions hold. Broader public equilibrium routes still
+require native route-builder work before they can use Ipopt as a production
+solver.
 
 Verify the install
 ------------------

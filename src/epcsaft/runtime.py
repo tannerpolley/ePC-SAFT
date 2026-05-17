@@ -590,7 +590,7 @@ def capabilities() -> dict[str, object]:
                 ],
                 "derivative_gap_status": "activity_and_concentration_routes_pending_eos_derivative_nlp_blocks",
                 "explicit_cppad_request_raises_until_implemented": True,
-                "auto_request": "raises_until_native_ipopt_route_selection_is_explicit",
+                "auto_request": "ideal_mole_fraction_routes_to_native_ipopt",
                 "solver_backends": ["auto", "ipopt"],
                 "ipopt_available": bool(ipopt["available"]),
                 "explicit_ipopt_request": "ideal_mole_fraction_routes_to_native_ipopt_when_compiled",

@@ -154,7 +154,7 @@ def test_runtime_build_info_and_capabilities_are_json_like():
         reactive_speciation["derivative_gap_status"]
         == "activity_and_concentration_routes_pending_eos_derivative_nlp_blocks"
     )
-    assert reactive_speciation["auto_request"] == "raises_until_native_ipopt_route_selection_is_explicit"
+    assert reactive_speciation["auto_request"] == "ideal_mole_fraction_routes_to_native_ipopt"
     assert reactive_speciation["explicit_cppad_request_raises_until_implemented"] is True
     assert capabilities["regression"]["pure_neutral"]["backend"] == "native_ceres"
     reactive_regression = capabilities["regression"]["reactive_electrolyte_residuals"]

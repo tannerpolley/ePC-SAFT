@@ -18,11 +18,10 @@ phase-equilibrium calls, structured results, and diagnostics only after those
 native route builders exist.
 
 ``ReactiveSpeciationOptions`` accepts ``solver_backend="auto" | "ipopt"``.
-``auto`` validates the request and raises until production route selection is
-explicitly native Ipopt. Explicit ``ipopt`` routes homogeneous
-``ideal_mole_fraction`` speciation through the native Ipopt constrained-NLP
-adapter when the extension is built with Ipopt; activity and concentration
-standard states still require the EOS derivative NLP blocks.
+``auto`` uses the native Ipopt constrained-NLP route for homogeneous
+``ideal_mole_fraction`` speciation when the extension is built with Ipopt.
+Explicit ``ipopt`` selects the same route. Activity and concentration standard
+states still require the EOS derivative NLP blocks.
 
 The target IPOPT formulation is constrained Gibbs minimization with formal
 material, charge, and reaction constraints plus exact gradients/Jacobians from
@@ -31,7 +30,8 @@ only as Ipopt solver-internal behavior and is not reported as a package
 derivative backend.
 
 Solver-selection policy is intentionally conservative. ``auto`` does not run a
-package-owned reactive solve loop while native Ipopt route builders are pending.
+package-owned reactive solve loop or route activity-coupled chemistry while the
+needed native Ipopt route builders are pending.
 
 Homogeneous reactive speciation
 -------------------------------
@@ -46,8 +46,8 @@ The near-term reactive workflow is sequential and fixed-constant first:
 1. pass fixed or literature reaction constants through
    ``ReactionDefinition.log_equilibrium_constant`` or
    ``ReactionDefinition.from_literature_constant(...)``;
-2. evaluate explicit native-Ipopt ideal reactive speciation where that route
-   applies, or hold activity-coupled speciation as route-pending;
+2. evaluate native-Ipopt ideal reactive speciation where that route applies, or
+   hold activity-coupled speciation as route-pending;
 3. hand the equilibrated composition to phase or electrolyte-equilibrium
    routes; and
 4. regress ePC-SAFT pure, binary, or electrolyte parameters against that fixed

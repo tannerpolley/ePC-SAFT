@@ -88,7 +88,9 @@ def test_concentration_standard_state_can_validate_activity_output_before_route_
     _assert_reactive_speciation_route_pending(excinfo)
 
 
-def test_reactive_speciation_sweep_returns_failed_results_for_pending_auto_route() -> None:
+def test_reactive_speciation_sweep_auto_uses_native_ipopt_ideal_route_when_compiled() -> None:
+    from epcsaft import _core
+
     mix = epcsaft.ePCSAFTMixture.from_params(
         {
             "m": np.asarray([1.0, 1.0]),
@@ -119,8 +121,14 @@ def test_reactive_speciation_sweep_returns_failed_results_for_pending_auto_route
 
     assert len(results) == 2
     assert all(isinstance(result, epcsaft.ReactiveSpeciationResult) for result in results)
-    assert all(result.success is False for result in results)
-    assert all("native Ipopt homogeneous reactive-speciation NLP route" in result.message for result in results)
+    if not _core._native_ipopt_smoke()["compiled"]:
+        assert all(result.success is False for result in results)
+        assert all("EPCSAFT_ENABLE_IPOPT=ON" in result.message for result in results)
+        return
+
+    assert all(result.success is True for result in results)
+    assert all(result.diagnostics["selected_solver_backend"] == "native_ipopt" for result in results)
+    assert results[1].diagnostics["continuation_used"] is True
 
 
 def test_reactive_speciation_sweep_preserves_input_validation_failure_shape() -> None:

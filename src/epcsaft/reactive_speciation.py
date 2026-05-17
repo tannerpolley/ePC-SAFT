@@ -340,6 +340,7 @@ def solve_reactive_speciation(
 ) -> ReactiveSpeciationResult:
     """Solve homogeneous reactive speciation through the accepted native route."""
     opts = _normalize_options(options)
+    requested_solver_backend = opts.solver_backend
     labels = [str(label) for label in species]
     if not labels:
         raise InputError("species must include at least one label.")
@@ -351,8 +352,12 @@ def solve_reactive_speciation(
     )
     balance_matrix, total_vector, balance_names = _normalize_balances(labels, balances, totals)
     reaction_defs = _normalize_reactions(labels, reactions)
+    if opts.jacobian_backend == "cppad":
+        raise InputError("CppAD reactive-speciation Jacobians require an implemented CppAD NLP derivative route.")
     if opts.solver_backend == "auto":
-        _raise_native_ipopt_reactive_speciation_required()
+        if not _all_ideal_mole_fraction_reactions(reaction_defs):
+            _raise_native_ipopt_reactive_speciation_required()
+        opts = _options_with_solver_backend(opts, "ipopt")
     return _solve_reactive_speciation_native(
         species=labels,
         mixture_factory=mixture_factory,
@@ -365,6 +370,7 @@ def solve_reactive_speciation(
         initial_x=initial,
         initial_x_source=initial_source,
         options=opts,
+        requested_solver_backend=requested_solver_backend,
     )
 
 
@@ -474,6 +480,29 @@ def _normalize_options(options: ReactiveSpeciationOptions | None) -> ReactiveSpe
     )
 
 
+def _all_ideal_mole_fraction_reactions(reactions: list[ReactionDefinition]) -> bool:
+    return all(reaction.standard_state == "ideal_mole_fraction" for reaction in reactions)
+
+
+def _options_with_solver_backend(
+    options: ReactiveSpeciationOptions,
+    solver_backend: str,
+) -> ReactiveSpeciationOptions:
+    return ReactiveSpeciationOptions(
+        max_iterations=options.max_iterations,
+        tolerance=options.tolerance,
+        min_mole_fraction=options.min_mole_fraction,
+        jacobian_backend=options.jacobian_backend,
+        solver_backend=solver_backend,
+        phase=options.phase,
+        error_mode=options.error_mode,
+        activity_output=options.activity_output,
+        mass_tolerance=options.mass_tolerance,
+        charge_tolerance=options.charge_tolerance,
+        reaction_tolerance=options.reaction_tolerance,
+    )
+
+
 def _solve_reactive_speciation_native(
     *,
     species: list[str],
@@ -487,6 +516,7 @@ def _solve_reactive_speciation_native(
     initial_x: np.ndarray,
     options: ReactiveSpeciationOptions,
     initial_x_source: str = "initial_x",
+    requested_solver_backend: str | None = None,
 ) -> ReactiveSpeciationResult:
     if options.solver_backend != "ipopt":
         _raise_native_ipopt_reactive_speciation_required()
@@ -572,9 +602,13 @@ def _solve_reactive_speciation_native(
             "activity_output": str(options.activity_output),
             "initial_x_source": str(initial_x_source),
             "continuation_used": str(initial_x_source) != "initial_x",
-            "requested_solver_backend": str(options.solver_backend),
+            "requested_solver_backend": str(requested_solver_backend or options.solver_backend),
             "selected_solver_backend": str(diagnostics.get("selected_solver_backend", "native_ipopt")),
-            "solver_selection_reason": str(diagnostics.get("solver_selection_reason", "explicit_request")),
+            "solver_selection_reason": str(
+                "auto_selected_native_ipopt"
+                if requested_solver_backend == "auto"
+                else diagnostics.get("solver_selection_reason", "explicit_request")
+            ),
             "mass_tolerance": float(mass_tolerance),
             "charge_tolerance": float(charge_tolerance),
             "reaction_tolerance": float(reaction_tolerance),
