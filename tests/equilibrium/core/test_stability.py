@@ -28,11 +28,6 @@ def _assert_stability_route_pending(excinfo: pytest.ExceptionInfo[epcsaft.InputE
     assert f"{route} requires a native Ipopt equilibrium stability NLP route" in message
 
 
-def test_stability_public_exports_are_available() -> None:
-    assert hasattr(epcsaft, "StabilityTrial")
-    assert hasattr(epcsaft, "StabilityResult")
-
-
 def test_stability_requires_native_ipopt_route_after_validation() -> None:
     mix = _hydrocarbon_mixture()
 

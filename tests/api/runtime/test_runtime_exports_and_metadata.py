@@ -73,7 +73,6 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert capabilities["native_extension"] is True
     ipopt = capabilities["optimizers"]["ipopt"]
     assert ipopt["backend"] == "ipopt"
-    assert "fit_route" not in capabilities["regression"]["reactive_electrolyte_batch_context"]
     mixed_regression = capabilities["regression"]["reactive_electrolyte_batch_context"][
         "mixed_pressure_speciation_residual_context"
     ]

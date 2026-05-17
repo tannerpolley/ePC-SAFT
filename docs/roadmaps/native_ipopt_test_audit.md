@@ -281,4 +281,6 @@ Still ongoing:
 - The duplicate equilibrium-core activity-coupled reactive-speciation derivative-gate test was removed. Retained API
   reactive-speciation tests still cover activity-coupled, concentration-standard-state, and result-mode native derivative
   gates.
+- Duplicate public-export and reactive-electrolyte fit-route absence assertions were pruned where broader runtime API
+  coverage already protects the same surface.
 - New strict dependency and solver ownership gates that require Task 3 and native Ipopt implementation to pass.

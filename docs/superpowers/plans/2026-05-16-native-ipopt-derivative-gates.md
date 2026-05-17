@@ -334,6 +334,9 @@ Task 2 continuation note: the duplicate equilibrium-core activity-coupled reacti
 removed. Retained API reactive-speciation tests still cover activity-coupled, concentration-standard-state, and
 result-mode native derivative gates.
 
+Task 2 continuation note: duplicate public-export and reactive-electrolyte fit-route absence assertions were pruned
+where broader runtime API coverage already protects the same surface.
+
 ### Task 3: Build Dependency Boundary
 
 **Files:**
