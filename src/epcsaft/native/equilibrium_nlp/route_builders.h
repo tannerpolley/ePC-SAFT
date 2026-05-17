@@ -63,9 +63,9 @@ struct NeutralTwoPhaseEosRouteResult {
     std::string adapter_kind = "native_tnlp_adapter";
     std::string problem_name = "neutral_two_phase_eos";
     std::string derivative_backend = "analytic_cppad";
-    std::string status = "not_started";
-    std::string solver_status = "not_started";
-    std::string application_status = "not_started";
+    std::string status;
+    std::string solver_status;
+    std::string application_status;
     std::string hessian_strategy = "limited_memory";
     double objective = 0.0;
     std::vector<double> variables;

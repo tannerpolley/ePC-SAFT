@@ -189,9 +189,9 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
   tests keep current option-surface coverage.
 - Staged reactive-equilibrium diagnostics now report direct counts, labels, residuals, and minimum composition instead
   of redundant pass/reported/split status strings.
-- Python equilibrium facades no longer fabricate `rejected`, `not_started`, or accepted route-status defaults when a
-  native route omits that metadata; diagnostics now preserve only route fields actually returned by native code.
-- Reactive-regression summary payloads no longer add objective-only `not_a_fit`/`not_computed` status placeholders;
+- Python equilibrium facades no longer fabricate rejected, empty-start, or accepted route-status defaults when a
+  native route omits that metadata; diagnostics now preserve only non-empty route fields returned by native code.
+- Reactive-regression summary payloads no longer add objective-only fit/covariance status placeholders;
   summaries keep success flags, termination reason, covariance availability, and objective metrics.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:

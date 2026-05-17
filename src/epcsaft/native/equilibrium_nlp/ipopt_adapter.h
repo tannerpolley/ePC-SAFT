@@ -35,8 +35,8 @@ struct IpoptSolveResult {
     bool accepted = false;
     std::string backend = "ipopt";
     std::string adapter_kind = "native_tnlp_adapter";
-    std::string solver_status = "not_started";
-    std::string application_status = "not_started";
+    std::string solver_status;
+    std::string application_status;
     std::string hessian_strategy = "limited_memory";
     double objective = 0.0;
     std::vector<double> variables;
