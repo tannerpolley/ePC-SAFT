@@ -5,5 +5,5 @@
   "temperature_K": 294.15,
   "pressure_Pa": 101300.0,
   "salt_pairs": ["LiCl"],
-  "scope": "fixed-species electrolyte LLE convergence fixture; not a chemical/speciation equilibrium benchmark"
+  "scope": "fixed-species electrolyte LLE feed-composition fixture; not a chemical/speciation equilibrium benchmark"
 }
