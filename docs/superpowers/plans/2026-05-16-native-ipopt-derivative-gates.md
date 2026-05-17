@@ -245,7 +245,7 @@ For standalone property/state calls:
 - [x] Remove or rewrite enough explicit banned wording for the gate to pass.
 - [x] Commit as `Add strict solver derivative text gates`.
 
-Task 1 note: the first committed gate covers explicit missing-backend-status and non-exact derivative text bans. The broader legacy missing-status family remains widespread and is intentionally left as implementation debt for the solver/derivative replacement tasks, not as completed capability work.
+Task 1 note: the first committed gate covers explicit missing-backend-status and non-exact derivative text bans. Broader legacy route/status surfaces were left as implementation debt at that checkpoint, with subsequent continuation notes tracking cleanup rather than treating them as completed capability work.
 
 Task 1 continuation note: the CppAD disabled smoke/default derivative result no longer assembles the removed backend-status token at runtime. Disabled CppAD smoke payloads now report `cppad_disabled`, and a repo test blocks reintroducing the old assembled source pattern.
 
@@ -290,7 +290,7 @@ Task 2 continuation note: the reactive regression benchmark payload and table no
 Task 2 continuation note: a repo workflow gate now scans public Python solver surfaces for external optimizer/root-loop
 calls. Together with the dependency gate, native Eigen nonlinear-optimizer gate, Ceres exact-derivative gate, and strict text
 gate, the tracked test suite now covers the required no-SciPy, no-Eigen-nonlinear, no-Python-production-solver-loop, and
-no banned derivative/status concepts. Obsolete status-only tests remain a separate cleanup stream.
+no banned derivative/status concepts. Duplicate status/debug tests remain a separate cleanup stream.
 
 Task 2 continuation note: duplicate neutral-equilibrium route-pending tests were pruned from the broad public API file.
 Representative route-pending coverage stays in the route-specific VLE/LLE/stability/bubble-dew files, derivative-policy
@@ -892,6 +892,10 @@ neutral LLE as an Ipopt-enabled native route with internal exact derivative call
 Task 12 continuation note: active source no longer uses generic "not implemented" wording for derivative gates,
 reserved Bjerrum routing, the abstract equilibrium base class, or the retained CppAD route-gated native paths. These
 surfaces now state the positive required route or typed abstract/problem boundary.
+
+Task 12 continuation note: reactive-speciation runtime capabilities no longer expose the derivative-gap status field.
+Capability tests now assert supported and route-gated standard-state lists directly, keeping derivative gaps out of
+status-string metadata.
 
 ### Task 13: Final Validation And Cleanup
 

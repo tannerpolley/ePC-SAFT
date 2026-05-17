@@ -160,10 +160,7 @@ def test_runtime_build_info_and_capabilities_are_json_like():
         == "native_ipopt_ideal_mole_fraction_analytic_else_raise"
     )
     assert reactive_speciation["jacobian_auto_supported_standard_states"] == ["ideal_mole_fraction"]
-    assert (
-        reactive_speciation["derivative_gap_status"]
-        == "activity_and_concentration_routes_pending_eos_derivative_nlp_blocks"
-    )
+    assert "derivative_gap_status" not in reactive_speciation
     assert reactive_speciation["auto_request"] == "ideal_mole_fraction_routes_to_native_ipopt"
     assert reactive_speciation["explicit_cppad_request_raises_until_implemented"] is True
     assert capabilities["regression"]["pure_neutral"]["backend"] == "native_ceres"

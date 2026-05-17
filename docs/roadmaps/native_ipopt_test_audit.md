@@ -59,8 +59,10 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - Test import and unused mock-argument bloat was mechanical and removed.
 - Hubach electrolyte LLE status-only continuation tests were deleted, and removed-option checks now run as fast validation-path tests instead of opt-in skips.
 - NumPy testing imports were removed from tests because the lazy `np.testing` import path can stall Windows validation before the thermodynamic assertion runs.
-- Several tests still assert legacy missing-status behavior instead of implemented derivative coverage.
-- Remaining weak coverage is concentrated in opt-in diagnostics, debug skip controls, and legacy route-gate docs; continue deleting tests that only protect status/debug surfaces.
+- The reactive-speciation runtime capability no longer exposes a derivative-gap status string; tests use the structured
+  supported and route-gated standard-state lists instead.
+- Remaining weak coverage is concentrated in opt-in diagnostics, debug skip controls, and duplicate route-gate docs;
+  continue deleting tests that only protect status/debug surfaces.
 - Ceres and CppAD are now required by the local dev script, package build backend, and CMake configure gate. Ipopt remains a system-dependency opt-in until the adapter is implemented.
 - Native derivative tests now avoid shifted-source oracle checks; the reactive-phase Jacobian test is rewritten around CppAD backend, shape, finite-value, and analytical row-contract evidence.
 - The electrolyte LLE confidence report no longer writes parameter-shift sensitivity CSV or plot artifacts; it keeps benchmark, continuation, oracle, stress, and residual/error outputs.
@@ -145,7 +147,7 @@ The failure list from the initial full-duration run has been retired. Each liste
 
 ## Required Cleanup Still Open
 
-- Delete or rewrite tests that only protect legacy missing-status behavior.
+- Delete or rewrite tests that only protect duplicate route-gate or status/debug behavior.
 - Add passing tracked gates for no legacy numerical package/dev/test dependency after dependency cleanup. Done in the Task 3 dependency slices.
 - Add passing tracked gates for no Python production solve loop after native Ipopt routes exist. Done for public Python solver surfaces.
 - Add passing tracked gates for no Eigen nonlinear optimizer route while still allowing Eigen linear algebra. Done for native regression sources, with Ceres non-exact derivative sources gated separately.
@@ -164,7 +166,8 @@ Completed in the first Task 2 slice:
 - Added this tracked audit artifact.
 - Removed NumPy testing import usage from the test tree to keep Windows validation deterministic.
 
-Not complete yet:
+Still ongoing:
 
-- Deleting or rewriting legacy status-only tests.
+- Continue pruning duplicate route-gate and status/debug tests when structured route or derivative coverage already
+  exists.
 - New strict dependency and solver ownership gates that require Task 3 and native Ipopt implementation to pass.

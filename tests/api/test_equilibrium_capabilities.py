@@ -44,7 +44,7 @@ def test_reactive_speciation_capabilities_gate_nonideal_standard_states() -> Non
         "concentration",
         "apparent",
     }
-    assert reactive["derivative_gap_status"] == "activity_and_concentration_routes_pending_eos_derivative_nlp_blocks"
+    assert "derivative_gap_status" not in reactive
 
 
 def test_reactive_phase_equilibrium_capabilities_state_reaction_scope() -> None:
