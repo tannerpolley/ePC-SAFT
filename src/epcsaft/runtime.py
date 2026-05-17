@@ -268,28 +268,6 @@ def runtime_build_info() -> dict[str, object]:
     }
 
 
-def _dependency_capability(
-    dependency: dict[str, object],
-    *,
-    production: bool = False,
-    reason: str | None = None,
-    **extra: object,
-) -> dict[str, object]:
-    available = bool(dependency.get("available", False))
-    payload: dict[str, object] = {
-        **dependency,
-        "production": bool(production and available),
-    }
-    if reason is not None:
-        payload["reason"] = reason
-    elif not available:
-        payload["reason"] = "required_native_dependency_missing"
-    elif not payload["production"]:
-        payload["reason"] = "not_validated_for_production"
-    payload.update(extra)
-    return payload
-
-
 def _derivative_coverage_capabilities(cppad: dict[str, object], ceres: dict[str, object]) -> dict[str, object]:
     cppad_available = bool(cppad.get("available", False))
     ceres_available = bool(ceres.get("available", False))
@@ -396,19 +374,20 @@ def capabilities() -> dict[str, object]:
     ]
     ipopt_route_available = bool(ipopt.get("available", False))
     ipopt_route_status = "available" if ipopt_route_available else "ipopt_dependency_required"
-    cppad_capability = _dependency_capability(
-        cppad,
-        production=False,
-        scope="package-wide AD substrate",
-        production_eos_coverage=False,
-    )
-    ceres_capability = _dependency_capability(
-        ceres,
-        production=bool(ceres.get("available", False)),
-        scope="native optimizer backend for explicitly supported regression paths",
-        native_hot_loop=bool(ceres.get("available", False)),
-        production_routes=["regression:pure_neutral", "regression:pure_ion", "regression:binary_pair"],
-    )
+    ceres_available = bool(ceres.get("available", False))
+    cppad_capability = {
+        **cppad,
+        "scope": "package-wide AD substrate; production derivative routes are listed in coverage_matrix",
+    }
+    ceres_capability: dict[str, object] = {
+        **ceres,
+        "production": ceres_available,
+        "scope": "native optimizer backend for explicitly supported regression paths",
+        "native_hot_loop": ceres_available,
+        "production_routes": ["regression:pure_neutral", "regression:pure_ion", "regression:binary_pair"],
+    }
+    if not ceres_available:
+        ceres_capability["reason"] = "required_native_dependency_missing"
     derivative_coverage = _derivative_coverage_capabilities(cppad, ceres)
     return {
         "native_extension": bool(build_info["native_extension_available"]),

@@ -113,10 +113,7 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert "eigen_forward" not in capabilities["derivatives"]
     assert capabilities["derivatives"]["cppad"] == {
         **cppad,
-        "production": False,
-        "reason": "not_validated_for_production",
-        "scope": "package-wide AD substrate",
-        "production_eos_coverage": False,
+        "scope": "package-wide AD substrate; production derivative routes are listed in coverage_matrix",
     }
     ceres = info["native_dependencies"]["ceres"]
     assert ceres["backend"] == "ceres"

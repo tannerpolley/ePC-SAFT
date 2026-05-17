@@ -22,7 +22,10 @@ def test_default_build_reports_cppad_and_ceres_capabilities_honestly() -> None:
     assert ipopt["available"] is ipopt["compiled"]
     assert ipopt["required"] is False
     assert capabilities["derivatives"]["cppad"]["available"] is True
-    assert capabilities["derivatives"]["cppad"]["reason"] == "not_validated_for_production"
+    assert capabilities["derivatives"]["cppad"]["scope"] == (
+        "package-wide AD substrate; production derivative routes are listed in coverage_matrix"
+    )
+    assert "reason" not in capabilities["derivatives"]["cppad"]
     assert capabilities["optimizers"]["ceres"]["production"] is True
     assert capabilities["optimizers"]["ceres"]["native_hot_loop"] is True
     assert capabilities["optimizers"]["ipopt"]["production"] is ipopt["available"]
@@ -44,7 +47,9 @@ def test_capabilities_report_cppad_without_legacy_forward_backend() -> None:
     derivatives = epcsaft.capabilities()["derivatives"]
 
     assert "numerical" + "_derivative" not in derivatives
-    assert derivatives["cppad"]["scope"] == "package-wide AD substrate"
+    assert derivatives["cppad"]["scope"] == (
+        "package-wide AD substrate; production derivative routes are listed in coverage_matrix"
+    )
     assert "autodiff" not in derivatives
     assert "eigen_forward" not in derivatives
 
