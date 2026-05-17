@@ -40,7 +40,6 @@ def _methanol_cyclohexane_lle_feed() -> np.ndarray:
 def _assert_neutral_lle_route_pending(excinfo: pytest.ExceptionInfo[epcsaft.InputError]) -> None:
     message = str(excinfo.value)
     assert "lle_flash requires a native Ipopt equilibrium NLP route" in message
-    assert "No package-owned alternate LLE solver is available" in message
 
 
 def test_lle_flash_builds_one_native_route_request_before_ipopt_gate(monkeypatch: pytest.MonkeyPatch) -> None:

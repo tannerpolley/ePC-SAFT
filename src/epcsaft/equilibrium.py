@@ -31,39 +31,23 @@ _ASCANI_2022_REFERENCE = {
 
 
 def _raise_native_ipopt_equilibrium_required(route: str) -> None:
-    raise InputError(
-        f"{route} requires a native Ipopt equilibrium NLP route. No package-owned alternate equilibrium solver is "
-        "available for this public route."
-    )
+    raise InputError(f"{route} requires a native Ipopt equilibrium NLP route.")
 
 
 def _raise_native_ipopt_reactive_phase_required(route: str) -> None:
-    raise InputError(
-        f"{route} requires a native Ipopt reactive phase-equilibrium NLP route. "
-        "No package-owned alternate reactive phase-equilibrium solver is available for this public route."
-    )
+    raise InputError(f"{route} requires a native Ipopt reactive phase-equilibrium NLP route.")
 
 
-def _raise_native_ipopt_lle_required(route: str, *, previous_route: str = "") -> None:
-    del previous_route
-    raise InputError(
-        f"{route} requires a native Ipopt equilibrium NLP route. No package-owned alternate LLE solver is available "
-        "for this public route."
-    )
+def _raise_native_ipopt_lle_required(route: str) -> None:
+    raise InputError(f"{route} requires a native Ipopt equilibrium NLP route.")
 
 
 def _raise_native_ipopt_tp_flash_required() -> None:
-    raise InputError(
-        "tp_flash requires a native Ipopt equilibrium NLP route. "
-        "No package-owned alternate TP flash solver is available for this public route."
-    )
+    raise InputError("tp_flash requires a native Ipopt equilibrium NLP route.")
 
 
 def _raise_native_ipopt_stability_required(route: str) -> None:
-    raise InputError(
-        f"{route} requires a native Ipopt equilibrium stability NLP route. "
-        "No package-owned alternate stability solver is available for this public route."
-    )
+    raise InputError(f"{route} requires a native Ipopt equilibrium stability NLP route.")
 
 
 @dataclass(frozen=True, slots=True)

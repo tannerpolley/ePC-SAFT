@@ -136,10 +136,7 @@ def electrolyte_bubble_pressure(
 
 
 def _raise_native_ipopt_electrolyte_bubble_required() -> None:
-    raise InputError(
-        "electrolyte_bubble_pressure requires the native Ipopt equilibrium route builder; "
-        "no package-owned alternate electrolyte bubble-pressure solver is available for this public route."
-    )
+    raise InputError("electrolyte_bubble_pressure requires the native Ipopt equilibrium route builder.")
 
 
 def _accepted_native_electrolyte_bubble_result(

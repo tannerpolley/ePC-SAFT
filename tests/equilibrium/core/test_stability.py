@@ -26,7 +26,6 @@ def _hydrocarbon_mixture() -> ePCSAFTMixture:
 def _assert_stability_route_pending(excinfo: pytest.ExceptionInfo[epcsaft.InputError], route: str = "stability") -> None:
     message = str(excinfo.value)
     assert f"{route} requires a native Ipopt equilibrium stability NLP route" in message
-    assert "No package-owned alternate stability solver is available" in message
 
 
 def test_stability_public_exports_are_available() -> None:

@@ -50,10 +50,7 @@ _REACTION_CONSTANT_FITTING_ROLES = {
 
 
 def _raise_native_ipopt_reactive_speciation_required() -> None:
-    raise InputError(
-        "reactive_speciation requires a native Ipopt homogeneous reactive-speciation NLP route. "
-        "No package-owned alternate homogeneous reactive-speciation solver is available for this public route."
-    )
+    raise InputError("reactive_speciation requires a native Ipopt homogeneous reactive-speciation NLP route.")
 
 
 @dataclass(frozen=True, slots=True)
