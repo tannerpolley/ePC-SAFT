@@ -448,9 +448,6 @@ py::dict native_diagnostics_to_dict(
     for (const auto& item : vectors) {
         out[py::str(item.first)] = item.second;
     }
-    if (strings.find("stability_analysis") != strings.end() && strings.at("stability_analysis") == "not_run") {
-        out["stability_stable"] = py::none();
-    }
     return out;
 }
 

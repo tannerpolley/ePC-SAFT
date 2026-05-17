@@ -1127,6 +1127,10 @@ Task 8/9/12 continuation note: direct equilibrium route classification no longer
 `electrolyte_stability` requests as electrolyte LLE. Explicit stability requests keep stability route metadata for the
 native Ipopt stability gate, while ionic `auto` still selects the implemented electrolyte LLE route.
 
+Task 12 continuation note: the pybind native-diagnostics converter no longer preserves the old
+`stability_analysis="not_run"` to `stability_stable=None` shim. No active native producer emits that diagnostic contract,
+and the executable text gate now blocks the retired stability diagnostic labels in source, tests, and scripts.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**
