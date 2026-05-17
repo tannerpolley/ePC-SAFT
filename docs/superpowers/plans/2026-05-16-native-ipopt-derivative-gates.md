@@ -777,7 +777,7 @@ Task 12 continuation note: density closure diagnostics no longer expose legacy r
 
 Task 12 continuation note: stale planning and GoalBuddy notes no longer preserve the removed missing-backend label. The tracked text gate now also blocks common approximate-derivative wording so future docs, scripts, tests, and source files cannot reintroduce those routes under alternate spelling.
 
-Task 12 continuation note: reactive electrolyte regression no longer exposes the unused failed warm-start policy or the per-row reused-seed status flag. Failed reused seeds remain visible through `warm_start_failed` and `warm_start_source`, while the residual-evaluation route keeps explicit penalty/drop failure handling.
+Task 12 continuation note: reactive electrolyte regression no longer exposes row/objective warm-start policy controls, per-row warm-start status fields, or row/objective seed counters. Each residual evaluation now uses only the row's explicit initial composition/defaults plus the existing penalty/drop failure handling.
 
 Task 12 continuation note: active source, tests, and dev scripts no longer carry the remaining old retry/default token names. The cleanup renamed internal pressure-seed/default variables, removed an unused reactive regression seed helper, and kept deterministic parameter defaults explicit under non-retry naming.
 
@@ -982,8 +982,8 @@ data. Unknown phase-route keys now use the normal unsupported-key path; the text
 
 Task 6/12 continuation note: public homogeneous reactive-speciation sweeps no longer expose a `continuation` mode,
 `warm_start` solve hook, `continuation_state` result payload, or runtime continuation-state capability flag. Each sweep
-point supplies its own explicit `initial_x`; reactive-regression residual diagnostics may still pass cached compositions
-as explicit row inputs until the native Ceres fit route owns that workflow.
+point supplies its own explicit `initial_x`; reactive-regression residual diagnostics likewise use each row's explicit
+initial composition/defaults rather than cached compositions.
 
 ### Task 13: Final Validation And Cleanup
 

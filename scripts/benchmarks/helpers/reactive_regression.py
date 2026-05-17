@@ -383,8 +383,6 @@ def _compile_objective_context(
         vapor_species=VAPOR_SPECIES,
         base_parameters=_ionic_mix_params(),
         options=epcsaft.ReactiveElectrolyteBatchOptions(
-            warm_start_rows=True,
-            warm_start_objective=True,
             include_state_outputs=False,
             penalty_value=8.0,
         ),
@@ -431,10 +429,7 @@ def _run_objective_compiled(
         batch_result = result.batch_result
         target_counter = _safe_mapping(batch_result.diagnostics).get("target_family_counts", {})
         solve_counter = _safe_mapping(batch_result.diagnostics).get("solve_counts", {})
-        context_cache_hits = int(batch_result.cache_stats.get("context_cache_hits", 0))
-        context_cache_misses = int(batch_result.cache_stats.get("context_cache_misses", 0))
-        objective_seed_hits = int(batch_result.cache_stats.get("objective_seed_hits", 0))
-        objective_seed_misses = int(batch_result.cache_stats.get("objective_seed_misses", 0))
+        context_evaluations = int(batch_result.cache_stats.get("context_evaluations", 0))
         return BenchmarkObservation(
             fingerprint={
                 "case": "reactive_regression_objective_tiny",
@@ -453,18 +448,15 @@ def _run_objective_compiled(
             success_count=batch_result.success_count,
             failure_count=batch_result.failure_count,
             residual_count=int(result.residuals.size),
-            cache_hits=context_cache_hits + objective_seed_hits,
-            cache_misses=context_cache_misses + objective_seed_misses,
+            cache_hits=0,
+            cache_misses=0,
             speciation_solves=int(solve_counter.get("speciation_solves", 0)),
             bubble_solves=int(solve_counter.get("bubble_solves", 0)),
             density_solves=int(solve_counter.get("density_solves", 0)),
             activity_calls=int(solve_counter.get("activity_calls", 0)),
             fugacity_calls=int(target_counter.get("partial_pressure", 0)),
             counter_details={
-                "context_cache_hits": context_cache_hits,
-                "context_cache_misses": context_cache_misses,
-                "objective_seed_hits": objective_seed_hits,
-                "objective_seed_misses": objective_seed_misses,
+                "context_evaluations": context_evaluations,
                 "native_reference_state_cache_hits": None,
                 "native_reference_state_cache_misses": None,
                 "density_warm_start_hits": None,
@@ -541,8 +533,6 @@ def _compile_speciation_surrogate_context(
         reactions=REACTIONS,
         base_parameters=_ionic_mix_params(),
         options=epcsaft.ReactiveElectrolyteBatchOptions(
-            warm_start_rows=True,
-            warm_start_objective=True,
             include_state_outputs=False,
             penalty_value=8.0,
         ),
@@ -614,8 +604,6 @@ def _compile_mixed_pressure_speciation_surrogate_context(
         vapor_species=VAPOR_SPECIES,
         base_parameters=_ionic_mix_params(),
         options=epcsaft.ReactiveElectrolyteBatchOptions(
-            warm_start_rows=True,
-            warm_start_objective=True,
             include_state_outputs=False,
             penalty_value=8.0,
         ),
@@ -654,10 +642,7 @@ def _run_speciation_surrogate_compiled(
         batch_result = result.batch_result
         target_counter = _safe_mapping(batch_result.diagnostics).get("target_family_counts", {})
         solve_counter = _safe_mapping(batch_result.diagnostics).get("solve_counts", {})
-        context_cache_hits = int(batch_result.cache_stats.get("context_cache_hits", 0))
-        context_cache_misses = int(batch_result.cache_stats.get("context_cache_misses", 0))
-        objective_seed_hits = int(batch_result.cache_stats.get("objective_seed_hits", 0))
-        objective_seed_misses = int(batch_result.cache_stats.get("objective_seed_misses", 0))
+        context_evaluations = int(batch_result.cache_stats.get("context_evaluations", 0))
         return BenchmarkObservation(
             fingerprint={
                 "case": "mea_trace_carbonate_35_row_public_surrogate",
@@ -677,18 +662,15 @@ def _run_speciation_surrogate_compiled(
             success_count=batch_result.success_count,
             failure_count=batch_result.failure_count,
             residual_count=int(result.residuals.size),
-            cache_hits=context_cache_hits + objective_seed_hits,
-            cache_misses=context_cache_misses + objective_seed_misses,
+            cache_hits=0,
+            cache_misses=0,
             speciation_solves=int(solve_counter.get("speciation_solves", 0)),
             bubble_solves=int(solve_counter.get("bubble_solves", 0)),
             density_solves=int(solve_counter.get("density_solves", 0)),
             activity_calls=int(solve_counter.get("activity_calls", 0)),
             fugacity_calls=int(target_counter.get("partial_pressure", 0)),
             counter_details={
-                "context_cache_hits": context_cache_hits,
-                "context_cache_misses": context_cache_misses,
-                "objective_seed_hits": objective_seed_hits,
-                "objective_seed_misses": objective_seed_misses,
+                "context_evaluations": context_evaluations,
                 "native_reference_state_cache_hits": None,
                 "native_reference_state_cache_misses": None,
                 "density_warm_start_hits": None,
@@ -708,10 +690,7 @@ def _run_mixed_pressure_speciation_surrogate_compiled(
         batch_result = result.batch_result
         target_counter = _safe_mapping(batch_result.diagnostics).get("target_family_counts", {})
         solve_counter = _safe_mapping(batch_result.diagnostics).get("solve_counts", {})
-        context_cache_hits = int(batch_result.cache_stats.get("context_cache_hits", 0))
-        context_cache_misses = int(batch_result.cache_stats.get("context_cache_misses", 0))
-        objective_seed_hits = int(batch_result.cache_stats.get("objective_seed_hits", 0))
-        objective_seed_misses = int(batch_result.cache_stats.get("objective_seed_misses", 0))
+        context_evaluations = int(batch_result.cache_stats.get("context_evaluations", 0))
         return BenchmarkObservation(
             fingerprint={
                 "case": "reactive_regression_pressure_speciation_35_row_surrogate",
@@ -732,18 +711,15 @@ def _run_mixed_pressure_speciation_surrogate_compiled(
             success_count=batch_result.success_count,
             failure_count=batch_result.failure_count,
             residual_count=int(result.residuals.size),
-            cache_hits=context_cache_hits + objective_seed_hits,
-            cache_misses=context_cache_misses + objective_seed_misses,
+            cache_hits=0,
+            cache_misses=0,
             speciation_solves=int(solve_counter.get("speciation_solves", 0)),
             bubble_solves=int(solve_counter.get("bubble_solves", 0)),
             density_solves=int(solve_counter.get("density_solves", 0)),
             activity_calls=int(solve_counter.get("activity_calls", 0)),
             fugacity_calls=int(target_counter.get("partial_pressure", 0)),
             counter_details={
-                "context_cache_hits": context_cache_hits,
-                "context_cache_misses": context_cache_misses,
-                "objective_seed_hits": objective_seed_hits,
-                "objective_seed_misses": objective_seed_misses,
+                "context_evaluations": context_evaluations,
                 "native_reference_state_cache_hits": None,
                 "native_reference_state_cache_misses": None,
                 "density_warm_start_hits": None,
@@ -884,10 +860,7 @@ def _benchmark_case(prepared: PreparedBenchmarkCase, *, warmup: int, repeat: int
     diagnostics_keys: list[str] = []
     target_family_counts: Counter[str] = Counter()
     counter_details_totals: dict[str, Any] = {
-        "context_cache_hits": 0,
-        "context_cache_misses": 0,
-        "objective_seed_hits": 0,
-        "objective_seed_misses": 0,
+        "context_evaluations": 0,
         "native_reference_state_cache_hits": 0,
         "native_reference_state_cache_misses": 0,
         "density_warm_start_hits": 0,
@@ -964,10 +937,7 @@ def _benchmark_case(prepared: PreparedBenchmarkCase, *, warmup: int, repeat: int
         "density_solves": int(density_solves),
         "activity_calls": int(activity_calls),
         "fugacity_calls": int(fugacity_calls),
-        "context_cache_hits": counter_details_totals["context_cache_hits"],
-        "context_cache_misses": counter_details_totals["context_cache_misses"],
-        "objective_seed_hits": counter_details_totals["objective_seed_hits"],
-        "objective_seed_misses": counter_details_totals["objective_seed_misses"],
+        "context_evaluations": counter_details_totals["context_evaluations"],
         "native_reference_state_cache_hits": counter_details_totals["native_reference_state_cache_hits"],
         "native_reference_state_cache_misses": counter_details_totals["native_reference_state_cache_misses"],
         "density_warm_start_hits": counter_details_totals["density_warm_start_hits"],

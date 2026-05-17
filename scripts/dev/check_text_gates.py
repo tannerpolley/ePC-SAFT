@@ -155,7 +155,7 @@ def _blocked_terms() -> tuple[str, ...]:
 def _source_blocked_terms(rel: str) -> tuple[str, ...]:
     if not rel.startswith(("src/", "tests/", "scripts/")):
         return ()
-    return (
+    terms = (
         "fall" + "back",
         "return" + "_best" + "_effort",
         "best" + "_effort",
@@ -226,6 +226,16 @@ def _source_blocked_terms(rel: str) -> tuple[str, ...]:
         "phase" + "_kwargs.get(\"initial" + "_phases\")",
         "phase" + "_kwargs={\"initial" + "_phases\"",
     )
+    if rel.startswith(("src/", "scripts/")):
+        terms += (
+            "warm" + "_start" + "_rows",
+            "warm" + "_start" + "_objective",
+            "warm" + "_start" + "_used",
+            "warm" + "_start" + "_failed",
+            "objective" + "_seed",
+            "row" + "_seed",
+        )
+    return terms
 
 
 def main() -> int:

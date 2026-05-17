@@ -54,11 +54,7 @@ def _native_mixed_pressure_speciation_batch() -> tuple[epcsaft.ReactiveElectroly
         reactions=[],
         vapor_species=["water"],
         base_parameters=params,
-        options=epcsaft.ReactiveElectrolyteBatchOptions(
-            include_state_outputs=False,
-            warm_start_rows=True,
-            warm_start_objective=True,
-        ),
+        options=epcsaft.ReactiveElectrolyteBatchOptions(include_state_outputs=False),
         reactive_bubble_options=epcsaft.ReactiveElectrolyteBubbleOptions(error_mode="result"),
     )
     return batch, water_sigma

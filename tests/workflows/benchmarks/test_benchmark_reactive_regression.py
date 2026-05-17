@@ -46,10 +46,7 @@ def test_reactive_regression_benchmark_schema_for_one_case():
         "residual_count",
         "cache_hits",
         "cache_misses",
-        "context_cache_hits",
-        "context_cache_misses",
-        "objective_seed_hits",
-        "objective_seed_misses",
+        "context_evaluations",
         "native_reference_state_cache_hits",
         "native_reference_state_cache_misses",
         "density_warm_start_hits",
@@ -69,7 +66,7 @@ def test_reactive_regression_benchmark_schema_for_one_case():
     assert case_payload["failure_count"] >= 1
     assert case_payload["measured_success_repeat_count"] == 1
     assert case_payload["failure_messages"] == []
-    assert case_payload["context_cache_hits"] >= 0
+    assert case_payload["context_evaluations"] >= 0
     assert case_payload["native_reference_state_cache_hits"] is None
     assert "baseline_repeat" not in case_payload
     assert "baseline_warmup" not in case_payload

@@ -237,8 +237,6 @@ class ReactiveElectrolyteRow:
 class ReactiveElectrolyteBatchOptions:
     """Batch-evaluation policy controls."""
 
-    warm_start_rows: bool = True
-    warm_start_objective: bool = True
     penalty_value: float = 8.0
     failure_residual_mode: str = "penalty"
     include_state_outputs: bool = True
@@ -359,10 +357,6 @@ class ReactiveElectrolyteRowResult:
     active_bounds: Mapping[str, bool]
     solver_status: str
     elapsed_seconds: float
-    cache_stats: Mapping[str, Any]
-    warm_start_used: bool = False
-    warm_start_source: str = ""
-    warm_start_failed: bool = False
     partial_pressures: Mapping[str, float] = field(default_factory=dict)
     y_vap: Mapping[str, float] = field(default_factory=dict)
     named_reaction_residuals: Mapping[str, float] = field(default_factory=dict)
@@ -389,10 +383,6 @@ class ReactiveElectrolyteRowResult:
             "active_bounds": _json_like(self.active_bounds),
             "solver_status": self.solver_status,
             "elapsed_seconds": float(self.elapsed_seconds),
-            "cache_stats": _json_like(self.cache_stats),
-            "warm_start_used": bool(self.warm_start_used),
-            "warm_start_source": self.warm_start_source,
-            "warm_start_failed": bool(self.warm_start_failed),
             "partial_pressures": _json_like(self.partial_pressures),
             "y_vap": _json_like(self.y_vap),
             "named_reaction_residuals": _json_like(self.named_reaction_residuals),
@@ -577,7 +567,6 @@ class ReactiveElectrolyteRegressionContext:
     residual_name_template: tuple[str, ...]
     row_static_metadata: tuple[dict[str, Any], ...]
     context_diagnostics: dict[str, Any]
-    _objective_seed_cache: dict[str, dict[str, Any]] = field(default_factory=dict, repr=False)
     _stats: Counter = field(default_factory=Counter, repr=False)
 
     @classmethod
@@ -625,7 +614,7 @@ class ReactiveElectrolyteRegressionContext:
         else:
             row0 = batch.rows[0]
             mixture = _build_row_mixture(
-                batch, row0, {}, x_override=_row_seed_x(row0, species_labels), P_override=row0.P or 101325.0
+                batch, row0, {}, x_override=_row_initial_x(row0, species_labels), P_override=row0.P or 101325.0
             )
             reference_params = getattr(mixture, "_params", None)
         if reference_params is None:
@@ -688,17 +677,14 @@ class ReactiveElectrolyteRegressionContext:
         residuals: list[float] = []
         residual_names: list[str] = []
         residual_row_map: list[str] = []
-        objective_seed_cache_next: dict[str, dict[str, Any]] = {}
         success_count = 0
         failure_count = 0
-        last_row_seed: dict[str, Any] | None = None
         target_counter: Counter[str] = Counter()
         solve_counter: Counter[str] = Counter()
         local_stats: Counter[str] = Counter()
 
         for row in self.batch.rows:
             row_start_ns = time.perf_counter_ns()
-            seed, seed_source = self._resolve_row_seed(row, last_row_seed=last_row_seed)
             try:
                 pressure = float(row.P)
                 if row.mode == "speciation":
@@ -711,14 +697,13 @@ class ReactiveElectrolyteRegressionContext:
                         balances=row.balances or self.batch.balances,
                         totals=row.totals,
                         reactions=row.reactions or self.batch.reactions,
-                        initial_x=_row_seed_x(row, self.species, seed),
+                        initial_x=_row_initial_x(row, self.species),
                         options=self.batch.reactive_speciation_options,
                     )
                     row_result = _row_result_from_speciation(
                         context=self,
                         row=row,
                         raw_result=raw_result,
-                        seed_source=seed_source,
                         elapsed_seconds=(time.perf_counter_ns() - row_start_ns) / 1.0e9,
                     )
                 else:
@@ -731,7 +716,7 @@ class ReactiveElectrolyteRegressionContext:
                         balances=row.balances or self.batch.balances,
                         totals=row.totals,
                         reactions=row.reactions or self.batch.reactions,
-                        initial_x=_row_seed_x(row, self.species, seed),
+                        initial_x=_row_initial_x(row, self.species),
                         vapor_species=row.vapor_species or self.batch.vapor_species,
                         volatile_species=self.batch.volatile_species,
                         nonvolatile_species=self.batch.nonvolatile_species,
@@ -742,14 +727,10 @@ class ReactiveElectrolyteRegressionContext:
                         row=row,
                         raw_result=raw_result,
                         parameter_map=parameter_map,
-                        seed_source=seed_source,
                         elapsed_seconds=(time.perf_counter_ns() - row_start_ns) / 1.0e9,
                     )
                 if row_result.success:
                     success_count += 1
-                    objective_seed_cache_next[row.row_id] = _row_seed_from_result(row_result)
-                    if self.batch.options.warm_start_rows:
-                        last_row_seed = objective_seed_cache_next[row.row_id]
                 else:
                     failure_count += 1
                 row_results.append(row_result)
@@ -760,7 +741,6 @@ class ReactiveElectrolyteRegressionContext:
                         row=row,
                         exc=exc,
                         elapsed_seconds=(time.perf_counter_ns() - row_start_ns) / 1.0e9,
-                        seed_source=seed_source,
                     )
                 )
 
@@ -778,9 +758,7 @@ class ReactiveElectrolyteRegressionContext:
                 target_counter[_residual_family_from_name(name)] += 1
             local_stats["row_evaluations"] += 1
 
-        if self.batch.options.warm_start_objective:
-            self._objective_seed_cache = objective_seed_cache_next
-        self._stats["context_cache_hits"] += 1
+        self._stats["context_evaluations"] += 1
         self._stats.update(local_stats)
         total_elapsed = (time.perf_counter_ns() - start_ns) / 1.0e9
         timing_summary = {
@@ -788,12 +766,8 @@ class ReactiveElectrolyteRegressionContext:
             "mean_row_seconds": total_elapsed / max(len(self.batch.rows), 1),
         }
         cache_stats = {
-            "context_cache_hits": int(self._stats["context_cache_hits"]),
-            "context_cache_misses": int(self._stats["context_cache_misses"]),
-            "objective_seed_hits": int(self._stats["objective_seed_hits"]),
-            "objective_seed_misses": int(self._stats["objective_seed_misses"]),
-            "row_seed_hits": int(self._stats["row_seed_hits"]),
-            "row_seed_misses": int(self._stats["row_seed_misses"]),
+            "context_evaluations": int(self._stats["context_evaluations"]),
+            "row_evaluations": int(self._stats["row_evaluations"]),
         }
         diagnostics = {
             "parameter_map_keys": sorted(parameter_map),
@@ -840,23 +814,6 @@ class ReactiveElectrolyteRegressionContext:
     ) -> ReactiveRegressionJacobianResult:
         _ = parameter_map, parameters
         raise InputError("reactive-regression sensitivities require native Ceres derivative coverage.")
-
-    def _resolve_row_seed(
-        self,
-        row: ReactiveElectrolyteRow,
-        *,
-        last_row_seed: dict[str, Any] | None,
-    ) -> tuple[dict[str, Any], str]:
-        if self.batch.options.warm_start_objective and row.row_id in self._objective_seed_cache:
-            self._stats["objective_seed_hits"] += 1
-            return dict(self._objective_seed_cache[row.row_id]), "objective_cache"
-        self._stats["objective_seed_misses"] += 1
-        if self.batch.options.warm_start_rows and last_row_seed is not None:
-            self._stats["row_seed_hits"] += 1
-            return dict(last_row_seed), "previous_row"
-        self._stats["row_seed_misses"] += 1
-        return {}, "user_initial"
-
 
 def build_reactive_regression_objective(
     batch: ReactiveElectrolyteBatch,
@@ -988,15 +945,11 @@ def summarize_regression_result(
     split_counter: dict[str, list[float]] = {}
     target_counter: dict[str, list[float]] = {}
     species_counter: dict[str, list[float]] = {}
-    warm_counter: Counter[str] = Counter()
     for row in batch.row_results:
         norm = float(np.linalg.norm(np.asarray(list(row.residuals.values()), dtype=float)) if row.residuals else 0.0)
         row_norms.append((row.row_id, norm))
         source_counter.setdefault(row.source or "unspecified", []).append(norm)
         split_counter.setdefault(row.split or "unspecified", []).append(norm)
-        warm_counter["used" if row.warm_start_used else "not_used"] += 1
-        if row.warm_start_failed:
-            warm_counter["failed"] += 1
         for name, value in row.residuals.items():
             target_counter.setdefault(_residual_family_from_name(name), []).append(float(abs(value)))
             species = name.rsplit(".", 1)[-1]
@@ -1043,7 +996,6 @@ def summarize_regression_result(
             }
             for split, values in split_counter.items()
         },
-        "warm_start": dict(warm_counter),
         "cache_stats": _json_like(batch.cache_stats),
         "timing_summary": _json_like(batch.timing_summary),
         **fit_payload,
@@ -1262,7 +1214,7 @@ def _build_row_mixture(
     x_override: Sequence[float] | None,
     P_override: float,
 ) -> ePCSAFTMixture:
-    x_array = np.asarray(x_override if x_override is not None else _row_seed_x(row, batch.species), dtype=float)
+    x_array = np.asarray(x_override if x_override is not None else _row_initial_x(row, batch.species), dtype=float)
     if batch.mixture_factory_builder is not None:
         mixture_factory = batch.mixture_factory_builder(parameter_map)
         return mixture_factory(x_array, float(row.T), float(P_override))
@@ -1281,14 +1233,10 @@ def _mixture_factory_from_batch(batch: ReactiveElectrolyteBatch, parameter_map: 
     return factory
 
 
-def _row_seed_x(
+def _row_initial_x(
     row: ReactiveElectrolyteRow,
     species: Sequence[str],
-    seed: Mapping[str, Any] | None = None,
 ) -> np.ndarray:
-    if seed and isinstance(seed.get("composition"), Mapping):
-        mapping = seed["composition"]
-        return np.asarray([float(mapping.get(label, 0.0)) for label in species], dtype=float)
     if isinstance(row.initial_x, Mapping):
         return np.asarray([float(row.initial_x.get(label, 0.0)) for label in species], dtype=float)
     if row.initial_x is None:
@@ -1306,7 +1254,6 @@ def _row_result_from_speciation(
     context: ReactiveElectrolyteRegressionContext,
     row: ReactiveElectrolyteRow,
     raw_result: ReactiveSpeciationResult,
-    seed_source: str,
     elapsed_seconds: float,
 ) -> ReactiveElectrolyteRowResult:
     composition = dict(raw_result.x)
@@ -1341,10 +1288,6 @@ def _row_result_from_speciation(
         active_bounds={},
         solver_status="success" if raw_result.success else "failure",
         elapsed_seconds=float(elapsed_seconds),
-        cache_stats={"warm_start_source": seed_source},
-        warm_start_used=seed_source != "user_initial",
-        warm_start_source=seed_source,
-        warm_start_failed=False,
         named_reaction_residuals=dict(raw_result.named_reaction_residuals),
         source=row.source,
         split=row.split,
@@ -1358,7 +1301,6 @@ def _row_result_from_bubble(
     row: ReactiveElectrolyteRow,
     raw_result: ReactiveElectrolyteBubbleResult,
     parameter_map: Mapping[str, float],
-    seed_source: str,
     elapsed_seconds: float,
 ) -> ReactiveElectrolyteRowResult:
     composition = dict(getattr(raw_result, "x_liq", {}) or {})
@@ -1402,10 +1344,6 @@ def _row_result_from_bubble(
         active_bounds={},
         solver_status="success" if bool(getattr(raw_result, "success", False)) else "failure",
         elapsed_seconds=float(elapsed_seconds),
-        cache_stats={"warm_start_source": seed_source},
-        warm_start_used=seed_source != "user_initial",
-        warm_start_source=seed_source,
-        warm_start_failed=False,
         partial_pressures=dict(getattr(raw_result, "partial_pressures", {}) or {}),
         y_vap=dict(getattr(raw_result, "y_vap", {}) or {}),
         named_reaction_residuals=dict(getattr(raw_result, "named_reaction_residuals", {}) or {}),
@@ -1420,7 +1358,6 @@ def _failed_row_result(
     row: ReactiveElectrolyteRow,
     exc: Exception,
     elapsed_seconds: float,
-    seed_source: str,
 ) -> ReactiveElectrolyteRowResult:
     diagnostics = dict(getattr(exc, "diagnostics", {}) or {})
     return ReactiveElectrolyteRowResult(
@@ -1439,18 +1376,10 @@ def _failed_row_result(
         active_bounds={},
         solver_status="exception",
         elapsed_seconds=float(elapsed_seconds),
-        cache_stats={"warm_start_source": seed_source},
-        warm_start_used=seed_source != "user_initial",
-        warm_start_source=seed_source,
-        warm_start_failed=seed_source != "user_initial",
         source=row.source,
         split=row.split,
         metadata=dict(row.metadata),
     )
-
-
-def _row_seed_from_result(row_result: ReactiveElectrolyteRowResult) -> dict[str, Any]:
-    return {"composition": dict(row_result.composition)}
 
 
 def _pack_row_residuals(

@@ -47,6 +47,22 @@ def test_reactive_electrolyte_legacy_row_rejects_pressure_seed_key() -> None:
         )
 
 
+def test_reactive_electrolyte_batch_options_do_not_expose_warm_start_controls() -> None:
+    fields = epcsaft.ReactiveElectrolyteBatchOptions.__dataclass_fields__
+
+    assert "warm_start_rows" not in fields
+    assert "warm_start_objective" not in fields
+
+
+def test_reactive_electrolyte_row_result_does_not_expose_warm_start_status() -> None:
+    fields = epcsaft.ReactiveElectrolyteRowResult.__dataclass_fields__
+
+    assert "warm_start_used" not in fields
+    assert "warm_start_source" not in fields
+    assert "warm_start_failed" not in fields
+    assert "cache_stats" not in fields
+
+
 def _native_mixed_pressure_speciation_batch() -> tuple[epcsaft.ReactiveElectrolyteBatch, float]:
     temperature = 298.15
     water_sigma = 2.7927 + 10.11 * np.exp(-0.01775 * temperature) - 1.417 * np.exp(-0.01146 * temperature)
@@ -86,11 +102,7 @@ def _native_mixed_pressure_speciation_batch() -> tuple[epcsaft.ReactiveElectroly
         reactions=[],
         vapor_species=["water"],
         base_parameters=params,
-        options=epcsaft.ReactiveElectrolyteBatchOptions(
-            include_state_outputs=False,
-            warm_start_rows=True,
-            warm_start_objective=True,
-        ),
+        options=epcsaft.ReactiveElectrolyteBatchOptions(include_state_outputs=False),
         reactive_bubble_options=epcsaft.ReactiveElectrolyteBubbleOptions(error_mode="result"),
     )
     return batch, water_sigma
@@ -152,7 +164,7 @@ def test_reactive_regression_context_runs_native_speciation_objective_and_jacobi
     with pytest.raises(epcsaft.InputError, match="native Ceres derivative coverage"):
         context.evaluate_derivatives({"Na+.sigma": 2.8232}, parameters=["Na+.sigma"])
 
-def test_reactive_regression_context_evaluates_batch_with_composition_warm_starts(monkeypatch) -> None:
+def test_reactive_regression_context_evaluates_batch_with_explicit_row_inputs(monkeypatch) -> None:
     calls: list[dict[str, object]] = []
 
     def fake_solve(**kwargs):
@@ -218,8 +230,6 @@ def test_reactive_regression_context_evaluates_batch_with_composition_warm_start
         vapor_species=["A", "B"],
         mixture_factory=lambda x, T, P: None,
         options=epcsaft.ReactiveElectrolyteBatchOptions(
-            warm_start_rows=True,
-            warm_start_objective=True,
             penalty_value=8.0,
             include_state_outputs=False,
         ),
@@ -246,14 +256,15 @@ def test_reactive_regression_context_evaluates_batch_with_composition_warm_start
         "row2.x.A",
     )
     assert first.residuals.shape == (4,)
-    assert first.row_results[0].cache_stats["warm_start_source"] == "user_initial"
-    assert first.row_results[1].cache_stats["warm_start_source"] == "previous_row"
-    assert second.row_results[0].cache_stats["warm_start_source"] == "objective_cache"
-    assert second.row_results[1].cache_stats["warm_start_source"] == "objective_cache"
+    assert all("warm_start_source" not in row.to_dict() for row in first.row_results)
+    assert "objective_seed_hits" not in first.cache_stats
+    assert "row_seed_hits" not in first.cache_stats
+    assert second.cache_stats["context_evaluations"] >= 2
     assert calls[1]["P"] == pytest.approx(95000.0)
-    assert calls[1]["initial_x"] == pytest.approx([0.2, 0.8])
+    assert calls[1]["initial_x"] == pytest.approx([0.21, 0.79])
     assert calls[1]["bubble_options"] is None
-    assert first.cache_stats["context_cache_hits"] >= 1
+    assert first.cache_stats["context_evaluations"] >= 1
+
 
 def test_reactive_regression_objective_and_jacobian_are_consistent(monkeypatch) -> None:
     def fake_solve(**kwargs):
