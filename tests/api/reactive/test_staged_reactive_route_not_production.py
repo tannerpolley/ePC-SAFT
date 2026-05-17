@@ -53,7 +53,7 @@ def test_explicit_staged_kind_remains_separate_from_production_reactive_lle(monk
     assert sum(staged.diagnostics["staged_feed"].values()) == pytest.approx(1.0, abs=1.0e-12)
 
     def fail_if_staged(*_args, **_kwargs):
-        raise AssertionError("kind='reactive_lle' must bypass explicit staged compatibility")
+        raise AssertionError("kind='reactive_lle' must bypass explicit staged workflows")
 
     monkeypatch.setattr(mix, "reactive_staged_equilibrium", fail_if_staged)
     with pytest.raises(epcsaft.InputError, match="native Ipopt reactive phase-equilibrium NLP route"):

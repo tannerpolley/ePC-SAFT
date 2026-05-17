@@ -20,7 +20,7 @@ def _salt_speciation_mixture() -> epcsaft.ePCSAFTMixture:
     return epcsaft.ePCSAFTMixture.from_params(params, species=["H2O", "NaCl", "Na+", "Cl-"])
 
 
-def test_solve_reactive_speciation_auto_requires_native_ipopt_route_before_legacy_failure_payload() -> None:
+def test_solve_reactive_speciation_auto_requires_native_ipopt_route_before_result_payload() -> None:
     species = ["H2O", "NaCl", "Na+", "Cl-"]
     mix = _salt_speciation_mixture()
 

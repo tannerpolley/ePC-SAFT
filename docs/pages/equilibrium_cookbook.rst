@@ -75,8 +75,8 @@ these fields as routing hints, not as proof that a physical case is valid.
 Neutral VLE, LLE, and stability
 -------------------------------
 
-Use explicit mixture methods in new code. Use string-dispatched
-``mixture.equilibrium(kind=...)`` only as a compatibility shim for older
+Use typed problem objects or explicit mixture methods in new code.
+``mixture.equilibrium(kind=...)`` remains available for string-dispatched
 scripts.
 
 .. code-block:: python

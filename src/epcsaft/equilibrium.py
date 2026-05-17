@@ -499,7 +499,7 @@ def electrolyte_lle_flash(
     initial_phases: Any = None,
     options: EquilibriumOptions | None = None,
 ) -> EquilibriumResult:
-    """Run native C++ electrolyte LLE through the public compatibility name."""
+    """Run the public electrolyte LLE route."""
     return electrolyte_lle_flash_native(
         mixture,
         T=T,
@@ -1291,7 +1291,7 @@ def _normalize_reactive_phase_route(
     if token not in {"lle_flash", "electrolyte_lle"}:
         raise InputError(
             "ReactivePhaseEquilibriumProblem production solves currently support phase_kind='lle_flash' "
-            "or phase_kind='electrolyte_lle'. Use reactive_staged_equilibrium for explicit staged compatibility routes."
+            "or phase_kind='electrolyte_lle'. Use reactive_staged_equilibrium for explicit staged workflows."
         )
     return token
 
