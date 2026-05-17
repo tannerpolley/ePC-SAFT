@@ -7,6 +7,7 @@ import pytest
 
 import epcsaft
 from epcsaft import ePCSAFTMixture
+from epcsaft.equilibrium_core.classify import classify_equilibrium_route
 from tests.helpers.numeric import assert_allclose
 
 
@@ -47,6 +48,24 @@ def test_equilibrium_public_exports_are_available() -> None:
     assert hasattr(epcsaft, "bubble_t")
     assert hasattr(epcsaft, "dew_p")
     assert hasattr(epcsaft, "dew_t")
+
+
+def test_equilibrium_route_classification_preserves_stability_gates() -> None:
+    neutral = _hydrocarbon_mixture()
+    ionic = _ionic_mixture()
+
+    assert classify_equilibrium_route(neutral, "stability") == {
+        "route": "neutral_stability",
+        "reason": "requested neutral stability path",
+    }
+    assert classify_equilibrium_route(ionic, "electrolyte_stability") == {
+        "route": "electrolyte_stability",
+        "reason": "requested electrolyte stability path",
+    }
+    assert classify_equilibrium_route(ionic, "auto") == {
+        "route": "electrolyte_lle",
+        "reason": "ion-containing mixture",
+    }
 
 
 @pytest.mark.parametrize(

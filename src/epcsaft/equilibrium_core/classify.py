@@ -14,8 +14,10 @@ def classify_equilibrium_route(mixture: Any, kind: str, backend: str | None = No
     has_ions = charges.size == int(mixture.ncomp) and bool(np.any(np.abs(charges) > 1.0e-12))
     if token in {"electrolyte_bubble_pressure", "electrolyte_bubble", "bubble_pressure"}:
         return {"route": "electrolyte_bubble", "reason": "requested electrolyte bubble-pressure path"}
-    if token in {"electrolyte_lle", "electrolyte_lle_flash", "electrolyte_stability"}:
+    if token in {"electrolyte_lle", "electrolyte_lle_flash"}:
         return {"route": "electrolyte_lle", "reason": "requested electrolyte liquid-liquid path"}
+    if token == "electrolyte_stability":
+        return {"route": "electrolyte_stability", "reason": "requested electrolyte stability path"}
     if token in {"lle", "lle_flash"}:
         return {"route": "neutral_lle", "reason": "requested neutral liquid-liquid path"}
     if token in {

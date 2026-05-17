@@ -1123,6 +1123,10 @@ Task 8/9/12 continuation note: explicit staged reactive workflows no longer acce
 chemical speciation so Python does not run a sequential chemical handoff into an unimplemented stability route, and the
 equilibrium cookbook no longer recommends stability prechecks as runnable production workflow steps.
 
+Task 8/9/12 continuation note: direct equilibrium route classification no longer relabels explicit
+`electrolyte_stability` requests as electrolyte LLE. Explicit stability requests keep stability route metadata for the
+native Ipopt stability gate, while ionic `auto` still selects the implemented electrolyte LLE route.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**
