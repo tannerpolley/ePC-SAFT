@@ -1023,6 +1023,10 @@ Task 2/12 continuation note: reactive-speciation sweep input-validation failures
 backend or selected-solver status. Structured failure payloads now carry validation context only, while native solves keep
 their explicit Ipopt diagnostics.
 
+Task 8/12 continuation note: `EquilibriumOptions.timeout_seconds` is no longer a Python-only normalized option. Public
+neutral/electrolyte equilibrium facades pass it through pybind into `IpoptSolveOptions`, and the native Ipopt adapter maps
+positive values to Ipopt's wall-clock limit.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**

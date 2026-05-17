@@ -40,6 +40,7 @@ def test_tp_flash_builds_one_native_route_request_before_ipopt_gate(monkeypatch:
         feed_amounts,
         max_iterations,
         tolerance,
+        timeout_seconds,
         material_tolerance,
         pressure_tolerance,
         chemical_potential_tolerance,
@@ -52,6 +53,7 @@ def test_tp_flash_builds_one_native_route_request_before_ipopt_gate(monkeypatch:
                 "feed_amounts": feed_amounts,
                 "max_iterations": max_iterations,
                 "tolerance": tolerance,
+                "timeout_seconds": timeout_seconds,
                 "material_tolerance": material_tolerance,
                 "pressure_tolerance": pressure_tolerance,
                 "chemical_potential_tolerance": chemical_potential_tolerance,
@@ -75,7 +77,7 @@ def test_tp_flash_builds_one_native_route_request_before_ipopt_gate(monkeypatch:
             T=220.0,
             P=1.0e5,
             z=feed,
-            options=epcsaft.EquilibriumOptions(max_iterations=17, tolerance=2.0e-7),
+            options=epcsaft.EquilibriumOptions(max_iterations=17, tolerance=2.0e-7, timeout_seconds=6.5),
         )
 
     _assert_tp_flash_route_pending(excinfo)
@@ -84,6 +86,7 @@ def test_tp_flash_builds_one_native_route_request_before_ipopt_gate(monkeypatch:
     assert call["feed_amounts"] == pytest.approx(feed.tolist())
     assert call["max_iterations"] == 17
     assert call["tolerance"] == pytest.approx(2.0e-7)
+    assert call["timeout_seconds"] == pytest.approx(6.5)
 
 
 def test_tp_flash_converts_accepted_native_route_payload(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -99,6 +102,7 @@ def test_tp_flash_converts_accepted_native_route_payload(monkeypatch: pytest.Mon
         feed_amounts,
         max_iterations,
         tolerance,
+        timeout_seconds,
         material_tolerance,
         pressure_tolerance,
         chemical_potential_tolerance,
@@ -109,6 +113,7 @@ def test_tp_flash_converts_accepted_native_route_payload(monkeypatch: pytest.Mon
         assert feed_amounts == pytest.approx(feed.tolist())
         assert max_iterations > 0
         assert tolerance > 0.0
+        assert timeout_seconds == 0.0
         assert material_tolerance > 0.0
         assert pressure_tolerance > 0.0
         assert chemical_potential_tolerance > 0.0

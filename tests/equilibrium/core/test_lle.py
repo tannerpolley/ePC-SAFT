@@ -54,6 +54,7 @@ def test_lle_flash_builds_one_native_route_request_before_ipopt_gate(monkeypatch
         feed_amounts,
         max_iterations,
         tolerance,
+        timeout_seconds,
         material_tolerance,
         pressure_tolerance,
         chemical_potential_tolerance,
@@ -66,6 +67,7 @@ def test_lle_flash_builds_one_native_route_request_before_ipopt_gate(monkeypatch
                 "feed_amounts": feed_amounts,
                 "max_iterations": max_iterations,
                 "tolerance": tolerance,
+                "timeout_seconds": timeout_seconds,
                 "material_tolerance": material_tolerance,
                 "pressure_tolerance": pressure_tolerance,
                 "chemical_potential_tolerance": chemical_potential_tolerance,
@@ -89,7 +91,7 @@ def test_lle_flash_builds_one_native_route_request_before_ipopt_gate(monkeypatch
             T=298.15,
             P=1.013e5,
             z=feed,
-            options=epcsaft.EquilibriumOptions(max_iterations=19, tolerance=3.0e-8),
+            options=epcsaft.EquilibriumOptions(max_iterations=19, tolerance=3.0e-8, timeout_seconds=4.0),
         )
 
     _assert_neutral_lle_route_pending(excinfo)
@@ -98,6 +100,7 @@ def test_lle_flash_builds_one_native_route_request_before_ipopt_gate(monkeypatch
     assert call["feed_amounts"] == pytest.approx(feed.tolist())
     assert call["max_iterations"] == 19
     assert call["tolerance"] == pytest.approx(3.0e-8)
+    assert call["timeout_seconds"] == pytest.approx(4.0)
 
 
 def test_lle_flash_converts_accepted_native_route_payload(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -113,6 +116,7 @@ def test_lle_flash_converts_accepted_native_route_payload(monkeypatch: pytest.Mo
         feed_amounts,
         max_iterations,
         tolerance,
+        timeout_seconds,
         material_tolerance,
         pressure_tolerance,
         chemical_potential_tolerance,
@@ -123,6 +127,7 @@ def test_lle_flash_converts_accepted_native_route_payload(monkeypatch: pytest.Mo
         assert feed_amounts == pytest.approx(feed.tolist())
         assert max_iterations > 0
         assert tolerance > 0.0
+        assert timeout_seconds == 0.0
         assert material_tolerance > 0.0
         assert pressure_tolerance > 0.0
         assert chemical_potential_tolerance > 0.0

@@ -430,6 +430,9 @@ IpoptSolveResult solve_ipopt_nlp(
     if (!options.limited_memory_hessian) {
         throw ValueError("Native Ipopt adapter currently supports only Ipopt limited-memory Hessian mode.");
     }
+    if (!std::isfinite(options.max_wall_time_seconds) || options.max_wall_time_seconds < 0.0) {
+        throw ValueError("Native Ipopt adapter requires a non-negative wall-clock timeout.");
+    }
 #ifndef EPCSAFT_HAS_IPOPT
     (void)problem;
     (void)options;
@@ -444,6 +447,9 @@ IpoptSolveResult solve_ipopt_nlp(
     app->Options()->SetStringValue("gradient_approximation", "exact");
     app->Options()->SetStringValue("hessian_approximation", "limited-memory");
     app->Options()->SetStringValue("nlp_scaling_method", "user-scaling");
+    if (options.max_wall_time_seconds > 0.0) {
+        app->Options()->SetNumericValue("max_wall_time", options.max_wall_time_seconds);
+    }
 
     const Ipopt::ApplicationReturnStatus init_status = app->Initialize();
     if (init_status != Ipopt::Solve_Succeeded) {

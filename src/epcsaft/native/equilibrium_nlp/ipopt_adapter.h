@@ -25,6 +25,7 @@ struct IpoptSolveOptions {
     int print_level = 0;
     double tolerance = 1.0e-8;
     double acceptable_tolerance = 1.0e-6;
+    double max_wall_time_seconds = 0.0;
     bool limited_memory_hessian = true;
 };
 

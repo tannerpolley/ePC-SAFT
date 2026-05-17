@@ -589,6 +589,10 @@ def _optional_positive_float_option(value: Any, label: str) -> float | None:
     return out
 
 
+def _native_timeout_seconds(options: EquilibriumOptions) -> float:
+    return 0.0 if options.timeout_seconds is None else float(options.timeout_seconds)
+
+
 def _normalize_feed(z: Any, ncomp: int, min_composition: float, kind: str) -> np.ndarray:
     if z is None:
         raise InputError(f"z is required for kind='{kind}'.")
@@ -733,6 +737,7 @@ def _native_neutral_fixed_temperature_pressure(
         composition.tolist(),
         options.max_iterations,
         options.tolerance,
+        _native_timeout_seconds(options),
         *route_tolerances,
     )
     if str(route.get("status", "")) == "ipopt_dependency_required":
@@ -775,6 +780,7 @@ def _native_neutral_tp_flash(
         feed.tolist(),
         options.max_iterations,
         options.tolerance,
+        _native_timeout_seconds(options),
         *tolerances,
     )
     if str(route.get("status", "")) == "ipopt_dependency_required":
@@ -810,6 +816,7 @@ def _native_neutral_lle_flash(
         feed.tolist(),
         options.max_iterations,
         options.tolerance,
+        _native_timeout_seconds(options),
         *tolerances,
     )
     if str(route.get("status", "")) == "ipopt_dependency_required":
@@ -1218,6 +1225,7 @@ def electrolyte_lle_flash_native(
         feed.tolist(),
         opts.max_iterations,
         opts.tolerance,
+        _native_timeout_seconds(opts),
         material_tolerance,
         pressure_tolerance,
         charge_tolerance,

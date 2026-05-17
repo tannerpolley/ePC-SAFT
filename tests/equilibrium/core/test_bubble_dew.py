@@ -33,6 +33,7 @@ def test_bubble_p_builds_one_native_route_request_before_ipopt_gate(monkeypatch:
         liquid_composition,
         max_iterations,
         tolerance,
+        timeout_seconds,
         phase_total_tolerance,
         pressure_tolerance,
         chemical_potential_tolerance,
@@ -44,6 +45,7 @@ def test_bubble_p_builds_one_native_route_request_before_ipopt_gate(monkeypatch:
                 "liquid_composition": liquid_composition,
                 "max_iterations": max_iterations,
                 "tolerance": tolerance,
+                "timeout_seconds": timeout_seconds,
                 "phase_total_tolerance": phase_total_tolerance,
                 "pressure_tolerance": pressure_tolerance,
                 "chemical_potential_tolerance": chemical_potential_tolerance,
@@ -65,7 +67,7 @@ def test_bubble_p_builds_one_native_route_request_before_ipopt_gate(monkeypatch:
         mix.bubble_p(
             T=220.0,
             x=[0.2, 0.3, 0.5],
-            options=epcsaft.EquilibriumOptions(max_iterations=17, tolerance=4.0e-8),
+            options=epcsaft.EquilibriumOptions(max_iterations=17, tolerance=4.0e-8, timeout_seconds=2.5),
         )
 
     assert len(calls) == 1
@@ -74,6 +76,7 @@ def test_bubble_p_builds_one_native_route_request_before_ipopt_gate(monkeypatch:
     assert call["liquid_composition"] == pytest.approx([0.2, 0.3, 0.5])
     assert call["max_iterations"] == 17
     assert call["tolerance"] == pytest.approx(4.0e-8)
+    assert call["timeout_seconds"] == pytest.approx(2.5)
     assert call["phase_total_tolerance"] > 0.0
     assert call["pressure_tolerance"] == pytest.approx(4.0e-3)
     assert call["chemical_potential_tolerance"] > 0.0
@@ -93,6 +96,7 @@ def test_dew_p_converts_accepted_native_route_payload(monkeypatch: pytest.Monkey
         received_vapor_composition,
         max_iterations,
         tolerance,
+        timeout_seconds,
         phase_total_tolerance,
         pressure_tolerance,
         chemical_potential_tolerance,
@@ -102,6 +106,7 @@ def test_dew_p_converts_accepted_native_route_payload(monkeypatch: pytest.Monkey
         assert received_vapor_composition == pytest.approx(vapor_composition)
         assert max_iterations > 0
         assert tolerance > 0.0
+        assert timeout_seconds == 0.0
         assert phase_total_tolerance > 0.0
         assert pressure_tolerance > 0.0
         assert chemical_potential_tolerance > 0.0

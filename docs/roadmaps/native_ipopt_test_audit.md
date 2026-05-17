@@ -196,6 +196,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
   best-state metadata for ideal native routes; those fields now appear only when a native route returns real evidence.
 - Reactive-speciation sweep input-validation failures no longer fabricate backend or selected-solver labels; those
   structured failure payloads report failure context only, and the executable text gate blocks the retired fake label.
+- `EquilibriumOptions.timeout_seconds` is now wired through public neutral/electrolyte equilibrium facades into the
+  native Ipopt adapter as a wall-clock option instead of being a normalized-but-unused public control.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
 

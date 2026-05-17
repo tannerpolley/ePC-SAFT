@@ -960,6 +960,19 @@ ChemicalEquilibriumOptionsNative chemical_options_from_request(const py::dict& r
     return options;
 }
 
+epcsaft::native::equilibrium_nlp::IpoptSolveOptions ipopt_solve_options_from_scalars(
+    int max_iterations,
+    double tolerance,
+    double timeout_seconds
+) {
+    epcsaft::native::equilibrium_nlp::IpoptSolveOptions options;
+    options.max_iterations = max_iterations;
+    options.tolerance = tolerance;
+    options.acceptable_tolerance = std::max(tolerance * 100.0, 1.0e-10);
+    options.max_wall_time_seconds = timeout_seconds;
+    return options;
+}
+
 py::dict solve_chemical_equilibrium_native_binding(
     const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
     const py::dict& request
@@ -1658,10 +1671,8 @@ PYBIND11_MODULE(_core, m) {
         if (!mixture) {
             throw ValueError("Neutral two-phase EOS route result requires a native mixture.");
         }
-        epcsaft::native::equilibrium_nlp::IpoptSolveOptions options;
-        options.max_iterations = max_iterations;
-        options.tolerance = tolerance;
-        options.acceptable_tolerance = std::max(tolerance * 100.0, 1.0e-10);
+        const epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
+            ipopt_solve_options_from_scalars(max_iterations, tolerance, 0.0);
         return neutral_two_phase_eos_route_result_to_dict(
             epcsaft::native::equilibrium_nlp::solve_neutral_two_phase_eos_route(
                 mixture->args(),
@@ -1685,6 +1696,7 @@ PYBIND11_MODULE(_core, m) {
         const std::vector<double>& feed_amounts,
         int max_iterations,
         double tolerance,
+        double timeout_seconds,
         double material_tolerance,
         double pressure_tolerance,
         double chemical_potential_tolerance,
@@ -1693,10 +1705,8 @@ PYBIND11_MODULE(_core, m) {
         if (!mixture) {
             throw ValueError("Neutral TP flash EOS route result requires a native mixture.");
         }
-        epcsaft::native::equilibrium_nlp::IpoptSolveOptions options;
-        options.max_iterations = max_iterations;
-        options.tolerance = tolerance;
-        options.acceptable_tolerance = std::max(tolerance * 100.0, 1.0e-10);
+        const epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
+            ipopt_solve_options_from_scalars(max_iterations, tolerance, timeout_seconds);
         return neutral_two_phase_eos_route_result_to_dict(
             epcsaft::native::equilibrium_nlp::solve_neutral_two_phase_eos_tp_flash_route(
                 mixture->args(),
@@ -1718,6 +1728,7 @@ PYBIND11_MODULE(_core, m) {
         const std::vector<double>& feed_amounts,
         int max_iterations,
         double tolerance,
+        double timeout_seconds,
         double material_tolerance,
         double pressure_tolerance,
         double chemical_potential_tolerance,
@@ -1726,10 +1737,8 @@ PYBIND11_MODULE(_core, m) {
         if (!mixture) {
             throw ValueError("Neutral LLE EOS route result requires a native mixture.");
         }
-        epcsaft::native::equilibrium_nlp::IpoptSolveOptions options;
-        options.max_iterations = max_iterations;
-        options.tolerance = tolerance;
-        options.acceptable_tolerance = std::max(tolerance * 100.0, 1.0e-10);
+        const epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
+            ipopt_solve_options_from_scalars(max_iterations, tolerance, timeout_seconds);
         return neutral_two_phase_eos_route_result_to_dict(
             epcsaft::native::equilibrium_nlp::solve_neutral_two_phase_eos_lle_route(
                 mixture->args(),
@@ -1751,6 +1760,7 @@ PYBIND11_MODULE(_core, m) {
         const std::vector<double>& feed_amounts,
         int max_iterations,
         double tolerance,
+        double timeout_seconds,
         double material_tolerance,
         double pressure_tolerance,
         double charge_tolerance,
@@ -1760,10 +1770,8 @@ PYBIND11_MODULE(_core, m) {
         if (!mixture) {
             throw ValueError("Electrolyte LLE EOS route result requires a native mixture.");
         }
-        epcsaft::native::equilibrium_nlp::IpoptSolveOptions options;
-        options.max_iterations = max_iterations;
-        options.tolerance = tolerance;
-        options.acceptable_tolerance = std::max(tolerance * 100.0, 1.0e-10);
+        const epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
+            ipopt_solve_options_from_scalars(max_iterations, tolerance, timeout_seconds);
         return neutral_two_phase_eos_route_result_to_dict(
             epcsaft::native::equilibrium_nlp::solve_electrolyte_lle_eos_route(
                 mixture->args(),
@@ -1785,6 +1793,7 @@ PYBIND11_MODULE(_core, m) {
         const std::vector<double>& liquid_composition,
         int max_iterations,
         double tolerance,
+        double timeout_seconds,
         double phase_total_tolerance,
         double pressure_tolerance,
         double chemical_potential_tolerance,
@@ -1793,10 +1802,8 @@ PYBIND11_MODULE(_core, m) {
         if (!mixture) {
             throw ValueError("Neutral bubble pressure EOS route result requires a native mixture.");
         }
-        epcsaft::native::equilibrium_nlp::IpoptSolveOptions options;
-        options.max_iterations = max_iterations;
-        options.tolerance = tolerance;
-        options.acceptable_tolerance = std::max(tolerance * 100.0, 1.0e-10);
+        const epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
+            ipopt_solve_options_from_scalars(max_iterations, tolerance, timeout_seconds);
         return neutral_two_phase_eos_route_result_to_dict(
             epcsaft::native::equilibrium_nlp::solve_neutral_bubble_p_eos_route(
                 mixture->args(),
@@ -1825,10 +1832,8 @@ PYBIND11_MODULE(_core, m) {
         if (!mixture) {
             throw ValueError("Electrolyte bubble pressure EOS route result requires a native mixture.");
         }
-        epcsaft::native::equilibrium_nlp::IpoptSolveOptions options;
-        options.max_iterations = max_iterations;
-        options.tolerance = tolerance;
-        options.acceptable_tolerance = std::max(tolerance * 100.0, 1.0e-10);
+        const epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
+            ipopt_solve_options_from_scalars(max_iterations, tolerance, 0.0);
         return neutral_two_phase_eos_route_result_to_dict(
             epcsaft::native::equilibrium_nlp::solve_electrolyte_bubble_p_eos_route(
                 mixture->args(),
@@ -1849,6 +1854,7 @@ PYBIND11_MODULE(_core, m) {
         const std::vector<double>& vapor_composition,
         int max_iterations,
         double tolerance,
+        double timeout_seconds,
         double phase_total_tolerance,
         double pressure_tolerance,
         double chemical_potential_tolerance,
@@ -1857,10 +1863,8 @@ PYBIND11_MODULE(_core, m) {
         if (!mixture) {
             throw ValueError("Neutral dew pressure EOS route result requires a native mixture.");
         }
-        epcsaft::native::equilibrium_nlp::IpoptSolveOptions options;
-        options.max_iterations = max_iterations;
-        options.tolerance = tolerance;
-        options.acceptable_tolerance = std::max(tolerance * 100.0, 1.0e-10);
+        const epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
+            ipopt_solve_options_from_scalars(max_iterations, tolerance, timeout_seconds);
         return neutral_two_phase_eos_route_result_to_dict(
             epcsaft::native::equilibrium_nlp::solve_neutral_dew_p_eos_route(
                 mixture->args(),
