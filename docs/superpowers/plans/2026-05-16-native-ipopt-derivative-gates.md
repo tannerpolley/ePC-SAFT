@@ -279,7 +279,7 @@ Task 2 continuation note: after the reactive-speciation diagnostic and MIAC fixt
 
 Task 2 continuation note: electrolyte LLE tests that named the Ceres equilibrium route as production coverage were first narrowed to transitional coverage. The reactive-phase residual-surface evaluator now computes the exact CppAD-implicit Jacobian by default for `auto`, `analytic`, and `cppad` requests instead of emitting an empty derivative payload.
 
-Task 2 continuation note: neutral equilibrium and native chemical-equilibrium diagnostics no longer manufacture missing-status reason fields on successful routes. Routes without a derivative payload now use `not_applicable`, and successful native chemical-equilibrium payloads omit the old empty reason field.
+Task 2 continuation note: neutral equilibrium and native chemical-equilibrium diagnostics no longer manufacture missing-status reason fields on successful routes. Routes without a derivative payload now use explicit out-of-scope classification, and successful native chemical-equilibrium payloads omit the old empty reason field.
 
 Task 2 continuation note: the strict text gate now blocks explicit Ceres trust-region strategy names. Transitional equilibrium Ceres routes rely on solver defaults and report only an internal trust-region label.
 
@@ -695,7 +695,7 @@ Task 10 continuation note: reactive electrolyte batch capabilities now expose a 
 
 Task 10 continuation note: the public generic native-record derivative helper was deleted because it only advertised derivative backend selection and then raised without returning an exact derivative payload. Public derivative-matrix access now remains limited to implemented exact routes such as the native pure-neutral Ceres objective until each generic target family has analytical, CppAD, or implicit derivative matrices behind its Ceres path.
 
-Task 10 continuation note: internal residual-score-only regression hooks no longer report themselves as optimizer backends or emit placeholder derivative backend labels. They now use the `diagnostic_residual_score` backend with `not_applicable` optimizer and derivative metadata, and the source/test/script text gate blocks reintroducing the retired residual-score backend label.
+Task 10 continuation note: internal residual-score-only regression hooks no longer report themselves as optimizer backends or emit placeholder derivative backend labels. They now use the `diagnostic_residual_score` backend for diagnostic-only optimizer and derivative metadata, and the source/test/script text gate blocks reintroducing the retired residual-score backend label.
 
 Task 10 continuation note: pure-neutral regression debug Jacobian payloads now report `cppad_implicit`, matching the actual CppAD property derivatives plus implicit density sensitivities used by the native objective. The Python wrapper no longer defaults missing native Jacobian metadata to a generic autodiff label.
 
@@ -932,7 +932,7 @@ covered by the runtime metadata test were deleted. The retained capability tests
 reactive-speciation standard-state gates, and reactive phase-equilibrium reaction-scope metadata.
 
 Task 10/12 continuation note: generic native residual-score benchmark paths no longer report optimizer, derivative, or
-Jacobian backends as `not_applicable`. Residual-only diagnostics now use the positive
+Jacobian backends as out-of-scope placeholders. Residual-only diagnostics now use the positive
 `diagnostic_residual_score` label, and the executable text gate blocks reintroducing the old regression backend labels.
 
 Task 7/12 continuation note: the generic staged reactive workflow no longer carries a benchmark-specific attempt
@@ -945,6 +945,11 @@ reactive electrolyte bubble, and reactive phase-equilibrium routes remain public
 their native builders land, but they no longer appear as false/pending capability rows. Implemented routes without a
 compiled Ipopt dependency now report `ipopt_dependency_required`, and problem-object capability metadata carries the
 public problem classes separately.
+
+Task 12 continuation note: derivative coverage matrices no longer carry the redundant negative applicability column.
+Out-of-scope rows are represented by `classification="out_of_scope"` and `backend="out_of_scope"`, while supported rows
+carry only the implemented derivative backend and production classification. The executable text gate blocks the retired
+column name in active source, tests, and scripts.
 
 ### Task 13: Final Validation And Cleanup
 

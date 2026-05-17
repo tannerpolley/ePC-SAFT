@@ -33,12 +33,13 @@ def test_derivative_coverage_matrix_enumerates_required_quantities() -> None:
                 "derivative",
                 "backend",
                 "supported",
-                "not_applicable",
                 "classification",
                 "source_equation_ids",
                 "parameter_family",
             )
         ).issubset(row)
+        removed_column = "not" + "_applicable"
+        assert removed_column not in row
 
 
 def test_derivative_coverage_matrix_uses_explicit_backend_labels() -> None:
@@ -73,8 +74,9 @@ def test_derivative_coverage_matrix_classifies_supported_and_out_of_scope_rows()
         }
     )
     for row in rows:
-        if row["not_applicable"]:
-            assert row["classification"] == "out_of_scope"
+        if row["classification"] == "out_of_scope":
+            assert row["supported"] is False
+            assert row["backend"] == "out_of_scope"
         else:
             assert row["supported"] is True
             assert row["classification"] == "production_supported"

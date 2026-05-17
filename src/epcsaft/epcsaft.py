@@ -1616,30 +1616,29 @@ class ePCSAFTState:
         ncomp = int(self._x.size)
         rows = []
 
-        def classify(*, supported, not_applicable, override=None):
+        def classify(*, supported, out_of_scope, override=None):
             if override:
                 return str(override)
-            if not_applicable:
+            if out_of_scope:
                 return "out_of_scope"
             if supported:
                 return "production_supported"
             raise SolutionError("Derivative coverage rows must be supported or explicitly out of scope.")
 
-        def add(quantity, derivative, result, *, not_applicable=False, source_equation_ids=()):
+        def add(quantity, derivative, result, *, out_of_scope=False, source_equation_ids=()):
             supported = bool(result.get("supported", False))
-            row_not_applicable = bool(not_applicable)
-            if not supported and not row_not_applicable:
+            row_out_of_scope = bool(out_of_scope)
+            if not supported and not row_out_of_scope:
                 return
             rows.append(
                 {
                     "quantity": quantity,
                     "derivative": derivative,
-                    "backend": "out_of_scope" if row_not_applicable else str(result.get("backend", "unspecified")),
+                    "backend": "out_of_scope" if row_out_of_scope else str(result.get("backend", "unspecified")),
                     "supported": supported,
-                    "not_applicable": row_not_applicable,
                     "classification": classify(
                         supported=supported,
-                        not_applicable=row_not_applicable,
+                        out_of_scope=row_out_of_scope,
                         override=result.get("classification"),
                     ),
                     "source_equation_ids": list(source_equation_ids),
@@ -1672,7 +1671,7 @@ class ePCSAFTState:
                 quantity,
                 "composition",
                 {"supported": backend != "unsupported", "backend": backend, "message": ""},
-                not_applicable=inactive_term,
+                out_of_scope=inactive_term,
                 source_equation_ids=(eqid,),
             )
 

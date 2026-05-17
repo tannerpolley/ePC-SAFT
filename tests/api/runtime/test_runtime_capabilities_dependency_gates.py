@@ -61,7 +61,6 @@ def test_derivative_coverage_matrix_has_required_contract_and_no_nonexact_deriva
         "derivative",
         "backend",
         "supported",
-        "not_applicable",
         "classification",
         "reason",
         "tests",
@@ -86,7 +85,8 @@ def test_derivative_coverage_matrix_reports_only_production_supported_routes() -
     assert {"regression", "electrolyte_property"}.issubset(row_families)
     for row in rows:
         assert row["supported"] is True
-        assert row["not_applicable"] is False
+        removed_column = "not" + "_applicable"
+        assert removed_column not in row
 
 
 def test_issue_68_required_coverage_gate_fields_are_reported_honestly() -> None:
