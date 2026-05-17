@@ -59,7 +59,8 @@ def test_reactive_phase_equilibrium_capabilities_state_reaction_scope() -> None:
     assert reactive["problem_class"] == "ReactivePhaseEquilibriumProblem"
     assert "same_phase_activity_reaction" in reactive["supported_reaction_scopes"]
     assert "phase_tagged_cross_phase_quotient" in reactive["supported_reaction_scopes"]
-    assert reactive["unsupported_reaction_scopes"] == []
+    removed_scope_field = "unsupported" + "_reaction" + "_scopes"
+    assert removed_scope_field not in reactive
     assert reactive["cross_phase_reaction_quotients"]["available"] is True
     assert reactive["cross_phase_reaction_quotients"]["status"] == "validated_for_pending_ipopt_route"
     assert reactive["cross_phase_reaction_quotients"]["api"] == "ReactionDefinition.phase_stoichiometry"

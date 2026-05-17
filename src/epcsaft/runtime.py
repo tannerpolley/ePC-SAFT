@@ -587,7 +587,6 @@ def capabilities() -> dict[str, object]:
                 "status": "route_pending",
                 "reaction_semantics": "reaction residuals support both per-phase same-stoichiometry reactions and phase-tagged cross-phase quotients",
                 "supported_reaction_scopes": ["same_phase_activity_reaction", "phase_tagged_cross_phase_quotient"],
-                "unsupported_reaction_scopes": [],
                 "cross_phase_reaction_quotients": {
                     "available": True,
                     "status": "validated_for_pending_ipopt_route",
