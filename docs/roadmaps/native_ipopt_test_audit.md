@@ -283,4 +283,7 @@ Still ongoing:
   gates.
 - Duplicate public-export and reactive-electrolyte fit-route absence assertions were pruned where broader runtime API
   coverage already protects the same surface.
+- Runtime, reactive-speciation, and staged reactive diagnostics no longer emit the negative
+  `unsupported_derivative_behavior` field; accepted derivative backends and auto policy now carry the contract, and the
+  text gate blocks the retired field in active source/tests/scripts.
 - New strict dependency and solver ownership gates that require Task 3 and native Ipopt implementation to pass.

@@ -470,7 +470,6 @@ def capabilities() -> dict[str, object]:
                     "cppad_implicit",
                 ],
                 "auto_policy": "analytic_or_cppad_or_implicit_else_raise",
-                "unsupported_derivative_behavior": "raise",
             },
             "neutral_tp_flash": {
                 "available": ipopt_route_available,

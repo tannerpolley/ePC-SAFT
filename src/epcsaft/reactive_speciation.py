@@ -622,7 +622,6 @@ def _normalize_reactive_derivative_diagnostics(diagnostics: dict[str, Any]) -> N
                 "analytic_implicit",
                 "cppad_implicit",
             ],
-            "unsupported_derivative_behavior": "raise",
         },
     )
     diagnostics["derivative_backend_by_block"].setdefault(

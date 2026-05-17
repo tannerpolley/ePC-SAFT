@@ -128,7 +128,6 @@ def solve_reactive_staged_equilibrium(
                 "analytic_implicit",
                 "cppad_implicit",
             ],
-            "unsupported_derivative_behavior": "raise",
         },
         "phase_kind": kind,
         "chemical_success": bool(chemical.success),
