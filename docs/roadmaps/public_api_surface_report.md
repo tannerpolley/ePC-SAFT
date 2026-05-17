@@ -71,10 +71,8 @@ package surface and the current facade/import-boundary behavior.
   `fit_liquid_electrolyte_parameters`, `fit_pure_neutral`, `fit_pure_ion`,
   `fit_binary_pair`, `load_regression_records`, `validate_regression_provenance`,
   `write_fit_result`.
-- Derivative/result helpers: `evaluate_pure_neutral_derivatives`,
-  `evaluate_reactive_electrolyte_bubble_residuals`.
-- Reactive electrolyte regression: `ReactiveElectrolyteRegressionResult`,
-  `ReactiveElectrolyteBatch`, `ReactiveElectrolyteBatchOptions`,
+- Derivative/result helpers: `evaluate_pure_neutral_derivatives`.
+- Reactive electrolyte regression: `ReactiveElectrolyteBatch`, `ReactiveElectrolyteBatchOptions`,
   `ReactiveElectrolyteBatchResult`, `ReactiveElectrolyteRow`,
   `ReactiveElectrolyteRowResult`, `ReactiveElectrolyteRegressionContext`,
   `ReactiveRegressionObjective`, `ReactiveRegressionObjectiveResult`,

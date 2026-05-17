@@ -799,6 +799,11 @@ Task 12 continuation note: reactive-regression runtime capability labels now des
 
 Task 10/12 continuation note: public `fit_reactive_electrolyte_parameters(...)` now validates the batch/context, fitted parameter map, bounds, iteration count, and tolerance, then raises `InputError` until native Ceres owns the reactive-electrolyte optimizer with exact derivatives. The supported public diagnostic path remains `evaluate_reactive_regression_objective(...)`; tests, docs, runtime capabilities, and the text gate no longer protect the retired residual-only fit status.
 
+Task 10/12 continuation note: the older `evaluate_reactive_electrolyte_bubble_residuals(...)` public wrapper and
+`ReactiveElectrolyteRegressionResult` payload were removed. Reactive electrolyte diagnostics now use the
+`ReactiveElectrolyteRegressionContext` / `evaluate_reactive_regression_objective(...)` surface instead of a large
+Python wrapper in `regression.py` that sequenced speciation and bubble calls directly.
+
 Task 6/12 continuation note: public `ImplicitSolveResult` no longer carries a generic success/status string. Exact implicit sensitivity payloads now carry the backend, residuals, residual Jacobians, sensitivity matrix, and diagnostics; unsupported or incomplete implicit derivative routes raise rather than returning status-bearing payloads.
 
 Task 12 continuation note: the unreferenced tracked LaTeX backup `docs/latex/equations_old.tex` was deleted. The current source of truth remains `docs/latex/equations.tex`, with generated equation navigation kept in `docs/equations.md` and `docs/equations_registry.yaml`.

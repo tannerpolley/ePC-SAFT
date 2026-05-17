@@ -566,49 +566,48 @@ Large matrices are exposed only through explicit derivative-evaluation helpers. 
 
 Generic native-record derivative helpers are exposed only after the target family returns exact analytical, CppAD, or implicit derivative matrices from the native Ceres route. Public generic fitting does not route through non-native optimizer loops.
 
-Reactive electrolyte residual evaluator
----------------------------------------
+Reactive electrolyte diagnostic objective
+-----------------------------------------
 
-Use ``evaluate_reactive_electrolyte_bubble_residuals(...)`` when a downstream
-project needs a fixed-shape objective for coupled native reactive speciation plus
-fixed-liquid electrolyte bubble pressure. The helper is deliberately not an
-optimizer and it does not own MEA-specific data, parameter masks, run folders, or
-artifact promotion. Downstream code supplies records, targets, species,
-balances, reactions, and a ``mixture_factory`` for the current parameters; the
-package returns a ``ReactiveElectrolyteRegressionResult`` with residuals,
-residual names, per-record diagnostics, and success/failure counts.
+Use ``ReactiveElectrolyteRegressionContext.from_batch(...)`` and
+``evaluate_reactive_regression_objective(...)`` when a downstream project needs a
+fixed-shape diagnostic objective for coupled reactive-electrolyte rows. The
+public fit route validates inputs and raises until native Ceres owns the
+optimizer and exact derivative path. Downstream code supplies records, targets,
+species, balances, reactions, and a ``mixture_factory`` for the current
+parameters; the package returns a ``ReactiveRegressionObjectiveResult`` with
+residuals, residual names, per-record diagnostics, and success/failure counts.
 
-The evaluator keeps the residual vector shape stable when a record fails by
-inserting bounded penalty residuals. It also forces result-mode reactive bubble
-solves internally, so one bad row can be reported without aborting the whole
-candidate. Successful row diagnostics include predicted partial pressures,
-liquid composition, vapor composition, named reaction residuals, and compact
-solver diagnostics so downstream code can write reports without rerunning the
-same expensive rows. Keep target magnitudes positive for log-scale pressure and
-composition residuals, and use continuation when neighboring rows are ordered by
-temperature, loading, or pressure:
+The diagnostic context keeps the residual vector shape stable when a record
+fails by inserting bounded penalty residuals. Successful row diagnostics include
+predicted partial pressures, liquid composition, vapor composition, named
+reaction residuals, and compact solver diagnostics so downstream code can write
+reports without rerunning the same expensive rows. Keep target magnitudes
+positive for log-scale pressure and composition residuals:
 
 .. code-block:: python
 
-   result = epcsaft.evaluate_reactive_electrolyte_bubble_residuals(
-       records,
+   batch = epcsaft.ReactiveElectrolyteBatch(
        species=["CO2", "H2O", "MEA", "MEAH+", "HCO3-"],
-       mixture_factory=make_mixture_for_candidate,
+       rows=rows,
        balances=balances,
        reactions=reactions,
        vapor_species=["CO2", "H2O"],
-       pressure_species=["CO2"],
-       speciation_species=["CO2", "MEAH+", "HCO3-"],
-       reaction_names=["carbamate", "bicarbonate"],
-       continuation="auto",
+       mixture_factory=make_mixture_for_candidate,
+   )
+   result = epcsaft.evaluate_reactive_regression_objective(
+       batch,
+       objective=epcsaft.ReactiveRegressionObjective(
+           residual_weights={"partial_pressure": 1.0, "speciation": 1.0},
+           failure_penalty=8.0,
+       ),
    )
 
-Pass ``result.residuals`` to a downstream-owned optimizer. Use
-``result.record_results`` and ``result.diagnostics`` to decide whether a
-candidate failed numerically, hit phase-equilibrium limits, or simply predicts
-poorly. Do not treat this helper as a full constrained Gibbs/NLP solve; Ipopt
-equilibrium routes are explicit native constrained-NLP routes and are not used
-automatically.
+Use ``result.residuals``, ``result.record_results``, and
+``result.diagnostics`` as diagnostic evidence until the native Ceres fit route
+owns this optimization surface. Do not treat this helper as a full constrained
+Gibbs/NLP solve; Ipopt equilibrium routes are explicit native constrained-NLP
+routes and are not used automatically.
 
 Derivative availability
 -----------------------

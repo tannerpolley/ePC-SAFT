@@ -178,11 +178,6 @@ native-backed helpers remain available for code that already targets them.
    :undoc-members:
    :no-index:
 
-.. autoclass:: epcsaft.ReactiveElectrolyteRegressionResult
-   :members:
-   :undoc-members:
-   :no-index:
-
 .. autofunction:: epcsaft.load_regression_records
 
 .. autofunction:: epcsaft.validate_regression_provenance
@@ -199,7 +194,39 @@ native-backed helpers remain available for code that already targets them.
 
 .. autofunction:: epcsaft.fit_binary_pair
 
-.. autofunction:: epcsaft.evaluate_reactive_electrolyte_bubble_residuals
+.. autoclass:: epcsaft.ReactiveElectrolyteBatch
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: epcsaft.ReactiveElectrolyteBatchOptions
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: epcsaft.ReactiveElectrolyteRow
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: epcsaft.ReactiveElectrolyteRegressionContext
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: epcsaft.ReactiveRegressionObjective
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: epcsaft.ReactiveRegressionObjectiveResult
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autofunction:: epcsaft.evaluate_reactive_regression_objective
+
+.. autofunction:: epcsaft.fit_reactive_electrolyte_parameters
 
 .. autofunction:: epcsaft.write_fit_result
 

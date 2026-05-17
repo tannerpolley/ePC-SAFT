@@ -111,6 +111,9 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - The accepted Ceres regression surfaces were checked against the autodiff gate. Current production residuals depend on
   implicit density/EOS derivatives or Born/activity derivative helpers and remain `cppad_implicit`; no direct-template
   production Ceres residual is active yet. Native Ceres option setup now uses one shared helper.
+- The older reactive-electrolyte bubble residual wrapper and its public result payload were removed. The retained
+  diagnostic path is the native-first `ReactiveElectrolyteRegressionContext` plus
+  `evaluate_reactive_regression_objective(...)` surface.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
 

@@ -14,6 +14,7 @@ def _tiny_base_parameters() -> dict[str, np.ndarray]:
         "e": np.asarray([200.0, 240.0], dtype=float),
     }
 
+
 def _native_mixed_pressure_speciation_batch() -> tuple[epcsaft.ReactiveElectrolyteBatch, float]:
     temperature = 298.15
     water_sigma = 2.7927 + 10.11 * np.exp(-0.01775 * temperature) - 1.417 * np.exp(-0.01146 * temperature)
@@ -126,52 +127,3 @@ def test_reactive_regression_reporting_helpers_write_outputs(monkeypatch, tmp_pa
     assert residuals_csv.exists()
     assert params_csv.exists()
     assert "objective" in summary.read_text(encoding="utf-8")
-
-def test_reactive_bubble_residual_wrapper_keeps_fixed_shape(monkeypatch) -> None:
-    def fake_solve(**_kwargs):
-        return epcsaft.ReactiveElectrolyteBubbleResult(
-            success=True,
-            message="converged",
-            x_liq={"A": 0.2, "B": 0.8},
-            activity_coefficients={"A": 1.0, "B": 1.0},
-            mass_balance_residuals={"total": 0.0},
-            charge_residual=0.0,
-            reaction_residuals=[],
-            named_reaction_residuals={},
-            P_total=100000.0,
-            y_vap={"A": 0.3, "B": 0.7},
-            partial_pressures={"A": 30000.0},
-            fugacity_residual={"A": 0.0},
-            fugacity_residual_norm=1.0e-9,
-            state_failure_count=0,
-            penalty_residuals=[],
-            diagnostics={},
-        )
-
-    monkeypatch.setattr("epcsaft.reactive_electrolyte.solve_reactive_electrolyte_bubble", fake_solve)
-
-    result = epcsaft.evaluate_reactive_electrolyte_bubble_residuals(
-        [
-            {
-                "row_id": "row1",
-                "T": 298.15,
-                "P_seed": 101325.0,
-                "totals": {"A": 0.2, "B": 0.8},
-                "initial_x": [0.2, 0.8],
-                "target_partial_pressures": {"A": 30000.0},
-                "target_x": {"A": 0.2},
-            }
-        ],
-        species=["A", "B"],
-        mixture_factory=lambda x, T, P: None,
-        balances={"a_total": {"A": 1.0}, "b_total": {"B": 1.0}},
-        reactions=[],
-        vapor_species=["A", "B"],
-        pressure_species=["A"],
-        speciation_species=["A"],
-    )
-
-    assert result.success_count == 1
-    assert result.failure_count == 0
-    assert result.residuals.shape == (2,)
-    assert result.residual_names == ("row1.partial_pressure.A", "row1.x.A")
