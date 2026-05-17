@@ -11,6 +11,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import NamedTuple
 
+try:
+    from scripts.dev.native_runtime_env import apply_native_runtime_env
+except ModuleNotFoundError:  # pragma: no cover - direct script execution
+    from native_runtime_env import apply_native_runtime_env
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 BUILD_DIR = REPO_ROOT / "build" / "dev"
 PACKAGE_DIR = REPO_ROOT / "src" / "epcsaft"
@@ -107,18 +112,6 @@ def _env() -> dict[str, str]:
     return env
 
 
-def _prepend_env_path(env: dict[str, str], path: Path) -> None:
-    current = env.get("PATH", "")
-    entry = str(path.resolve())
-    env["PATH"] = entry + (os.pathsep + current if current else "")
-
-
-def _prepend_env_list(env: dict[str, str], name: str, path: Path) -> None:
-    current = env.get(name, "")
-    entry = str(path.resolve())
-    env[name] = entry + (os.pathsep + current if current else "")
-
-
 def _resolve_optional_dir(raw_path: Path | str | None, *, label: str) -> Path | None:
     if raw_path is None:
         return None
@@ -126,13 +119,6 @@ def _resolve_optional_dir(raw_path: Path | str | None, *, label: str) -> Path | 
     if not path.is_dir():
         raise FileNotFoundError(f"{label} does not exist or is not a directory: {path}")
     return path
-
-
-def _ipopt_root_runtime_bin(ipopt_root: Path | None) -> Path | None:
-    if ipopt_root is None:
-        return None
-    bin_dir = ipopt_root / "bin"
-    return bin_dir if bin_dir.is_dir() else None
 
 
 def _ipopt_root_prefers_msvc(ipopt_root: Path | None) -> bool:
@@ -332,6 +318,11 @@ def _status_lines(*, stale_lock_seconds: int = STALE_LOCK_SECONDS) -> list[str]:
     system_ipopt = _cmake_cache_value("EPCSAFT_USE_SYSTEM_IPOPT") or "<unconfigured>"
     ipopt_dir = _cmake_cache_value("Ipopt_DIR") or "<unconfigured>"
     ipopt_root = _cmake_cache_value("EPCSAFT_IPOPT_ROOT") or "<unconfigured>"
+    runtime_env = apply_native_runtime_env(
+        {},
+        cache_path=BUILD_DIR / "CMakeCache.txt",
+        ipopt_enabled=ipopt.upper() == "ON",
+    )
     artifacts = _native_artifacts()
     lock = BUILD_DIR / ".ninja_lock"
     lock_present = lock.exists()
@@ -353,6 +344,8 @@ def _status_lines(*, stale_lock_seconds: int = STALE_LOCK_SECONDS) -> list[str]:
         f"system_ipopt_configured: {system_ipopt}",
         f"ipopt_dir: {ipopt_dir}",
         f"ipopt_root: {ipopt_root}",
+        f"ipopt_runtime_dll_dir: {runtime_env.ipopt_runtime_dir if runtime_env.ipopt_runtime_dir else '<none>'}",
+        f"ipopt_runtime_env_applied: {'true' if runtime_env.applied else 'false'}",
         f"profile_hint: {_profile_hint(ceres=ceres, cppad=cppad, ipopt=ipopt)}",
         f"native_core: {'present' if artifacts else 'missing'}",
         "native_core_paths: " + (", ".join(str(path) for path in artifacts) if artifacts else "<none>"),
@@ -670,10 +663,7 @@ def main() -> int:
         enable_ipopt=settings.enable_ipopt,
         ipopt_root=ipopt_root,
     )
-    ipopt_bin = _ipopt_root_runtime_bin(ipopt_root)
-    if ipopt_bin is not None:
-        _prepend_env_path(env, ipopt_bin)
-        _prepend_env_list(env, "EPCSAFT_RUNTIME_DLL_DIRS", ipopt_bin)
+    runtime_env = apply_native_runtime_env(env, ipopt_root=ipopt_root, ipopt_enabled=settings.enable_ipopt)
     print(
         "Build profile: "
         f"{args.profile} ({BUILD_PROFILES[args.profile].description}); "
@@ -683,6 +673,7 @@ def main() -> int:
         f"Ipopt={'ON' if settings.enable_ipopt else 'OFF'}, "
         f"IpoptSource={('system' if use_system_ipopt else 'disabled') if settings.enable_ipopt else 'disabled'}, "
         f"IpoptRoot={ipopt_root if ipopt_root is not None else '<none>'}, "
+        f"IpoptRuntimeDllDir={runtime_env.ipopt_runtime_dir if runtime_env.ipopt_runtime_dir else '<none>'}, "
         f"Toolchain={args.toolchain}, "
         f"BuildType={args.build_type}, "
         f"parallel={settings.parallel or '<generator default>'}",

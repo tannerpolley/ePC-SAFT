@@ -1,0 +1,36 @@
+{
+  "status": "blocked",
+  "lane": "ascani_2023_reactive_phase_equilibrium",
+  "source_records": [
+    "docs/papers/md/Ascani - 2023 - Simultaneous Predictions of Chemical and Phase Equilibria in Systems with an Esterif.md"
+  ],
+  "source_markers_present": [
+    "Table 1. PC-SAFT pure-component parameters",
+    "Table 2. Binary interaction parameters",
+    "Table 4. Obtained"
+  ],
+  "source_facts": {
+    "system_1": {
+      "reaction": "acetic acid + 1-pentanol <=> pentyl acetate + water",
+      "temperature_K": 318.15,
+      "pressure_bar": 1.0,
+      "K_a": 43.99
+    },
+    "system_2": {
+      "reaction": "acetic acid + 1-hexanol <=> hexyl acetate + water",
+      "temperature_K": 353.6,
+      "pressure_bar": 1.0,
+      "K_a": 22.92
+    }
+  },
+  "blocker": {
+    "kind": "missing_source_target_rows",
+    "message": "The local paper markdown provides model parameters and equilibrium constants, but this repo does not yet contain machine-readable source feed and phase-composition target rows for an Ascani 2023 reactive LLE gate."
+  },
+  "not_substituted": [
+    "toy reactive LLE fixtures",
+    "route construction tests",
+    "monkeypatched native payloads",
+    "non-literature random benchmarks"
+  ]
+}

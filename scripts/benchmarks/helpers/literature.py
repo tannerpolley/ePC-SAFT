@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import time
 from collections import Counter, OrderedDict
@@ -8,6 +9,10 @@ from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
+
+from scripts.dev.native_runtime_env import apply_native_runtime_env
+
+apply_native_runtime_env(os.environ)
 
 from epcsaft.runtime import __git_commit__, __version__
 
@@ -68,9 +73,12 @@ def _tail_text(text: str, *, max_lines: int = 12) -> str:
 
 def _run_case_command(command: str) -> dict[str, Any]:
     started = time.perf_counter()
+    env = os.environ.copy()
+    apply_native_runtime_env(env)
     completed = subprocess.run(
         ["cmd.exe", "/c", command],
         cwd=REPO_ROOT,
+        env=env,
         capture_output=True,
         text=True,
         check=False,
@@ -325,10 +333,10 @@ LITERATURE_CASES: OrderedDict[str, BenchmarkCase] = OrderedDict(
                 status=BLOCKED,
                 package_surface=(
                     "data/reference/multiphase/ascani_case2_model_comparison.md",
-                    "docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md",
+                    "analyses/paper_validation/native/2022_ascani/scripts/run_all.py",
                 ),
-                validation_paths=(),
-                notes="The old issue-specific Ceres equilibrium plan was superseded by the native Ipopt gate plan. This case remains blocked until the Ipopt electrolyte LLE route and release-gate fixture are executable.",
+                validation_paths=("analyses/paper_validation/native/2022_ascani/results/electrolyte_lle/summary.json",),
+                notes="Blocked honestly: the source-backed public electrolyte LLE solve reaches native Ipopt but is rejected with route_status=solver_rejected and solver_status=ipopt_status_16.",
                 blocked_by_issue=119,
             ),
         ),
@@ -342,14 +350,19 @@ LITERATURE_CASES: OrderedDict[str, BenchmarkCase] = OrderedDict(
                     "route": "coupled reactive phase-equilibrium production solver benchmark",
                     "owner_issue": 117,
                 },
-                input_records=("docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md",),
+                input_records=(
+                    "docs/papers/md/Ascani - 2023 - Simultaneous Predictions of Chemical and Phase Equilibria in Systems with an Esterif.md",
+                    "analyses/paper_validation/native/2023_ascani/data/input/source_assets.md",
+                ),
                 expected=None,
                 tolerances=None,
                 command="uv run python scripts/benchmarks/benchmark_literature_suite.py --case ascani_2023_reactive_phase_equilibrium",
                 status=BLOCKED,
-                package_surface=("docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md",),
-                validation_paths=(),
-                notes="The old issue-specific Ceres equilibrium plan was superseded by the native Ipopt gate plan. This case remains blocked until coupled reactive phase equilibrium and its release-gate fixture are executable.",
+                package_surface=("analyses/paper_validation/native/2023_ascani/scripts/run_all.py",),
+                validation_paths=(
+                    "analyses/paper_validation/native/2023_ascani/results/reactive_phase_equilibrium/summary.json",
+                ),
+                notes="Blocked honestly: local paper assets expose parameters and K_a values, but no machine-readable source feed and reactive LLE target rows are present for a literature gate.",
                 blocked_by_issue=119,
             ),
         ),
@@ -390,23 +403,40 @@ LITERATURE_CASES: OrderedDict[str, BenchmarkCase] = OrderedDict(
             BenchmarkCase(
                 id="rezaee_lithium_extraction_inputs",
                 title="Rezaee lithium extraction thermodynamic model inputs",
-                source="Downstream Lithium_Extraction Rezaee DES/TOPO Li/Na bridge workflows",
+                source="Rezaee 2025/2026 in-worktree DES/TOPO Li/Na source-backed diagnostic lane",
                 model_setup={
-                    "route": "real downstream workflow rather than a package-local literature regression",
-                    "downstream_repo": "C:/Users/Tanner/Documents/git/Lithium_Extraction",
+                    "route": "package-local application diagnostic validation",
+                    "analysis": "analyses/paper_validation/application/2026_rezaee",
                 },
                 input_records=(
-                    "C:/Users/Tanner/Documents/git/Lithium_Extraction/docs/analysis_workflow_inventory.md",
-                    "C:/Users/Tanner/Documents/git/Lithium_Extraction/scripts/check_epcsaft_integration.py",
+                    "analyses/paper_validation/application/2026_rezaee/data/input/rezaee_2025_extraction_equilibrium_mole_fractions.csv",
+                    "analyses/paper_validation/application/2026_rezaee/data/input/rezaee_2026_reaction_constants.csv",
+                    "analyses/paper_validation/application/2026_rezaee/data/input/rezaee_2026_organic_pcsaft_parameters.csv",
+                    "analyses/paper_validation/application/2026_rezaee/data/input/rezaee_2026_organic_binary_interactions.csv",
                 ),
-                expected=None,
-                tolerances=None,
-                command="uv run python analyses/rezaee_2026_pcsaft_epcsaft/scripts/rezaee_reactive_equilibrium_replay.py",
-                status=BLOCKED,
-                package_surface=("docs/roadmaps/downstream_integration_report.md",),
-                validation_paths=(),
-                notes="Current proof lives downstream, not in package-owned fixtures. Issue #119 must run a real downstream command and report the consumed generic package APIs.",
-                blocked_by_issue=119,
+                expected={
+                    "row_count": 26,
+                    "direct_published_constant_closure_supported": False,
+                    "source_text_equilibrium_data_points": 36,
+                    "source_backed_si_equilibrium_rows": 26,
+                },
+                tolerances={
+                    "max_abs_charge_residual": 1.0e-6,
+                    "max_element_balance_norm": 1.0e-10,
+                    "direct_li_extraction_aard_pct_min": 90.0,
+                    "source_supported_combined_median_abs_ln_residual_min": 2.0,
+                },
+                command="uv run python analyses/paper_validation/application/2026_rezaee/scripts/run_all.py",
+                status=EXECUTABLE,
+                package_surface=(
+                    "analyses/paper_validation/application/2026_rezaee/scripts/run_all.py",
+                    "src/epcsaft/runtime.py",
+                ),
+                validation_paths=(
+                    "tests/workflows/paper_validation/test_rezaee_2026_paper_validation.py",
+                    "analyses/paper_validation/application/2026_rezaee/results/reaction_equilibrium/summary.json",
+                ),
+                notes="Executable package-local diagnostic lane. Passing means the source/reference-state gap is reproduced honestly; it does not claim direct published-constant closure.",
             ),
         ),
         (

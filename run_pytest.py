@@ -15,7 +15,7 @@ GENERIC_TEST_TARGETS = (
     "tests/regression/core/test_hydrocarbon.py::test_methane_reference_parameters_keep_native_objective_pinned",
     "tests/equilibrium/core/test_vle.py::test_tp_flash_builds_one_native_route_request_before_ipopt_gate",
     "tests/equilibrium/core/test_lle.py::test_lle_flash_builds_one_native_route_request_before_ipopt_gate",
-    "tests/equilibrium/core/test_stability.py::test_stability_requires_native_ipopt_route_after_validation",
+    "tests/equilibrium/core/test_stability.py::test_stability_uses_native_ipopt_route_after_validation",
     (
         "tests/equilibrium/electrolyte/test_electrolyte_lle_smokes.py::"
         "test_electrolyte_lle_builds_native_route_before_ipopt_gate"
@@ -51,7 +51,7 @@ EQUILIBRIUM_CONFIDENCE_TEST_TARGETS = (
 EQUILIBRIUM_API_TEST_TARGETS = (
     "tests/equilibrium/core/test_vle.py::test_tp_flash_builds_one_native_route_request_before_ipopt_gate",
     "tests/equilibrium/core/test_lle.py::test_lle_flash_builds_one_native_route_request_before_ipopt_gate",
-    "tests/equilibrium/core/test_stability.py::test_stability_requires_native_ipopt_route_after_validation",
+    "tests/equilibrium/core/test_stability.py::test_stability_uses_native_ipopt_route_after_validation",
     (
         "tests/equilibrium/electrolyte/test_electrolyte_lle_smokes.py::"
         "test_electrolyte_lle_builds_native_route_before_ipopt_gate"
@@ -152,6 +152,12 @@ def _pytest_env(pytest_temp: Path, profile: bool = False) -> dict[str, str]:
     env["TMP"] = str(pytest_temp.resolve())
     env["TEMP"] = str(pytest_temp.resolve())
     env["TMPDIR"] = str(pytest_temp.resolve())
+    try:
+        from scripts.dev.native_runtime_env import apply_native_runtime_env
+    except ModuleNotFoundError:
+        apply_native_runtime_env = None
+    if apply_native_runtime_env is not None:
+        apply_native_runtime_env(env)
     if profile:
         env["EPCSAFT_RUN_PERF"] = "1"
         env["ePCSAFT_RUN_PERF"] = "1"

@@ -22,10 +22,7 @@ def _run_script(name: str) -> None:
 
 
 def test_rezaee_source_backed_paper_validation_generates_pre_surrogate_rows() -> None:
-    _run_script("rezaee_2025_target_summary.py")
-    _run_script("rezaee_reactive_equilibrium_replay.py")
-    _run_script("rezaee_section32_basis_inference.py")
-    _run_script("rezaee_section32_equilibrium_replication.py")
+    _run_script("run_all.py")
 
     target_summary = ANALYSIS / "data" / "processed" / "rezaee_2025_extraction_target_summary.csv"
     replay_summary = ANALYSIS / "results" / "reaction_equilibrium" / "rezaee_2026_reactive_equilibrium_replay_summary.json"
@@ -34,9 +31,11 @@ def test_rezaee_source_backed_paper_validation_generates_pre_surrogate_rows() ->
     section32_summary = (
         ANALYSIS / "results" / "reaction_equilibrium" / "rezaee_2026_section32_equilibrium_replication_summary.json"
     )
+    lane_summary = ANALYSIS / "results" / "reaction_equilibrium" / "summary.json"
 
     assert target_summary.exists()
     assert section32_rows.exists()
+    assert lane_summary.exists()
 
     replay_payload = json.loads(replay_summary.read_text(encoding="utf-8"))
     package_cross_phase = replay_payload["package_phase_tagged_cross_phase"]
@@ -54,3 +53,22 @@ def test_rezaee_source_backed_paper_validation_generates_pre_surrogate_rows() ->
     assert section32_payload["row_count"] == 26
     assert section32_payload["status"] == "section32_equation_replication_ran"
     assert section32_payload["direct_held2014_table9_pH_stoich"]["converged_rows"] == 26
+
+    lane_payload = json.loads(lane_summary.read_text(encoding="utf-8"))
+    assert lane_payload["status"] == "source_backed_diagnostic_complete"
+    assert lane_payload["row_count"] == 26
+    assert lane_payload["source_text_mismatch"] == {
+        "available_si_equilibrium_rows": 26,
+        "paper_text_equilibrium_data_points": 36,
+        "conclusion": (
+            "Use the 26 source-backed SI equilibrium rows as the benchmark basis until a 36-row "
+            "source table is supplied."
+        ),
+    }
+    assert lane_payload["direct_closure"]["supported"] is False
+    assert lane_payload["direct_closure"]["converged_rows"] == 26
+    assert lane_payload["direct_closure"]["li_extraction_aard_pct"] >= 90.0
+    assert lane_payload["residual_metrics"]["max_abs_charge_residual"] <= 1.0e-6
+    assert lane_payload["residual_metrics"]["max_element_balance_norm"] <= 1.0e-10
+    assert lane_payload["convention_scan"]["acceptance"]["closed_by_simple_convention_scan"] is False
+    assert "Direct published-constant closure is not supported" in lane_payload["conclusion"]

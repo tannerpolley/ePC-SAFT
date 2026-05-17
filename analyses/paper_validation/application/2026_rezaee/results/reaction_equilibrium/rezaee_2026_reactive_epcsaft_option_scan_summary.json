@@ -14,14 +14,14 @@
     "dielc_rule": 4,
     "dielc_diff_mode": 0,
     "bjeruum_treatment": false,
-    "combined_median_abs_ln_residual": 33.99079517617261,
-    "li_median_ln_residual": 31.313657854605555,
-    "na_median_ln_residual": 36.66793249773967,
-    "li_median_abs_ln_residual": 31.313657854605555,
-    "na_median_abs_ln_residual": 36.66793249773967,
-    "li_median_gamma": 1.540106950933074,
-    "na_median_gamma": 1.3486012989964156,
-    "oh_median_gamma_for_li_rows": 1.2711231405255388
+    "combined_median_abs_ln_residual": 33.99079517616702,
+    "li_median_ln_residual": 31.313657854593163,
+    "na_median_ln_residual": 36.66793249774088,
+    "li_median_abs_ln_residual": 31.313657854593163,
+    "na_median_abs_ln_residual": 36.66793249774088,
+    "li_median_gamma": 1.5401069509507443,
+    "na_median_gamma": 1.3486012990118874,
+    "oh_median_gamma_for_li_rows": 1.271123140541056
   },
   "baseline_option": {
     "option_id": "package_struct_default_no_explicit_elec_model",
@@ -35,14 +35,14 @@
     "dielc_rule": 1,
     "dielc_diff_mode": 0,
     "bjeruum_treatment": false,
-    "combined_median_abs_ln_residual": 35.24471894044258,
-    "li_median_ln_residual": 32.516847093178185,
-    "na_median_ln_residual": 37.97259078770697,
-    "li_median_abs_ln_residual": 32.516847093178185,
-    "na_median_abs_ln_residual": 37.97259078770697,
-    "li_median_gamma": 0.7987714301157618,
-    "na_median_gamma": 0.697210289563513,
-    "oh_median_gamma_for_li_rows": 0.6734694317508567
+    "combined_median_abs_ln_residual": 35.244718940438226,
+    "li_median_ln_residual": 32.516847093158646,
+    "na_median_ln_residual": 37.972590787717806,
+    "li_median_abs_ln_residual": 32.516847093158646,
+    "na_median_abs_ln_residual": 37.972590787717806,
+    "li_median_gamma": 0.7987714301311696,
+    "na_median_gamma": 0.6972102895617835,
+    "oh_median_gamma_for_li_rows": 0.6734694317638532
   },
   "accepted": false,
   "parameter_audit": {
@@ -3781,7 +3781,7 @@
         "bjeruum_treatment": true
       },
       "error_type": "ValueError",
-      "message": "Bjerrum treatment is reserved and not implemented (DH_model=2)."
+      "message": "Bjerrum treatment is reserved; DH_model=2 has no active public route."
     }
   ]
 }

@@ -1,0 +1,76 @@
+{
+  "status": "blocked",
+  "lane": "ascani_2022_distributed_ion_lle",
+  "source_records": [
+    "data/reference/multiphase/ascani_case2_model_comparison.csv",
+    "analyses/paper_validation/native/2022_ascani/data/processed/source_expected_phase_compositions.csv"
+  ],
+  "feed": {
+    "species": [
+      "H2O",
+      "Butanol",
+      "Na+",
+      "K+",
+      "Cl-"
+    ],
+    "mole_fractions": [
+      0.940373242284748,
+      0.04879624542603625,
+      0.0019339313461782701,
+      0.003481324798429627,
+      0.005415256144607897
+    ],
+    "temperature_K": 298.15,
+    "pressure_Pa": 100000.0
+  },
+  "expected": {
+    "accepted": true,
+    "solver_backend": "ipopt",
+    "material_balance_abs": 1e-08,
+    "charge_balance_abs": 1e-08
+  },
+  "solve": {
+    "accepted": false,
+    "runtime_ipopt": {
+      "backend": "ipopt",
+      "status": "enabled_available",
+      "required": false,
+      "compiled": true,
+      "available": true,
+      "adapter_available": true,
+      "adapter_kind": "native_tnlp_adapter",
+      "adapter_source_available": true,
+      "requires_exact_gradient": true,
+      "requires_exact_jacobian": true
+    },
+    "exception_type": "SolutionError",
+    "exception_message": "('Native electrolyte LLE route was rejected.', {'accepted': False, 'rejection_reason': '', 'derivative_backend': '', 'phase_count': 0, 'species_count': 0, 'material_balance_norm': 0.0, 'pressure_consistency_norm': 0.0, 'chemical_potential_consistency_norm': 0.0, 'ln_fugacity_consistency_norm': 0.0, 'charge_balance_norm': 0.0, 'fixed_composition_norm': 0.0, 'phase_amount_total_norm': 0.0, 'phase_distance': 0.0, 'objective': 0.0, 'constraints': [], 'phase_amount_totals': [], 'phase_volumes': [], 'phase_compositions': [], 'route_status': 'solver_rejected', 'solver_status': 'ipopt_status_16'})",
+    "diagnostics": {
+      "accepted": false,
+      "rejection_reason": "",
+      "derivative_backend": "",
+      "phase_count": 0,
+      "species_count": 0,
+      "material_balance_norm": 0.0,
+      "pressure_consistency_norm": 0.0,
+      "chemical_potential_consistency_norm": 0.0,
+      "ln_fugacity_consistency_norm": 0.0,
+      "charge_balance_norm": 0.0,
+      "fixed_composition_norm": 0.0,
+      "phase_amount_total_norm": 0.0,
+      "phase_distance": 0.0,
+      "objective": 0.0,
+      "constraints": [],
+      "phase_amount_totals": [],
+      "phase_volumes": [],
+      "phase_compositions": [],
+      "route_status": "solver_rejected",
+      "solver_status": "ipopt_status_16"
+    },
+    "blocker": {
+      "kind": "native_ipopt_solver_rejected",
+      "route_status": "solver_rejected",
+      "solver_status": "ipopt_status_16"
+    }
+  }
+}

@@ -14,10 +14,10 @@ The 2026 supporting information supplies the reaction constants, Gibbs-energy ba
 - DES molecular-weight basis: `0.20748` kg/mol.
 - MW note: Average formula-unit molecular weight for TBAC + 2 decanoic acid divided by 3. This is a diagnostic pseudo-component basis for the density fit, not a general DES molecular definition.
 - Fit success: `True`.
-- Fitted nonassociating `m`: `5.2675839`.
-- Fitted nonassociating `sigma`: `4.0717116` A.
-- Fitted nonassociating `epsilon/k`: `440.6082` K.
-- Density metric: `0.0015525521318773172`.
+- Fitted nonassociating `m`: `5.2809085`.
+- Fitted nonassociating `sigma`: `4.0680676` A.
+- Fitted nonassociating `epsilon/k`: `439.85497` K.
+- Density metric: `0.001542662663341926`.
 
 ## Equilibrium Smoke
 

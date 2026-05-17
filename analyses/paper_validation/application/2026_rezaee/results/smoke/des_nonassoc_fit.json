@@ -9,33 +9,33 @@
   "fit_result": {
     "active_bounds": [],
     "backend": "ceres",
-    "cost": 1.2052090610984014e-06,
+    "cost": 1.1899040464346023e-06,
     "derivative_backend": "cppad_implicit",
     "final_parameters": {},
     "fitted_values": {
-      "e": 440.6082022662183,
-      "m": 5.267583918647538,
-      "s": 4.071711615465913
+      "e": 439.85496897544385,
+      "m": 5.280908549827019,
+      "s": 4.0680676185988425
     },
-    "gradient_norm": 0.0003006653739647088,
+    "gradient_norm": 0.00024227906286473862,
     "initial_parameters": {},
     "jacobian_available": true,
     "jacobian_backend": "cppad_implicit",
-    "message": "Ceres Solver Report: Iterations: 101, Initial cost: 3.609192e-04, Final cost: 1.205209e-06, Termination: NO_CONVERGENCE",
+    "message": "Ceres Solver Report: Iterations: 101, Initial cost: 3.609192e-04, Final cost: 1.189904e-06, Termination: NO_CONVERGENCE",
     "metrics_by_term": {
-      "density": 0.0015525521318773172,
+      "density": 0.001542662663341926,
       "pure_vle_fugacity_balance": 0.0
     },
     "n_jacobian_evaluations": 241,
     "n_residual_evaluations": 100,
     "nfev": 341,
-    "objective_final": 1.2052090610984014e-06,
-    "objective_initial": 0.00036091920809500696,
+    "objective_final": 1.1899040464346023e-06,
+    "objective_initial": 0.00036091920809500706,
     "optimizer_backend": "ceres",
     "parameter_map": {
-      "e": 440.6082022662183,
-      "m": 5.267583918647538,
-      "s": 4.071711615465913
+      "e": 439.85496897544385,
+      "m": 5.280908549827019,
+      "s": 4.0680676185988425
     },
     "parameter_movement": {},
     "problem": {
@@ -291,15 +291,15 @@
     "provenance_report": {},
     "python_objective_used": false,
     "rendered_values": {
-      "e": 440.6082022662183,
-      "m": 5.267583918647538,
-      "s": 4.071711615465913
+      "e": 439.85496897544385,
+      "m": 5.280908549827019,
+      "s": 4.0680676185988425
     },
     "residual_block_norms": {},
-    "residual_norm": 0.0015525521318773172,
+    "residual_norm": 0.001542662663341926,
     "row_diagnostics": [
       {
-        "metric": 0.0015525521318773172,
+        "metric": 0.001542662663341926,
         "row_family": "density"
       },
       {
@@ -309,7 +309,7 @@
     ],
     "source_summaries": {},
     "status": 1,
-    "step_norm": 135.6420421539311,
+    "step_norm": 134.88891114078973,
     "success": true,
     "target_family_summaries": {}
   },

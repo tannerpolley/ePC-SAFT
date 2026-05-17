@@ -17,10 +17,10 @@
 - Rows replayed: `26`.
 - Status: `source_mismatch`.
 - Paper lnK Li/Na: `-19.52985865272526`, `-27.493348310803476`.
-- Median lnQ at experimental rows Li/Na: `12.986988440452834`, `10.479242476903497`.
-- Median lnQ-lnK Li/Na: `32.516847093178086`, `37.97259078770698`.
+- Median lnQ at experimental rows Li/Na: `12.98698844043317`, `10.47924247691456`.
+- Median lnQ-lnK Li/Na: `32.51684709315843`, `37.97259078771803`.
 - Package phase-tagged cross-phase rows evaluated: `26`.
-- Package native median cross-phase residual Li/Na: `408.03479797400666`, `396.5589577644374`.
+- Package native median cross-phase residual Li/Na: `408.0347979740192`, `396.55895776445834`.
 - Median absolute RLi/RNa error from paper K replay: `0.004442850658281856`, `0.020811015739249972`.
 - Mean relative RLi/RNa error from paper K replay: `0.9999999980654698`, `0.9999999980656575`.
 

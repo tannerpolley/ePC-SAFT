@@ -19,7 +19,7 @@
   },
   "source_supported_variant": {
     "variant": "paper_eq14_with_activity_vs_paper_k",
-    "combined_median_abs_ln_residual": 35.24471894044258,
+    "combined_median_abs_ln_residual": 35.244718940438226,
     "source_supported": true,
     "description": "Rezaee Eq. 14/15 exactly as implemented from the paper text, with ePC-SAFT/PC-SAFT activity coefficients."
   },

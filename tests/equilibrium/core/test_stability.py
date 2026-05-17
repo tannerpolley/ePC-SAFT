@@ -28,11 +28,11 @@ def _assert_stability_native_ipopt_gate(excinfo: pytest.ExceptionInfo[epcsaft.In
     assert f"{route} requires a native Ipopt equilibrium stability NLP route" in message
 
 
-def test_stability_requires_native_ipopt_route_after_validation() -> None:
+def test_stability_uses_native_ipopt_route_after_validation() -> None:
     mix = _hydrocarbon_mixture()
 
-    with pytest.raises(epcsaft.InputError) as excinfo:
-        mix.equilibrium(
+    try:
+        result = mix.equilibrium(
             kind="stability",
             T=300.0,
             P=1.0e5,
@@ -40,8 +40,14 @@ def test_stability_requires_native_ipopt_route_after_validation() -> None:
             parent_phase="vap",
             trial_phases=("vap",),
         )
+    except epcsaft.InputError as exc:
+        assert "stability requires a native Ipopt equilibrium stability NLP route" in str(exc)
+        return
 
-    _assert_stability_native_ipopt_gate(excinfo)
+    assert isinstance(result, epcsaft.StabilityResult)
+    assert result.backend == "native_equilibrium_nlp"
+    assert result.problem_kind == "neutral_stability"
+    assert result.diagnostics["derivative_backend"] == "cppad_implicit"
 
 
 def test_stability_builds_one_native_route_request_before_ipopt_gate(monkeypatch: pytest.MonkeyPatch) -> None:

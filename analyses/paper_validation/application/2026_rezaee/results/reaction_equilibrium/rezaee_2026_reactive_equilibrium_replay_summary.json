@@ -9,30 +9,30 @@
     "Na": -27.493348310803476
   },
   "median_lnQ_at_experimental_rows": {
-    "Li": 12.986988440452834,
-    "Na": 10.479242476903497
+    "Li": 12.98698844043317,
+    "Na": 10.47924247691456
   },
   "mean_lnQ_at_experimental_rows": {
-    "Li": 13.177976244416916,
-    "Na": 10.699383753939733
+    "Li": 13.177976244425242,
+    "Na": 10.699383753961882
   },
   "median_lnQ_minus_lnK": {
-    "Li": 32.516847093178086,
-    "Na": 37.97259078770698
+    "Li": 32.51684709315843,
+    "Na": 37.97259078771803
   },
   "package_phase_tagged_cross_phase": {
     "evaluated_rows": 26,
     "reaction_phase_scope": "phase_tagged_cross_phase",
     "native_reaction_residual_size": 2,
     "median_native_cross_phase_residual": {
-      "Li": 408.03479797400666,
-      "Na": 396.5589577644374
+      "Li": 408.0347979740192,
+      "Na": 396.55895776445834
     },
     "median_abs_native_cross_phase_residual": {
-      "Li": 408.03479797400666,
-      "Na": 396.5589577644374
+      "Li": 408.0347979740192,
+      "Na": 396.55895776445834
     },
-    "max_phase_charge_balance_norm": 4.0000063880293087e-07,
+    "max_phase_charge_balance_norm": 4.0000063880282245e-07,
     "max_element_balance_norm": 5.10702591327572e-15
   },
   "max_abs_charge_residual": 8.000012776017418e-07,
@@ -45,10 +45,10 @@
     "RNa": 0.9999999980656575
   },
   "effective_constants_implied_by_experimental_rows": {
-    "Li_median": 436694.1923562265,
-    "Na_median": 35569.45265166396,
-    "Li_geomean": 528594.1660138565,
-    "Na_geomean": 44328.52942986643
+    "Li_median": 436694.19234763924,
+    "Na_median": 35569.45265205747,
+    "Li_geomean": 528594.1660182575,
+    "Na_geomean": 44328.52943084828
   },
   "status": "source_mismatch"
 }

@@ -1,38 +1,96 @@
 {
   "electrolyte_lle": {
     "args": [
-      "electrolyte_lle requires a native Ipopt equilibrium NLP route. No package-owned alternate LLE solver is available for this public route."
+      "Native electrolyte LLE route was rejected.",
+      {
+        "accepted": false,
+        "charge_balance_norm": 0.0,
+        "chemical_potential_consistency_norm": 0.0,
+        "constraints": [],
+        "derivative_backend": "",
+        "fixed_composition_norm": 0.0,
+        "ln_fugacity_consistency_norm": 0.0,
+        "material_balance_norm": 0.0,
+        "objective": 0.0,
+        "phase_amount_total_norm": 0.0,
+        "phase_amount_totals": [],
+        "phase_compositions": [],
+        "phase_count": 0,
+        "phase_distance": 0.0,
+        "phase_volumes": [],
+        "pressure_consistency_norm": 0.0,
+        "rejection_reason": "",
+        "route_status": "solver_rejected",
+        "solver_status": "ipopt_status_16",
+        "species_count": 0
+      }
     ],
-    "error_type": "InputError",
-    "message": "electrolyte_lle requires a native Ipopt equilibrium NLP route. No package-owned alternate LLE solver is available for this public route.",
+    "diagnostics_summary": {
+      "accepted": false,
+      "charge_balance_norm": 0.0,
+      "chemical_potential_consistency_norm": 0.0,
+      "constraints": [],
+      "derivative_backend": "",
+      "fixed_composition_norm": 0.0,
+      "ln_fugacity_consistency_norm": 0.0,
+      "material_balance_norm": 0.0,
+      "objective": 0.0,
+      "phase_amount_total_norm": 0.0,
+      "phase_amount_totals": [],
+      "phase_compositions": [],
+      "phase_count": 0,
+      "phase_distance": 0.0,
+      "phase_volumes": [],
+      "pressure_consistency_norm": 0.0,
+      "rejection_reason": "",
+      "route_status": "solver_rejected",
+      "solver_status": "ipopt_status_16",
+      "species_count": 0
+    },
+    "error_type": "SolutionError",
+    "message": "Native electrolyte LLE route was rejected.",
     "status": "error",
     "traceback_tail": [
-      "        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+      "    return _accepted_native_neutral_two_phase_result(",
+      "        mixture,",
+      "    ...<8 lines>...",
+      "        route_family=\"electrolyte\",",
       "    )",
-      "    ^",
-      "  File \"C:\\Users\\Tanner\\Documents\\git\\ePC-SAFT\\src\\epcsaft\\equilibrium.py\", line 40, in _raise_native_ipopt_lle_required",
-      "    raise InputError(",
-      "    ...<2 lines>...",
-      "    )",
-      "epcsaft._types.InputError: electrolyte_lle requires a native Ipopt equilibrium NLP route. No package-owned alternate LLE solver is available for this public route."
+      "  File \"C:\\Users\\Tanner\\Documents\\git\\ePC-SAFT-ipopt-profile\\src\\epcsaft\\equilibrium.py\", line 694, in _accepted_native_neutral_two_phase_result",
+      "    raise SolutionError(f\"Native {route_family} {route_label} route was rejected.\", diagnostics)",
+      "epcsaft._types.SolutionError: ('Native electrolyte LLE route was rejected.', {'accepted': False, 'rejection_reason': '', 'derivative_backend': '', 'phase_count': 0, 'species_count': 0, 'material_balance_norm': 0.0, 'pressure_consistency_norm': 0.0, 'chemical_potential_consistency_norm': 0.0, 'ln_fugacity_consistency_norm': 0.0, 'charge_balance_norm': 0.0, 'fixed_composition_norm': 0.0, 'phase_amount_total_norm': 0.0, 'phase_distance': 0.0, 'objective': 0.0, 'constraints': [], 'phase_amount_totals': [], 'phase_volumes': [], 'phase_compositions': [], 'route_status': 'solver_rejected', 'solver_status': 'ipopt_status_16'})"
     ]
   },
   "electrolyte_stability": {
     "args": [
-      "electrolyte_stability requires a native Ipopt equilibrium stability NLP route. No package-owned alternate stability solver is available for this public route."
+      "Native electrolyte stability route was rejected.",
+      {
+        "application_status": "ipopt_application_status_-101",
+        "parent_phase": "liq",
+        "route_status": "solver_rejected",
+        "solver_status": "ipopt_status_16",
+        "trial_phase": "liq"
+      }
     ],
-    "error_type": "InputError",
-    "message": "electrolyte_stability requires a native Ipopt equilibrium stability NLP route. No package-owned alternate stability solver is available for this public route.",
+    "diagnostics_summary": {
+      "application_status": "ipopt_application_status_-101",
+      "parent_phase": "liq",
+      "route_status": "solver_rejected",
+      "solver_status": "ipopt_status_16",
+      "trial_phase": "liq"
+    },
+    "error_type": "SolutionError",
+    "message": "Native electrolyte stability route was rejected.",
     "status": "error",
     "traceback_tail": [
-      "  File \"C:\\Users\\Tanner\\Documents\\git\\ePC-SAFT\\src\\epcsaft\\equilibrium.py\", line 1530, in electrolyte_stability",
-      "    _raise_native_ipopt_stability_required(\"electrolyte_stability\")",
-      "    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^",
-      "  File \"C:\\Users\\Tanner\\Documents\\git\\ePC-SAFT\\src\\epcsaft\\equilibrium.py\", line 54, in _raise_native_ipopt_stability_required",
-      "    raise InputError(",
-      "    ...<2 lines>...",
+      "    return _native_electrolyte_stability(",
+      "        mixture,",
+      "    ...<4 lines>...",
+      "        options=opts,",
       "    )",
-      "epcsaft._types.InputError: electrolyte_stability requires a native Ipopt equilibrium stability NLP route. No package-owned alternate stability solver is available for this public route."
+      "  File \"C:\\Users\\Tanner\\Documents\\git\\ePC-SAFT-ipopt-profile\\src\\epcsaft\\equilibrium.py\", line 1163, in _native_electrolyte_stability",
+      "    raise SolutionError(\"Native electrolyte stability route was rejected.\", diagnostics)",
+      "epcsaft._types.SolutionError: ('Native electrolyte stability route was rejected.', {'route_status': 'solver_rejected', 'solver_status': 'ipopt_status_16', 'application_status': 'ipopt_application_status_-101', 'parent_phase': 'liq', 'trial_phase': 'liq'})"
     ]
   },
   "feed_composition": [

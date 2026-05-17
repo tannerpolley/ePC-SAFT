@@ -1,0 +1,34 @@
+id: ascani_2022_distributed_ion_lle
+title: Ascani 2022 distributed-ion electrolyte LLE
+status: blocked_solver_rejected
+summary: Source-backed Ascani 2022 Case 2 public electrolyte LLE validation lane.
+source_assets:
+  - path: docs/papers/md/Ascani, Sadowski, Held - 2022 - Calculation of Multiphase Equilibria Containing Mixed Solvents and M.md
+    kind: paper_markdown
+  - path: docs/papers/md/Ascani, Sadowski, Held - 2022 - Supporting Information for Calculation of multiphase equilibria containing mixed solvents and mixed..md
+    kind: supporting_information_markdown
+  - path: data/reference/multiphase/ascani_case2_model_comparison.csv
+    kind: source_backed_case2_comparison
+commands:
+  paper_validation:
+    - uv run python analyses\paper_validation\native\2022_ascani\scripts\run_all.py
+expected:
+  feed_species: [H2O, Butanol, Na+, K+, Cl-]
+  temperature_K: 298.15
+  pressure_Pa: 100000.0
+  accepted: true
+  solver_backend: ipopt
+tolerances:
+  material_balance_abs: 1.0e-8
+  charge_balance_abs: 1.0e-8
+  phase_composition_abs: source precision from data/reference/multiphase/ascani_case2_model_comparison.csv
+outputs:
+  - path: analyses/paper_validation/native/2022_ascani/data/processed/source_expected_phase_compositions.csv
+    kind: normalized_source_expectations
+  - path: analyses/paper_validation/native/2022_ascani/results/electrolyte_lle/summary.json
+    kind: accepted_solve_or_blocker_summary
+blocker:
+  kind: native_ipopt_solver_rejected
+  observed_route_status: solver_rejected
+  observed_solver_status: ipopt_status_16
+  note: The lane cannot be promoted to EXECUTABLE until the public electrolyte LLE solve returns an accepted native Ipopt result.

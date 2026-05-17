@@ -39,7 +39,7 @@ This scan keeps the Rezaee organic PC-SAFT parameters, organic binary interactio
 
 ## Unsupported Options
 
-- `2025_bjeruum_on`: `ValueError` - Bjerrum treatment is reserved and not implemented (DH_model=2).
+- `2025_bjeruum_on`: `ValueError` - Bjerrum treatment is reserved; DH_model=2 has no active public route.
 
 ## Interpretation
 

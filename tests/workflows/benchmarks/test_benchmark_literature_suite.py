@@ -33,9 +33,9 @@ def test_literature_benchmark_payload_tracks_executable_and_blocked_issue_119_ca
     assert payload["issue"] == 119
     assert payload["title"] == "Executable literature benchmark and downstream gate registry"
     assert payload["selected_cases"][0] == "gross_sadowski_pure_nonassociating"
-    assert payload["status_counts"] == {EXECUTABLE: 6, BLOCKED: 6}
-    assert len(payload["executable_cases"]) == 6
-    assert len(payload["blocked_cases"]) == 6
+    assert payload["status_counts"] == {EXECUTABLE: 7, BLOCKED: 5}
+    assert len(payload["executable_cases"]) == 7
+    assert len(payload["blocked_cases"]) == 5
 
     by_case = {row["id"]: row for row in payload["cases"]}
     assert by_case["gross_sadowski_pure_nonassociating"]["status"] == EXECUTABLE
@@ -49,7 +49,9 @@ def test_literature_benchmark_payload_tracks_executable_and_blocked_issue_119_ca
     assert by_case["baygi_mea_association_and_mea_water_binary"]["tolerances"] is None
     assert by_case["ascani_2023_reactive_phase_equilibrium"]["status"] == BLOCKED
     assert by_case["ascani_2023_reactive_phase_equilibrium"]["blocked_by_issue"] == 119
-    assert by_case["rezaee_lithium_extraction_inputs"]["status"] == BLOCKED
+    assert by_case["rezaee_lithium_extraction_inputs"]["status"] == EXECUTABLE
+    assert by_case["rezaee_lithium_extraction_inputs"]["expected"]["direct_published_constant_closure_supported"] is False
+    assert by_case["rezaee_lithium_extraction_inputs"]["validation_paths"]
 
 
 def test_literature_benchmark_payload_executes_only_executable_cases_with_injected_runner():
@@ -70,12 +72,12 @@ def test_literature_benchmark_payload_executes_only_executable_cases_with_inject
 
     assert payload["run_mode"] == "execute_executable_cases"
     assert payload["execution_summary"] == {
-        "attempted": 6,
-        "passed": 6,
+        "attempted": 7,
+        "passed": 7,
         "failed": 0,
-        "blocked": 6,
+        "blocked": 5,
     }
-    assert len(calls) == 6
+    assert len(calls) == 7
 
     by_case = {row["id"]: row for row in payload["cases"]}
     assert by_case["gross_sadowski_pure_nonassociating"]["status"] == EXECUTABLE

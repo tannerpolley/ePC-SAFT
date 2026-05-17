@@ -24,14 +24,7 @@ Machine-readable source inputs are in `analyses/paper_validation/application/202
 Run these from the repository root:
 
 ```powershell
-uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_des_epcsaft_parameter_smoke.py
-uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_2025_target_summary.py
-uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_reactive_equilibrium_replay.py
-uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_reactive_convention_scan.py
-uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_reactive_epcsaft_option_scan.py
-uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_paper_basis_reaction_coordinate.py
-uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_section32_basis_inference.py
-uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_section32_equilibrium_replication.py
+uv run python analyses\paper_validation\application\2026_rezaee\scripts\run_all.py
 ```
 
 Surrogate, downstream bridge, PrOMMiS/IDAES, and deck scripts are intentionally not included in this package-validation lane.
@@ -51,6 +44,7 @@ The strict pre-surrogate evidence bundle is:
 - `results/reaction_equilibrium/rezaee_2026_section32_equilibrium_replication.md`
 
 Additional guardrail outputs in `results/reaction_equilibrium/` record replay, convention-scan, ePC-SAFT option-scan, and paper-basis reaction-coordinate diagnostics.
+The lane-level gate summary is `results/reaction_equilibrium/summary.json`.
 
 ## Current Result
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-import importlib.util
+import argparse
+import importlib
 import shutil
 import subprocess
 import sys
@@ -19,6 +20,11 @@ REQUIRED_CORE_SYMBOLS = (
     "NativeSolutionError",
 )
 
+try:
+    from scripts.dev.native_runtime_env import apply_to_current_process
+except ModuleNotFoundError:  # pragma: no cover - direct script execution
+    from native_runtime_env import apply_to_current_process
+
 
 def _git_output(*args: str) -> str | None:
     try:
@@ -35,20 +41,28 @@ def _git_output(*args: str) -> str | None:
 
 def _module_path(module_name: str) -> tuple[Path | None, str | None]:
     try:
-        spec = importlib.util.find_spec(module_name)
+        module = importlib.import_module(module_name)
     except Exception as exc:
-        return None, str(exc)
-    if spec is None or spec.origin is None:
+        return None, f"{type(exc).__name__}: {exc}"
+    origin = getattr(module, "__file__", None)
+    if origin is None:
         return None, None
-    return Path(spec.origin).resolve(), None
+    return Path(origin).resolve(), None
 
 
 def _missing_core_symbols() -> tuple[str, ...]:
     try:
         import epcsaft._core as core
-    except Exception:
-        return ()
+    except Exception as exc:
+        raise RuntimeError(f"epcsaft._core import failed: {type(exc).__name__}: {exc}") from exc
     return tuple(name for name in REQUIRED_CORE_SYMBOLS if not hasattr(core, name))
+
+
+def _missing_core_symbols_or_error() -> tuple[tuple[str, ...], str | None]:
+    try:
+        return _missing_core_symbols(), None
+    except RuntimeError as exc:
+        return (), str(exc)
 
 
 def _cppad_status() -> str:
@@ -77,6 +91,32 @@ def _ceres_status() -> str:
 
 def _ipopt_status() -> str:
     return _runtime_native_dependency_status("ipopt")
+
+
+def _ipopt_available() -> bool:
+    try:
+        import epcsaft
+
+        info = epcsaft.runtime_build_info()
+    except Exception:
+        return False
+    native_dependencies = info.get("native_dependencies", {})
+    if not isinstance(native_dependencies, dict):
+        return False
+    payload = native_dependencies.get("ipopt", {})
+    if not isinstance(payload, dict):
+        return False
+    return payload.get("status") == "enabled_available" and bool(payload.get("available"))
+
+
+def _parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Check local ePC-SAFT development runtime health.")
+    parser.add_argument(
+        "--require-ipopt",
+        action="store_true",
+        help="Fail unless native Ipopt is compiled and available in the current runtime.",
+    )
+    return parser
 
 
 def _cmake_cache_value(name: str, cache_path: Path = DEV_BUILD_CACHE) -> str | None:
@@ -131,9 +171,11 @@ def _stale_report_state() -> str:
     return ", ".join(stale) if stale else "<none>"
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    args = _parser().parse_args(argv)
     if str(SRC_ROOT) not in sys.path:
         sys.path.insert(0, str(SRC_ROOT))
+    runtime_env = apply_to_current_process()
 
     branch = _git_output("branch", "--show-current") or "<unknown>"
     head = _git_output("rev-parse", "--short", "HEAD") or "<unknown>"
@@ -157,12 +199,16 @@ def main() -> int:
     print(f"epcsaft_import_error: {package_error or '<none>'}")
     print(f"epcsaft_core: {core_path if core_path else '<missing>'}")
     print(f"epcsaft_core_error: {core_error or '<none>'}")
-    missing_core_symbols = _missing_core_symbols() if core_path is not None else ()
+    missing_core_symbols, missing_core_error = _missing_core_symbols_or_error() if core_path is not None else ((), None)
     print(f"epcsaft_core_missing_symbols: {', '.join(missing_core_symbols) if missing_core_symbols else '<none>'}")
+    print(f"epcsaft_core_symbol_error: {missing_core_error or '<none>'}")
     print(f"ceres_configured: {_cmake_cache_value('EPCSAFT_ENABLE_CERES') or '<unconfigured>'}")
     print(f"cppad_status: {_cppad_status()}")
     print(f"ceres_status: {_ceres_status()}")
     print(f"ipopt_configured: {_cmake_cache_value('EPCSAFT_ENABLE_IPOPT') or '<unconfigured>'}")
+    print(f"ipopt_root: {_cmake_cache_value('EPCSAFT_IPOPT_ROOT') or '<unconfigured>'}")
+    print(f"ipopt_runtime_dll_dir: {runtime_env.ipopt_runtime_dir if runtime_env.ipopt_runtime_dir else '<none>'}")
+    print(f"ipopt_runtime_env_applied: {'true' if runtime_env.applied else 'false'}")
     print(f"ipopt_status: {_ipopt_status()}")
     print(f"stale_generated_reports: {_stale_report_state()}")
     tracked_generated = _tracked_generated_count()
@@ -176,9 +222,19 @@ def main() -> int:
         print("install_state: missing-core")
         print("next_command: uv run python scripts\\dev\\build_epcsaft.py")
         return 1
+    if missing_core_error is not None:
+        print("install_state: broken-core-import")
+        print("next_command: uv run python scripts\\dev\\build_epcsaft.py")
+        return 1
     if missing_core_symbols:
         print("install_state: stale-core")
         print("next_command: uv run python scripts\\dev\\build_epcsaft.py")
+        return 1
+    if args.require_ipopt and not _ipopt_available():
+        print("install_state: missing-ipopt")
+        print(
+            "next_command: uv run python scripts\\dev\\build_epcsaft.py --profile ipopt --ipopt-root <IpoptRoot>"
+        )
         return 1
     print("install_state: current")
     print("next_command: none")

@@ -1,7 +1,7 @@
 id: rezaee_2026_paper_validation
 title: Rezaee 2025/2026 paper validation
-status: active
-summary: Package-facing validation of Rezaee source rows, reaction-equilibrium conventions, and Section 3.2 reaction-coordinate replication.
+status: executable_diagnostic
+summary: In-worktree source-backed diagnostic validation of Rezaee source rows, reaction-equilibrium conventions, and Section 3.2 reaction-coordinate replication.
 owner: project
 boundary:
   objective: Validate the local epcsaft package against source-backed Rezaee paper data before any surrogate generation.
@@ -39,15 +39,25 @@ outputs:
     kind: generated_pre_surrogate_validation_rows
   - path: analyses/paper_validation/application/2026_rezaee/results/reaction_equilibrium/rezaee_2026_section32_equilibrium_replication_summary.json
     kind: generated_validation_summary
+  - path: analyses/paper_validation/application/2026_rezaee/results/reaction_equilibrium/summary.json
+    kind: generated_lane_gate_summary
 commands:
   paper_validation:
-    - uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_des_epcsaft_parameter_smoke.py
-    - uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_2025_target_summary.py
-    - uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_reactive_equilibrium_replay.py
-    - uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_reactive_convention_scan.py
-    - uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_reactive_epcsaft_option_scan.py
-    - uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_paper_basis_reaction_coordinate.py
-    - uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_section32_basis_inference.py
-    - uv run python analyses\paper_validation\application\2026_rezaee\scripts\rezaee_section32_equilibrium_replication.py
+    - uv run python analyses\paper_validation\application\2026_rezaee\scripts\run_all.py
+expected:
+  row_count: 26
+  direct_published_constant_closure_supported: false
+  source_text_equilibrium_data_points: 36
+  source_backed_si_equilibrium_rows: 26
+tolerances:
+  max_abs_charge_residual: 1.0e-6
+  max_element_balance_norm: 1.0e-10
+  source_supported_combined_median_abs_ln_residual_min: 2.0
+  direct_li_extraction_aard_pct_min: 90.0
+completion_contract:
+  - The lane passes when run_all.py exits 0 and summary.json records the 26 source-backed SI rows.
+  - The expected diagnostic outcome is that direct published-constant closure is not supported.
+  - The 36-row text statement remains a documented source-text mismatch unless a new source-backed table is added.
+  - This lane must not be used to claim direct Rezaee paper-constant closure.
 runtime:
   last_validated_seconds: 130

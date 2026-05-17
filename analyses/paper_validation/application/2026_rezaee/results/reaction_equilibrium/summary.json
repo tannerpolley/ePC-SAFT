@@ -1,0 +1,135 @@
+{
+  "status": "source_backed_diagnostic_complete",
+  "validation_lane": "rezaee_2026_application_diagnostic",
+  "row_count": 26,
+  "source_files": [
+    "analyses/paper_validation/application/2026_rezaee/data/input/README.md",
+    "analyses/paper_validation/application/2026_rezaee/data/input/rezaee_2025_doe_extraction_responses.csv",
+    "analyses/paper_validation/application/2026_rezaee/data/input/rezaee_2025_extraction_equilibrium_mole_fractions.csv",
+    "analyses/paper_validation/application/2026_rezaee/data/input/rezaee_2025_headline_extraction_points.csv",
+    "analyses/paper_validation/application/2026_rezaee/data/input/rezaee_2025_optimum_neighborhood.csv",
+    "analyses/paper_validation/application/2026_rezaee/data/input/rezaee_2025_real_brine_extraction.csv",
+    "analyses/paper_validation/application/2026_rezaee/data/input/rezaee_2025_screening_extraction.csv",
+    "analyses/paper_validation/application/2026_rezaee/data/input/rezaee_2026_epcsaft_species_dataset.json",
+    "analyses/paper_validation/application/2026_rezaee/data/input/rezaee_2026_organic_binary_interactions.csv",
+    "analyses/paper_validation/application/2026_rezaee/data/input/rezaee_2026_organic_pcsaft_parameters.csv",
+    "analyses/paper_validation/application/2026_rezaee/data/input/rezaee_2026_reaction_constants.csv",
+    "analyses/paper_validation/application/2026_rezaee/data/input/rezaee_2026_si_density_tables.csv"
+  ],
+  "source_text_mismatch": {
+    "available_si_equilibrium_rows": 26,
+    "paper_text_equilibrium_data_points": 36,
+    "conclusion": "Use the 26 source-backed SI equilibrium rows as the benchmark basis until a 36-row source table is supplied."
+  },
+  "convention_scan": {
+    "status": "source_reference_state_gap",
+    "best_variant": {
+      "variant": "paper_eq14_no_activity_vs_inverse_k",
+      "combined_median_abs_ln_residual": 9.506579080295277,
+      "source_supported": false,
+      "description": "Mole-fraction quotient compared against reciprocal reported constants."
+    },
+    "source_supported_variant": {
+      "variant": "paper_eq14_with_activity_vs_paper_k",
+      "combined_median_abs_ln_residual": 35.244718940438226,
+      "source_supported": true,
+      "description": "Rezaee Eq. 14/15 exactly as implemented from the paper text, with ePC-SAFT/PC-SAFT activity coefficients."
+    },
+    "acceptance": {
+      "closed_by_simple_convention_scan": false,
+      "threshold_combined_median_abs_ln_residual": 2.0
+    }
+  },
+  "option_scan": {
+    "status": "option_scan_complete_no_direct_closure",
+    "best_source_supported_variant": null
+  },
+  "paper_basis": {
+    "status": "paper_basis_reaction_coordinate_benchmark_complete",
+    "row_count": 26,
+    "best_mode_by_li_abs_error": {
+      "mode": "2025_born_no_ssm_empirical",
+      "row_count": 26,
+      "mean_li_abs_pct_error": 35.8153846150372,
+      "mean_na_abs_pct_error": 11.756153846066601,
+      "median_li_extraction_pct_calc": 3.4720473594761366e-10,
+      "median_na_extraction_pct_calc": 7.663360786271174e-11,
+      "median_initial_oh_mol": 0.0001,
+      "median_initial_li_mol": 0.1440922190201729,
+      "median_oh_to_li_mol_ratio": 0.0006940000000000001
+    }
+  },
+  "basis_inference": {
+    "status": "section32_basis_inference_complete",
+    "row_count": 26,
+    "interpretation": "The SI aqueous rows are nearly charge balanced and the OH- mole fractions track the reported pH. However, combining Table 5 extraction percentages with SI organic RLi/RNa mole fractions does not produce one consistent organic phase total for one-metal RLi/RNa complexes. This is a source-basis blocker for exact Section 3.2 reproduction until the original initial-mole/reaction-coordinate worksheet or a documented phase-amount convention is available."
+  },
+  "direct_closure": {
+    "supported": false,
+    "direct_case_id": "held_2014_s2_no_born_table9_kij_pH_stoich",
+    "converged_rows": 26,
+    "li_extraction_aard_pct": 99.99999999872658,
+    "selectivity_aard_pct": 56.35551722412048,
+    "paper_reference_aard_pct": {
+      "Li_extraction": 7.89,
+      "selectivity": 8.63
+    }
+  },
+  "residual_metrics": {
+    "max_abs_charge_residual": 8.000012776017418e-07,
+    "max_phase_charge_balance_norm": 4.0000063880282245e-07,
+    "max_element_balance_norm": 5.10702591327572e-15,
+    "source_supported_combined_median_abs_ln_residual": 35.244718940438226
+  },
+  "retained_outputs": [
+    "analyses/paper_validation/application/2026_rezaee/data/processed/rezaee_2025_extraction_target_summary.csv",
+    "analyses/paper_validation/application/2026_rezaee/data/processed/rezaee_2025_extraction_equilibrium_summary.csv",
+    "analyses/paper_validation/application/2026_rezaee/data/processed/rezaee_2026_reactive_equilibrium_replay.csv",
+    "analyses/paper_validation/application/2026_rezaee/data/processed/rezaee_2026_reactive_convention_scan_rows.csv",
+    "analyses/paper_validation/application/2026_rezaee/data/processed/rezaee_2026_reactive_epcsaft_option_scan_rows.csv",
+    "analyses/paper_validation/application/2026_rezaee/data/processed/rezaee_2026_paper_basis_reaction_coordinate_rows.csv",
+    "analyses/paper_validation/application/2026_rezaee/data/processed/rezaee_2026_section32_basis_inference_rows.csv",
+    "analyses/paper_validation/application/2026_rezaee/data/processed/rezaee_2026_section32_equilibrium_replication_rows.csv",
+    "analyses/paper_validation/application/2026_rezaee/results/reaction_equilibrium/rezaee_2026_reactive_equilibrium_replay_summary.json",
+    "analyses/paper_validation/application/2026_rezaee/results/reaction_equilibrium/rezaee_2026_reactive_convention_scan_summary.json",
+    "analyses/paper_validation/application/2026_rezaee/results/reaction_equilibrium/rezaee_2026_reactive_epcsaft_option_scan_summary.json",
+    "analyses/paper_validation/application/2026_rezaee/results/reaction_equilibrium/rezaee_2026_paper_basis_reaction_coordinate_summary.json",
+    "analyses/paper_validation/application/2026_rezaee/results/reaction_equilibrium/rezaee_2026_section32_basis_inference_summary.json",
+    "analyses/paper_validation/application/2026_rezaee/results/reaction_equilibrium/rezaee_2026_section32_equilibrium_replication_summary.json"
+  ],
+  "commands": [
+    {
+      "script": "rezaee_des_epcsaft_parameter_smoke.py",
+      "returncode": 0
+    },
+    {
+      "script": "rezaee_2025_target_summary.py",
+      "returncode": 0
+    },
+    {
+      "script": "rezaee_reactive_equilibrium_replay.py",
+      "returncode": 0
+    },
+    {
+      "script": "rezaee_reactive_convention_scan.py",
+      "returncode": 0
+    },
+    {
+      "script": "rezaee_reactive_epcsaft_option_scan.py",
+      "returncode": 0
+    },
+    {
+      "script": "rezaee_paper_basis_reaction_coordinate.py",
+      "returncode": 0
+    },
+    {
+      "script": "rezaee_section32_basis_inference.py",
+      "returncode": 0
+    },
+    {
+      "script": "rezaee_section32_equilibrium_replication.py",
+      "returncode": 0
+    }
+  ],
+  "conclusion": "Direct published-constant closure is not supported by the current source-backed inputs; the executable validation gate is the reproducible diagnostic evidence for that gap."
+}
