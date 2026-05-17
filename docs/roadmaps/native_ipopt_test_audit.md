@@ -169,6 +169,9 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - Public electrolyte LLE no longer accepts user phase seeds or exports electrolyte LLE seed-helper wrappers. The route
   builder owns the canonical initial point, while private native residual-surface tests keep explicit evaluator phase
   payloads where needed for diagnostic Jacobian coverage.
+- Public neutral LLE and reactive LLE facades no longer accept user phase seeds. Direct LLE, typed LLE, reactive phase,
+  and staged reactive LLE calls all use route-owned canonical initial points; seeded public validation-script paths were
+  removed.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
 

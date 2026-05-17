@@ -164,7 +164,6 @@ class LLEProblem(EquilibriumProblem):
     P: float
     z: Any
     options: EquilibriumOptions | None = None
-    initial_phases: Any | None = None
 
     def solve(self, mixture):
         return mixture.lle_tp(
@@ -172,7 +171,6 @@ class LLEProblem(EquilibriumProblem):
             P=self.P,
             z=self.z,
             options=self.options,
-            initial_phases=self.initial_phases,
         )
 
 
@@ -848,59 +846,6 @@ def _explicit_to_formula_composition(composition: np.ndarray, basis: dict[str, A
     return out / total
 
 
-def _electrolyte_initial_phase_seed(
-    mixture: Any,
-    feed: np.ndarray,
-    basis: dict[str, Any],
-    initial_phases: Any,
-    options: EquilibriumOptions,
-) -> dict[str, Any]:
-    if not isinstance(initial_phases, dict):
-        raise InputError("initial_phases for electrolyte_lle must be a dict with 'aq', 'org', and 'phase_fraction'.")
-    required = {"aq", "org", "phase_fraction"}
-    keys = set(initial_phases)
-    if keys != required:
-        raise InputError("initial_phases for electrolyte_lle must contain exactly 'aq', 'org', and 'phase_fraction'.")
-    aq_comp = _normalize_initial_phase(initial_phases["aq"], mixture.ncomp, options.min_composition, "aq")
-    org_comp = _normalize_initial_phase(initial_phases["org"], mixture.ncomp, options.min_composition, "org")
-    beta_org = float(initial_phases["phase_fraction"])
-    if not np.isfinite(beta_org) or beta_org <= 0.0 or beta_org >= 1.0:
-        raise InputError("initial_phases phase_fraction must be > 0 and < 1.")
-    charges = _mixture_charges(mixture)
-    phase_charge_error = max(abs(float(np.dot(aq_comp, charges))), abs(float(np.dot(org_comp, charges))))
-    if phase_charge_error > 1.0e-8:
-        raise InputError("initial_phases aq and org must be charge neutral for electrolyte_lle.")
-    material_error = float(np.max(np.abs((1.0 - beta_org) * aq_comp + beta_org * org_comp - feed)))
-    if material_error > 1.0e-7:
-        raise InputError("initial_phases aq/org/phase_fraction must reconstruct the electrolyte_lle feed.")
-    aq_formula = _explicit_to_formula_composition(aq_comp, basis)
-    org_formula = _explicit_to_formula_composition(org_comp, basis)
-    beta_formula = _explicit_beta_to_formula_beta(beta_org, aq_formula, org_formula, basis, mixture.ncomp)
-    return {
-        "seed_name": "initial_phases",
-        "beta_formula": beta_formula,
-        "aq_formula": aq_formula,
-        "org_formula": org_formula,
-        "fixture": None,
-        "diagnostics": {
-            "initial_phase_material_balance_error": material_error,
-            "initial_phase_charge_balance_error": phase_charge_error,
-        },
-    }
-
-
-def _explicit_beta_to_formula_beta(
-    beta_explicit: float, aq_formula: np.ndarray, org_formula: np.ndarray, basis: dict[str, Any], ncomp: int
-) -> float:
-    _aq_exp, aq_scale = _formula_to_explicit_composition(aq_formula, basis, ncomp)
-    _org_exp, org_scale = _formula_to_explicit_composition(org_formula, basis, ncomp)
-    numerator = float(beta_explicit) / org_scale
-    denominator = numerator + (1.0 - float(beta_explicit)) / aq_scale
-    if denominator <= 0.0:
-        return float(beta_explicit)
-    return float(np.clip(numerator / denominator, 1.0e-12, 1.0 - 1.0e-12))
-
-
 def _phase_state(
     mixture: Any,
     T: float,
@@ -1143,39 +1088,6 @@ def _normalize_phase_token(value: Any, label: str) -> str:
     return token
 
 
-def _normalize_initial_phase(value: Any, ncomp: int, min_composition: float, label: str) -> np.ndarray:
-    composition = np.asarray(value, dtype=float).flatten()
-    if composition.size != int(ncomp):
-        raise InputError(
-            f"initial_phases {label} length ({composition.size}) must match mixture component count ({ncomp})."
-        )
-    if not np.all(np.isfinite(composition)):
-        raise InputError(f"initial_phases {label} must contain only finite values.")
-    if np.any(composition < 0.0):
-        raise InputError(f"initial_phases {label} must be non-negative.")
-    total = float(np.sum(composition))
-    if total <= 0.0:
-        raise InputError(f"initial_phases {label} must have a positive sum.")
-    composition = composition / total
-    if np.any(composition < min_composition):
-        raise InputError(f"initial_phases {label} entries must be >= min_composition.")
-    return composition
-
-
-def _normalize_neutral_initial_phases(initial_phases: Any, ncomp: int, min_composition: float) -> dict[str, Any]:
-    if not isinstance(initial_phases, dict):
-        raise InputError("initial_phases must be a dict with 'liq1', 'liq2', and 'phase_fraction'.")
-    missing = {"liq1", "liq2", "phase_fraction"} - set(initial_phases)
-    if missing:
-        raise InputError("initial_phases is missing required key(s): {}.".format(", ".join(sorted(missing))))
-    comp1 = _normalize_initial_phase(initial_phases["liq1"], ncomp, min_composition, "liq1")
-    comp2 = _normalize_initial_phase(initial_phases["liq2"], ncomp, min_composition, "liq2")
-    beta = float(initial_phases["phase_fraction"])
-    if not np.isfinite(beta) or not (0.0 < beta < 1.0):
-        raise InputError("initial_phases phase_fraction must be > 0 and < 1.")
-    return {"liq1": comp1.tolist(), "liq2": comp2.tolist(), "phase_fraction": beta}
-
-
 def _json_like(value: Any) -> Any:
     if isinstance(value, np.ndarray):
         return value.tolist()
@@ -1238,22 +1150,13 @@ def reactive_phase_equilibrium(
             options=solver_options,
         )
         _require_charge_neutral(feed, charges, "reactive_electrolyte_lle feed")
-        basis_payload = _electrolyte_formula_basis(mixture, feed, feed_diagnostics)
-        if extra_phase_kwargs.get("initial_phases") is not None:
-            initial_phases = extra_phase_kwargs["initial_phases"]
-            _electrolyte_initial_phase_seed(mixture, feed, basis_payload, initial_phases, solver_options)
+        _electrolyte_formula_basis(mixture, feed, feed_diagnostics)
     else:
         if extra_phase_kwargs.get("solvent_feed") is not None or extra_phase_kwargs.get("salt_molality") is not None:
             raise InputError("solvent_feed and salt_molality require reactive_electrolyte_lle.")
         _reject_ion_containing_mixture(mixture)
         feed_source = z if z is not None else initial_x
         feed = _normalize_feed(feed_source, int(mixture.ncomp), solver_options.min_composition, "reactive_lle")
-        if extra_phase_kwargs.get("initial_phases") is not None:
-            _normalize_neutral_initial_phases(
-                extra_phase_kwargs["initial_phases"],
-                feed.size,
-                solver_options.min_composition,
-            )
 
     _normalize_reactive_balances(species, balances, totals)
     reaction_defs = _normalize_reactions(species, reactions)
@@ -1293,7 +1196,9 @@ def _normalize_reactive_phase_route(
 
 
 def _reject_reactive_phase_kwargs(phase_kwargs: Mapping[str, Any], route: str) -> None:
-    allowed = {"initial_phases", "solvent_feed", "salt_molality"}
+    if phase_kwargs.get("initial_phases") is not None:
+        raise InputError(f"{route} uses route-owned canonical initial points; initial_phases is not accepted.")
+    allowed = {"solvent_feed", "salt_molality"}
     unsupported = sorted(key for key, value in phase_kwargs.items() if value is not None and key not in allowed)
     if unsupported:
         raise InputError(
@@ -1451,7 +1356,6 @@ def lle_flash(
     P: float,
     z: Any,
     options: EquilibriumOptions | None = None,
-    initial_phases: Any = None,
 ) -> EquilibriumResult:
     """Validate a neutral LLE flash request and require the native Ipopt route."""
     opts = _normalize_options(options)
@@ -1459,8 +1363,6 @@ def lle_flash(
     _reject_ion_containing_mixture(mixture)
     temperature = _positive_scalar(T, "T", "lle_flash")
     pressure = _positive_scalar(P, "P", "lle_flash")
-    if initial_phases is not None:
-        _normalize_neutral_initial_phases(initial_phases, feed.size, opts.min_composition)
     return _native_neutral_lle_flash(mixture, T=temperature, P=pressure, feed=feed, options=opts)
 
 

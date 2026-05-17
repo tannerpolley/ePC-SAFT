@@ -42,9 +42,27 @@ def _assert_reactive_phase_route_pending(excinfo: pytest.ExceptionInfo[epcsaft.I
 
 
 def test_neutral_reactive_lle_public_route_requires_native_ipopt() -> None:
-    mix, feed, initial_phases, reaction = _neutral_reactive_lle_fixture()
+    mix, feed, _initial_phases, reaction = _neutral_reactive_lle_fixture()
 
     with pytest.raises(epcsaft.InputError) as excinfo:
+        mix.equilibrium(
+            kind="reactive_lle",
+            T=298.15,
+            P=1.013e5,
+            z=feed,
+            balances={"total": {"Methanol": 1.0, "Cyclohexane": 1.0}},
+            totals={"total": 1.0},
+            reactions=[reaction],
+            phase_options=epcsaft.EquilibriumOptions(max_iterations=80, tolerance=1.0e-8, min_composition=1.0e-12),
+        )
+
+    _assert_reactive_phase_route_pending(excinfo)
+
+
+def test_neutral_reactive_lle_rejects_initial_phases_seed_surface() -> None:
+    mix, feed, initial_phases, reaction = _neutral_reactive_lle_fixture()
+
+    with pytest.raises(epcsaft.InputError, match="route-owned canonical initial point"):
         mix.equilibrium(
             kind="reactive_lle",
             T=298.15,
@@ -56,5 +74,3 @@ def test_neutral_reactive_lle_public_route_requires_native_ipopt() -> None:
             initial_phases=initial_phases,
             phase_options=epcsaft.EquilibriumOptions(max_iterations=80, tolerance=1.0e-8, min_composition=1.0e-12),
         )
-
-    _assert_reactive_phase_route_pending(excinfo)

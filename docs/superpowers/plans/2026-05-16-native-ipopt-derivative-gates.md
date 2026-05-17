@@ -549,8 +549,8 @@ residual packing, initialization, or route acceptance.
 Task 8 continuation note: public neutral `lle_flash` now follows the same native ownership boundary as neutral
 `tp_flash`. The native route builder exposes LLE-specific contract and route-result entry points, owns the deterministic
 two-liquid initial point from the feed, submits exactly one Ipopt route call, and the public facade converts accepted
-native two-phase payloads into `liq1`/`liq2` results. User-provided `initial_phases` remain validation input only, not a
-solver seed or retry mechanism. Local no-Ipopt builds still fail loudly with the native Ipopt ownership message.
+native two-phase payloads into `liq1`/`liq2` results. Public phase seeds are rejected because the route builder owns the
+canonical initial point. Local no-Ipopt builds still fail loudly with the native Ipopt ownership message.
 
 Task 8/9 continuation note: `equilibrium_curve(...)` no longer reuses an accepted split as the next route seed and now
 rejects user-supplied `initial_phases`. Ordered curve calls use each route builder's canonical initial point instead of
@@ -793,7 +793,7 @@ Task 12 continuation note: the tracked source/test/script text gate now blocks r
 
 Task 12 continuation note: the tracked source/test/script text gate now also blocks the removed Hessian-backend diagnostic token so approximate solver-internal Hessian behavior cannot be reintroduced as a package derivative backend label.
 
-Task 12 continuation note: public neutral LLE no longer executes the transitional Ceres residual route from `lle_flash` or `lle_tp`. The public adapter validates feed, mixture, scalar inputs, and optional phase seeds, then raises until a native Ipopt constrained NLP route owns production neutral LLE; lower-level native residual-surface coverage remains private diagnostic coverage.
+Task 12 continuation note: public neutral LLE no longer executes the transitional Ceres residual route from `lle_flash` or `lle_tp`. The public adapter validates feed, mixture, and scalar inputs, then dispatches to the native Ipopt route when compiled or raises the native Ipopt dependency gate. Public phase seeds are rejected because the route builder owns the canonical initial point; lower-level native residual-surface coverage remains private diagnostic coverage.
 
 Task 12 continuation note: public electrolyte LLE no longer executes the transitional Ceres residual route from `electrolyte_lle` or `electrolyte_lle_tp`. The public adapter validates ion-containing mixtures, charge-neutral feeds, electrolyte formula bases, and molality/direct-feed inputs, then dispatches to the native Ipopt route when compiled or raises the native Ipopt dependency gate. Public `aq`/`org` phase seeds are rejected because the route builder owns the canonical initial point; lower-level native residual-surface coverage remains private diagnostic coverage.
 
@@ -961,6 +961,12 @@ Task 9/12 continuation note: public electrolyte LLE no longer accepts user `init
 helper wrappers. The direct `electrolyte_lle`/`electrolyte_lle_tp` route and curve facade now use route-owned canonical
 initial points only, while private native residual-surface request payloads may still carry evaluator phase data where
 the residual/Jacobian diagnostic contract explicitly requires it.
+
+Task 8/9/12 continuation note: public neutral LLE and reactive LLE facades no longer accept user `initial_phases`.
+`LLEProblem`, `lle_flash`, `lle_tp`, `reactive_lle`, `ReactivePhaseEquilibriumProblem`, and explicit staged LLE now
+use route-owned canonical initial points. Seed-specific Python validation helpers and seeded public validation-script
+paths were removed; private native residual/Jacobian evaluator payloads still carry phase data where that diagnostic
+contract requires it.
 
 ### Task 13: Final Validation And Cleanup
 

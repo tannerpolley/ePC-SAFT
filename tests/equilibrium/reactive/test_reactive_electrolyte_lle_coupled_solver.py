@@ -31,9 +31,35 @@ def _reactive_electrolyte_lle_fixture() -> tuple[
 
 
 def test_reactive_electrolyte_lle_public_route_requires_native_ipopt() -> None:
-    mix, feed, initial_phases, reaction = _reactive_electrolyte_lle_fixture()
+    mix, feed, _initial_phases, reaction = _reactive_electrolyte_lle_fixture()
 
     with pytest.raises(epcsaft.InputError) as excinfo:
+        mix.equilibrium(
+            kind="reactive_electrolyte_lle",
+            T=298.15,
+            P=1.013e5,
+            z=feed,
+            balances={
+                "solvent_total": {"H2O": 1.0, "Butanol": 1.0},
+                "sodium": {"Na+": 1.0},
+                "chloride": {"Cl-": 1.0},
+            },
+            totals={
+                "solvent_total": float(feed[0] + feed[1]),
+                "sodium": float(feed[2]),
+                "chloride": float(feed[3]),
+            },
+            reactions=[reaction],
+            phase_options=epcsaft.EquilibriumOptions(max_iterations=80, tolerance=1.0e-8, min_composition=1.0e-12),
+        )
+
+    _assert_reactive_phase_route_pending(excinfo)
+
+
+def test_reactive_electrolyte_lle_rejects_initial_phases_seed_surface() -> None:
+    mix, feed, initial_phases, reaction = _reactive_electrolyte_lle_fixture()
+
+    with pytest.raises(epcsaft.InputError, match="route-owned canonical initial point"):
         mix.equilibrium(
             kind="reactive_electrolyte_lle",
             T=298.15,
@@ -53,5 +79,3 @@ def test_reactive_electrolyte_lle_public_route_requires_native_ipopt() -> None:
             initial_phases=initial_phases,
             phase_options=epcsaft.EquilibriumOptions(max_iterations=80, tolerance=1.0e-8, min_composition=1.0e-12),
         )
-
-    _assert_reactive_phase_route_pending(excinfo)

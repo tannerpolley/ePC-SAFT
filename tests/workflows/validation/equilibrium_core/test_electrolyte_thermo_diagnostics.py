@@ -232,20 +232,3 @@ def test_khudaida_unseeded_solver_gate_accepts_known_split() -> None:
     assert diagnostics["solver_outcome"] == "accepted"
     assert diagnostics["acceptance_gate"] == "predictive_nonlinear_solve"
     assert diagnostics["decision"] == "solver_accepts_package_fixed_tieline_feed"
-
-
-@requires_khudaida_validation
-def test_khudaida_package_tieline_seeded_solver_gate_accepts_known_split() -> None:
-    diagnostics = evaluate_khudaida_solver_gate(figure=2, tie_line=1, source="package", seeded=True)
-
-    assert diagnostics["source"] == "epcsaft_native_v5"
-    assert diagnostics["fixed_phase_residual_norm"] <= 1.0e-6
-    assert diagnostics["gibbs_delta"] < 0.0
-    assert diagnostics["solver_outcome"] == "accepted"
-    assert diagnostics["acceptance_gate"] == "predictive_nonlinear_solve"
-    assert diagnostics["decision"] == "solver_accepts_package_fixed_tieline_feed"
-    assert diagnostics["solver_diagnostics"]["solver_seed_name"] == "initial_phases"
-    assert diagnostics["solver_diagnostics"]["solver_residual_norm"] <= 1.0e-6
-    assert diagnostics["solver_diagnostics"]["gibbs_delta"] < 0.0
-    assert diagnostics["solver_diagnostics"]["phase_labels_swapped"] is False
-    json.dumps(diagnostics, allow_nan=False)

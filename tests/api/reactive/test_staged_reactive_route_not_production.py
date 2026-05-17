@@ -7,7 +7,7 @@ from tests.api.reactive.test_reactive_phase_equilibrium_problem_routes_native im
 
 
 def test_explicit_staged_kind_remains_separate_from_production_reactive_lle(monkeypatch) -> None:
-    mix, feed, initial_phases, reaction = _toy_reactive_phase_case()
+    mix, feed, _initial_phases, reaction = _toy_reactive_phase_case()
 
     def successful_staged(**_kwargs):
         chemical = epcsaft.ReactiveSpeciationResult(
@@ -44,7 +44,6 @@ def test_explicit_staged_kind_remains_separate_from_production_reactive_lle(monk
         totals={"total": 1.0},
         reactions=[reaction],
         phase_kind="lle_flash",
-        initial_phases=initial_phases,
     )
 
     assert isinstance(staged, epcsaft.ReactiveStagedEquilibriumResult)
@@ -65,7 +64,6 @@ def test_explicit_staged_kind_remains_separate_from_production_reactive_lle(monk
             balances={"total": {"Methanol": 1.0, "Cyclohexane": 1.0}},
             totals={"total": 1.0},
             reactions=[reaction],
-            initial_phases=initial_phases,
             phase_options=epcsaft.EquilibriumOptions(max_iterations=80, tolerance=1.0e-8, min_composition=1.0e-12),
         )
 

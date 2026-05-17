@@ -403,11 +403,11 @@ class ePCSAFTMixture:
 
         return dew_t(self, P=P, y=y, options=options)
 
-    def lle_tp(self, T, P, z, *, options=None, initial_phases=None):
+    def lle_tp(self, T, P, z, *, options=None):
         """Validate a neutral liquid-liquid TP flash request."""
         from .equilibrium import lle_flash
 
-        return lle_flash(self, T=T, P=P, z=z, options=options, initial_phases=initial_phases)
+        return lle_flash(self, T=T, P=P, z=z, options=options)
 
     def stability_tp(self, T, P, z, *, options=None, parent_phase=None, trial_phases=None):
         """Validate a neutral TP stability request."""
@@ -635,13 +635,17 @@ class ePCSAFTMixture:
         if kind in {"reactive_staged_equilibrium", "reactive_staged"}:
             if balances is None or totals is None or reactions is None:
                 raise InputError(f"{kind} requires balances, totals, and reactions.")
+            if initial_phases is not None:
+                raise InputError(
+                    "reactive_staged_equilibrium uses route-owned canonical initial points; "
+                    "initial_phases is not accepted."
+                )
             phase_kwargs = {
                 "vapor_species": vapor_species,
                 "volatile_species": volatile_species,
                 "nonvolatile_species": nonvolatile_species,
                 "solvent_feed": solvent_feed,
                 "salt_molality": salt_molality,
-                "initial_phases": initial_phases,
                 "parent_phase": parent_phase,
                 "trial_phases": trial_phases,
             }
@@ -669,6 +673,10 @@ class ePCSAFTMixture:
 
             if balances is None or totals is None or reactions is None:
                 raise InputError(f"{kind} requires balances, totals, and reactions.")
+            if initial_phases is not None:
+                raise InputError(
+                    f"{kind} uses route-owned canonical initial points; initial_phases is not accepted."
+                )
             if kind in {"reactive_lle", "reactive_lle_flash"}:
                 if phase_kind is not None and phase_kind not in {"lle_flash", "lle_tp"}:
                     raise InputError("reactive_lle phase_kind must be 'lle_flash' when provided.")
@@ -683,7 +691,6 @@ class ePCSAFTMixture:
                 "nonvolatile_species": nonvolatile_species,
                 "solvent_feed": solvent_feed,
                 "salt_molality": salt_molality,
-                "initial_phases": initial_phases,
                 "parent_phase": parent_phase,
                 "trial_phases": trial_phases,
             }
@@ -857,7 +864,11 @@ class ePCSAFTMixture:
                     diagnostics=diagnostics,
                 )
             if route["route"] == "neutral_lle":
-                return self.lle_tp(T=T, P=P, z=z, options=options, initial_phases=initial_phases)
+                if initial_phases is not None:
+                    raise InputError(
+                        "lle_flash uses route-owned canonical initial points; initial_phases is not accepted."
+                    )
+                return self.lle_tp(T=T, P=P, z=z, options=options)
             return _result_with_route_diagnostics(self.flash_tp(T=T, P=P, z=z, options=options), route)
         if kind in {
             "bubble_p",
@@ -877,7 +888,7 @@ class ePCSAFTMixture:
             if volatile_species is not None or vapor_species is not None or nonvolatile_species is not None:
                 raise InputError("vapor species controls are only supported for kind='electrolyte_bubble_pressure'.")
             if initial_phases is not None:
-                raise InputError("initial_phases is only supported for kind='lle_flash'.")
+                raise InputError("initial_phases is not accepted by public equilibrium routes.")
             if parent_phase is not None or trial_phases is not None:
                 raise InputError("parent_phase and trial_phases are only supported for kind='stability'.")
             if backend not in (None, "native", "neutral_vle"):
@@ -942,7 +953,7 @@ class ePCSAFTMixture:
                     "x_liq and vapor species controls are only supported for kind='electrolyte_bubble_pressure'."
                 )
             if initial_phases is not None:
-                raise InputError("initial_phases is only supported for kind='lle_flash'.")
+                raise InputError("initial_phases is not accepted by public equilibrium routes.")
             if parent_phase is not None or trial_phases is not None:
                 raise InputError("parent_phase and trial_phases are only supported for kind='stability'.")
             if backend not in (None, "native", "neutral_vle"):
@@ -965,7 +976,9 @@ class ePCSAFTMixture:
                 raise InputError("parent_phase and trial_phases are only supported for kind='stability'.")
             if backend not in (None, "native", "neutral_lle"):
                 raise InputError("LLE flash backend must be None, 'native', or 'neutral_lle'.")
-            return self.lle_tp(T=T, P=P, z=z, options=options, initial_phases=initial_phases)
+            if initial_phases is not None:
+                raise InputError("lle_flash uses route-owned canonical initial points; initial_phases is not accepted.")
+            return self.lle_tp(T=T, P=P, z=z, options=options)
         if kind in {"electrolyte_lle", "electrolyte_lle_flash"}:
             if (
                 x_liq is not None
@@ -1029,7 +1042,7 @@ class ePCSAFTMixture:
                     "x_liq and vapor species controls are only supported for kind='electrolyte_bubble_pressure'."
                 )
             if initial_phases is not None:
-                raise InputError("initial_phases is only supported for kind='lle_flash'.")
+                raise InputError("initial_phases is not accepted by public equilibrium routes.")
             if backend not in (None, "native"):
                 raise InputError("Stability backend must be None or 'native'.")
             return self.stability_tp(

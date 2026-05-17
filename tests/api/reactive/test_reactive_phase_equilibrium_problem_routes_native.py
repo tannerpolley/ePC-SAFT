@@ -42,7 +42,7 @@ def _toy_reactive_phase_case() -> tuple[
 
 
 def test_reactive_phase_equilibrium_problem_requires_native_ipopt_route(monkeypatch) -> None:
-    mix, feed, initial_phases, reaction = _toy_reactive_phase_case()
+    mix, feed, _initial_phases, reaction = _toy_reactive_phase_case()
 
     def fail_if_staged(*_args, **_kwargs):
         raise AssertionError("ReactivePhaseEquilibriumProblem must not call the staged helper")
@@ -57,10 +57,26 @@ def test_reactive_phase_equilibrium_problem_requires_native_ipopt_route(monkeypa
         reactions=[reaction],
         phase_kind="lle_flash",
         phase_options=epcsaft.EquilibriumOptions(max_iterations=80, tolerance=1.0e-8, min_composition=1.0e-12),
-        phase_kwargs={"initial_phases": initial_phases},
     )
 
     with pytest.raises(epcsaft.InputError, match="native Ipopt reactive phase-equilibrium NLP route"):
+        mix.solve_equilibrium(problem)
+
+
+def test_reactive_phase_equilibrium_problem_rejects_phase_seed_surface() -> None:
+    mix, feed, initial_phases, reaction = _toy_reactive_phase_case()
+    problem = epcsaft.ReactivePhaseEquilibriumProblem(
+        T=298.15,
+        P=1.013e5,
+        z=feed,
+        balances={"total": {"Methanol": 1.0, "Cyclohexane": 1.0}},
+        totals={"total": 1.0},
+        reactions=[reaction],
+        phase_kind="lle_flash",
+        phase_kwargs={"initial_phases": initial_phases},
+    )
+
+    with pytest.raises(epcsaft.InputError, match="route-owned canonical initial point"):
         mix.solve_equilibrium(problem)
 
 

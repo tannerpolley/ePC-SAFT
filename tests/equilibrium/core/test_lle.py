@@ -49,11 +49,11 @@ def _assert_neutral_lle_route_pending(excinfo: pytest.ExceptionInfo[epcsaft.Inpu
     assert "No package-owned alternate LLE solver is available" in message
 
 
-def test_methanol_cyclohexane_lle_flash_requires_native_ipopt_with_seed() -> None:
+def test_methanol_cyclohexane_lle_flash_rejects_initial_phases_seed_surface() -> None:
     mix = _methanol_cyclohexane_mixture()
     feed, initial_phases = _methanol_cyclohexane_lle_benchmark()
 
-    with pytest.raises(epcsaft.InputError) as excinfo:
+    with pytest.raises(epcsaft.InputError, match="route-owned canonical initial point"):
         mix.equilibrium(
             kind="lle_flash",
             T=298.15,
@@ -63,8 +63,6 @@ def test_methanol_cyclohexane_lle_flash_requires_native_ipopt_with_seed() -> Non
             initial_phases=initial_phases,
             options=epcsaft.EquilibriumOptions(max_iterations=240, tolerance=1.0e-10),
         )
-
-    _assert_neutral_lle_route_pending(excinfo)
 
 
 def test_lle_flash_without_initial_phases_requires_native_ipopt_after_validation() -> None:
@@ -85,7 +83,7 @@ def test_lle_flash_without_initial_phases_requires_native_ipopt_after_validation
 
 def test_lle_flash_builds_one_native_route_request_before_ipopt_gate(monkeypatch: pytest.MonkeyPatch) -> None:
     mix = _methanol_cyclohexane_mixture()
-    feed, initial_phases = _methanol_cyclohexane_lle_benchmark()
+    feed, _initial_phases = _methanol_cyclohexane_lle_benchmark()
     calls: list[dict[str, object]] = []
 
     def fake_route(
@@ -130,7 +128,6 @@ def test_lle_flash_builds_one_native_route_request_before_ipopt_gate(monkeypatch
             T=298.15,
             P=1.013e5,
             z=feed,
-            initial_phases=initial_phases,
             options=epcsaft.EquilibriumOptions(max_iterations=19, tolerance=3.0e-8),
         )
 
@@ -280,7 +277,6 @@ def test_lle_flash_rejects_invalid_options_through_public_api(options, match) ->
             T=298.15,
             P=1.013e5,
             z=feed,
-            initial_phases={"liq1": feed, "liq2": feed, "phase_fraction": 0.5},
             options=options,
         )
 
@@ -296,7 +292,6 @@ def test_lle_flash_rejects_removed_solver_budget_option_dict_keys(removed_key: s
             T=298.15,
             P=1.013e5,
             z=feed,
-            initial_phases={"liq1": feed, "liq2": feed, "phase_fraction": 0.5},
             options={removed_key: 1},
         )
 
@@ -325,26 +320,6 @@ def test_lle_flash_requested_ipopt_requires_native_ipopt_route() -> None:
         ({"kind": "lle_flash", "T": 298.15, "P": 1.0e5}, "z"),
         ({"kind": "lle_flash", "T": 298.15, "P": 1.0e5, "z": [1.0]}, "length"),
         ({"kind": "lle_flash", "T": 298.15, "P": 1.0e5, "z": [0.5, -0.5]}, "non-negative"),
-        (
-            {
-                "kind": "lle_flash",
-                "T": 298.15,
-                "P": 1.0e5,
-                "z": [0.5, 0.5],
-                "initial_phases": {"liq1": [0.5, 0.5], "phase_fraction": 0.5},
-            },
-            "initial_phases",
-        ),
-        (
-            {
-                "kind": "lle_flash",
-                "T": 298.15,
-                "P": 1.0e5,
-                "z": [0.5, 0.5],
-                "initial_phases": {"liq1": [0.5, 0.5], "liq2": [0.2, 0.8], "phase_fraction": 1.2},
-            },
-            "phase_fraction",
-        ),
     ],
 )
 def test_lle_flash_rejects_invalid_public_inputs(kwargs, match) -> None:
@@ -352,6 +327,12 @@ def test_lle_flash_rejects_invalid_public_inputs(kwargs, match) -> None:
 
     with pytest.raises(epcsaft.InputError, match=match):
         mix.equilibrium(**kwargs)
+
+
+def test_lle_problem_has_no_public_phase_seed_field() -> None:
+    field_name = "initial" + "_phases"
+
+    assert field_name not in epcsaft.LLEProblem.__dataclass_fields__
 
 
 def test_lle_flash_rejects_ionic_mixtures_for_v2() -> None:

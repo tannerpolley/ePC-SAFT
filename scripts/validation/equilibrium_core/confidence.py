@@ -60,9 +60,6 @@ class BenchmarkSuite:
 @dataclass(frozen=True)
 class NativeBenchmarkInputs:
     feed: np.ndarray
-    initial_aq: np.ndarray
-    initial_org: np.ndarray
-    beta_org: float
 
 
 @dataclass(frozen=True)
@@ -158,37 +155,7 @@ def load_benchmark_suite(name: str = "khudaida_2026") -> BenchmarkSuite:
 
 def benchmark_case_to_native_inputs(case: BenchmarkCase) -> NativeBenchmarkInputs:
     feed = formula_to_explicit(case.feed_formula)
-    organic_hint = formula_to_explicit(case.experimental_organic_formula)
-    aqueous_hint = formula_to_explicit(case.experimental_aqueous_formula)
-    initial_aq, initial_org, beta_org = material_balanced_initial_phases(feed, organic_hint, aqueous_hint)
-    return NativeBenchmarkInputs(feed=feed, initial_aq=initial_aq, initial_org=initial_org, beta_org=beta_org)
-
-
-def material_balanced_initial_phases(
-    feed: Sequence[float],
-    organic_hint: Sequence[float],
-    aqueous_hint: Sequence[float],
-    *,
-    phase_fraction: float = 0.5,
-    min_composition: float = 1.0e-8,
-) -> tuple[np.ndarray, np.ndarray, float]:
-    feed_arr = _normalize(np.asarray(feed, dtype=float))
-    direction = np.asarray(organic_hint, dtype=float) - np.asarray(aqueous_hint, dtype=float)
-    direction = direction - float(np.sum(direction)) / direction.size
-    direction = direction - CHARGES * (float(np.dot(direction, CHARGES)) / float(np.dot(CHARGES, CHARGES)))
-    if np.max(np.abs(direction)) <= 1.0e-14:
-        direction = np.asarray([-0.2, 0.1, 0.1, 0.0, 0.0], dtype=float)
-    beta = float(np.clip(phase_fraction, 1.0e-8, 1.0 - 1.0e-8))
-    max_scale = 1.0
-    for i, value in enumerate(direction):
-        if value > 0.0:
-            max_scale = min(max_scale, (feed_arr[i] - min_composition) * (1.0 - beta) / (beta * value))
-        elif value < 0.0:
-            max_scale = min(max_scale, (feed_arr[i] - min_composition) * beta / ((1.0 - beta) * -value))
-    scale = max(0.0, min(0.2, 0.8 * max_scale))
-    organic = feed_arr + ((1.0 - beta) / beta) * scale * direction
-    aqueous = feed_arr - scale * direction
-    return _normalize(aqueous), _normalize(organic), beta
+    return NativeBenchmarkInputs(feed=feed)
 
 
 def run_smoke_cases(suite: BenchmarkSuite, case_keys: Sequence[str]) -> list[BenchmarkPrediction]:
@@ -211,11 +178,6 @@ def predict_case(
             T=case.temperature_K,
             P=PRESSURE_PA,
             z=native.feed,
-            initial_phases={
-                "aq": native.initial_aq,
-                "org": native.initial_org,
-                "phase_fraction": native.beta_org,
-            },
             options=EquilibriumOptions(
                 max_iterations=max_iterations,
                 tolerance=tolerance,

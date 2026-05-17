@@ -43,8 +43,6 @@ def test_khudaida_benchmark_fixture_loads_charge_neutral_cases() -> None:
         native = benchmark_case_to_native_inputs(case)
         assert native.feed.shape == (5,)
         assert abs(float(native.feed[3] - native.feed[4])) <= 1.0e-12
-        assert abs(float(native.initial_aq[3] - native.initial_aq[4])) <= 1.0e-12
-        assert abs(float(native.initial_org[3] - native.initial_org[4])) <= 1.0e-12
 
 
 @requires_khudaida_validation
