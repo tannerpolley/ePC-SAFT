@@ -32,7 +32,7 @@ def _successful_chemical_result() -> ReactiveSpeciationResult:
         },
     )
 
-def test_reactive_electrolyte_bubble_requires_native_ipopt_route_builder(monkeypatch) -> None:
+def test_reactive_electrolyte_bubble_routes_require_native_ipopt_route_builder(monkeypatch) -> None:
     monkeypatch.setattr(
         "epcsaft.reactive_electrolyte.solve_reactive_speciation",
         lambda **kwargs: _successful_chemical_result(),
@@ -54,13 +54,6 @@ def test_reactive_electrolyte_bubble_requires_native_ipopt_route_builder(monkeyp
             initial_x=[0.98, 0.01, 0.01],
             vapor_species=["H2O"],
         )
-
-
-def test_reactive_electrolyte_bubble_sweep_requires_native_ipopt_route_builder(monkeypatch) -> None:
-    monkeypatch.setattr(
-        "epcsaft.reactive_electrolyte.solve_reactive_speciation",
-        lambda **kwargs: _successful_chemical_result(),
-    )
 
     with pytest.raises(epcsaft.InputError, match="native Ipopt equilibrium route builder"):
         epcsaft.solve_reactive_electrolyte_bubble_sweep(
