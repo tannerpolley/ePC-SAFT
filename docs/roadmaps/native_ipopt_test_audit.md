@@ -163,9 +163,9 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
   instead of carrying a redundant negative applicability column. Active source, tests, and scripts now block the retired
   column label.
 - Electrolyte bubble options no longer expose public pressure or vapor-composition seed controls. Reactive electrolyte
-  bubble sweeps no longer expose continuation controls, and reactive-regression residual contexts keep composition warm
-  starts where needed without converting pressure/vapor row results into bubble-route seeds. Bubble-pressure route
-  initialization remains owned by the native Ipopt route builder.
+  bubble sweeps no longer expose continuation controls, and reactive-regression residual contexts use each row's explicit
+  initial composition/defaults without converting row-result composition, pressure, or vapor data into later route seeds.
+  Bubble-pressure route initialization remains owned by the native Ipopt route builder.
 - Public electrolyte LLE no longer accepts user phase seeds or exports electrolyte LLE seed-helper wrappers. The route
   builder owns the canonical initial point, while private native residual-surface tests keep explicit evaluator phase
   payloads where needed for diagnostic Jacobian coverage.

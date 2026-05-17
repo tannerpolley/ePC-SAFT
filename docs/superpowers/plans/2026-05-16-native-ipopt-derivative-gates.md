@@ -666,8 +666,8 @@ result-formatting layer only.
 Task 9/12 continuation note: public electrolyte bubble options no longer expose pressure or vapor-composition seed
 controls. Reactive electrolyte bubble sweeps no longer carry prior bubble pressure/vapor results into later points; each
 fixed-liquid bubble call uses the native route builder's canonical initial point, and the sweep API no longer exposes a
-continuation flag. Reactive-regression residual contexts retain composition warm starts but no longer convert row-result
-pressure/vapor data into bubble-route seed options.
+continuation flag. Reactive-regression residual contexts now use each row's explicit initial composition/defaults and no
+longer convert row-result composition, pressure, or vapor data into later route seeds.
 
 ### Task 10: Make Regression Ceres-Only
 
