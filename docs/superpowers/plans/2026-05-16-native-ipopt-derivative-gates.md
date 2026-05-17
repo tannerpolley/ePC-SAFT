@@ -292,12 +292,12 @@ calls. Together with the dependency gate, native Eigen nonlinear-optimizer gate,
 gate, the tracked test suite now covers the required no-SciPy, no-Eigen-nonlinear, no-Python-production-solver-loop, and
 no banned derivative/status concepts. Duplicate status/debug tests remain a separate cleanup stream.
 
-Task 2 continuation note: duplicate neutral-equilibrium route-pending tests were pruned from the broad public API file.
-Representative route-pending coverage stays in the route-specific VLE/LLE/stability/bubble-dew files, derivative-policy
+Task 2 continuation note: duplicate neutral-equilibrium native-Ipopt gate tests were pruned from the broad public API file.
+Representative native-Ipopt gate coverage stays in the route-specific VLE/LLE/stability/bubble-dew files, derivative-policy
 tests, typed problem-object tests, and native route-result conversion tests.
 
-Task 2 continuation note: skipped Hubach electrolyte-LLE continuation tests that only repeated the route-pending contract
-were deleted. The active electrolyte LLE smoke/fixture tests retain route-pending, charge-neutral seed, fixture, and
+Task 2 continuation note: skipped Hubach electrolyte-LLE continuation tests that only repeated the native-Ipopt gate contract
+were deleted. The active electrolyte LLE smoke/fixture tests retain native-Ipopt gate, charge-neutral seed, fixture, and
 removed-option coverage without keeping opt-in status-only duplicates.
 
 Task 2 continuation note: Hubach removed-option checks now run as normal fast tests because they fail during validation
@@ -308,26 +308,26 @@ Task 2 continuation note: opt-in package plot smokes no longer build derivative 
 slopes. The stale regression plot smoke now calls the public Ceres-backed fit path, and redundant derivative-oracle
 plots were removed from the opt-in native/regression plot tests.
 
-Task 2 continuation note: duplicate distributed-ion electrolyte LLE route-pending checks were pruned. Mixed-salt public
+Task 2 continuation note: duplicate distributed-ion electrolyte LLE native-Ipopt gate checks were pruned. Mixed-salt public
 route-gate coverage remains in `test_electrolyte_lle_solver_contracts.py`, while the result-file test keeps basis and
 stability assertions without a second identical LLE pending assertion.
 
-Task 2 continuation note: duplicate public route-pending checks were pruned from the native equilibrium contract file.
+Task 2 continuation note: duplicate public native-Ipopt gate checks were pruned from the native equilibrium contract file.
 The route-specific public tests still own neutral TP flash, stability, and electrolyte LLE route-gate behavior; native
 contract coverage stays focused on native residual and dependency-boundary evidence.
 
-Task 2 continuation note: the standalone salting-out LLE route-pending benchmark test was removed. Strict seeded
+Task 2 continuation note: the standalone salting-out LLE native-Ipopt gate benchmark test was removed. Strict seeded
 electrolyte LLE route gating stays in the smoke tests, mixed-salt route gating stays in the solver-contract tests, and
 the typed `ElectrolyteLLEProblem` fixture now lives with the problem-object test.
 
-Task 2 continuation note: a duplicate electrolyte LLE explicit-Ipopt route-pending test was removed. The retained
+Task 2 continuation note: a duplicate electrolyte LLE explicit-Ipopt native-gate test was removed. The retained
 native-route request test already uses `solver_backend="ipopt"` and verifies the exact native route payload before the
 local no-Ipopt gate, while default direct-feed and molality-feed route gates remain covered separately.
 
-Task 2 continuation note: a duplicate TP-flash route-pending test that only varied a diagnostics flag was removed; Task 8
+Task 2 continuation note: a duplicate TP-flash native-Ipopt gate test that only varied a diagnostics flag was removed; Task 8
 later removed that no-op public flag.
 
-Task 2 continuation note: a duplicate TP-flash route-pending test for the retired stability-precheck option was removed.
+Task 2 continuation note: a duplicate TP-flash native-Ipopt gate test for the retired stability-precheck option was removed.
 The route-specific TP-flash test still verifies the native route payload before the local no-Ipopt gate.
 
 Task 2 continuation note: the duplicate equilibrium-core activity-coupled reactive-speciation derivative-gate test was
@@ -817,7 +817,7 @@ Task 12 continuation note: the tracked text gate now enforces that active source
 
 Task 12 continuation note: fixed-liquid electrolyte bubble pressure and composed reactive electrolyte bubble pressure no longer execute the package-owned pressure-search route from public Python entry points. Fixed-liquid electrolyte bubble pressure now dispatches to the native Ipopt route when compiled; staged reactive electrolyte bubble pressure uses native speciation followed by that native route for supported inputs, while unsupported staged or dependency cases fail loudly. The public `ElectrolyteBubbleOptions` surface no longer carries the disabled pressure-search controls.
 
-Task 12 continuation note: the private native electrolyte bubble pressure-search binding and C++ implementation were deleted after the public route moved to route-pending. The removed code included the pybind `_solve_electrolyte_bubble_native` entrypoint, the native route option struct, vapor submixture helpers, and the log-pressure search implementation.
+Task 12 continuation note: the private native electrolyte bubble pressure-search binding and C++ implementation were deleted after the public route moved to a native-Ipopt gate. The removed code included the pybind `_solve_electrolyte_bubble_native` entrypoint, the native route option struct, vapor submixture helpers, and the log-pressure search implementation.
 
 Task 12 continuation note: `EquilibriumOptions` no longer exposes the equilibrium-level best-effort result switch. Neutral/electrolyte LLE failures stay loud with JSON-safe diagnostics on `SolutionError`, and docs/tests now instruct downstream sweeps to catch failures rather than consume unaccepted phase results.
 
@@ -837,7 +837,7 @@ Task 12 continuation note: public neutral and electrolyte stability routes no lo
 
 Task 12 continuation note: obsolete PR #126 and issue-specific Ceres-equilibrium handoff documents were removed from active docs. Literature benchmark metadata for blocked Ascani electrolyte LLE and reactive phase-equilibrium cases now points at this native Ipopt gate plan instead of superseded Ceres-equilibrium planning artifacts.
 
-Task 12 continuation note: public route-pending errors for neutral flash/LLE/stability, electrolyte LLE/bubble, reactive speciation, and reactive phase equilibrium now state the native Ipopt ownership requirement directly without naming retired solver routes as compatibility context.
+Task 12 continuation note: public native-Ipopt gate errors for neutral flash/LLE/stability, electrolyte LLE/bubble, reactive speciation, and reactive phase equilibrium now state the native Ipopt ownership requirement directly without naming retired solver routes as compatibility context.
 
 Task 12 continuation note: public route-gate errors now keep only the positive native-Ipopt requirement. Tests no longer assert the old alternate-solver compatibility wording, and the executable text gate blocks that wording from active source, tests, and scripts.
 
@@ -897,7 +897,7 @@ tests match the analytical/CppAD derivative gate.
 
 Task 12 continuation note: equilibrium cookbook and downstream local-install docs no longer describe implemented
 native-Ipopt neutral TP/LLE, fixed-temperature bubble/dew pressure, electrolyte LLE, or electrolyte bubble-pressure
-routes as globally route-pending. They now distinguish Ipopt-enabled native routes from stability, bubble/dew
+routes as globally native-Ipopt-gated. They now distinguish Ipopt-enabled native routes from stability, bubble/dew
 temperature, and reactive-electrolyte bubble routes that remain gated.
 
 Task 12 continuation note: stale tracked GoalBuddy artifacts for superseded native electrolyte, neutral LLE,
@@ -935,7 +935,7 @@ is compiled. Bubble/dew temperature, stability, and coupled reactive phase route
 
 Task 12 continuation note: public activity-coefficient contribution decomposition now fails through the package's typed
 `InputError` instead of a generic Python unsupported-operation exception, and the regression derivative table now treats
-neutral LLE as an Ipopt-enabled native route with internal exact derivative callbacks rather than a pending route. Runtime
+neutral LLE as an Ipopt-enabled native route with internal exact derivative callbacks rather than an unowned route. Runtime
 capabilities no longer advertise an unavailable activity-coefficient decomposition flag.
 
 Task 12 continuation note: active source no longer uses generic "not implemented" wording for derivative gates,
@@ -968,7 +968,7 @@ Task 2/3/12 continuation note: `runtime_build_info()` now reports Ceres, CppAD, 
 required native dependencies, missing required dependency reasons now fail loud as `required_native_dependency_missing`,
 and the executable text gate blocks the retired dependency-status wording in source, tests, and scripts.
 
-Task 7/12 continuation note: the stale staged TP-reactive alias guard and its duplicate staged-workflow route-pending
+Task 7/12 continuation note: the stale staged TP-reactive alias guard and its duplicate staged-workflow native-Ipopt gate
 test were removed. The retained staged workflow tests cover the explicit `phase_kind` path, and the executable text gate
 now blocks reintroducing that alias in source, tests, or scripts.
 
@@ -993,7 +993,7 @@ diagnostic or a negative neutral-route status. The retained diagnostics describe
 derivative policy, residual audits, and phase-route diagnostics only; the executable text gate blocks the removed field
 and status tokens.
 
-Task 2 continuation note: duplicate no-Ipopt route-pending tests for neutral TP flash, neutral LLE, neutral bubble/dew
+Task 2 continuation note: duplicate no-Ipopt native-gate tests for neutral TP flash, neutral LLE, neutral bubble/dew
 temperature, and one-salt electrolyte LLE were deleted. Retained coverage now lives in stronger tests that either verify
 one native route request is built before the Ipopt dependency gate, exercise typed/generic dispatch for still-gated
 temperature routes, or validate accepted native payload conversion.

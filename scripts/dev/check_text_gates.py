@@ -102,6 +102,11 @@ def _blocked_terms() -> tuple[str, ...]:
     forty_fourth = "charge" + "_neutral" + "_lle" + "_seed"
     forty_fifth = "solvent" + "_endpoint" + "_seed"
     forty_sixth = "electrolyte" + "_seeds"
+    forty_seventh = "route" + "_pending"
+    forty_eighth = "route" + "-" + "pending"
+    forty_ninth = "route" + " pending"
+    fiftieth = "pending" + " route"
+    fifty_first = "pending" + "-" + "route"
     return (
         first,
         second,
@@ -149,6 +154,11 @@ def _blocked_terms() -> tuple[str, ...]:
         forty_fourth,
         forty_fifth,
         forty_sixth,
+        forty_seventh,
+        forty_eighth,
+        forty_ninth,
+        fiftieth,
+        fifty_first,
     )
 
 
@@ -290,11 +300,6 @@ def _source_blocked_terms(rel: str) -> tuple[str, ...]:
             "warm" + "_start" + "_failed",
             "objective" + "_seed",
             "row" + "_seed",
-        )
-    if rel.startswith(("src/", "tests/", "scripts/")):
-        terms += (
-            "route" + "_pending",
-            "route" + "-" + "pending",
         )
     if rel.startswith("src/"):
         terms += ("fit" + "_route",)

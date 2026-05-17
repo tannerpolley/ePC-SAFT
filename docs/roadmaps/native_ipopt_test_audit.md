@@ -73,7 +73,7 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - The public `EquilibriumOptions.jacobian_backend` selector rejects the same removed backend spelling, keeping phase-equilibrium derivative requests aligned to analytical/CppAD semantics.
 - Stale native electrolyte LLE and reactive-phase tests that protected accepted Ceres equilibrium solves were deleted. Residual-surface derivative tests remain as private diagnostic coverage until native Ipopt route builders own production equilibrium.
 - Old PR #126 and issue-specific Ceres-equilibrium handoff documents were removed from active docs, and literature benchmark metadata now points blocked Ascani LLE/reactive-phase cases at the native Ipopt gate plan.
-- Public route-pending errors now describe the current Ipopt ownership requirement without naming retired solver routes as migration context.
+- Public native-Ipopt gate errors now describe the current Ipopt ownership requirement without naming retired solver routes as migration context.
 - Runtime reactive-regression capability labels now describe residual-evaluation contexts instead of naming Python orchestration as a solver backend.
 - The unreferenced tracked LaTeX backup `docs/latex/equations_old.tex` was deleted; `docs/latex/equations.tex` remains the equation source of truth.
 - Completed, unreferenced JetBrains cleanup plan artifacts were removed now that the repo-owned script exists.
@@ -87,22 +87,22 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - A repo workflow gate now scans native C++ sources for Ceres non-exact derivative APIs and legacy shifted-source route tokens.
 - A repo workflow gate now scans public Python solver surfaces for external optimizer/root-loop calls, so Python facades
   remain request/result surfaces instead of owning production solve algorithms.
-- Duplicate distributed-ion electrolyte LLE route-pending checks were removed; mixed-salt public route-gate coverage
+- Duplicate distributed-ion electrolyte LLE native-Ipopt gate checks were removed; mixed-salt public route-gate coverage
   remains in the route-specific solver-contract test file.
 - The retired tracked `docs/goals/**` GoalBuddy boards were removed from active docs. The only referenced benchmark
   evidence was condensed into `docs/roadmaps/native_associating_binary_ceres_benchmark.md`, and the text gate now blocks
   the stale derivative-proof phrases that appeared only in historical board state.
-- Duplicate public route-pending checks were pruned from the native equilibrium contract file. Route-specific public
+- Duplicate public native-Ipopt gate checks were pruned from the native equilibrium contract file. Route-specific public
   tests still own TP flash, stability, and electrolyte LLE route-gate behavior, while the native contract file keeps the
   native residual and dependency-boundary checks.
-- The standalone salting-out LLE route-pending benchmark test was removed because the smoke tests already cover strict
+- The standalone salting-out LLE native-Ipopt gate benchmark test was removed because the smoke tests already cover strict
   electrolyte LLE route gating and the solver-contract tests cover mixed-salt route gates. Its typed problem
   fixture now lives with the `ElectrolyteLLEProblem` problem-object test.
-- A duplicate electrolyte LLE explicit-Ipopt route-pending test was removed. The retained native-route request test
+- A duplicate electrolyte LLE explicit-Ipopt native-gate test was removed. The retained native-route request test
   already sets `solver_backend="ipopt"` and verifies the exact route payload before the local no-Ipopt gate.
 - The no-op public `EquilibriumOptions.include_phase_diagnostics` switch was removed after confirming native route
   payloads do not read it. Current option acceptance stays covered by exact field-set and unknown-key tests.
-- A duplicate TP-flash route-pending test for the retired stability-precheck option was removed. The route-specific
+- A duplicate TP-flash native-Ipopt gate test for the retired stability-precheck option was removed. The route-specific
   TP-flash test still verifies the native route payload before the local no-Ipopt gate.
 - The no-reaction mixed reactive-regression objective status test was removed. Target-family accounting is covered in
   diagnostics tests, and retained regression setup tests now exercise a real nonideal native derivative-block gate.
@@ -125,7 +125,7 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
   stability, bubble/dew temperature, and reactive-electrolyte bubble routes.
 - The public activity-coefficient contribution decomposition path now raises the package's typed `InputError` instead
   of a generic Python unsupported-operation exception, and the regression derivative table now describes neutral LLE as
-  a native Ipopt route when compiled rather than a pending route. Runtime capabilities omit the unimplemented
+  a native Ipopt route when compiled rather than an unowned route. Runtime capabilities omit the unimplemented
   activity-coefficient decomposition flag.
 - The strict text gate now blocks generic "not implemented" wording in executable source, tests, and scripts, so
   unsupported derivative or route paths must state the positive required backend/formulation instead.
@@ -140,7 +140,7 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - Runtime build metadata now uses `native_dependencies` instead of the retired optional-dependency label. Ceres and
   CppAD entries are marked as required native dependencies, and source/test/script gates block the old dependency-status
   wording.
-- The stale staged TP-reactive alias guard and duplicate route-pending test were removed. Explicit
+- The stale staged TP-reactive alias guard and duplicate native-Ipopt gate test were removed. Explicit
   `phase_kind` staged workflow coverage remains, and the executable text gate blocks the old alias token.
 - Duplicate equilibrium capability tests that only repeated runtime metadata route-status checks were deleted. The
   retained capability tests cover derivative policy, reactive-speciation standard-state gates, and reactive
@@ -232,8 +232,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - Runtime capability smoke coverage no longer repeats the same per-route Ipopt dependency status assertions for every
   equilibrium route; adapter and route-builder tests own the dependency gate while the runtime smoke keeps route shape
   and backend coverage.
-- Executable tests now describe public equilibrium failures as native-Ipopt gates instead of route-pending status.
-  One duplicate nonexact-derivative route-gate assertion was deleted, and the text gate blocks the stale route-pending
+- Executable tests now describe public equilibrium failures as native-Ipopt gates instead of stale unowned-route status.
+  One duplicate nonexact-derivative route-gate assertion was deleted, and the text gate blocks the stale unowned-route
   token in active source, tests, and scripts.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
