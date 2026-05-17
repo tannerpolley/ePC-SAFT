@@ -227,8 +227,6 @@ native-backed helpers remain available for code that already targets them.
 
 .. autofunction:: epcsaft.evaluate_reactive_regression_objective
 
-.. autofunction:: epcsaft.fit_reactive_electrolyte_parameters
-
 .. autofunction:: epcsaft.write_fit_result
 
 

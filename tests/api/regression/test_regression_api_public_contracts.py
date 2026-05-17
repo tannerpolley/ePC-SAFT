@@ -22,6 +22,8 @@ def test_public_regression_surface_includes_ion_and_binary_v1():
     assert hasattr(epcsaft, "ReactiveRegressionObjectiveResult")
     assert not hasattr(epcsaft, "evaluate_reactive_electrolyte" + "_bubble_residuals")
     assert not hasattr(epcsaft, "Reactive" + "ElectrolyteRegressionResult")
+    assert not hasattr(epcsaft, "fit_reactive_electrolyte" + "_parameters")
+    assert not hasattr(epcsaft, "ReactiveRegression" + "FitResult")
     assert hasattr(epcsaft, "TargetRow")
     assert hasattr(epcsaft, "TargetDataset")
 

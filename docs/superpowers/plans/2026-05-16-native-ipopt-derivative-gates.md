@@ -725,9 +725,9 @@ Task 10 continuation note: the strict text gate now blocks common Ceres non-exac
 
 Task 10 continuation note: regression public/native result payloads no longer expose placeholder fallback booleans, empty missing-derivative reason fields, or Hessian skeleton metadata. The retained regression derivative surface reports optimizer backend, derivative backend, objective/evaluation counters, gradient/step norms, and implemented Jacobian availability/backend only.
 
-Task 10 continuation note: the reactive electrolyte fit entrypoint no longer exposes a public `damping` argument or stale line-search status documentation. It now validates requested fit inputs and raises until native Ceres derivative coverage owns that optimization route.
+Task 10 continuation note: the reactive electrolyte fit entrypoint no longer exposes a public `damping` argument or stale line-search status documentation. A later cleanup removed the placeholder entrypoint entirely until native Ceres derivative coverage owns that optimization route.
 
-Task 10 continuation note: reactive electrolyte batch capabilities now expose a gated native-Ceres fit route plus the mixed pressure/speciation residual-context capability. The public metadata no longer advertises bounded step control or line-search fit outcomes for this route.
+Task 10 continuation note: reactive electrolyte batch capabilities expose the mixed pressure/speciation residual-context capability only. Public metadata no longer advertises a placeholder fit route, bounded step control, or line-search fit outcomes for this route.
 
 Task 10 continuation note: the public generic native-record derivative helper was deleted because it only advertised derivative backend selection and then raised without returning an exact derivative payload. Public derivative-matrix access now remains limited to implemented exact routes such as the native pure-neutral Ceres objective until each generic target family has analytical, CppAD, or implicit derivative matrices behind its Ceres path.
 
@@ -845,7 +845,7 @@ Task 8/12 continuation note: `EquilibriumOptions` no longer exposes the unused s
 
 Task 12 continuation note: reactive-regression runtime capability labels now describe structured residual-evaluation contexts instead of naming Python orchestration as a solver backend. The metadata keeps the route explicitly non-optimizer without a redundant status label until native Ceres derivative coverage owns the production fit.
 
-Task 10/12 continuation note: public `fit_reactive_electrolyte_parameters(...)` now validates the batch/context, fitted parameter map, bounds, iteration count, and tolerance, then raises `InputError` until native Ceres owns the reactive-electrolyte optimizer with exact derivatives. The supported public diagnostic path remains `evaluate_reactive_regression_objective(...)`; tests, docs, runtime capabilities, and the text gate no longer protect the retired residual-only fit status. Runtime capabilities now omit the unavailable reactive-electrolyte fit route rather than advertising a placeholder row.
+Task 10/12 continuation note: the public reactive-electrolyte fit placeholder and fit-result type were removed. The supported public diagnostic path remains `evaluate_reactive_regression_objective(...)`, and the optimizer should return as a real native Ceres route only when exact derivative coverage exists.
 
 Task 10/12 continuation note: the older `evaluate_reactive_electrolyte_bubble_residuals(...)` public wrapper and
 `ReactiveElectrolyteRegressionResult` payload were removed. Reactive electrolyte diagnostics now use the

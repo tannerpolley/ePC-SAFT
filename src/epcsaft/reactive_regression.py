@@ -462,54 +462,6 @@ class ReactiveRegressionJacobianResult:
         }
 
 
-@dataclass(frozen=True, slots=True)
-class ReactiveRegressionFitResult:
-    """Structured result payload for native Ceres reactive-regression fits."""
-
-    success: bool
-    message: str
-    status: str
-    termination_reason: str
-    iterations: int
-    objective_initial: float
-    objective_final: float
-    gradient_norm: float | None
-    step_norm: float | None
-    parameter_map: Mapping[str, float]
-    seed_map: Mapping[str, float]
-    lower_bounds: Mapping[str, float | None]
-    upper_bounds: Mapping[str, float | None]
-    active_bounds: Mapping[str, bool]
-    objective_result: ReactiveRegressionObjectiveResult
-    covariance_available: bool
-    covariance_matrix: np.ndarray | None
-    identifiability_status: str
-    diagnostics: Mapping[str, Any]
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "success": bool(self.success),
-            "message": self.message,
-            "status": self.status,
-            "termination_reason": self.termination_reason,
-            "iterations": int(self.iterations),
-            "objective_initial": float(self.objective_initial),
-            "objective_final": float(self.objective_final),
-            "gradient_norm": None if self.gradient_norm is None else float(self.gradient_norm),
-            "step_norm": None if self.step_norm is None else float(self.step_norm),
-            "parameter_map": _json_like(self.parameter_map),
-            "seed_map": _json_like(self.seed_map),
-            "lower_bounds": _json_like(self.lower_bounds),
-            "upper_bounds": _json_like(self.upper_bounds),
-            "active_bounds": _json_like(self.active_bounds),
-            "objective_result": self.objective_result.to_dict(),
-            "covariance_available": bool(self.covariance_available),
-            "covariance_matrix": None if self.covariance_matrix is None else _json_like(self.covariance_matrix),
-            "identifiability_status": self.identifiability_status,
-            "diagnostics": _json_like(self.diagnostics),
-        }
-
-
 @dataclass(slots=True)
 class ReactiveElectrolyteRegressionContext:
     """Compiled reusable context for repeated reactive regression evaluations."""
@@ -833,55 +785,8 @@ def evaluate_reactive_regression_objective(
     return context.evaluate_objective(parameter_map)
 
 
-def fit_reactive_electrolyte_parameters(
-    batch_or_context: ReactiveElectrolyteBatch | ReactiveElectrolyteRegressionContext,
-    *,
-    initial_parameters: Mapping[str, float],
-    lower_bounds: Mapping[str, float | None] | None = None,
-    upper_bounds: Mapping[str, float | None] | None = None,
-    max_iterations: int = 6,
-    tolerance: float = 1.0e-6,
-) -> ReactiveRegressionFitResult:
-    _validate_reactive_fit_request(
-        batch_or_context,
-        initial_parameters=initial_parameters,
-        lower_bounds=lower_bounds,
-        upper_bounds=upper_bounds,
-        max_iterations=max_iterations,
-        tolerance=tolerance,
-    )
-    raise InputError(
-        "reactive electrolyte parameter fitting requires a native Ceres optimizer with exact derivatives; "
-        "use evaluate_reactive_regression_objective(...) for diagnostic residual evaluation until that route exists."
-    )
-
-
-def summarize_regression_result(
-    result: ReactiveRegressionObjectiveResult | ReactiveRegressionFitResult,
-) -> dict[str, Any]:
-    if isinstance(result, ReactiveRegressionFitResult):
-        objective_result = result.objective_result
-        fit_payload = {
-            "fit_success": bool(result.success),
-            "fit_message": result.message,
-            "termination_reason": result.termination_reason,
-            "fit_iterations": int(result.iterations),
-            "objective_initial": float(result.objective_initial),
-            "objective_final": float(result.objective_final),
-            "gradient_norm": None if result.gradient_norm is None else float(result.gradient_norm),
-            "step_norm": None if result.step_norm is None else float(result.step_norm),
-            "parameter_map": _json_like(result.parameter_map),
-            "seed_map": _json_like(result.seed_map),
-            "lower_bounds": _json_like(result.lower_bounds),
-            "upper_bounds": _json_like(result.upper_bounds),
-            "active_bounds": _json_like(result.active_bounds),
-            "covariance_available": bool(result.covariance_available),
-            "covariance_matrix": _json_like(result.covariance_matrix),
-            "diagnostics": _json_like(result.diagnostics),
-        }
-    else:
-        objective_result = result
-        fit_payload = {}
+def summarize_regression_result(result: ReactiveRegressionObjectiveResult) -> dict[str, Any]:
+    objective_result = result
     batch = objective_result.batch_result
     row_norms: list[tuple[str, float]] = []
     source_counter: dict[str, list[float]] = {}
@@ -941,15 +846,11 @@ def summarize_regression_result(
         },
         "cache_stats": _json_like(batch.cache_stats),
         "timing_summary": _json_like(batch.timing_summary),
-        **fit_payload,
     }
     return payload
 
 
-def write_regression_summary(
-    result: ReactiveRegressionObjectiveResult | ReactiveRegressionFitResult,
-    path: str | Path,
-) -> Path:
+def write_regression_summary(result: ReactiveRegressionObjectiveResult, path: str | Path) -> Path:
     target = Path(path)
     payload = summarize_regression_result(result)
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -961,20 +862,16 @@ def write_regression_summary(
     return target
 
 
-def write_regression_row_table(
-    result: ReactiveRegressionObjectiveResult | ReactiveRegressionFitResult,
-    path: str | Path,
-) -> Path:
+def write_regression_row_table(result: ReactiveRegressionObjectiveResult, path: str | Path) -> Path:
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
-    objective_result = result.objective_result if isinstance(result, ReactiveRegressionFitResult) else result
-    rows = objective_result.batch_result.flatten_rows()
+    rows = result.batch_result.flatten_rows()
     _write_csv_rows(target, rows)
     return target
 
 
 def write_regression_parameter_table(
-    result_or_parameter_map: ReactiveRegressionFitResult | Mapping[str, float],
+    parameter_map: Mapping[str, float],
     path: str | Path,
     *,
     seed_map: Mapping[str, float] | None = None,
@@ -982,17 +879,7 @@ def write_regression_parameter_table(
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
     rows = []
-    active_bounds: dict[str, bool] = {}
-    lower_bounds_map: dict[str, float | None] = {}
-    upper_bounds_map: dict[str, float | None] = {}
-    if isinstance(result_or_parameter_map, ReactiveRegressionFitResult):
-        parameter_map = dict(result_or_parameter_map.parameter_map)
-        seed_map = dict(result_or_parameter_map.seed_map) if seed_map is None else dict(seed_map)
-        active_bounds = {str(k): bool(v) for k, v in result_or_parameter_map.active_bounds.items()}
-        lower_bounds_map = {str(k): v for k, v in result_or_parameter_map.lower_bounds.items()}
-        upper_bounds_map = {str(k): v for k, v in result_or_parameter_map.upper_bounds.items()}
-    else:
-        parameter_map = {str(k): float(v) for k, v in result_or_parameter_map.items()}
+    parameter_map = {str(k): float(v) for k, v in parameter_map.items()}
     seed_map = {str(k): float(v) for k, v in (seed_map or {}).items()}
     for key, value in sorted((str(k), float(v)) for k, v in parameter_map.items()):
         seed = seed_map.get(key)
@@ -1003,85 +890,17 @@ def write_regression_parameter_table(
                 "final_value": value,
                 "movement": None if seed is None else float(value - seed),
                 "relative_movement": None if seed in (None, 0.0) else float((value - seed) / seed),
-                "lower_bound": lower_bounds_map.get(key),
-                "upper_bound": upper_bounds_map.get(key),
-                "active_bound": bool(active_bounds.get(key, False)),
             }
         )
     _write_csv_rows(target, rows)
     return target
 
 
-def write_regression_residual_table(
-    result: ReactiveRegressionObjectiveResult | ReactiveRegressionFitResult,
-    path: str | Path,
-) -> Path:
+def write_regression_residual_table(result: ReactiveRegressionObjectiveResult, path: str | Path) -> Path:
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
-    objective_result = result.objective_result if isinstance(result, ReactiveRegressionFitResult) else result
-    _write_csv_rows(target, objective_result.batch_result.flatten_residuals())
+    _write_csv_rows(target, result.batch_result.flatten_residuals())
     return target
-
-
-def _validate_reactive_fit_request(
-    batch_or_context: ReactiveElectrolyteBatch | ReactiveElectrolyteRegressionContext,
-    *,
-    initial_parameters: Mapping[str, float],
-    lower_bounds: Mapping[str, float | None] | None = None,
-    upper_bounds: Mapping[str, float | None] | None = None,
-    max_iterations: int = 6,
-    tolerance: float = 1.0e-6,
-) -> None:
-    if not isinstance(batch_or_context, (ReactiveElectrolyteBatch, ReactiveElectrolyteRegressionContext)):
-        raise InputError(
-            "batch_or_context must be a ReactiveElectrolyteBatch or ReactiveElectrolyteRegressionContext."
-        )
-    if not isinstance(initial_parameters, Mapping):
-        raise InputError("initial_parameters must be a mapping of fitted parameter names to values.")
-    current = {str(k): _finite_fit_number(v, f"initial_parameters[{k!r}]") for k, v in initial_parameters.items()}
-    if not current:
-        raise InputError("initial_parameters must include at least one fitted parameter.")
-    lower = _fit_bounds_map(lower_bounds, "lower_bounds")
-    upper = _fit_bounds_map(upper_bounds, "upper_bounds")
-    parameter_names = tuple(current)
-    unknown_lower = sorted(set(lower) - set(parameter_names))
-    if unknown_lower:
-        raise InputError(f"lower_bounds includes unknown parameters: {', '.join(unknown_lower)}")
-    unknown_upper = sorted(set(upper) - set(parameter_names))
-    if unknown_upper:
-        raise InputError(f"upper_bounds includes unknown parameters: {', '.join(unknown_upper)}")
-    for name in parameter_names:
-        lo = lower.get(name)
-        hi = upper.get(name)
-        if lo is not None and hi is not None and lo > hi:
-            raise InputError(f"Bounds for {name} are inconsistent: lower_bound > upper_bound.")
-    try:
-        iteration_count = int(max_iterations)
-    except (TypeError, ValueError):
-        raise InputError("max_iterations must be positive.") from None
-    if iteration_count <= 0:
-        raise InputError("max_iterations must be positive.")
-    tolerance_value = _finite_fit_number(tolerance, "tolerance")
-    if tolerance_value <= 0.0:
-        raise InputError("tolerance must be positive.")
-
-
-def _finite_fit_number(value: Any, label: str) -> float:
-    try:
-        number = float(value)
-    except (TypeError, ValueError):
-        raise InputError(f"{label} must be finite.") from None
-    if not math.isfinite(number):
-        raise InputError(f"{label} must be finite.")
-    return number
-
-
-def _fit_bounds_map(values: Mapping[str, float | None] | None, label: str) -> dict[str, float | None]:
-    if values is None:
-        return {}
-    if not isinstance(values, Mapping):
-        raise InputError(f"{label} must be a mapping of fitted parameter names to bounds.")
-    return {str(k): (None if v is None else _finite_fit_number(v, f"{label}[{k!r}]")) for k, v in values.items()}
 
 
 def _write_csv_rows(path: Path, rows: Sequence[Mapping[str, Any]]) -> None:
@@ -1527,13 +1346,11 @@ __all__ = [
     "ReactiveElectrolyteRegressionContext",
     "ReactiveElectrolyteRow",
     "ReactiveElectrolyteRowResult",
-    "ReactiveRegressionFitResult",
     "ReactiveRegressionJacobianResult",
     "ReactiveRegressionObjective",
     "ReactiveRegressionObjectiveResult",
     "build_reactive_regression_objective",
     "evaluate_reactive_regression_objective",
-    "fit_reactive_electrolyte_parameters",
     "summarize_regression_result",
     "write_regression_parameter_table",
     "write_regression_residual_table",

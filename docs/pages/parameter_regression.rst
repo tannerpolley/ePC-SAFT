@@ -362,7 +362,6 @@ Main entry points:
 - ``ReactiveElectrolyteBatch``: shared species, balances, reactions, parameter payload, and solver options
 - ``ReactiveElectrolyteRegressionContext.from_batch(...)``: compile invariant row/schema metadata once
 - ``evaluate_reactive_regression_objective(...)``: evaluate a structured mixed residual objective
-- ``fit_reactive_electrolyte_parameters(...)``: validate a requested fit and raise until the native Ceres optimizer owns it
 - ``summarize_regression_result(...)`` plus ``write_regression_*`` helpers: stable JSON/CSV reporting
 
 Minimal example:
@@ -450,29 +449,11 @@ Reporting helpers write those schemas without downstream column guessing:
        seed_map={"Na+.sigma": 2.80},
    )
 
-Reactive-electrolyte fitting is gated until native Ceres owns this optimizer
-with exact residual derivatives. The public fit helper still validates the
-compiled batch or context plus the initial parameter map and optional fit
-controls, then raises ``InputError`` instead of returning a synthetic fit
-payload:
-
-.. code-block:: python
-
-   epcsaft.fit_reactive_electrolyte_parameters(
-       context,
-       initial_parameters={"Na+.sigma": 2.85},
-       lower_bounds={"Na+.sigma": 2.5},
-       upper_bounds={"Na+.sigma": 3.1},
-       max_iterations=6,
-       tolerance=1e-6,
-   )
-
-``summarize_regression_result(...)`` returns ``fit_success = null`` for
-objective-only results. Native Ceres fit results will provide the fit boolean,
-parameter map, covariance, and identifiability fields once that optimizer route
-is registered. Until then, downstream workflows should use
-``evaluate_reactive_regression_objective(...)`` for residual diagnostics and
-``write_regression_parameter_table(...)`` for seed or candidate parameter maps.
+Reactive-electrolyte parameter fitting is intentionally not a public API until
+native Ceres owns that optimizer with exact residual derivatives. Downstream
+workflows should use ``evaluate_reactive_regression_objective(...)`` for
+residual diagnostics and ``write_regression_parameter_table(...)`` for seed or
+candidate parameter maps.
 
 The package-owned micro-benchmark harness for this layer is:
 
@@ -570,7 +551,8 @@ Reactive electrolyte diagnostic objective
 Use ``ReactiveElectrolyteRegressionContext.from_batch(...)`` and
 ``evaluate_reactive_regression_objective(...)`` when a downstream project needs a
 fixed-shape diagnostic objective for coupled reactive-electrolyte rows. The
-public fit route validates inputs and raises until native Ceres owns the
+package exposes this as fixed-parameter objective evaluation only; public
+reactive-electrolyte parameter fitting stays absent until native Ceres owns the
 optimizer and exact derivative path. Downstream code supplies records, targets,
 species, balances, reactions, and a ``mixture_factory`` for the current
 parameters; the package returns a ``ReactiveRegressionObjectiveResult`` with
@@ -602,8 +584,8 @@ positive for log-scale pressure and composition residuals:
    )
 
 Use ``result.residuals``, ``result.record_results``, and
-``result.diagnostics`` as diagnostic evidence until the native Ceres fit route
-owns this optimization surface. Do not treat this helper as a full constrained
+``result.diagnostics`` as diagnostic evidence for a fixed candidate parameter
+map. Do not treat this helper as parameter fitting or as a full constrained
 Gibbs/NLP solve; Ipopt equilibrium routes are explicit native constrained-NLP
 routes and are not used automatically.
 

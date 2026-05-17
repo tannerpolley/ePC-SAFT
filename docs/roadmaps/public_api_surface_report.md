@@ -76,10 +76,10 @@ package surface and the current facade/import-boundary behavior.
   `ReactiveElectrolyteBatchResult`, `ReactiveElectrolyteRow`,
   `ReactiveElectrolyteRowResult`, `ReactiveElectrolyteRegressionContext`,
   `ReactiveRegressionObjective`, `ReactiveRegressionObjectiveResult`,
-  `ReactiveRegressionJacobianResult`, `ReactiveRegressionFitResult`,
+  `ReactiveRegressionJacobianResult`,
   `build_reactive_regression_objective`,
   `evaluate_reactive_regression_objective`,
-  `fit_reactive_electrolyte_parameters`, `summarize_regression_result`,
+  `summarize_regression_result`,
   `write_regression_parameter_table`, `write_regression_residual_table`,
   `write_regression_row_table`, `write_regression_summary`.
 

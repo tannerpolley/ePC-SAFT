@@ -9,18 +9,15 @@ and implemented package workflows. The important backend labels are:
 
 * ``native``: production native runtime path.
 * ``native_ipopt_equilibrium_nlp``: implemented production equilibrium route
-  owned by the native Ipopt NLP layer. If Ipopt is not compiled in the current
-  install, the route status is ``ipopt_dependency_required``.
+  owned by the native Ipopt NLP layer.
 * ``batch_residual_evaluation_context``: Python batches rows and formats
   diagnostics for a residual context; this is not a production optimizer.
 
 For reactive electrolyte regression, the
 ``mixed_pressure_speciation_residual_context`` capability advertises the
 diagnostic residual context, its supported target families, and the fact that it
-is not a production optimizer. ``fit_reactive_electrolyte_parameters(...)``
-still validates parameter maps and bounds, then raises ``InputError`` until
-native Ceres owns the optimizer route with exact derivatives; it is not listed
-as an available capability route before that implementation exists.
+is not a production optimizer. Reactive electrolyte parameter fitting is not
+public until native Ceres owns the optimizer route with exact derivatives.
 
 Reactive Speciation And Bubble Diagnostics
 ------------------------------------------
