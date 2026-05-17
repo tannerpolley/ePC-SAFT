@@ -56,7 +56,7 @@ def test_reactive_electrolyte_bubble_strict_bubble_failure_raises(monkeypatch) -
             species=["H2O", "Na+", "Cl-"],
             mixture_factory=_salt_mixture,
             T=298.15,
-            P_seed=101325.0,
+            P=101325.0,
             balances={"water": {"H2O": 1.0}},
             totals={"water": 0.98},
             reactions=[],
@@ -87,7 +87,7 @@ def test_reactive_electrolyte_bubble_result_mode_returns_bubble_failure(monkeypa
         species=["H2O", "Na+", "Cl-"],
         mixture_factory=_salt_mixture,
         T=298.15,
-        P_seed=101325.0,
+        P=101325.0,
         balances={"water": {"H2O": 1.0}},
         totals={"water": 0.98},
         reactions=[],
@@ -170,6 +170,28 @@ def test_reactive_electrolyte_bubble_sweep_does_not_continue_bubble_seed_control
 def test_reactive_electrolyte_bubble_sweeps_expose_no_continuation_flag() -> None:
     assert "continuation" not in inspect.signature(epcsaft.solve_reactive_electrolyte_bubble_sweep).parameters
     assert "continuation" not in inspect.signature(epcsaft.ePCSAFTMixture.equilibrium_sweep).parameters
+
+
+def test_reactive_electrolyte_bubble_public_api_uses_pressure_not_seed() -> None:
+    removed = "P" + "_seed"
+
+    assert removed not in inspect.signature(epcsaft.solve_reactive_electrolyte_bubble).parameters
+    assert removed not in inspect.signature(epcsaft.ePCSAFTMixture.reactive_electrolyte_bubble_p).parameters
+    assert removed not in epcsaft.ReactiveElectrolyteBubbleProblem.__dataclass_fields__
+
+
+def test_reactive_electrolyte_bubble_sweep_rejects_pressure_seed_key() -> None:
+    removed = "P" + "_seed"
+
+    with pytest.raises(epcsaft.InputError, match=removed):
+        epcsaft.solve_reactive_electrolyte_bubble_sweep(
+            species=["H2O", "Na+", "Cl-"],
+            mixture_factory=_salt_mixture,
+            points=[{"T": 298.15, removed: 101325.0, "totals": {"water": 0.98}}],
+            balances={"water": {"H2O": 1.0}},
+            reactions=[],
+            vapor_species=["H2O"],
+        )
 
 
 def test_reactive_electrolyte_bubble_sweep_honors_point_options(monkeypatch) -> None:

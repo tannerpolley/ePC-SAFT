@@ -77,7 +77,7 @@ def solve_reactive_electrolyte_bubble(
     species: Sequence[str],
     mixture_factory: Any,
     T: float,
-    P_seed: float,
+    P: float,
     balances: Mapping[str, Mapping[str, float]],
     totals: Mapping[str, float],
     reactions: Any,
@@ -98,7 +98,7 @@ def solve_reactive_electrolyte_bubble(
         species=species,
         mixture_factory=mixture_factory,
         T=T,
-        P=P_seed,
+        P=P,
         balances=balances,
         totals=totals,
         reactions=reactions,
@@ -106,7 +106,7 @@ def solve_reactive_electrolyte_bubble(
         options=speciation_options,
     )
     x_liq = {label: chemical.x[label] for label in species}
-    mixture = mixture_factory([x_liq[label] for label in species], T, P_seed)
+    mixture = mixture_factory([x_liq[label] for label in species], T, P)
     bubble_failure: SolutionError | None = None
     try:
         bubble = electrolyte_bubble_pressure(
@@ -192,12 +192,14 @@ def solve_reactive_electrolyte_bubble_sweep(
         point_options = point.get("options", options)
         if not isinstance(point_options, ReactiveElectrolyteBubbleOptions):
             raise InputError("Each point options entry must be a ReactiveElectrolyteBubbleOptions instance.")
-        pressure_seed = float(point.get("P_seed", point.get("P", 101325.0)))
+        if "P_seed" in point:
+            raise InputError("Reactive electrolyte bubble sweep points use P, not P_seed.")
+        pressure = float(point.get("P", 101325.0))
         result = solve_reactive_electrolyte_bubble(
             species=species,
             mixture_factory=mixture_factory,
             T=float(point["T"]),
-            P_seed=pressure_seed,
+            P=pressure,
             balances=balances,
             totals=point["totals"],
             reactions=reactions,

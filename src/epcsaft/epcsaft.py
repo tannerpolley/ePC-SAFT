@@ -523,7 +523,7 @@ class ePCSAFTMixture:
         self,
         T,
         *,
-        P_seed,
+        P,
         balances,
         totals,
         reactions,
@@ -552,7 +552,7 @@ class ePCSAFTMixture:
             species=self.species,
             mixture_factory=lambda x, T, P: self,
             T=T,
-            P_seed=P_seed,
+            P=P,
             balances=balances,
             totals=totals,
             reactions=reactions,
@@ -709,10 +709,10 @@ class ePCSAFTMixture:
                     )
                 initial_x = z
             if P is None:
-                raise InputError("reactive_electrolyte_bubble_pressure requires P as the pressure seed.")
+                raise InputError("reactive_electrolyte_bubble_pressure requires P as the speciation pressure.")
             return self.reactive_electrolyte_bubble_p(
                 T=T,
-                P_seed=P,
+                P=P,
                 balances=balances,
                 totals=totals,
                 reactions=reactions,

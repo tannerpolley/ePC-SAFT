@@ -16,7 +16,7 @@ def test_reactive_electrolyte_bubble_requires_native_speciation_request_before_b
             species=["H2O", "Na+", "Cl-"],
             mixture_factory=_salt_mixture,
             T=298.15,
-            P_seed=101325.0,
+            P=101325.0,
             balances={
                 "water": {"H2O": 1.0},
                 "sodium": {"Na+": 1.0},

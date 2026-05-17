@@ -250,7 +250,6 @@ class ReactiveSpeciationProblem(EquilibriumProblem):
 class ReactiveElectrolyteBubbleProblem(ReactiveSpeciationProblem):
     """Reactive speciation followed by fixed-liquid electrolyte bubble pressure."""
 
-    P_seed: float | None = None
     vapor_species: Any | None = None
     volatile_species: Any | None = None
     nonvolatile_species: Any | None = None
@@ -258,7 +257,7 @@ class ReactiveElectrolyteBubbleProblem(ReactiveSpeciationProblem):
     def solve(self, mixture):
         return mixture.reactive_electrolyte_bubble_p(
             T=self.T,
-            P_seed=self.P if self.P_seed is None else self.P_seed,
+            P=self.P,
             balances=self.balances,
             totals=self.totals,
             reactions=self.reactions,

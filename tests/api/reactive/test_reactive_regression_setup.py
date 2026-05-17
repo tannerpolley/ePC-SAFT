@@ -125,7 +125,7 @@ def test_reactive_regression_context_evaluates_batch_with_composition_warm_start
         bubble_options = None if kwargs["options"] is None else kwargs["options"].bubble_options
         calls.append(
             {
-                "P_seed": kwargs["P_seed"],
+                "P": kwargs["P"],
                 "initial_x": list(kwargs["initial_x"]),
                 "bubble_options": bubble_options,
             }
@@ -216,14 +216,14 @@ def test_reactive_regression_context_evaluates_batch_with_composition_warm_start
     assert first.row_results[1].cache_stats["warm_start_source"] == "previous_row"
     assert second.row_results[0].cache_stats["warm_start_source"] == "objective_cache"
     assert second.row_results[1].cache_stats["warm_start_source"] == "objective_cache"
-    assert calls[1]["P_seed"] == pytest.approx(95000.0)
+    assert calls[1]["P"] == pytest.approx(95000.0)
     assert calls[1]["initial_x"] == pytest.approx([0.2, 0.8])
     assert calls[1]["bubble_options"] is None
     assert first.cache_stats["context_cache_hits"] >= 1
 
 def test_reactive_regression_objective_and_jacobian_are_consistent(monkeypatch) -> None:
     def fake_solve(**kwargs):
-        mix = kwargs["mixture_factory"](kwargs["initial_x"], kwargs["T"], kwargs["P_seed"])
+        mix = kwargs["mixture_factory"](kwargs["initial_x"], kwargs["T"], kwargs["P"])
         sigma = float(np.asarray(mix._params["s"], dtype=float)[0])
         pressure = 100000.0 + 1000.0 * (sigma - 3.0)
         x_a = 0.2 + 0.01 * (sigma - 3.0)

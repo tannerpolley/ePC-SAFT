@@ -732,7 +732,7 @@ class ReactiveElectrolyteRegressionContext:
                         species=self.species,
                         mixture_factory=_mixture_factory_from_batch(self.batch, parameter_map),
                         T=float(row.T),
-                        P_seed=pressure_seed,
+                        P=pressure_seed,
                         balances=row.balances or self.batch.balances,
                         totals=row.totals,
                         reactions=row.reactions or self.batch.reactions,
