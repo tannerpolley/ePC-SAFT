@@ -635,5 +635,5 @@ Derivative availability
      - Explicit native Ipopt ideal-mole-fraction route uses analytic derivatives when Ipopt is compiled; activity/concentration paths raise until EOS derivative NLP blocks exist
      - Ipopt limited-memory Hessian handling is solver-internal
 
-The Hessian fields are reserved metadata for native optimizer integration. They
-do not mean exact second-derivative evaluation is implemented.
+Regression result payloads report optimizer and first-derivative metadata only.
+Solver-internal Hessian handling is not exposed as a package derivative backend.

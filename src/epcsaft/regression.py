@@ -842,7 +842,7 @@ class ReactiveElectrolyteRegressionResult:
 
 
 def _fit_derivative_metadata(result: Mapping[str, Any]) -> dict[str, Any]:
-    """Extract compact Jacobian/Hessian metadata from native regression payloads."""
+    """Extract compact optimizer and first-derivative metadata from native regression payloads."""
 
     return {
         "optimizer_backend": str(result.get("optimizer_backend", result.get("backend", "unspecified"))),
