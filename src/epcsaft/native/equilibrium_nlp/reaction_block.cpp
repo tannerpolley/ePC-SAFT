@@ -2,12 +2,49 @@
 
 #include "epcsaft_electrolyte.h"
 
+#include <Eigen/Dense>
+
+#include <algorithm>
 #include <cmath>
 #include <numeric>
 
 namespace epcsaft::native::equilibrium_nlp {
 
 namespace {
+
+using RowMajorMatrix = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
+
+void validate_reaction_shape(
+    int species_count,
+    int reaction_count,
+    const std::vector<double>& stoichiometry_row_major,
+    const std::vector<double>& log_equilibrium_constants
+) {
+    if (species_count <= 0) {
+        throw ValueError("Ideal reaction block requires at least one species.");
+    }
+    if (reaction_count <= 0) {
+        throw ValueError("Ideal reaction block requires at least one reaction.");
+    }
+    const std::size_t expected_stoich_size =
+        static_cast<std::size_t>(reaction_count) * static_cast<std::size_t>(species_count);
+    if (stoichiometry_row_major.size() != expected_stoich_size) {
+        throw ValueError("Ideal reaction stoichiometry must be a reaction-by-species row-major matrix.");
+    }
+    if (log_equilibrium_constants.size() != static_cast<std::size_t>(reaction_count)) {
+        throw ValueError("Ideal reaction block requires one equilibrium constant per reaction.");
+    }
+    for (double coefficient : stoichiometry_row_major) {
+        if (!std::isfinite(coefficient)) {
+            throw ValueError("Ideal reaction stoichiometry must be finite.");
+        }
+    }
+    for (double log_k : log_equilibrium_constants) {
+        if (!std::isfinite(log_k)) {
+            throw ValueError("Ideal reaction equilibrium constants must be finite in log form.");
+        }
+    }
+}
 
 void validate_reaction_inputs(
     const std::vector<double>& amounts,
@@ -18,29 +55,11 @@ void validate_reaction_inputs(
     if (amounts.empty()) {
         throw ValueError("Ideal reaction block requires at least one species.");
     }
-    if (reaction_count <= 0) {
-        throw ValueError("Ideal reaction block requires at least one reaction.");
-    }
-    const std::size_t species = amounts.size();
-    if (stoichiometry_row_major.size() != static_cast<std::size_t>(reaction_count) * species) {
-        throw ValueError("Ideal reaction stoichiometry must be a reaction-by-species row-major matrix.");
-    }
-    if (log_equilibrium_constants.size() != static_cast<std::size_t>(reaction_count)) {
-        throw ValueError("Ideal reaction block requires one equilibrium constant per reaction.");
-    }
+    const auto species = static_cast<int>(amounts.size());
+    validate_reaction_shape(species, reaction_count, stoichiometry_row_major, log_equilibrium_constants);
     for (double amount : amounts) {
         if (!(std::isfinite(amount) && amount > 0.0)) {
             throw ValueError("Ideal reaction species amounts must be positive and finite.");
-        }
-    }
-    for (double coefficient : stoichiometry_row_major) {
-        if (!std::isfinite(coefficient)) {
-            throw ValueError("Ideal reaction stoichiometry must be finite.");
-        }
-    }
-    for (double log_k : log_equilibrium_constants) {
-        if (!std::isfinite(log_k)) {
-            throw ValueError("Ideal reaction equilibrium constants must be finite in log form.");
         }
     }
 }
@@ -88,6 +107,32 @@ std::vector<double> amounts_from_reaction_extents(
         }
     }
     return amounts;
+}
+
+std::vector<double> standard_mu_rt_from_reactions(
+    int species_count,
+    int reaction_count,
+    const std::vector<double>& stoichiometry_row_major,
+    const std::vector<double>& log_equilibrium_constants
+) {
+    validate_reaction_shape(species_count, reaction_count, stoichiometry_row_major, log_equilibrium_constants);
+    Eigen::Map<const RowMajorMatrix> stoich(
+        stoichiometry_row_major.data(),
+        reaction_count,
+        species_count
+    );
+    Eigen::VectorXd rhs(reaction_count);
+    for (int row = 0; row < reaction_count; ++row) {
+        rhs[row] = -log_equilibrium_constants[static_cast<std::size_t>(row)];
+    }
+    Eigen::CompleteOrthogonalDecomposition<Eigen::MatrixXd> decomposition(stoich);
+    const Eigen::VectorXd mu = decomposition.solve(rhs);
+    const Eigen::VectorXd residual = stoich * mu - rhs;
+    const double tolerance = 1.0e-10 * std::max(1.0, rhs.lpNorm<Eigen::Infinity>());
+    if (residual.lpNorm<Eigen::Infinity>() > tolerance) {
+        throw ValueError("Ideal Gibbs reaction constants are inconsistent with the stoichiometry matrix.");
+    }
+    return std::vector<double>(mu.data(), mu.data() + mu.size());
 }
 
 IdealReactionQuotientResult evaluate_ideal_reaction_quotients(

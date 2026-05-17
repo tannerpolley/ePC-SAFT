@@ -14,6 +14,8 @@ def test_ideal_reaction_smoke_satisfies_q_equals_k_and_stationarity() -> None:
     assert result["extents"] == [0.75]
     assert result["amounts"] == [0.25, 0.75]
     assert result["mole_fractions"] == [0.25, 0.75]
+    standard_mu = result["standard_mu_rt"]
+    assert abs(standard_mu[1] - standard_mu[0] + math.log(3.0)) < 1.0e-14
     assert abs(result["log_q"][0] - math.log(3.0)) < 1.0e-14
     assert abs(result["residuals"][0]) < 1.0e-14
     assert abs(result["reaction_stationarity"]) < 1.0e-14

@@ -800,6 +800,11 @@ electrolyte phase-equilibrium surface. Broader electrolyte bubble-temperature, d
 remain absent until a deliberate public-route promotion adds a thermodynamic native Ipopt NLP plus charge/material/phase
 acceptance tests.
 
+Task 9 continuation note: the reaction standard-potential solve now lives in the reusable native reaction block instead
+of the homogeneous speciation NLP file. The helper solves the thermodynamic `nu * mu^0 / RT = -ln(K)` mapping used by
+ideal Gibbs kernels and is covered through the native ideal-reaction smoke; this is groundwork for reactive phase NLP
+builders and does not promote broad reactive phase equilibrium yet.
+
 ### Task 10: Make Regression Ceres-Only
 
 **Files:**

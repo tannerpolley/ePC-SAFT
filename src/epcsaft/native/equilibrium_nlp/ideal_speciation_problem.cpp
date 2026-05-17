@@ -20,8 +20,6 @@ namespace epcsaft::native::equilibrium_nlp {
 
 namespace {
 
-using RowMajorMatrix = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
-
 void require_size(const std::vector<double>& values, std::size_t expected, const std::string& label) {
     if (values.size() == expected) {
         return;
@@ -124,31 +122,6 @@ std::vector<double> normalize_initial_x(const std::vector<double>& initial_x, do
         value /= clipped_total;
     }
     return out;
-}
-
-std::vector<double> standard_mu_from_reactions(
-    int species_count,
-    int reaction_rows,
-    const std::vector<double>& stoichiometry_row_major,
-    const std::vector<double>& log_equilibrium_constants
-) {
-    Eigen::Map<const RowMajorMatrix> stoich(
-        stoichiometry_row_major.data(),
-        reaction_rows,
-        species_count
-    );
-    Eigen::VectorXd rhs(reaction_rows);
-    for (int row = 0; row < reaction_rows; ++row) {
-        rhs[row] = -log_equilibrium_constants[static_cast<std::size_t>(row)];
-    }
-    Eigen::CompleteOrthogonalDecomposition<Eigen::MatrixXd> decomposition(stoich);
-    const Eigen::VectorXd mu = decomposition.solve(rhs);
-    const Eigen::VectorXd residual = stoich * mu - rhs;
-    const double tolerance = 1.0e-10 * std::max(1.0, rhs.lpNorm<Eigen::Infinity>());
-    if (residual.lpNorm<Eigen::Infinity>() > tolerance) {
-        throw ValueError("Ideal Gibbs reaction constants are inconsistent with the stoichiometry matrix.");
-    }
-    return std::vector<double>(mu.data(), mu.data() + mu.size());
 }
 
 std::vector<double> canonical_initial_amounts(const IdealSpeciationRequest& request) {
@@ -272,7 +245,7 @@ public:
     explicit IdealSpeciationProblem(IdealSpeciationRequest request, std::string derivative_backend)
         : request_(std::move(request)),
           derivative_backend_(std::move(derivative_backend)),
-          standard_mu_rt_(standard_mu_from_reactions(
+          standard_mu_rt_(standard_mu_rt_from_reactions(
               request_.species_count,
               request_.reaction_rows,
               request_.reaction_stoichiometry_row_major,

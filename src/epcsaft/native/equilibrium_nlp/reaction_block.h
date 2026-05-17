@@ -17,6 +17,13 @@ IdealReactionQuotientResult evaluate_ideal_reaction_quotients(
     const std::vector<double>& log_equilibrium_constants
 );
 
+std::vector<double> standard_mu_rt_from_reactions(
+    int species_count,
+    int reaction_count,
+    const std::vector<double>& stoichiometry_row_major,
+    const std::vector<double>& log_equilibrium_constants
+);
+
 std::vector<double> amounts_from_reaction_extents(
     const std::vector<double>& initial_amounts,
     int reaction_count,

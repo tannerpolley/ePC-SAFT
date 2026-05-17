@@ -1474,7 +1474,12 @@ PYBIND11_MODULE(_core, m) {
             stoichiometry,
             {0.75}
         );
-        const std::vector<double> standard_mu_rt = {0.0, -log_k};
+        const std::vector<double> standard_mu_rt = epcsaft::native::equilibrium_nlp::standard_mu_rt_from_reactions(
+            2,
+            1,
+            stoichiometry,
+            {log_k}
+        );
         const auto gibbs = epcsaft::native::equilibrium_nlp::evaluate_ideal_reduced_gibbs(
             amounts,
             standard_mu_rt,
@@ -1493,6 +1498,7 @@ PYBIND11_MODULE(_core, m) {
         out["extents"] = std::vector<double>{0.75};
         out["mole_fractions"] = gibbs.mole_fractions;
         out["reduced_gibbs"] = gibbs.value;
+        out["standard_mu_rt"] = standard_mu_rt;
         out["gradient"] = gibbs.gradient;
         out["hessian_row_major"] = gibbs.hessian_row_major;
         out["log_q"] = reactions.log_q;
