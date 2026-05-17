@@ -87,23 +87,19 @@ def evaluate_khudaida_tieline(*, figure: int, tie_line: int, source: str) -> dic
     phase_payload = _source_from_case(case, source)
     temperature = float(case["temperature_K"])
     mixture = _khudaida_mixture(phase_payload["feed_composition"], temperature)
-    options = EquilibriumOptions(include_phase_diagnostics=True)
-    feed_state = _state_payload(
-        mixture, temperature, np.asarray(phase_payload["feed_composition"], dtype=float), options, "feed"
-    )
-    org_state = _state_payload(
-        mixture, temperature, np.asarray(phase_payload["organic_composition"], dtype=float), options, "organic"
-    )
-    aq_state = _state_payload(
-        mixture, temperature, np.asarray(phase_payload["aqueous_composition"], dtype=float), options, "aqueous"
-    )
+    feed_comp = np.asarray(phase_payload["feed_composition"], dtype=float)
+    org_comp = np.asarray(phase_payload["organic_composition"], dtype=float)
+    aq_comp = np.asarray(phase_payload["aqueous_composition"], dtype=float)
+    feed_state = _state_payload(mixture, temperature, feed_comp, "feed")
+    org_state = _state_payload(mixture, temperature, org_comp, "organic")
+    aq_state = _state_payload(mixture, temperature, aq_comp, "aqueous")
 
     basis = build_electrolyte_basis(
         SPECIES, CHARGES, phase_payload["feed_composition"], salt_labels=("NaCl",)
     ).to_dict()
     neutral_residuals, mean_ionic_residuals = _fixed_phase_electrolyte_fugacity_residuals(
-        np.asarray(phase_payload["aqueous_composition"], dtype=float),
-        np.asarray(phase_payload["organic_composition"], dtype=float),
+        aq_comp,
+        org_comp,
         aq_state,
         org_state,
         basis,
@@ -113,9 +109,9 @@ def evaluate_khudaida_tieline(*, figure: int, tie_line: int, source: str) -> dic
     residual_norm = float(np.max(np.abs(residual_values))) if residual_values else 0.0
 
     beta = float(phase_payload["organic_phase_fraction"])
-    g_feed = _fixed_phase_gibbs_proxy(np.asarray(phase_payload["feed_composition"], dtype=float), feed_state)
-    g_org = _fixed_phase_gibbs_proxy(np.asarray(phase_payload["organic_composition"], dtype=float), org_state)
-    g_aq = _fixed_phase_gibbs_proxy(np.asarray(phase_payload["aqueous_composition"], dtype=float), aq_state)
+    g_feed = _fixed_phase_gibbs_proxy(feed_comp, feed_state)
+    g_org = _fixed_phase_gibbs_proxy(org_comp, org_state)
+    g_aq = _fixed_phase_gibbs_proxy(aq_comp, aq_state)
     g_split = float(beta * g_org + (1.0 - beta) * g_aq)
     charge_error = _max_charge_error(phase_payload)
     material_error = _material_balance_error(phase_payload)
@@ -540,7 +536,7 @@ def evaluate_khudaida_solver_gate(*, figure: int, tie_line: int, source: str = "
             T=float(case["temperature_K"]),
             P=PRESSURE_PA,
             z=phase_payload["feed_composition"],
-            options=EquilibriumOptions(max_iterations=40, include_phase_diagnostics=False),
+            options=EquilibriumOptions(max_iterations=40),
         )
     except SolutionError as exc:
         solver_outcome = "rejected"
@@ -758,11 +754,16 @@ def _state_payload(
     mixture: ePCSAFTMixture,
     temperature: float,
     composition: np.ndarray,
-    options: EquilibriumOptions,
     label: str,
 ) -> dict[str, Any]:
     payload = phase_state(
-        mixture, float(temperature), PRESSURE_PA, composition, "liq", options, f"khudaida_{label}_diagnostic"
+        mixture,
+        float(temperature),
+        PRESSURE_PA,
+        composition,
+        "liq",
+        f"khudaida_{label}_diagnostic",
+        include_diagnostics=True,
     )
     state = payload["state"]
     terms = state.fugacity_coefficient(return_contribution_terms=True)["terms"]

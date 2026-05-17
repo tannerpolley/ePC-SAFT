@@ -100,8 +100,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
   fixture now lives with the `ElectrolyteLLEProblem` problem-object test.
 - A duplicate electrolyte LLE explicit-Ipopt route-pending test was removed. The retained native-route request test
   already sets `solver_backend="ipopt"` and verifies the exact route payload before the local no-Ipopt gate.
-- A duplicate TP-flash route-pending test for `include_phase_diagnostics=True` was removed. Positive option acceptance
-  remains covered by electrolyte route gates and invalid option typing remains covered by shared option validation.
+- The no-op public `EquilibriumOptions.include_phase_diagnostics` switch was removed after confirming native route
+  payloads do not read it. Current option acceptance stays covered by exact field-set and unknown-key tests.
 - A duplicate TP-flash route-pending test for the retired stability-precheck option was removed. The route-specific
   TP-flash test still verifies the native route payload before the local no-Ipopt gate.
 - The no-reaction mixed reactive-regression objective status test was removed. Target-family accounting is covered in

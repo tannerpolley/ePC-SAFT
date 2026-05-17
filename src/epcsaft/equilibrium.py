@@ -57,7 +57,6 @@ class EquilibriumOptions:
     max_iterations: int = 180
     tolerance: float = 1.0e-6
     min_composition: float = 1.0e-12
-    include_phase_diagnostics: bool = False
     jacobian_backend: Literal["auto", "analytic", "cppad"] = "auto"
     solver_backend: Literal["auto", "ipopt"] = "auto"
     timeout_seconds: float | None = None
@@ -529,7 +528,6 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
             "max_iterations",
             "tolerance",
             "min_composition",
-            "include_phase_diagnostics",
             "jacobian_backend",
             "solver_backend",
             "timeout_seconds",
@@ -551,8 +549,6 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
     min_composition = _finite_float_option(options.min_composition, "min_composition")
     if min_composition <= 0.0:
         raise InputError("options.min_composition must be positive.")
-    if not isinstance(options.include_phase_diagnostics, bool):
-        raise InputError("options.include_phase_diagnostics must be boolean.")
     jacobian_backend = str(options.jacobian_backend).strip().lower()
     if jacobian_backend not in {"auto", "analytic", "cppad"}:
         raise InputError("options.jacobian_backend must be 'auto', 'analytic', or 'cppad'.")
@@ -564,7 +560,6 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
         max_iterations=max_iterations,
         tolerance=tolerance,
         min_composition=min_composition,
-        include_phase_diagnostics=options.include_phase_diagnostics,
         jacobian_backend=jacobian_backend,  # type: ignore[arg-type]
         solver_backend=solver_backend,  # type: ignore[arg-type]
         timeout_seconds=timeout_seconds,

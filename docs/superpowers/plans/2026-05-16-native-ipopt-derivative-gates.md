@@ -324,9 +324,8 @@ Task 2 continuation note: a duplicate electrolyte LLE explicit-Ipopt route-pendi
 native-route request test already uses `solver_backend="ipopt"` and verifies the exact native route payload before the
 local no-Ipopt gate, while default direct-feed and molality-feed route gates remain covered separately.
 
-Task 2 continuation note: a duplicate TP-flash route-pending test for `include_phase_diagnostics=True` was removed.
-Positive option acceptance is already covered by electrolyte route-gate tests and invalid option typing is covered by
-the shared equilibrium option validation.
+Task 2 continuation note: a duplicate TP-flash route-pending test that only varied a diagnostics flag was removed; Task 8
+later removed that no-op public flag.
 
 Task 2 continuation note: a duplicate TP-flash route-pending test for the retired stability-precheck option was removed.
 The route-specific TP-flash test still verifies the native route payload before the local no-Ipopt gate.
@@ -1026,6 +1025,9 @@ their explicit Ipopt diagnostics.
 Task 8/12 continuation note: `EquilibriumOptions.timeout_seconds` is no longer a Python-only normalized option. Public
 neutral/electrolyte equilibrium facades pass it through pybind into `IpoptSolveOptions`, and the native Ipopt adapter maps
 positive values to Ipopt's wall-clock limit.
+
+Task 8/12 continuation note: removed no-op `EquilibriumOptions.include_phase_diagnostics`; no native route builder or
+result converter consumed it, and native payloads now carry only diagnostics they actually return.
 
 ### Task 13: Final Validation And Cleanup
 

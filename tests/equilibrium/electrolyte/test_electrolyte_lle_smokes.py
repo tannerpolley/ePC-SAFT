@@ -89,7 +89,6 @@ def test_electrolyte_lle_molality_feed_requires_native_ipopt_route() -> None:
             P=1.013e5,
             solvent_feed={"H2O": 0.58, "Butanol": 0.42},
             salt_molality={"NaCl": 1.0},
-            options=epcsaft.EquilibriumOptions(include_phase_diagnostics=True),
         )
 
     _assert_electrolyte_lle_route_pending(excinfo)

@@ -182,7 +182,6 @@ def predict_case(
             options=EquilibriumOptions(
                 max_iterations=max_iterations,
                 tolerance=tolerance,
-                include_phase_diagnostics=True,
             ),
         )
     except SolutionError as exc:
@@ -337,12 +336,11 @@ def fixed_phase_gibbs_delta(
     aq = formula_to_explicit(aqueous_formula)
     beta = _best_phase_fraction(native.feed, org, aq)
     mixture = ePCSAFTMixture.from_dataset(suite.dataset, suite.species, native.feed, case.temperature_K)
-    options = EquilibriumOptions(include_phase_diagnostics=False)
-    feed_state = phase_state(mixture, case.temperature_K, PRESSURE_PA, native.feed, "liq", options, "oracle_feed")[
+    feed_state = phase_state(mixture, case.temperature_K, PRESSURE_PA, native.feed, "liq", "oracle_feed")[
         "state"
     ]
-    org_state = phase_state(mixture, case.temperature_K, PRESSURE_PA, org, "liq", options, "oracle_org")["state"]
-    aq_state = phase_state(mixture, case.temperature_K, PRESSURE_PA, aq, "liq", options, "oracle_aq")["state"]
+    org_state = phase_state(mixture, case.temperature_K, PRESSURE_PA, org, "liq", "oracle_org")["state"]
+    aq_state = phase_state(mixture, case.temperature_K, PRESSURE_PA, aq, "liq", "oracle_aq")["state"]
     g_feed = _gibbs_proxy(native.feed, feed_state.fugacity_coefficient())
     g_org = _gibbs_proxy(org, org_state.fugacity_coefficient())
     g_aq = _gibbs_proxy(aq, aq_state.fugacity_coefficient())

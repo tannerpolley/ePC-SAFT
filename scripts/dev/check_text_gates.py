@@ -229,6 +229,7 @@ def _source_blocked_terms(rel: str) -> tuple[str, ...]:
         "phase" + "_kwargs={\"initial" + "_phases\"",
         "package" + "-owned alternate",
         "stability" + "_precheck",
+        "include" + "_phase" + "_diagnostics",
         "python" + "_sweep",
         "selected" + "_solver" + "_backend" + "\": \"not" + "_run",
     )
