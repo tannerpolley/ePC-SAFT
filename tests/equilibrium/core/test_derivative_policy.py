@@ -29,7 +29,7 @@ def test_equilibrium_options_reject_removed_nonexact_derivative_backend() -> Non
         )
 
 
-def test_equilibrium_options_reject_legacy_autodiff_backend() -> None:
+def test_equilibrium_options_reject_removed_autodiff_backend() -> None:
     mix, feed = _neutral_mixture()
 
     with pytest.raises(epcsaft.InputError, match="jacobian_backend"):

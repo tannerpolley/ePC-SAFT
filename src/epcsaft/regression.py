@@ -2579,17 +2579,17 @@ def _reject_unapproved_derivative_options(options: Any) -> None:
     if isinstance(options, Mapping) and any(str(key).lower() == repeated_start_key for key in options):
         raise InputError("Regression solver_options must provide one deterministic initial_guess.")
 
-    legacy_underscore_token = "finite" + "_" + "difference"
-    legacy_hyphen_token = "finite" + "-" + "difference"
-    legacy_phrase_token = "finite" + " " + "difference"
-    legacy_numeric_derivative_token = "numerical" + "_" + "derivative"
-    legacy_numeric_jacobian_token = "numerical" + "_" + "jacobian"
+    removed_underscore_token = "finite" + "_" + "difference"
+    removed_hyphen_token = "finite" + "-" + "difference"
+    removed_phrase_token = "finite" + " " + "difference"
+    removed_numeric_derivative_token = "numerical" + "_" + "derivative"
+    removed_numeric_jacobian_token = "numerical" + "_" + "jacobian"
     tokens = (
-        legacy_underscore_token,
-        legacy_numeric_derivative_token,
-        legacy_numeric_jacobian_token,
-        legacy_hyphen_token,
-        legacy_phrase_token,
+        removed_underscore_token,
+        removed_numeric_derivative_token,
+        removed_numeric_jacobian_token,
+        removed_hyphen_token,
+        removed_phrase_token,
     )
 
     def visit(value: Any) -> bool:

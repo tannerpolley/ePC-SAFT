@@ -92,5 +92,5 @@ def test_mixture_equilibrium_rejects_non_native_chemical_equilibrium_backend() -
             balances={"total": {"A": 1.0, "B": 1.0}},
             totals={"total": 1.0},
             reactions=[epcsaft.ReactionDefinition({"A": -1.0, "B": 1.0}, math.log(3.0))],
-            backend="legacy",
+            backend="python",
         )

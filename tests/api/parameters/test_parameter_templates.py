@@ -71,7 +71,7 @@ def test_create_parameter_template_rejects_unknown_schema(tmp_path):
         create_parameter_template(tmp_path, "bad_schema", ["H2O"], schema="spreadsheet")
 
 
-def test_runtime_options_reject_legacy_electrolyte_shorthand():
+def test_runtime_options_reject_removed_electrolyte_shorthand():
     with pytest.raises(KeyError, match="Unknown user_options key"):
         _resolve_runtime_options({"dielc_rule": "constant"})
 
@@ -122,7 +122,7 @@ def test_runtime_options_accept_cppad_modes_and_preserve_explicit_overrides():
     assert minimized == user_options
 
 
-def test_runtime_options_reject_legacy_generic_derivative_mode():
+def test_runtime_options_reject_removed_generic_derivative_mode():
     with pytest.raises(ValueError, match="Unknown rule option"):
         _resolve_runtime_options({"elec_model": {"rel_perm": {"differential_mode": "autodiff"}}})
 
