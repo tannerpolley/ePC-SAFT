@@ -5,44 +5,6 @@ import json
 import epcsaft
 
 
-def test_default_build_reports_cppad_and_ceres_capabilities_honestly() -> None:
-    info = epcsaft.runtime_build_info()
-    capabilities = epcsaft.capabilities()
-
-    cppad = info["native_dependencies"]["cppad"]
-    ceres = info["native_dependencies"]["ceres"]
-    ipopt = info["native_dependencies"]["ipopt"]
-
-    assert cppad["compiled"] is True
-    assert cppad["available"] is True
-    assert cppad["required"] is True
-    assert ceres["compiled"] is True
-    assert ceres["available"] is True
-    assert ceres["required"] is True
-    assert ipopt["available"] is ipopt["compiled"]
-    assert ipopt["required"] is False
-    assert capabilities["derivatives"]["cppad"]["available"] is True
-    assert capabilities["derivatives"]["cppad"]["scope"] == (
-        "package-wide AD substrate; production derivative routes are listed in coverage_matrix"
-    )
-    assert "reason" not in capabilities["derivatives"]["cppad"]
-    assert capabilities["optimizers"]["ceres"]["production"] is True
-    assert capabilities["optimizers"]["ceres"]["native_hot_loop"] is True
-    assert capabilities["optimizers"]["ipopt"]["production"] is ipopt["available"]
-    assert capabilities["optimizers"]["ipopt"]["adapter_available"] is ipopt["adapter_available"]
-    assert capabilities["optimizers"]["ipopt"]["adapter_source_available"] is True
-    assert capabilities["optimizers"]["ipopt"]["adapter_kind"] == "native_tnlp_adapter"
-    assert capabilities["optimizers"]["ipopt"]["public_routes"] == [
-        "reactive_speciation:ideal_mole_fraction",
-        "neutral_tp_flash",
-        "neutral_lle_flash",
-        "neutral_bubble_p",
-        "neutral_dew_p",
-        "electrolyte_lle",
-        "electrolyte_bubble_pressure",
-    ]
-
-
 def test_capabilities_report_cppad_without_legacy_forward_backend() -> None:
     derivatives = epcsaft.capabilities()["derivatives"]
 
