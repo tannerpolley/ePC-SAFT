@@ -18,6 +18,7 @@
 #include "reaction_block.h"
 #include "result_builder.h"
 #include "route_builders.h"
+#include "stability_route_builders.h"
 
 epcsaft::native::cppad_support::CppADDerivativeResult cppad_eos_contribution_derivatives_cpp(
     double t,
@@ -690,6 +691,75 @@ py::dict neutral_two_phase_eos_route_result_to_dict(
     out["phase_amounts"] = result.phase_amounts;
     out["phase_volumes"] = result.phase_volumes;
     out["postsolve"] = neutral_two_phase_eos_postsolve_to_dict(result.postsolve);
+    return out;
+}
+
+int stability_phase_token_to_int(const std::string& phase) {
+    if (phase == "liq" || phase == "liquid") {
+        return 0;
+    }
+    if (phase == "vap" || phase == "vapor") {
+        return 1;
+    }
+    throw ValueError("stability phase must be 'liq' or 'vap'.");
+}
+
+py::dict stability_nlp_contract_to_dict(
+    const epcsaft::native::equilibrium_nlp::StabilityNlpContract& result
+) {
+    py::dict out;
+    out["problem_name"] = result.problem_name;
+    out["derivative_backend"] = result.derivative_backend;
+    out["species_count"] = result.species_count;
+    out["variable_count"] = result.variable_count;
+    out["constraint_count"] = result.constraint_count;
+    out["jacobian_nonzero_count"] = result.jacobian_nonzero_count;
+    out["parent_phase"] = result.parent_phase;
+    out["trial_phase"] = result.trial_phase;
+    out["feed_composition"] = result.feed_composition;
+    out["parent_reduced_potential"] = result.parent_reduced_potential;
+    out["initial_point"] = result.initial_point;
+    out["variable_lower_bounds"] = result.variable_lower_bounds;
+    out["variable_upper_bounds"] = result.variable_upper_bounds;
+    out["constraint_lower_bounds"] = result.constraint_lower_bounds;
+    out["constraint_upper_bounds"] = result.constraint_upper_bounds;
+    out["objective_at_initial"] = result.objective_at_initial;
+    out["gradient_at_initial"] = result.gradient_at_initial;
+    out["constraints_at_initial"] = result.constraints_at_initial;
+    out["jacobian_rows"] = result.jacobian_rows;
+    out["jacobian_cols"] = result.jacobian_cols;
+    out["jacobian_values_at_initial"] = result.jacobian_values_at_initial;
+    return out;
+}
+
+py::dict stability_route_result_to_dict(
+    const epcsaft::native::equilibrium_nlp::StabilityRouteResult& result
+) {
+    py::dict out;
+    out["backend"] = result.backend;
+    out["compiled"] = result.compiled;
+    out["adapter_available"] = result.adapter_available;
+    out["adapter_kind"] = result.adapter_kind;
+    out["problem_name"] = result.problem_name;
+    out["derivative_backend"] = result.derivative_backend;
+    out["ran"] = result.ran;
+    out["solver_accepted"] = result.solver_accepted;
+    out["accepted"] = result.accepted;
+    out["stable"] = result.stable;
+    out["exact_gradient_required"] = result.exact_gradient_required;
+    out["exact_jacobian_required"] = result.exact_jacobian_required;
+    out["status"] = result.status;
+    out["solver_status"] = result.solver_status;
+    out["application_status"] = result.application_status;
+    out["parent_phase"] = result.parent_phase;
+    out["trial_phase"] = result.trial_phase;
+    out["seed_name"] = result.seed_name;
+    out["objective"] = result.objective;
+    out["min_tpd"] = result.min_tpd;
+    out["variables"] = result.variables;
+    out["constraints"] = result.constraints;
+    out["trial_composition"] = result.trial_composition;
+    out["parent_reduced_potential"] = result.parent_reduced_potential;
     return out;
 }
 
@@ -1679,6 +1749,28 @@ PYBIND11_MODULE(_core, m) {
             )
         );
     });
+    m.def("_native_neutral_stability_tpd_nlp_contract", [](
+        const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+        double temperature,
+        double pressure,
+        const std::vector<double>& feed_composition,
+        const std::string& parent_phase,
+        const std::string& trial_phase
+    ) {
+        if (!mixture) {
+            throw ValueError("Neutral stability TPD NLP contract requires a native mixture.");
+        }
+        return stability_nlp_contract_to_dict(
+            epcsaft::native::equilibrium_nlp::evaluate_neutral_stability_tpd_nlp_contract(
+                mixture->args(),
+                temperature,
+                pressure,
+                feed_composition,
+                stability_phase_token_to_int(parent_phase),
+                stability_phase_token_to_int(trial_phase)
+            )
+        );
+    });
     m.def("_native_neutral_two_phase_eos_route_result", [](
         const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
         double temperature,
@@ -1960,6 +2052,36 @@ PYBIND11_MODULE(_core, m) {
                 pressure_tolerance,
                 chemical_potential_tolerance,
                 phase_distance_tolerance
+            )
+        );
+    });
+    m.def("_native_neutral_stability_tpd_route_result", [](
+        const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+        double temperature,
+        double pressure,
+        const std::vector<double>& feed_composition,
+        const std::string& parent_phase,
+        const std::string& trial_phase,
+        int max_iterations,
+        double tolerance,
+        double timeout_seconds,
+        double stability_tolerance
+    ) {
+        if (!mixture) {
+            throw ValueError("Neutral stability TPD route result requires a native mixture.");
+        }
+        const epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
+            ipopt_solve_options_from_scalars(max_iterations, tolerance, timeout_seconds);
+        return stability_route_result_to_dict(
+            epcsaft::native::equilibrium_nlp::solve_neutral_stability_tpd_route(
+                mixture->args(),
+                temperature,
+                pressure,
+                feed_composition,
+                stability_phase_token_to_int(parent_phase),
+                stability_phase_token_to_int(trial_phase),
+                options,
+                stability_tolerance
             )
         );
     });

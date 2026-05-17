@@ -672,6 +672,13 @@ chemical-potential equality rows, and the phase-volume separation guard. Tempera
 chemical-potential Jacobian entries come from CppAD curvature through the native EOS residual path; Python does not own
 iterations, temperature search, retry logic, residual packing, or acceptance.
 
+Task 8 continuation note: a first native neutral stability TPD NLP scaffold now exists in dedicated
+`equilibrium_nlp/stability_route_builders.*` files. The route models one parent/trial-phase tangent-plane-distance
+minimization with mole-fraction variables, a unity composition constraint, one deterministic shifted-feed initial
+composition, an Ipopt route-result binding, and exact objective gradients from the CppAD-implicit fugacity-composition
+sensitivity surface. Local no-Ipopt builds return the typed dependency gate through the new binding. Public stability
+facades still remain gated until result conversion and deterministic parent/trial route selection are wired.
+
 ### Task 9: Replace Electrolyte And Reactive Phase Equilibrium Routes
 
 **Files:**
