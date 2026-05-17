@@ -154,6 +154,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - Runtime reactive phase-equilibrium capabilities no longer emit an empty negative reaction-scope list. The retained
   contract is the positive `supported_reaction_scopes` list plus cross-phase quotient metadata, and the executable text
   gate blocks the retired empty-field label.
+- Runtime Ipopt dependency probing now reports `native_extension_missing` or `ipopt_probe_missing` instead of a generic
+  configuration-status fallback, and the executable text gate blocks the retired fallback label.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
 

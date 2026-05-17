@@ -4,6 +4,8 @@ import numpy as np
 import pytest
 
 import epcsaft
+from epcsaft import runtime
+from epcsaft import _core
 from epcsaft import ePCSAFTMixture
 from tests.helpers.runtime_cases import (
     _assert_array,
@@ -37,6 +39,18 @@ def test_organized_public_import_modules_are_available():
     assert epcsaft.electrolyte.ElectrolyteLLEProblem is epcsaft.ElectrolyteLLEProblem
     assert epcsaft.reactive.ReactiveSpeciationProblem is epcsaft.ReactiveSpeciationProblem
     assert epcsaft.diagnostics.capabilities is epcsaft.capabilities
+
+
+def test_ipopt_backend_info_missing_smoke_uses_probe_status(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.delattr(_core, "_native_ipopt_smoke")
+
+    info = runtime._native_ipopt_backend_info()
+
+    assert info["backend"] == "ipopt"
+    assert info["status"] == "ipopt_probe_missing"
+    assert info["available"] is False
+    assert info["adapter_kind"] == "native_tnlp_adapter"
+
 
 def test_runtime_build_info_and_capabilities_are_json_like():
     info = epcsaft.runtime_build_info()

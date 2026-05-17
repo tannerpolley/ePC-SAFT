@@ -187,7 +187,7 @@ def _native_ipopt_backend_info() -> dict[str, object]:
     except (ImportError, OSError):
         return {
             "backend": "ipopt",
-            "status": "not_configured",
+            "status": "native_extension_missing",
             "required": False,
             "compiled": False,
             "available": False,
@@ -204,7 +204,7 @@ def _native_ipopt_backend_info() -> dict[str, object]:
     except AttributeError:
         return {
             "backend": "ipopt",
-            "status": "not_configured",
+            "status": "ipopt_probe_missing",
             "required": False,
             "compiled": False,
             "available": False,
@@ -216,7 +216,7 @@ def _native_ipopt_backend_info() -> dict[str, object]:
             "requires_exact_jacobian": True,
             "requires_exact_hessian": False,
         }
-    status = str(smoke.get("status", "not_configured"))
+    status = str(smoke.get("status", "ipopt_probe_missing"))
     compiled = bool(smoke.get("compiled", False))
     return {
         "backend": "ipopt",

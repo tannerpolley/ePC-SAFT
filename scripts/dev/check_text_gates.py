@@ -198,6 +198,7 @@ def _source_blocked_terms(rel: str) -> tuple[str, ...]:
         "not" + "_applicable" + "_to" + "_neutral" + "_route",
         "requires" + "_ipopt" + "_build",
         "unsupported" + "_reaction" + "_scopes",
+        "not" + "_configured",
     )
 
 
