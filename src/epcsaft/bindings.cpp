@@ -1869,6 +1869,47 @@ PYBIND11_MODULE(_core, m) {
             )
         );
     });
+    m.def("_native_reactive_electrolyte_two_phase_eos_postsolve", [](
+        const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+        double temperature,
+        double target_pressure,
+        const std::vector<std::vector<double>>& phase_amounts,
+        const std::vector<double>& volumes,
+        int balance_rows,
+        const std::vector<double>& balance_matrix_row_major,
+        const std::vector<double>& total_vector,
+        int reaction_rows,
+        const std::vector<double>& reaction_stoichiometry_row_major,
+        const std::vector<double>& log_equilibrium_constants,
+        double conserved_balance_tolerance,
+        double pressure_tolerance,
+        double reaction_stationarity_tolerance,
+        double phase_distance_tolerance
+    ) {
+        if (!mixture) {
+            throw ValueError("Reactive electrolyte two-phase EOS postsolve requires a native mixture.");
+        }
+        return reactive_two_phase_eos_postsolve_to_dict(
+            epcsaft::native::equilibrium_nlp::evaluate_reactive_two_phase_eos_postsolve(
+                mixture->args(),
+                temperature,
+                target_pressure,
+                phase_amounts,
+                volumes,
+                balance_rows,
+                balance_matrix_row_major,
+                total_vector,
+                reaction_rows,
+                reaction_stoichiometry_row_major,
+                log_equilibrium_constants,
+                conserved_balance_tolerance,
+                pressure_tolerance,
+                reaction_stationarity_tolerance,
+                phase_distance_tolerance,
+                mixture->args().z
+            )
+        );
+    });
     m.def("_native_neutral_bubble_p_eos_nlp_contract", [](
         const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
         double temperature,

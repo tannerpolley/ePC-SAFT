@@ -997,6 +997,93 @@ def test_reactive_two_phase_eos_postsolve_checks_reaction_stationarity() -> None
     assert len(payload["reaction_stationarity_residuals"]) == 2
 
 
+def test_reactive_two_phase_eos_postsolve_accepts_candidate_under_declared_tolerances() -> None:
+    mix = _neutral_binary_mixture()
+    temperature = 300.0
+    phase_amounts = [
+        np.asarray([0.1, 0.4], dtype=float),
+        np.asarray([0.2, 0.3], dtype=float),
+    ]
+    volumes = [float(phase_amounts[0].sum() / 80.0), float(phase_amounts[1].sum() / 120.0)]
+    species_totals = phase_amounts[0] + phase_amounts[1]
+    target_pressure = mix.state(
+        T=temperature,
+        rho=phase_amounts[0].sum() / volumes[0],
+        x=phase_amounts[0] / phase_amounts[0].sum(),
+        phase="liquid",
+    ).pressure()
+
+    payload = _core._native_reactive_two_phase_eos_postsolve(
+        mix._native,
+        temperature,
+        target_pressure,
+        [phase.tolist() for phase in phase_amounts],
+        volumes,
+        1,
+        [1.0, 1.0],
+        [float(species_totals.sum())],
+        1,
+        [-1.0, 1.0],
+        [float(np.log(3.0))],
+        1.0e-12,
+        1.0e12,
+        1.0e12,
+        1.0e-3,
+    )
+
+    assert payload["derivative_backend"] == "analytic_cppad"
+    assert payload["accepted"] is True
+    assert payload["rejection_reason"] == "accepted"
+    assert payload["conserved_balance_norm"] == pytest.approx(0.0, abs=1.0e-12)
+    assert payload["phase_distance"] > 1.0e-3
+
+
+def test_reactive_electrolyte_two_phase_eos_postsolve_rejects_phase_charge_imbalance() -> None:
+    species = ["A", "B", "C+", "D-"]
+    feed = np.asarray([0.5, 0.3, 0.1, 0.1], dtype=float)
+    mix = epcsaft.ePCSAFTMixture.from_params(
+        {
+            "MW": np.asarray([18.0e-3, 74.0e-3, 23.0e-3, 35.5e-3]),
+            "m": np.asarray([1.1, 1.4, 1.0, 1.0]),
+            "s": np.asarray([3.0, 3.4, 3.0, 3.0]),
+            "e": np.asarray([180.0, 220.0, 150.0, 150.0]),
+            "k_ij": np.zeros((4, 4)),
+            "z": np.asarray([0.0, 0.0, 1.0, -1.0]),
+            "dielc": np.asarray([80.0, 12.0, 1.0, 1.0]),
+        },
+        species=species,
+    )
+    phase_amounts = [
+        np.asarray([0.2, 0.1, 0.08, 0.02], dtype=float),
+        feed - np.asarray([0.2, 0.1, 0.08, 0.02], dtype=float),
+    ]
+    volumes = [float(phase_amounts[0].sum() / 80.0), float(phase_amounts[1].sum() / 120.0)]
+
+    payload = _core._native_reactive_electrolyte_two_phase_eos_postsolve(
+        mix._native,
+        298.15,
+        1.013e5,
+        [phase.tolist() for phase in phase_amounts],
+        volumes,
+        3,
+        [1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+        [float(feed[0] + feed[1]), float(feed[2]), float(feed[3])],
+        1,
+        [-1.0, 1.0, 0.0, 0.0],
+        [float(np.log(0.2))],
+        1.0e-12,
+        1.0e12,
+        1.0e12,
+        1.0e-3,
+    )
+
+    assert payload["derivative_backend"] == "analytic_cppad"
+    assert payload["accepted"] is False
+    assert payload["rejection_reason"] == "charge_balance"
+    assert payload["conserved_balance_norm"] == pytest.approx(0.0, abs=1.0e-12)
+    assert payload["charge_balance_norm"] > 1.0e-12
+
+
 def test_reactive_two_phase_eos_route_result_uses_native_ipopt_gate() -> None:
     mix = _neutral_binary_mixture()
     temperature = 300.0

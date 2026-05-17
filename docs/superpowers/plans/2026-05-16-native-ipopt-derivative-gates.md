@@ -726,8 +726,8 @@ postsolve acceptance gates, and legacy diagnostic-only route-gate tests have bee
 - [x] Implement reactive phase equilibrium route builders.
 - [x] Remove Ceres equilibrium residual-solve ownership from accepted equilibrium paths.
 - [x] Add charge/material/phase-distance acceptance tests for implemented electrolyte routes.
-- [ ] Add reaction-coupled phase-equilibrium acceptance tests when reactive phase route builders land.
-- [ ] Commit remaining reactive/electrolyte route slices under the native Ipopt gate.
+- [x] Add reaction-coupled phase-equilibrium acceptance tests when reactive phase route builders land.
+- [x] Commit remaining reactive/electrolyte route slices under the native Ipopt gate.
 
 Task 9 progress note: the public `ReactiveSpeciationOptions.hessian_strategy` knob was removed for the same reason as the equilibrium facade knob. Hessian behavior remains internal to native solver adapters.
 
@@ -829,6 +829,11 @@ Task 9 continuation note: reactive electrolyte LLE now has a native route-result
 phase-charge constraint per phase. The public `reactive_electrolyte_lle` facade validates charge-neutral feeds, conserved
 balances, and reaction standard states, then submits exactly one native Ipopt route request before the local no-Ipopt
 dependency gate. Ipopt-enabled accepted-solve evidence remains part of the final full-backend validation.
+
+Task 9 continuation note: reaction-coupled two-phase postsolve coverage now includes both an accepted native
+reaction-coupled candidate under declared thermodynamic gate tolerances and a charge-imbalanced electrolyte rejection
+through the native reactive electrolyte postsolve binding. The full Ipopt-enabled accepted solve still belongs to the
+final full-backend validation environment because this local fast profile intentionally builds with Ipopt disabled.
 
 ### Task 10: Make Regression Ceres-Only
 
