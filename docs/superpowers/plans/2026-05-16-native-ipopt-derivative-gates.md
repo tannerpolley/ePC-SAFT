@@ -942,6 +942,10 @@ Task 2/12 continuation note: duplicate equilibrium capability tests that only re
 covered by the runtime metadata test were deleted. The retained capability tests cover derivative policy,
 reactive-speciation standard-state gates, and reactive phase-equilibrium reaction-scope metadata.
 
+Task 2/12 continuation note: the CppAD dependency row no longer reports a negative production status or EOS-coverage
+flag; production derivative support is represented by the coverage matrix. A duplicate staged reactive LLE test was also
+folded into the stronger reaction-coordinate and split-diagnostic coverage.
+
 Task 10/12 continuation note: generic native residual-score benchmark paths no longer report optimizer, derivative, or
 Jacobian backends as out-of-scope placeholders. Residual-only diagnostics now use the positive
 `diagnostic_residual_score` label, and the executable text gate blocks reintroducing the old regression backend labels.

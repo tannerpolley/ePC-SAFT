@@ -10,7 +10,7 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
   - Result: `531 tests collected in 2.22s`
   - Tracked Python test files: 144
 - Wrapper inventory command: `uv run python run_pytest.py --all --collect-only -q`
-  - Result: `531 tests collected in 2.50s`; wrapper wall time `3.518s`.
+  - Latest result after duplicate staged reactive LLE prune: `527 tests collected in 1.44s`; wrapper wall time `3.1s`.
 - Full duration command: `uv run python run_pytest.py --all -q --durations=30`
   - Result: failed; `496 passed, 8 failed, 27 skipped` in `239.64s`; wrapper wall time `240.664s`.
 - Full-suite rerun command after the cleanup slices: `uv run python run_pytest.py --all -q`
@@ -20,6 +20,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
   - This is comfortably under the 10 minute quick-gate target.
   - Latest result after the fixed-temperature pressure-route and workflow-gate slices: `41 passed in 4.21s`;
     wrapper command completed in `6.6s`.
+  - Latest result after the CppAD capability and staged-test cleanup slices: `40 passed in 4.44s`;
+    wrapper command completed in `7.1s`.
 - Ceres/CppAD validation command: `uv run python scripts/dev/validate_project.py ceres-cppad`
   - Result after the native dependency gate landed: `4 passed in 2.97s`; wrapper completed after an incremental full-profile native build.
 - Package boundary command: `uv run python scripts/dev/build_dist.py`
@@ -173,6 +175,7 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - Public neutral LLE and reactive LLE facades no longer accept user phase seeds. Direct LLE, typed LLE, reactive phase,
   and staged reactive LLE calls all use route-owned canonical initial points; seeded public validation-script paths were
   removed.
+- A duplicate staged reactive LLE test was folded into the stronger reaction-coordinate and split-diagnostic test.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
 

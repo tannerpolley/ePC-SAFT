@@ -133,28 +133,5 @@ def test_explicit_reactive_staged_equilibrium_routes_reaction_coordinates_into_n
     assert result.diagnostics["fugacity_equality"]["fugacity_residual_norm"] < 1.0e-8
     assert result.diagnostics["material_balance_error"] < 1.0e-8
     assert_allclose([result.z["Methanol"], result.z["Cyclohexane"]], feed, atol=1.0e-10)
-
-
-def test_explicit_reactive_staged_equilibrium_routes_generic_lle(monkeypatch) -> None:
-    mix = _reactive_lle_mixture()
-    feed = _lle_feed()
-    monkeypatch.setattr(
-        "epcsaft.reactive_staged.solve_reactive_speciation",
-        lambda **kwargs: _speciation_result(feed),
-    )
-    mix.lle_tp = lambda *, T, P, z, options=None: _phase_result(np.asarray(z, dtype=float))
-    result = mix.reactive_staged_equilibrium(
-        T=298.15,
-        P=1.013e5,
-        z=[0.5, 0.5],
-        balances={"total": {"Methanol": 1.0, "Cyclohexane": 1.0}},
-        totals={"total": 1.0},
-        reactions=[_reaction_for_feed(feed)],
-        phase_kind="lle_flash",
-        phase_options=epcsaft.EquilibriumOptions(max_iterations=240, tolerance=1.0e-10),
-    )
-
-    assert result.success is True
-    assert result.phase.split_detected is True
     removed_attempt_field = "ascani" + "_benchmark" + "_attempt"
     assert removed_attempt_field not in result.diagnostics
