@@ -216,6 +216,7 @@ def _source_blocked_terms(rel: str) -> tuple[str, ...]:
         "route" + "_gated" + "_standard" + "_states",
         "explicit" + "_cppad" + "_request" + "_raises" + "_until" + "_implemented",
         "allow" + "_unsupported" + "_parameters",
+        "allow" + "_without" + "_direct" + "_data",
         "partially" + "_available",
         "not" + "_applicable",
         "initial" + "_y" + "_vap",

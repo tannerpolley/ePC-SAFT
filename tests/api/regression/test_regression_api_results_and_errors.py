@@ -30,7 +30,6 @@ def test_provenance_validation_rejects_indirect_dborn_without_electrostatic_data
                 "MEAH+",
                 "d_born",
                 source="explicit_override",
-                allow_without_direct_data=True,
             )
         ],
         strict=True,

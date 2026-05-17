@@ -220,13 +220,11 @@ class FitParameter:
     component: str
     parameter: str
     source: str = ""
-    allow_without_direct_data: bool = False
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "component", _normalize_component(self.component))
         object.__setattr__(self, "parameter", str(self.parameter))
         object.__setattr__(self, "source", _source_token(self.source))
-        object.__setattr__(self, "allow_without_direct_data", bool(self.allow_without_direct_data))
 
     @property
     def key(self) -> str:
@@ -241,7 +239,6 @@ class BinaryInteraction:
     pair: tuple[str, str]
     parameter: str = "k_ij"
     source: str = ""
-    allow_without_direct_data: bool = False
 
     def __post_init__(self) -> None:
         pair = tuple(_normalize_component(str(name)) for name in self.pair)
@@ -250,7 +247,6 @@ class BinaryInteraction:
         object.__setattr__(self, "pair", pair)
         object.__setattr__(self, "parameter", str(self.parameter))
         object.__setattr__(self, "source", _source_token(self.source))
-        object.__setattr__(self, "allow_without_direct_data", bool(self.allow_without_direct_data))
 
     @property
     def key(self) -> str:
@@ -346,14 +342,10 @@ def validate_regression_provenance(
             parameter_sources[item.key] = item.source
             data_sources[item.key] = [item.source] if item.source else []
             if item.parameter == "d_born" and item.source not in _DBORN_DIRECT_SOURCES:
-                message = (
+                errors.append(
                     f"d_born for {item.component} requires dielectric, relative-permittivity, ion-activity, "
                     "osmotic, or explicit_override provenance before fitting."
                 )
-                if item.allow_without_direct_data:
-                    warnings.append(message)
-                else:
-                    errors.append(message)
             continue
 
         if not isinstance(item, BinaryInteraction):
@@ -371,30 +363,20 @@ def validate_regression_provenance(
                         "meaningful fit target because same-sign short-range dispersion is suppressed."
                     )
                 elif left_charge * right_charge < 0.0 and item.source not in _DIRECT_ELECTROLYTE_BINARY_SOURCES:
-                    message = (
+                    errors.append(
                         f"{item.parameter} for opposite-sign ionic pair {item.pair[0]}:{item.pair[1]} requires "
                         "direct electrolyte activity/osmotic/salt-pair provenance or explicit_override."
                     )
-                    if item.allow_without_direct_data:
-                        warnings.append(message)
-                    else:
-                        errors.append(message)
                 elif (left_charge == 0.0) != (right_charge == 0.0) and item.source not in _DIRECT_NEUTRAL_ION_SOURCES:
-                    message = (
+                    errors.append(
                         f"{item.parameter} for neutral-ion pair {item.pair[0]}:{item.pair[1]} requires direct "
                         "neutral-ion or electrolyte provenance or explicit_override."
                     )
-                    if item.allow_without_direct_data:
-                        warnings.append(message)
-                    else:
-                        errors.append(message)
                 elif left_charge == 0.0 and right_charge == 0.0 and item.source not in _DIRECT_BINARY_SOURCES:
-                    message = f"{item.parameter} for neutral pair {item.pair[0]}:{item.pair[1]} requires direct binary provenance."
-                    if item.allow_without_direct_data:
-                        warnings.append(message)
-                    else:
-                        errors.append(message)
-            elif item.source not in _DIRECT_BINARY_SOURCES and not item.allow_without_direct_data:
+                    errors.append(
+                        f"{item.parameter} for neutral pair {item.pair[0]}:{item.pair[1]} requires direct binary provenance."
+                    )
+            elif item.source not in _DIRECT_BINARY_SOURCES:
                 errors.append(f"{item.parameter} for {item.pair[0]}:{item.pair[1]} requires declared data provenance.")
 
     if errors and strict:
