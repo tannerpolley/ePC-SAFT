@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import inspect
-
 import pytest
 
 import epcsaft
@@ -106,10 +104,7 @@ def test_reactive_electrolyte_bubble_result_mode_returns_bubble_failure(monkeypa
     assert result.diagnostics["bubble_failure"]["message"] == "bubble failed"
     assert result.diagnostics["bubble"]["diagnostics"]["state_failure_count"] == 3
 
-def test_reactive_electrolyte_bubble_sweep_does_not_continue_bubble_seed_controls(monkeypatch) -> None:
-    assert "continuation" not in inspect.signature(epcsaft.solve_reactive_electrolyte_bubble_sweep).parameters
-    assert "continuation" not in inspect.signature(epcsaft.ePCSAFTMixture.equilibrium_sweep).parameters
-
+def test_reactive_electrolyte_bubble_sweep_returns_independent_point_failures(monkeypatch) -> None:
     chemical = _successful_chemical_result()
     calls = []
     monkeypatch.setattr("epcsaft.reactive_electrolyte.solve_reactive_speciation", lambda **kwargs: chemical)

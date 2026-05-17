@@ -1137,6 +1137,9 @@ Task 12 continuation note: the reactive electrolyte VLE workflow documentation n
 fixed-liquid native Ipopt bubble route. It describes reactive electrolyte bubble pressure as native speciation composed
 with the native bubble route for scoped supported inputs.
 
+Task 2 continuation note: remaining reactive sweep signature-absence checks and a duplicate native regression debug
+backend assertion were removed. Current-surface field-set tests, route-gate tests, and the text gate own those contracts.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**

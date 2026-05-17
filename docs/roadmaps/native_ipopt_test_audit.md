@@ -239,6 +239,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - Duplicate negative assertions for retired derivative/status/debug labels were pruned from runtime, CppAD,
   reactive-speciation, and Khudaida diagnostic tests. The retained tests assert current backend, Jacobian/gradient
   shape, route-gate, and JSON-safe diagnostic contracts, while the text gate owns retired-label prevention.
+- Remaining reactive sweep signature-absence checks and a duplicate native regression debug backend assertion were
+  removed. Current-surface field-set tests, route-gate tests, and the text gate now own that coverage.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
 

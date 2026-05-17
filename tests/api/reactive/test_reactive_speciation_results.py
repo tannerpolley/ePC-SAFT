@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import inspect
 import math
 
 import numpy as np
@@ -83,9 +82,6 @@ def test_solve_reactive_speciation_concentration_standard_state_reaches_native_d
 
 def test_reactive_speciation_sweep_auto_uses_native_ipopt_ideal_route_when_compiled() -> None:
     from epcsaft import _core
-
-    assert "warm_start" not in inspect.signature(epcsaft.solve_reactive_speciation).parameters
-    assert "continuation" not in inspect.signature(epcsaft.solve_reactive_speciation_sweep).parameters
 
     mix = epcsaft.ePCSAFTMixture.from_params(
         {

@@ -124,7 +124,6 @@ def test_native_pure_neutral_debug_gradient_reports_cppad_implicit_backend():
     assert debug["fused_state_evaluations"] >= 2
     assert debug["callback_wall_time_s"] >= 0.0
     assert debug["jacobian_available"] is True
-    assert debug["jacobian_backend"] == "cppad_implicit"
     assert tuple(debug["jacobian_shape"]) == (len(debug["residuals"]), 3)
     assert np.asarray(debug["jacobian_row_major"], dtype=float).shape == (len(debug["residuals"]) * 3,)
 
