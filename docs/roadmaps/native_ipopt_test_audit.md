@@ -209,6 +209,9 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
   structured failure payloads report failure context only, and the executable text gate blocks the retired fake label.
 - `EquilibriumOptions.timeout_seconds` is now wired through public neutral/electrolyte equilibrium facades into the
   native Ipopt adapter as a wall-clock option instead of being a normalized-but-unused public control.
+- Duplicate retired-token absence assertions were removed from focused native/API tests. The source text gate now owns
+  active-source prevention for retired `not_available` and public Hessian-kind labels, while the retained tests assert
+  the positive derivative backend, capability path, and Jacobian/gradient contracts.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
 

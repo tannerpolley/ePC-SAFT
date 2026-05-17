@@ -3,7 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
-import pytest
 
 import epcsaft
 from epcsaft import _core, ePCSAFTMixture
@@ -73,12 +72,8 @@ def test_native_electrolyte_lle_residual_evaluator_defaults_to_cppad_implicit_de
 
     payload = _core._evaluate_electrolyte_lle_residual_native(mix._native, request)
 
-    removed_status = "not" + "_available"
-    payload_text = str(payload).lower()
     assert payload["jacobian_backend"] == "cppad_implicit"
     assert payload["diagnostics"]["derivative_available"] is True
-    assert removed_status not in payload_text
-    assert "numerical" + "_derivative" not in payload_text
 
 
 def test_equilibrium_runtime_does_not_import_external_optimizers() -> None:

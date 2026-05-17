@@ -15,6 +15,4 @@ def test_equilibrium_capabilities_expose_derivative_policy() -> None:
         "analytic_implicit",
         "cppad_implicit",
     }.issubset(set(policy["accepted_derivative_backends"]))
-    removed_field = "diagnostic" + "_fields"
-    assert removed_field not in policy
 
