@@ -42,7 +42,7 @@ def _write_ssmds_dataset(tmp_path):
 
 
 def test_ceres_liquid_electrolyte_regression_uses_native_ssmds_derivatives(tmp_path) -> None:
-    build = epcsaft.runtime_build_info()["optional_dependencies"]
+    build = epcsaft.runtime_build_info()["native_dependencies"]
     assert build["ceres"]["compiled"], "Ceres must be compiled for native regression tests."
     assert build["cppad"]["compiled"], "CppAD must be compiled for exact derivative tests."
 

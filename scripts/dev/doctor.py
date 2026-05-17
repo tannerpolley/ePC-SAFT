@@ -52,31 +52,31 @@ def _missing_core_symbols() -> tuple[str, ...]:
 
 
 def _cppad_status() -> str:
-    return _runtime_optional_dependency_status("cppad")
+    return _runtime_native_dependency_status("cppad")
 
 
-def _runtime_optional_dependency_status(name: str) -> str:
+def _runtime_native_dependency_status(name: str) -> str:
     try:
         import epcsaft
 
         info = epcsaft.runtime_build_info()
     except Exception:
         return "<unknown>"
-    optional = info.get("optional_dependencies", {})
-    if not isinstance(optional, dict):
+    native_dependencies = info.get("native_dependencies", {})
+    if not isinstance(native_dependencies, dict):
         return "<unknown>"
-    payload = optional.get(name, {})
+    payload = native_dependencies.get(name, {})
     if not isinstance(payload, dict):
         return "<unknown>"
     return str(payload.get("status", "<unknown>"))
 
 
 def _ceres_status() -> str:
-    return _runtime_optional_dependency_status("ceres")
+    return _runtime_native_dependency_status("ceres")
 
 
 def _ipopt_status() -> str:
-    return _runtime_optional_dependency_status("ipopt")
+    return _runtime_native_dependency_status("ipopt")
 
 
 def _cmake_cache_value(name: str, cache_path: Path = DEV_BUILD_CACHE) -> str | None:

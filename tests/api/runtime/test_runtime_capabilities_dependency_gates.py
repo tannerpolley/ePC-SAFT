@@ -9,15 +9,18 @@ def test_default_build_reports_cppad_and_ceres_capabilities_honestly() -> None:
     info = epcsaft.runtime_build_info()
     capabilities = epcsaft.capabilities()
 
-    cppad = info["optional_dependencies"]["cppad"]
-    ceres = info["optional_dependencies"]["ceres"]
-    ipopt = info["optional_dependencies"]["ipopt"]
+    cppad = info["native_dependencies"]["cppad"]
+    ceres = info["native_dependencies"]["ceres"]
+    ipopt = info["native_dependencies"]["ipopt"]
 
     assert cppad["compiled"] is True
     assert cppad["available"] is True
+    assert cppad["required"] is True
     assert ceres["compiled"] is True
     assert ceres["available"] is True
+    assert ceres["required"] is True
     assert ipopt["available"] is ipopt["compiled"]
+    assert ipopt["required"] is False
     assert capabilities["derivatives"]["cppad"]["available"] is True
     assert capabilities["derivatives"]["cppad"]["reason"] == "not_validated_for_production"
     assert capabilities["optimizers"]["ceres"]["production"] is True

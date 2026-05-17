@@ -7,10 +7,11 @@ import epcsaft
 
 def test_runtime_reports_ceres_build_contract() -> None:
     info = epcsaft.runtime_build_info()
-    ceres = info["optional_dependencies"]["ceres"]
+    ceres = info["native_dependencies"]["ceres"]
 
     assert ceres["backend"] == "ceres"
     assert ceres["status"] == "enabled_available"
+    assert ceres["required"] is True
     assert ceres["compiled"] is True
     assert ceres["available"] is True
 

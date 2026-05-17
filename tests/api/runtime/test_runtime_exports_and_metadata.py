@@ -43,6 +43,8 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert info["package_version"] == epcsaft.__version__
     assert "source_git_commit" in info
     assert info["native_extension_available"] is True
+    assert "native_dependencies" in info
+    assert "optional" + "_dependencies" not in info
 
     capabilities = epcsaft.capabilities()
     assert capabilities["native_extension"] is True
@@ -66,9 +68,9 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert mixed_regression["validates_parameter_bounds"] is True
     assert mixed_regression["native_hot_loop"] is False
     assert mixed_regression["ceres"]["production"] is False
-    assert ipopt["available"] is info["optional_dependencies"]["ipopt"]["available"]
+    assert ipopt["available"] is info["native_dependencies"]["ipopt"]["available"]
     assert ipopt["formulations"] == ["thermodynamic_constrained_nlp"]
-    assert ipopt["adapter_available"] is info["optional_dependencies"]["ipopt"]["adapter_available"]
+    assert ipopt["adapter_available"] is info["native_dependencies"]["ipopt"]["adapter_available"]
     assert ipopt["production"] is ipopt["available"]
     assert ipopt["public_routes"] == [
         "reactive_speciation:ideal_mole_fraction",
@@ -81,8 +83,8 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     ]
     assert ipopt["full_constrained_nlp_available"] is ipopt["available"]
     assert ipopt["exact_hessian_available"] is False
-    assert info["optional_dependencies"]["ipopt"]["available"] is ipopt["available"]
-    cppad = info["optional_dependencies"]["cppad"]
+    assert info["native_dependencies"]["ipopt"]["available"] is ipopt["available"]
+    cppad = info["native_dependencies"]["cppad"]
     assert cppad["backend"] == "cppad"
     assert cppad["status"] == "enabled_available"
     assert cppad["compiled"] is True
@@ -96,7 +98,7 @@ def test_runtime_build_info_and_capabilities_are_json_like():
         "scope": "package-wide AD substrate",
         "production_eos_coverage": False,
     }
-    ceres = info["optional_dependencies"]["ceres"]
+    ceres = info["native_dependencies"]["ceres"]
     assert ceres["backend"] == "ceres"
     assert ceres["status"] == "enabled_available"
     assert ceres["compiled"] is True

@@ -914,6 +914,11 @@ Task 2/3 continuation note: native CppAD derivative helpers no longer keep disab
 regression no longer keeps unreachable disabled-backend exception branches. The source text gate now blocks those
 retired strings case-insensitively.
 
+Task 2/3/12 continuation note: `runtime_build_info()` now reports Ceres, CppAD, and Ipopt under
+`native_dependencies` instead of the retired optional-dependency label. Ceres and CppAD metadata marks those backends as
+required native dependencies, missing required dependency reasons now fail loud as `required_native_dependency_missing`,
+and the executable text gate blocks the retired dependency-status wording in source, tests, and scripts.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**

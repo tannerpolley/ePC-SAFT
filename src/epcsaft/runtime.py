@@ -123,7 +123,8 @@ def _native_cppad_backend_info() -> dict[str, object]:
     except (ImportError, OSError):
         return {
             "backend": "cppad",
-            "status": "not_configured",
+            "status": "required_native_extension_missing",
+            "required": True,
             "compiled": False,
             "available": False,
         }
@@ -132,15 +133,17 @@ def _native_cppad_backend_info() -> dict[str, object]:
     except AttributeError:
         return {
             "backend": "cppad",
-            "status": "not_configured",
+            "status": "required_cppad_smoke_missing",
+            "required": True,
             "compiled": False,
             "available": False,
         }
-    status = str(smoke.get("status", "not_configured"))
+    status = str(smoke.get("status", "required_cppad_status_missing"))
     compiled = bool(smoke.get("cppad_compiled", False))
     return {
         "backend": "cppad",
         "status": status,
+        "required": True,
         "compiled": compiled,
         "available": status == "enabled_available" and compiled,
     }
@@ -152,7 +155,8 @@ def _native_ceres_backend_info() -> dict[str, object]:
     except (ImportError, OSError):
         return {
             "backend": "ceres",
-            "status": "not_configured",
+            "status": "required_native_extension_missing",
+            "required": True,
             "compiled": False,
             "available": False,
         }
@@ -161,15 +165,17 @@ def _native_ceres_backend_info() -> dict[str, object]:
     except AttributeError:
         return {
             "backend": "ceres",
-            "status": "not_configured",
+            "status": "required_ceres_smoke_missing",
+            "required": True,
             "compiled": False,
             "available": False,
         }
-    status = str(smoke.get("status", "not_configured"))
+    status = str(smoke.get("status", "required_ceres_status_missing"))
     compiled = bool(smoke.get("compiled", False))
     return {
         "backend": "ceres",
         "status": status,
+        "required": True,
         "compiled": compiled,
         "available": status == "enabled_available" and compiled,
     }
@@ -182,6 +188,7 @@ def _native_ipopt_backend_info() -> dict[str, object]:
         return {
             "backend": "ipopt",
             "status": "not_configured",
+            "required": False,
             "compiled": False,
             "available": False,
             "adapter_available": False,
@@ -198,6 +205,7 @@ def _native_ipopt_backend_info() -> dict[str, object]:
         return {
             "backend": "ipopt",
             "status": "not_configured",
+            "required": False,
             "compiled": False,
             "available": False,
             "adapter_available": False,
@@ -213,6 +221,7 @@ def _native_ipopt_backend_info() -> dict[str, object]:
     return {
         "backend": "ipopt",
         "status": status,
+        "required": False,
         "compiled": compiled,
         "available": status == "enabled_available" and compiled,
         "adapter_available": bool(smoke.get("adapter_available", False)),
@@ -251,7 +260,7 @@ def runtime_build_info() -> dict[str, object]:
         "python": sys.version.split()[0],
         "platform": _platform_label(),
         "machine": _machine_label(),
-        "optional_dependencies": {
+        "native_dependencies": {
             "ceres": ceres,
             "cppad": _native_cppad_backend_info(),
             "ipopt": _native_ipopt_backend_info(),
@@ -274,7 +283,7 @@ def _dependency_capability(
     if reason is not None:
         payload["reason"] = reason
     elif not available:
-        payload["reason"] = "dependency_not_compiled"
+        payload["reason"] = "required_native_dependency_missing"
     elif not payload["production"]:
         payload["reason"] = "not_validated_for_production"
     payload.update(extra)
@@ -375,9 +384,11 @@ def _derivative_coverage_capabilities(cppad: dict[str, object], ceres: dict[str,
 def capabilities() -> dict[str, object]:
     """Return structured availability flags for high-level package workflows."""
 
-    ceres = dict(runtime_build_info()["optional_dependencies"]["ceres"])  # type: ignore[index]
-    cppad = dict(runtime_build_info()["optional_dependencies"]["cppad"])  # type: ignore[index]
-    ipopt = dict(runtime_build_info()["optional_dependencies"]["ipopt"])  # type: ignore[index]
+    build_info = runtime_build_info()
+    native_dependencies = build_info["native_dependencies"]  # type: ignore[index]
+    ceres = dict(native_dependencies["ceres"])  # type: ignore[index]
+    cppad = dict(native_dependencies["cppad"])  # type: ignore[index]
+    ipopt = dict(native_dependencies["ipopt"])  # type: ignore[index]
     ipopt_public_routes = [
         "reactive_speciation:ideal_mole_fraction",
         "neutral_tp_flash",
@@ -404,7 +415,7 @@ def capabilities() -> dict[str, object]:
     )
     derivative_coverage = _derivative_coverage_capabilities(cppad, ceres)
     return {
-        "native_extension": bool(runtime_build_info()["native_extension_available"]),
+        "native_extension": bool(build_info["native_extension_available"]),
         "derivatives": {
             "cppad": cppad_capability,
             "coverage_matrix": derivative_coverage,

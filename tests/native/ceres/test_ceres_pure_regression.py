@@ -9,7 +9,7 @@ from tests.helpers.regression_cases import _methane_like_records, _minimal_neutr
 
 
 def test_ceres_pure_neutral_regression_owns_optimizer_loop() -> None:
-    ceres = epcsaft.runtime_build_info()["optional_dependencies"]["ceres"]
+    ceres = epcsaft.runtime_build_info()["native_dependencies"]["ceres"]
     assert ceres["compiled"], "Ceres must be compiled for native regression tests."
     initial_guess = {"m": 1.08, "s": 3.55, "e": 155.0}
 
@@ -42,7 +42,7 @@ def test_ceres_pure_neutral_regression_owns_optimizer_loop() -> None:
 
 
 def test_ceres_pure_ion_regression_uses_cppad_implicit_for_density_osmotic_miac(tmp_path) -> None:
-    build = epcsaft.runtime_build_info()["optional_dependencies"]
+    build = epcsaft.runtime_build_info()["native_dependencies"]
     assert build["ceres"]["compiled"], "Ceres must be compiled for native regression tests."
     assert build["cppad"]["compiled"], "CppAD must be compiled for exact derivative tests."
 

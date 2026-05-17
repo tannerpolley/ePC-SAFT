@@ -135,6 +135,9 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
   disabled or unconfigured states as valid local test outcomes.
 - Native CppAD derivative helpers no longer keep disabled-payload branches, and native Ceres regression no longer keeps
   unreachable disabled-backend exception branches. The source text gate now blocks those retired strings case-insensitively.
+- Runtime build metadata now uses `native_dependencies` instead of the retired optional-dependency label. Ceres and
+  CppAD entries are marked as required native dependencies, and source/test/script gates block the old dependency-status
+  wording.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
 

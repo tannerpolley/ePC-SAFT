@@ -28,7 +28,7 @@ def test_literature_binary_kij_fixture_records_provenance() -> None:
 
 
 def test_literature_binary_kij_regression_matches_reference_band() -> None:
-    ceres = epcsaft.runtime_build_info()["optional_dependencies"]["ceres"]
+    ceres = epcsaft.runtime_build_info()["native_dependencies"]["ceres"]
     assert ceres["compiled"], "Ceres must be compiled for native regression tests."
 
     fixture = _load_fixture()
