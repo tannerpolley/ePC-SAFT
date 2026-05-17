@@ -944,7 +944,7 @@ def _native_neutral_lle_flash(
     )
 
 
-def _native_reactive_lle_flash(
+def _native_reactive_two_phase_flash(
     mixture: Any,
     *,
     T: float,
@@ -955,6 +955,10 @@ def _native_reactive_lle_flash(
     species: list[str],
     reactions: list[Any],
     options: EquilibriumOptions,
+    route_binding: str,
+    required_route: str,
+    problem_kind: str,
+    phase_labels: tuple[str, str],
 ) -> EquilibriumResult:
     from . import _core
 
@@ -968,7 +972,7 @@ def _native_reactive_lle_flash(
         reactions=reactions,
     )
     material_tolerance, pressure_tolerance, _, phase_distance_tolerance = neutral_two_phase_eos_tolerances(P, options)
-    route = _core._native_reactive_lle_eos_route_result(
+    route = getattr(_core, route_binding)(
         mixture._native,
         request["T"],
         request["P"],
@@ -988,7 +992,7 @@ def _native_reactive_lle_flash(
         phase_distance_tolerance,
     )
     if str(route.get("status", "")) == "ipopt_dependency_required":
-        _raise_native_ipopt_reactive_phase_required("reactive_lle")
+        _raise_native_ipopt_reactive_phase_required(required_route)
     return _accepted_native_reactive_two_phase_result(
         mixture,
         T=T,
@@ -996,8 +1000,8 @@ def _native_reactive_lle_flash(
         route=route,
         tolerances=neutral_two_phase_eos_tolerances(P, options),
         route_label="LLE",
-        problem_kind="reactive_lle",
-        phase_labels=("liq1", "liq2"),
+        problem_kind=problem_kind,
+        phase_labels=phase_labels,
     )
 
 
@@ -1257,18 +1261,30 @@ def reactive_phase_equilibrium(
     if reaction_scope != "per_phase_same_stoichiometry":
         raise InputError(f"{route} requires per-phase identical reaction stoichiometry in the native Ipopt route.")
     if route == "lle_flash":
-        return _native_reactive_lle_flash(
-            mixture,
-            T=T,
-            P=P,
-            feed=feed,
-            balance_matrix=balance_matrix,
-            total_vector=total_vector,
-            species=species,
-            reactions=reaction_defs,
-            options=solver_options,
-        )
-    _raise_native_ipopt_reactive_phase_required(route)
+        route_binding = "_native_reactive_lle_eos_route_result"
+        required_route = "reactive_lle"
+        problem_kind = "reactive_lle"
+        phase_labels = ("liq1", "liq2")
+    else:
+        route_binding = "_native_reactive_electrolyte_lle_eos_route_result"
+        required_route = "reactive_electrolyte_lle"
+        problem_kind = "reactive_electrolyte_lle"
+        phase_labels = ("aq", "org")
+    return _native_reactive_two_phase_flash(
+        mixture,
+        T=T,
+        P=P,
+        feed=feed,
+        balance_matrix=balance_matrix,
+        total_vector=total_vector,
+        species=species,
+        reactions=reaction_defs,
+        options=solver_options,
+        route_binding=route_binding,
+        required_route=required_route,
+        problem_kind=problem_kind,
+        phase_labels=phase_labels,
+    )
 
 
 def _normalize_reactive_phase_route(

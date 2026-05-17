@@ -723,7 +723,7 @@ postsolve acceptance gates, and legacy diagnostic-only route-gate tests have bee
 - [x] Couple density/volume and association variables where practical.
 - [x] Implement electrolyte LLE and fixed-liquid electrolyte bubble route builders.
 - [x] Close broader electrolyte VLE route builders as not promoted beyond the fixed-liquid bubble scope.
-- [ ] Implement reactive phase equilibrium route builders.
+- [x] Implement reactive phase equilibrium route builders.
 - [x] Remove Ceres equilibrium residual-solve ownership from accepted equilibrium paths.
 - [x] Add charge/material/phase-distance acceptance tests for implemented electrolyte routes.
 - [ ] Add reaction-coupled phase-equilibrium acceptance tests when reactive phase route builders land.
@@ -824,6 +824,11 @@ Task 9 continuation note: neutral public `reactive_lle` now serializes validated
 standard-potential data into a native reactive LLE route-result binding. The native route builder owns the deterministic
 two-phase initial point and dispatches through Ipopt before the public no-Ipopt gate. Broad reactive electrolyte LLE
 remains gated until the reaction-coupled NLP carries electrolyte phase charge constraints and acceptance evidence.
+
+Task 9 continuation note: reactive electrolyte LLE now has a native route-result binding whose NLP adds one analytical
+phase-charge constraint per phase. The public `reactive_electrolyte_lle` facade validates charge-neutral feeds, conserved
+balances, and reaction standard states, then submits exactly one native Ipopt route request before the local no-Ipopt
+dependency gate. Ipopt-enabled accepted-solve evidence remains part of the final full-backend validation.
 
 ### Task 10: Make Regression Ceres-Only
 

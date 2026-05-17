@@ -86,6 +86,7 @@ struct ReactiveTwoPhaseEosPostsolve {
     int balance_row_count = 0;
     int reaction_count = 0;
     double conserved_balance_norm = 0.0;
+    double charge_balance_norm = 0.0;
     double pressure_consistency_norm = 0.0;
     double reaction_stationarity_norm = 0.0;
     double phase_distance = 0.0;
@@ -186,7 +187,8 @@ ReactiveTwoPhaseEosRouteResult solve_reactive_two_phase_eos_route(
     double conserved_balance_tolerance,
     double pressure_tolerance,
     double reaction_stationarity_tolerance,
-    double phase_distance_tolerance
+    double phase_distance_tolerance,
+    const std::vector<double>& charges
 );
 
 NeutralTwoPhaseEosNlpContract evaluate_reactive_lle_eos_nlp_contract(
@@ -202,7 +204,38 @@ NeutralTwoPhaseEosNlpContract evaluate_reactive_lle_eos_nlp_contract(
     const std::vector<double>& log_equilibrium_constants
 );
 
+NeutralTwoPhaseEosNlpContract evaluate_reactive_electrolyte_lle_eos_nlp_contract(
+    const add_args& args,
+    double temperature,
+    double target_pressure,
+    const std::vector<double>& feed_amounts,
+    int balance_rows,
+    const std::vector<double>& balance_matrix_row_major,
+    const std::vector<double>& total_vector,
+    int reaction_rows,
+    const std::vector<double>& reaction_stoichiometry_row_major,
+    const std::vector<double>& log_equilibrium_constants
+);
+
 ReactiveTwoPhaseEosRouteResult solve_reactive_lle_eos_route(
+    const add_args& args,
+    double temperature,
+    double target_pressure,
+    const std::vector<double>& feed_amounts,
+    int balance_rows,
+    const std::vector<double>& balance_matrix_row_major,
+    const std::vector<double>& total_vector,
+    int reaction_rows,
+    const std::vector<double>& reaction_stoichiometry_row_major,
+    const std::vector<double>& log_equilibrium_constants,
+    const IpoptSolveOptions& options,
+    double conserved_balance_tolerance,
+    double pressure_tolerance,
+    double reaction_stationarity_tolerance,
+    double phase_distance_tolerance
+);
+
+ReactiveTwoPhaseEosRouteResult solve_reactive_electrolyte_lle_eos_route(
     const add_args& args,
     double temperature,
     double target_pressure,
@@ -235,7 +268,8 @@ ReactiveTwoPhaseEosPostsolve evaluate_reactive_two_phase_eos_postsolve(
     double conserved_balance_tolerance,
     double pressure_tolerance,
     double reaction_stationarity_tolerance,
-    double phase_distance_tolerance
+    double phase_distance_tolerance,
+    const std::vector<double>& charges
 );
 
 NeutralTwoPhaseEosNlpContract evaluate_neutral_bubble_p_eos_nlp_contract(

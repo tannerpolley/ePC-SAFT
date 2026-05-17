@@ -1123,3 +1123,101 @@ def test_reactive_lle_eos_route_builder_owns_canonical_initial_point() -> None:
 
     assert payload["ran"] is True
     assert payload["status"] in {"accepted", "solver_rejected", "postsolve_rejected"}
+
+
+def test_reactive_electrolyte_lle_eos_route_builder_adds_phase_charge_rows() -> None:
+    species = ["A", "B", "C+", "D-"]
+    feed = np.asarray([0.535, 0.25, 0.1075, 0.1075], dtype=float)
+    mix = epcsaft.ePCSAFTMixture.from_params(
+        {
+            "MW": np.asarray([18.0e-3, 74.0e-3, 23.0e-3, 35.5e-3]),
+            "m": np.asarray([1.1, 1.4, 1.0, 1.0]),
+            "s": np.asarray([3.0, 3.4, 3.0, 3.0]),
+            "e": np.asarray([180.0, 220.0, 150.0, 150.0]),
+            "k_ij": np.zeros((4, 4)),
+            "z": np.asarray([0.0, 0.0, 1.0, -1.0]),
+            "dielc": np.asarray([80.0, 12.0, 1.0, 1.0]),
+        },
+        species=species,
+    )
+    charges = np.asarray(mix.parameters["z"], dtype=float)
+    balance_matrix = [
+        1.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+    ]
+    totals = [float(feed[0] + feed[1]), float(feed[2]), float(feed[3])]
+    reaction = [-1.0, 1.0, 0.0, 0.0]
+
+    contract = _core._native_reactive_electrolyte_lle_eos_nlp_contract(
+        mix._native,
+        298.15,
+        1.013e5,
+        feed.tolist(),
+        3,
+        balance_matrix,
+        totals,
+        1,
+        reaction,
+        [float(np.log(0.2))],
+    )
+    initial = np.asarray(contract["initial_point"], dtype=float)
+    first = initial[:4]
+    second = initial[5:9]
+    jacobian = np.asarray(contract["jacobian_values_at_initial"], dtype=float).reshape(
+        contract["constraint_count"],
+        contract["variable_count"],
+    )
+
+    assert contract["problem_name"] == "reactive_two_phase_eos"
+    assert contract["derivative_backend"] == "analytic_cppad"
+    assert contract["constraint_count"] == 7
+    assert contract["balance_row_count"] == 3
+    assert contract["reaction_count"] == 1
+    assert np.dot(first, charges) == pytest.approx(0.0, abs=1.0e-14)
+    assert np.dot(second, charges) == pytest.approx(0.0, abs=1.0e-14)
+    assert jacobian[5, :4] == pytest.approx(charges)
+    assert jacobian[6, 5:9] == pytest.approx(charges)
+
+    payload = _core._native_reactive_electrolyte_lle_eos_route_result(
+        mix._native,
+        298.15,
+        1.013e5,
+        feed.tolist(),
+        3,
+        balance_matrix,
+        totals,
+        1,
+        reaction,
+        [float(np.log(0.2))],
+        10,
+        1.0e-8,
+        0.0,
+        1.0e-8,
+        1.0e-3,
+        1.0e-8,
+        1.0e-3,
+    )
+
+    assert payload["backend"] == "ipopt"
+    assert payload["problem_name"] == "reactive_two_phase_eos"
+    assert payload["derivative_backend"] == "analytic_cppad"
+    assert payload["balance_row_count"] == 3
+    assert payload["reaction_count"] == 1
+    if not payload["compiled"]:
+        assert payload["ran"] is False
+        assert payload["accepted"] is False
+        assert payload["status"] == "ipopt_dependency_required"
+        return
+
+    assert payload["ran"] is True
+    assert payload["status"] in {"accepted", "solver_rejected", "postsolve_rejected"}

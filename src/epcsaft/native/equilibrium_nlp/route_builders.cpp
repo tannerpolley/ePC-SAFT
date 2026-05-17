@@ -624,7 +624,8 @@ public:
         std::vector<double> total_vector,
         int reaction_rows,
         const std::vector<double>& reaction_stoichiometry_row_major,
-        const std::vector<double>& log_equilibrium_constants
+        const std::vector<double>& log_equilibrium_constants,
+        std::vector<double> charges = {}
     )
         : args_(std::move(args)),
           temperature_(temperature),
@@ -635,6 +636,7 @@ public:
           balance_matrix_row_major_(std::move(balance_matrix_row_major)),
           total_vector_(std::move(total_vector)),
           reaction_rows_(reaction_rows),
+          charges_(std::move(charges)),
           species_count_(species_count_from_phase_amounts(initial_phase_amounts_)),
           standard_mu_rt_(standard_mu_rt_from_reactions(
               species_count_,
@@ -650,6 +652,14 @@ public:
         }
         if (balance_rows_ <= 0) {
             throw ValueError("Reactive EOS route builder requires at least one balance row.");
+        }
+        if (!charges_.empty()) {
+            require_size(charges_, static_cast<std::size_t>(species_count_), "Reactive EOS route charge");
+            for (double charge : charges_) {
+                if (!std::isfinite(charge)) {
+                    throw ValueError("Reactive EOS route charge values must be finite.");
+                }
+            }
         }
         require_size(initial_volumes_, initial_phase_amounts_.size(), "Reactive EOS route volume");
         require_size(
@@ -689,7 +699,7 @@ public:
     }
 
     int constraint_count() const override {
-        return balance_rows_ + phase_count();
+        return balance_rows_ + phase_count() + (charges_.empty() ? 0 : phase_count());
     }
 
     int jacobian_nonzero_count() const override {
@@ -778,6 +788,17 @@ public:
             out[static_cast<std::size_t>(balance_rows_ + phase)] =
                 blocks[static_cast<std::size_t>(phase)].pressure_consistency_residual;
         }
+        if (!charges_.empty()) {
+            const int charge_row_start = balance_rows_ + phase_count();
+            for (int phase = 0; phase < phase_count(); ++phase) {
+                double charge = 0.0;
+                for (int species = 0; species < species_count_; ++species) {
+                    charge += charges_[static_cast<std::size_t>(species)]
+                        * amounts[static_cast<std::size_t>(phase)][static_cast<std::size_t>(species)];
+                }
+                out[static_cast<std::size_t>(charge_row_start + phase)] = charge;
+            }
+        }
         return out;
     }
 
@@ -828,6 +849,19 @@ public:
                     static_cast<std::size_t>(row) * static_cast<std::size_t>(variable_count())
                     + static_cast<std::size_t>(col_offset + col)
                 ] = block.pressure_jacobian_row_major[static_cast<std::size_t>(col)];
+            }
+        }
+        if (!charges_.empty()) {
+            const int charge_row_start = balance_rows_ + phase_count();
+            for (int phase = 0; phase < phase_count(); ++phase) {
+                const int row = charge_row_start + phase;
+                const int col_offset = phase * local_variable_count();
+                for (int species = 0; species < species_count_; ++species) {
+                    out[
+                        static_cast<std::size_t>(row) * static_cast<std::size_t>(variable_count())
+                        + static_cast<std::size_t>(col_offset + species)
+                    ] = charges_[static_cast<std::size_t>(species)];
+                }
             }
         }
         return out;
@@ -936,6 +970,7 @@ private:
     std::vector<double> balance_matrix_row_major_;
     std::vector<double> total_vector_;
     int reaction_rows_ = 0;
+    std::vector<double> charges_;
     int species_count_ = 0;
     std::vector<double> standard_mu_rt_;
 };
@@ -1124,6 +1159,50 @@ NeutralTwoPhaseEosNlpContract evaluate_reactive_lle_eos_nlp_contract(
     );
 }
 
+NeutralTwoPhaseEosNlpContract evaluate_reactive_electrolyte_lle_eos_nlp_contract(
+    const add_args& args,
+    double temperature,
+    double target_pressure,
+    const std::vector<double>& feed_amounts,
+    int balance_rows,
+    const std::vector<double>& balance_matrix_row_major,
+    const std::vector<double>& total_vector,
+    int reaction_rows,
+    const std::vector<double>& reaction_stoichiometry_row_major,
+    const std::vector<double>& log_equilibrium_constants
+) {
+    const NeutralTwoPhaseEosInitialPoint initial = build_charge_neutral_two_phase_eos_initial_point(
+        feed_amounts,
+        args.z,
+        temperature,
+        target_pressure,
+        "Reactive electrolyte LLE route"
+    );
+    ReactiveTwoPhaseEosProblem problem(
+        args,
+        temperature,
+        target_pressure,
+        initial.phase_amounts,
+        initial.volumes,
+        balance_rows,
+        balance_matrix_row_major,
+        total_vector,
+        reaction_rows,
+        reaction_stoichiometry_row_major,
+        log_equilibrium_constants,
+        args.z
+    );
+    NeutralTwoPhaseEosNlpContract out = make_nlp_contract(
+        problem,
+        problem.phase_count(),
+        problem.species_count()
+    );
+    out.balance_row_count = problem.balance_row_count();
+    out.reaction_count = problem.reaction_count();
+    out.standard_mu_rt = problem.standard_mu_rt();
+    return out;
+}
+
 ReactiveTwoPhaseEosPostsolve evaluate_reactive_two_phase_eos_postsolve(
     const add_args& args,
     double temperature,
@@ -1139,7 +1218,8 @@ ReactiveTwoPhaseEosPostsolve evaluate_reactive_two_phase_eos_postsolve(
     double conserved_balance_tolerance,
     double pressure_tolerance,
     double reaction_stationarity_tolerance,
-    double phase_distance_tolerance
+    double phase_distance_tolerance,
+    const std::vector<double>& charges
 ) {
     require_positive_finite(conserved_balance_tolerance, "Reactive EOS postsolve conserved-balance tolerance");
     require_positive_finite(pressure_tolerance, "Reactive EOS postsolve pressure tolerance");
@@ -1160,6 +1240,14 @@ ReactiveTwoPhaseEosPostsolve evaluate_reactive_two_phase_eos_postsolve(
     }
     if (reaction_rows <= 0) {
         throw ValueError("Reactive EOS postsolve requires at least one reaction.");
+    }
+    if (!charges.empty()) {
+        require_size(charges, static_cast<std::size_t>(species_count), "Reactive EOS postsolve charge");
+        for (double charge : charges) {
+            if (!std::isfinite(charge)) {
+                throw ValueError("Reactive EOS postsolve charge values must be finite.");
+            }
+        }
     }
     require_size(volumes, phase_amounts.size(), "Reactive EOS postsolve volume");
     require_size(
@@ -1192,7 +1280,8 @@ ReactiveTwoPhaseEosPostsolve evaluate_reactive_two_phase_eos_postsolve(
     out.reaction_count = reaction_rows;
     out.standard_mu_rt = standard_mu_rt;
     out.phase_volumes = volumes;
-    out.constraints.assign(static_cast<std::size_t>(balance_rows + out.phase_count), 0.0);
+    const int charge_row_count = charges.empty() ? 0 : out.phase_count;
+    out.constraints.assign(static_cast<std::size_t>(balance_rows + out.phase_count + charge_row_count), 0.0);
 
     std::vector<double> total_amounts(static_cast<std::size_t>(species_count), 0.0);
     std::vector<EosPhaseBlockResult> blocks;
@@ -1214,6 +1303,17 @@ ReactiveTwoPhaseEosPostsolve evaluate_reactive_two_phase_eos_postsolve(
         }
         out.constraints[static_cast<std::size_t>(balance_rows + static_cast<int>(phase))] =
             block.pressure_consistency_residual;
+    }
+    if (!charges.empty()) {
+        const int charge_row_start = balance_rows + out.phase_count;
+        for (int phase = 0; phase < out.phase_count; ++phase) {
+            double charge_residual = 0.0;
+            for (int species = 0; species < species_count; ++species) {
+                charge_residual += charges[static_cast<std::size_t>(species)]
+                    * phase_amounts[static_cast<std::size_t>(phase)][static_cast<std::size_t>(species)];
+            }
+            out.constraints[static_cast<std::size_t>(charge_row_start + phase)] = charge_residual;
+        }
     }
 
     for (int row = 0; row < balance_rows; ++row) {
@@ -1259,8 +1359,15 @@ ReactiveTwoPhaseEosPostsolve evaluate_reactive_two_phase_eos_postsolve(
     out.pressure_consistency_norm = vector_infinity_norm(
         out.constraints,
         static_cast<std::size_t>(balance_rows),
-        out.constraints.size()
+        static_cast<std::size_t>(balance_rows + out.phase_count)
     );
+    if (!charges.empty()) {
+        out.charge_balance_norm = vector_infinity_norm(
+            out.constraints,
+            static_cast<std::size_t>(balance_rows + out.phase_count),
+            out.constraints.size()
+        );
+    }
     out.reaction_stationarity_norm = vector_infinity_norm(
         out.reaction_stationarity_residuals,
         0,
@@ -1268,6 +1375,7 @@ ReactiveTwoPhaseEosPostsolve evaluate_reactive_two_phase_eos_postsolve(
     );
     out.phase_distance = phase_distance_inf_norm(out.phase_compositions[0], out.phase_compositions[1]);
     out.accepted = out.conserved_balance_norm <= conserved_balance_tolerance
+        && out.charge_balance_norm <= conserved_balance_tolerance
         && out.pressure_consistency_norm <= pressure_tolerance
         && out.reaction_stationarity_norm <= reaction_stationarity_tolerance
         && out.phase_distance >= phase_distance_tolerance;
@@ -1275,6 +1383,8 @@ ReactiveTwoPhaseEosPostsolve evaluate_reactive_two_phase_eos_postsolve(
         out.rejection_reason = "accepted";
     } else if (out.conserved_balance_norm > conserved_balance_tolerance) {
         out.rejection_reason = "conserved_balance";
+    } else if (out.charge_balance_norm > conserved_balance_tolerance) {
+        out.rejection_reason = "charge_balance";
     } else if (out.pressure_consistency_norm > pressure_tolerance) {
         out.rejection_reason = "pressure_consistency";
     } else if (out.reaction_stationarity_norm > reaction_stationarity_tolerance) {
@@ -1320,7 +1430,53 @@ ReactiveTwoPhaseEosRouteResult solve_reactive_lle_eos_route(
         conserved_balance_tolerance,
         pressure_tolerance,
         reaction_stationarity_tolerance,
-        phase_distance_tolerance
+        phase_distance_tolerance,
+        {}
+    );
+}
+
+ReactiveTwoPhaseEosRouteResult solve_reactive_electrolyte_lle_eos_route(
+    const add_args& args,
+    double temperature,
+    double target_pressure,
+    const std::vector<double>& feed_amounts,
+    int balance_rows,
+    const std::vector<double>& balance_matrix_row_major,
+    const std::vector<double>& total_vector,
+    int reaction_rows,
+    const std::vector<double>& reaction_stoichiometry_row_major,
+    const std::vector<double>& log_equilibrium_constants,
+    const IpoptSolveOptions& options,
+    double conserved_balance_tolerance,
+    double pressure_tolerance,
+    double reaction_stationarity_tolerance,
+    double phase_distance_tolerance
+) {
+    const NeutralTwoPhaseEosInitialPoint initial = build_charge_neutral_two_phase_eos_initial_point(
+        feed_amounts,
+        args.z,
+        temperature,
+        target_pressure,
+        "Reactive electrolyte LLE route"
+    );
+    return solve_reactive_two_phase_eos_route(
+        args,
+        temperature,
+        target_pressure,
+        initial.phase_amounts,
+        initial.volumes,
+        balance_rows,
+        balance_matrix_row_major,
+        total_vector,
+        reaction_rows,
+        reaction_stoichiometry_row_major,
+        log_equilibrium_constants,
+        options,
+        conserved_balance_tolerance,
+        pressure_tolerance,
+        reaction_stationarity_tolerance,
+        phase_distance_tolerance,
+        args.z
     );
 }
 
@@ -1340,7 +1496,8 @@ ReactiveTwoPhaseEosRouteResult solve_reactive_two_phase_eos_route(
     double conserved_balance_tolerance,
     double pressure_tolerance,
     double reaction_stationarity_tolerance,
-    double phase_distance_tolerance
+    double phase_distance_tolerance,
+    const std::vector<double>& charges
 ) {
     ReactiveTwoPhaseEosProblem problem(
         args,
@@ -1353,7 +1510,8 @@ ReactiveTwoPhaseEosRouteResult solve_reactive_two_phase_eos_route(
         total_vector,
         reaction_rows,
         reaction_stoichiometry_row_major,
-        log_equilibrium_constants
+        log_equilibrium_constants,
+        charges
     );
     const IpoptAdapterInfo adapter = native_ipopt_adapter_info();
     ReactiveTwoPhaseEosRouteResult out;
@@ -1401,7 +1559,8 @@ ReactiveTwoPhaseEosRouteResult solve_reactive_two_phase_eos_route(
             conserved_balance_tolerance,
             pressure_tolerance,
             reaction_stationarity_tolerance,
-            phase_distance_tolerance
+            phase_distance_tolerance,
+            charges
         );
         out.accepted = out.postsolve.accepted;
         out.status = out.accepted ? "accepted" : "postsolve_rejected";
