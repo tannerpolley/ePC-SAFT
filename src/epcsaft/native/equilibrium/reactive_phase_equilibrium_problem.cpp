@@ -63,7 +63,7 @@ void validate_reaction_standard_states(const std::vector<int>& reaction_standard
         if (standard_state != STANDARD_STATE_MOLE_FRACTION_ACTIVITY
             && standard_state != STANDARD_STATE_IDEAL_MOLE_FRACTION
             && standard_state != STANDARD_STATE_CONCENTRATION) {
-            throw ValueError("reaction standard state contains an unsupported code.");
+            throw ValueError("reaction standard state code is outside the native reactive-phase contract.");
         }
     }
 }
@@ -225,7 +225,7 @@ std::vector<double> reaction_standard_state_log_terms(
         }
         return out;
     }
-    throw ValueError("reaction standard state contains an unsupported code.");
+    throw ValueError("reaction standard state code is outside the native reactive-phase contract.");
 }
 
 std::vector<double> reaction_residuals(
@@ -467,7 +467,7 @@ std::vector<double> phase_reaction_standard_state_log_amount_jacobian(
     if (standard_state == STANDARD_STATE_CONCENTRATION) {
         return phase_log_concentration_log_amount_jacobian(mixture, t, p, state);
     }
-    throw ValueError("reaction standard state contains an unsupported code.");
+    throw ValueError("reaction standard state code is outside the native reactive-phase contract.");
 }
 
 std::vector<double> reactive_phase_residual_jacobian_row_major(

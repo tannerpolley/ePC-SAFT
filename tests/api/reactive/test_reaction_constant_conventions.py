@@ -130,7 +130,7 @@ def test_reactive_speciation_gates_apparent_convention_before_native_ipopt_route
         ),
     )
 
-    with pytest.raises(epcsaft.InputError, match="unsupported reaction constant convention 'apparent'"):
+    with pytest.raises(epcsaft.InputError, match=r"native speciation requires.*apparent"):
         epcsaft.solve_reactive_speciation(
             species=mix.species,
             mixture_factory=lambda x, T, P: mix,
@@ -148,7 +148,7 @@ def test_reactive_speciation_gates_apparent_convention_before_native_ipopt_route
     assert reaction.metadata["constant_convention"]["fitting_role"] == "fitted_parameter"
 
 
-def test_unsupported_molality_native_route_fails_loudly() -> None:
+def test_molality_native_route_fails_at_speciation_contract() -> None:
     mix = _toy_mixture()
     reaction = epcsaft.ReactionDefinition(
         {"A": -1.0, "B": 1.0},
@@ -156,7 +156,7 @@ def test_unsupported_molality_native_route_fails_loudly() -> None:
         convention=epcsaft.ReactionConstantConvention(standard_state="molality"),
     )
 
-    with pytest.raises(epcsaft.InputError, match="unsupported reaction constant convention 'molality'"):
+    with pytest.raises(epcsaft.InputError, match=r"native speciation requires.*molality"):
         epcsaft.solve_reactive_speciation(
             species=mix.species,
             mixture_factory=lambda x, T, P: mix,

@@ -279,6 +279,8 @@ def _source_blocked_terms(rel: str) -> tuple[str, ...]:
         "full" + "_constrained" + "_nlp" + "_available",
         "fit" + "_reactive" + "_electrolyte" + "_parameters",
         "reactive" + "regression" + "fit" + "result",
+        "unsupported" + " reaction constant convention",
+        "reaction standard state contains an " + "unsupported code",
     )
     if rel.startswith(("src/", "scripts/")):
         terms += (

@@ -87,7 +87,7 @@ std::string standard_state_label(int value) {
     if (value == STANDARD_STATE_CONCENTRATION) {
         return "concentration";
     }
-    throw ValueError("reaction standard state contains an unsupported code.");
+    throw ValueError("reaction standard state code is outside the native speciation contract.");
 }
 
 std::string standard_state_summary(const std::vector<int>& standard_states) {
@@ -524,7 +524,7 @@ ChemicalEvaluation evaluate_chemical(
                 }
                 species_activity = out.x[static_cast<std::size_t>(i)] * out.gamma[static_cast<std::size_t>(i)];
             } else {
-                throw ValueError("reaction standard state contains an unsupported code.");
+                throw ValueError("reaction standard state code is outside the native speciation contract.");
             }
             value += reactions(r, i) * std::log(std::max(species_activity, options.min_mole_fraction));
         }

@@ -113,8 +113,8 @@ class ReactionConstantConvention:
         code = _REACTION_STANDARD_STATES[self.standard_state]
         if code is None:
             raise InputError(
-                "unsupported reaction constant convention "
-                f"'{self.standard_state}' is defined but is not supported by the native speciation backend."
+                "native speciation requires an ideal_mole_fraction, mole_fraction_activity, or concentration "
+                f"standard state; got '{self.standard_state}'."
             )
         return int(code)
 
