@@ -910,6 +910,10 @@ Task 2/3 continuation note: runtime build-contract and CppAD smoke tests now req
 dependencies instead of accepting disabled or unconfigured states as valid local test outcomes. Ipopt remains the
 documented system-dependency route gate until the final native adapter/package boundary is closed.
 
+Task 2/3 continuation note: native CppAD derivative helpers no longer keep disabled-payload branches, and native Ceres
+regression no longer keeps unreachable disabled-backend exception branches. The source text gate now blocks those
+retired strings case-insensitively.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**

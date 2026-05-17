@@ -1,8 +1,6 @@
 #include "epcsaft_core_internal.h"
 
-#ifdef EPCSAFT_HAS_CPPAD
 #include <cppad/cppad.hpp>
-#endif
 
 using namespace thermo_detail;
 
@@ -88,7 +86,6 @@ epcsaft::native::cppad_support::CppADDerivativeResult cppad_pressure_density_der
     double t,
     double rho
 ) {
-#ifdef EPCSAFT_HAS_CPPAD
     using CppADScalar = CppAD::AD<double>;
     std::vector<CppADScalar> ax(1);
     ax[0] = rho;
@@ -113,13 +110,4 @@ epcsaft::native::cppad_support::CppADDerivativeResult cppad_pressure_density_der
     result.rows = 1;
     result.cols = 1;
     return result;
-#else
-    (void)t;
-    (void)rho;
-    epcsaft::native::cppad_support::CppADDerivativeResult result;
-    result.supported = false;
-    result.backend = "cppad_disabled";
-    result.message = "CppAD support is disabled in this native build";
-    return result;
-#endif
 }

@@ -3,30 +3,24 @@
 #include <cmath>
 #include <string>
 
-#ifdef EPCSAFT_HAS_CPPAD
-#include <cppad/cppad.hpp>
+#ifndef EPCSAFT_HAS_CPPAD
+#error "EPCSAFT_HAS_CPPAD must be defined; CppAD is a required native dependency."
 #endif
+
+#include <cppad/cppad.hpp>
 
 namespace epcsaft::native::cppad_support {
 
 inline bool cppad_compiled() {
-#ifdef EPCSAFT_HAS_CPPAD
     return true;
-#else
-    return false;
-#endif
 }
 
 inline std::string cppad_build_status() {
 #ifdef EPCSAFT_CPPAD_STATUS
     return EPCSAFT_CPPAD_STATUS;
 #else
-    return "not_configured";
+    return "enabled_available";
 #endif
-}
-
-inline std::string cppad_disabled_status() {
-    return "cppad_disabled";
 }
 
 inline double scalar_value(double x) {
@@ -49,7 +43,6 @@ inline double scalar_pow(double x, int exponent) {
     return std::pow(x, exponent);
 }
 
-#ifdef EPCSAFT_HAS_CPPAD
 using CppADScalar = CppAD::AD<double>;
 
 inline CppADScalar make_cppad_scalar(double value) {
@@ -75,6 +68,5 @@ inline CppADScalar scalar_pow(const CppADScalar& x, double exponent) {
 inline CppADScalar scalar_pow(const CppADScalar& x, int exponent) {
     return CppAD::pow(x, static_cast<double>(exponent));
 }
-#endif
 
 }  // namespace epcsaft::native::cppad_support

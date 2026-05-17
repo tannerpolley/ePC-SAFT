@@ -179,8 +179,11 @@ def _source_blocked_terms(rel: str) -> tuple[str, ...]:
         "implicit" + "_sensitivity" + "_status",
         "not" + " implemented",
         "association" + "_solver" + "_status",
-        "Ceres support" + " is not enabled",
-        "Ceres and CppAD support" + " are not enabled",
+        "ceres support" + " is not enabled",
+        "ceres and cppad support" + " are not enabled",
+        "ceres" + "_disabled",
+        "cppad" + "_disabled",
+        "cppad support" + " is disabled",
     )
 
 

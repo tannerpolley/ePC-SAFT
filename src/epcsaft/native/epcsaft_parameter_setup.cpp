@@ -770,9 +770,6 @@ vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x,
 vector<double> dielectric_derivative_rule_cppad_cpp(int rule, const vector<double> &x, const add_args &cppargs) {
     int ncomp = static_cast<int>(x.size());
     vector<double> deps_dx(ncomp, 0.0);
-#ifndef EPCSAFT_HAS_CPPAD
-    throw ValueError("CppAD support is disabled in this native build.");
-#else
     vector<CppADScalar> ax(ncomp);
     for (int j = 0; j < ncomp; ++j) {
         ax[j] = x[j];
@@ -787,7 +784,6 @@ vector<double> dielectric_derivative_rule_cppad_cpp(int rule, const vector<doubl
             throw ValueError("Non-finite dielectric CppAD derivative.");
         }
     }
-#endif
     return deps_dx;
 }
 
@@ -815,9 +811,6 @@ vector<double> contribution_dadx_cppad_cpp(AresContributionKind kind, double t, 
     }
 
     vector<double> dadx(ncomp, 0.0);
-#ifndef EPCSAFT_HAS_CPPAD
-    throw ValueError("CppAD support is disabled in this native build.");
-#else
     vector<CppADScalar> ax(ncomp);
     for (int j = 0; j < ncomp; ++j) {
         ax[j] = x[j];
@@ -883,6 +876,5 @@ vector<double> contribution_dadx_cppad_cpp(AresContributionKind kind, double t, 
             throw ValueError("Non-finite contribution CppAD derivative.");
         }
     }
-#endif
     return dadx;
 }

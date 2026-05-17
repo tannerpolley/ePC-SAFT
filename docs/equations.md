@@ -540,7 +540,7 @@ x_{\mathrm{ion}}(\mathbf{x})=\sum_{m\in\mathcal{I}} x_{m},
 - Description: Provides the pressure closure used in the initial density solve.
 - Change note: Moved upstream from the pressure section so the density-solver closure lives with the rest of the initial density-setup equations.
 - LaTeX: `docs/latex/equations.tex:506`
-- C++: `src/epcsaft/native/epcsaft_Z.cpp:81` (double p_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/epcsaft_Z.cpp:79` (double p_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
 
 ```tex
 P = ZRT\rho = Zk_{B}T\rho_{N}
@@ -553,7 +553,7 @@ P = ZRT\rho = Zk_{B}T\rho_{N}
 - Description: Provides the combined compressibility-factor closure used in the initial density solve.
 - Change note: The packing-fraction and density forms are now shown together in one equation so the closure reads as one relation instead of three separate displayed identities.
 - LaTeX: `docs/latex/equations.tex:517`
-- C++: `src/epcsaft/native/epcsaft_Z.cpp:68` (CompressibilityFactorResult compressibility_factor_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/epcsaft_Z.cpp:66` (CompressibilityFactorResult compressibility_factor_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
 
 ```tex
 Z
@@ -595,7 +595,7 @@ R_{\rho}\!\left(T,\rho,\mathbf{x};P^{\mathrm{spec}}\right)
 - Description: Provides a residual Helmholtz-energy relation for hard-chain reference contribution.
 - Change note: High textual similarity to a tagged equation in the cited local paper export.
 - LaTeX: `docs/latex/equations.tex:562`
-- C++: `src/epcsaft/native/epcsaft_ares.cpp:375` (template <typename Scalar>)
+- C++: `src/epcsaft/native/epcsaft_ares.cpp:373` (template <typename Scalar>)
 
 ```tex
 \begin{aligned}
@@ -1481,7 +1481,7 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 - Description: Provides a residual Helmholtz-energy relation for residual helmholz energy.
 - Change note: No explicit citation on this equation block in the source file.
 - LaTeX: `docs/latex/equations.tex:1390`
-- C++: `src/epcsaft/native/epcsaft_ares.cpp:1364` (AresContributions ares_contributions_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/epcsaft_ares.cpp:1362` (AresContributions ares_contributions_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs) {)
 
 ```tex
 \tilde{a}^{\mathrm{res}}=\tilde{a}^{h c}+\tilde{a}^{\text {disp }}+\tilde{a}^{\text {assoc }}+\tilde{a}^{\text {DH }}+\tilde{a}^{\text {Born }}
@@ -1494,7 +1494,7 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 - Description: Provides the total temperature differential of the residual Helmholtz energy.
 - Change note: Moved here from the removed standalone temperature-differential section so one downstream total-\(d\tilde a^\mathrm{res}/dT\) summary relation remains available.
 - LaTeX: `docs/latex/equations.tex:1402`
-- C++: `src/epcsaft/native/epcsaft_ares.cpp:2129` (ScalarContributionTerms temperature_derivative_residual_helmholtz_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/epcsaft_ares.cpp:2109` (ScalarContributionTerms temperature_derivative_residual_helmholtz_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
 
 ```tex
 \left(\frac{\partial\tilde{a}^\mathrm{res}}{\partial T}\right)_{\rho,x_{i}} =\left(\frac{\partial\tilde{a}^\mathrm{hc}}{\partial T}\right)_{\rho,x_{i}} +\left(\frac{\partial\tilde{a}^\mathrm{disp}}{\partial T}\right)_{\rho,x_{i}}
@@ -1512,7 +1512,7 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 - Description: Provides a residual Helmholtz-energy relation for hard-chain reference contribution.
 - Change note: High textual similarity to a tagged equation in the cited local paper export.
 - LaTeX: `docs/latex/equations.tex:1418`
-- C++: `src/epcsaft/native/epcsaft_ares.cpp:386` (template <typename Scalar>)
+- C++: `src/epcsaft/native/epcsaft_ares.cpp:384` (template <typename Scalar>)
 
 ```tex
 \begin{aligned}
@@ -1588,7 +1588,7 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 - Description: Provides a residual Helmholtz-energy relation for dispersion contribution.
 - Change note: High textual similarity to a tagged equation in the cited local paper export.
 - LaTeX: `docs/latex/equations.tex:1488`
-- C++: `src/epcsaft/native/epcsaft_ares.cpp:397` (template <typename Scalar>)
+- C++: `src/epcsaft/native/epcsaft_ares.cpp:395` (template <typename Scalar>)
 
 ```tex
 \tilde{a}^{\mathrm{disp}}=-2 \pi \rho I_{1}(\eta, \bar{m}) \overline{m^2 \epsilon \sigma^3}-\pi \rho \bar{m} C_{1} I_{2}(\eta, \bar{m}) \overline{m^2 \epsilon^2 \sigma^3}
@@ -1656,7 +1656,7 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 - Description: Provides a residual Helmholtz-energy relation for association contribution.
 - Change note: Association Helmholtz form is traced to Chapman/Wertheim SAFT association theory, but the exact numbered equation is not present in the local progression PDFs.
 - LaTeX: `docs/latex/equations.tex:1550`
-- C++: `src/epcsaft/native/epcsaft_ares.cpp:445` (template <typename Scalar>)
+- C++: `src/epcsaft/native/epcsaft_ares.cpp:443` (template <typename Scalar>)
 
 ```tex
 \tilde{a}^{\mathrm{assoc}}= \sum_{i} x_{i}\sum_{\mathrm{A}_{i}}\left(\ln X^{\mathrm{A}_{i}}-\frac{X^{\mathrm{A}_{i}}}{2}+\frac{1}{2}\right)
@@ -1721,7 +1721,7 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 - Description: Defines the Debye screening quantity used in debye and huckel electrolyte term contribution.
 - Change note: Lower similarity; likely algebraically adapted for implementation or combined terms.
 - LaTeX: `docs/latex/equations.tex:1609`
-- C++: `src/epcsaft/native/epcsaft_ares.cpp:783` (template <typename Scalar>)
+- C++: `src/epcsaft/native/epcsaft_ares.cpp:781` (template <typename Scalar>)
 
 ```tex
 \tilde{a}^{DH}=-\frac{\kappa e^{2}}{12\pi\varepsilon_{0}\varepsilon_{r}k_{B}T}\sum_{i}x_{i}z_{i}^{2}\chi_{i}
@@ -1804,7 +1804,7 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 - Description: Provides a residual Helmholtz-energy relation for born electrolyte term contribution.
 - Change note: Moderate-to-high similarity; notation/arrangement appears adapted from the cited equation.
 - LaTeX: `docs/latex/equations.tex:1686`
-- C++: `src/epcsaft/native/epcsaft_ares.cpp:856` (template <typename Scalar>)
+- C++: `src/epcsaft/native/epcsaft_ares.cpp:854` (template <typename Scalar>)
 
 ```tex
 \tilde{a}^{\mathrm{Born}}
@@ -1977,7 +1977,7 @@ m_\delta
 - Description: Provides a supporting relation used in pressure (compressibility factor).
 - Change note: Mapped to Eq. (A.24) and extended here by adding association, Debye-Huckel, and Born compressibility contributions.
 - LaTeX: `docs/latex/equations.tex:1860`
-- C++: `src/epcsaft/native/epcsaft_Z.cpp:68` (CompressibilityFactorResult compressibility_factor_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
+- C++: `src/epcsaft/native/epcsaft_Z.cpp:66` (CompressibilityFactorResult compressibility_factor_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
 
 ```tex
 Z = 1
@@ -1995,7 +1995,7 @@ Z = 1
 - Description: Gives the generic contribution compressibility bridge identity in compressibility factor.
 - Change note: Replaces the five redundant contribution-specific bridge equations with one generic \(Z^\alpha\) form covering \(\alpha\in\{hc,disp,assoc,DH,Born\}\).
 - LaTeX: `docs/latex/equations.tex:1876`
-- C++: `src/epcsaft/native/epcsaft_Z.cpp:55` (ScalarContributionTerms compressibility_terms_from_dadrho_cpp(const DadrhoResult &result) {)
+- C++: `src/epcsaft/native/epcsaft_Z.cpp:53` (ScalarContributionTerms compressibility_terms_from_dadrho_cpp(const DadrhoResult &result) {)
 
 ```tex
 Z^{\alpha}

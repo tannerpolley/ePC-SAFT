@@ -26,10 +26,6 @@ def test_cppad_eos_contribution_recording_matches_double_value_path() -> None:
 
     result = _core._native_cppad_eos_contributions(t, rho, x, args)
 
-    if not result["cppad_compiled"]:
-        assert result["derivative_backend"] == "cppad_disabled"
-        return
-
     state = _core.NativeState(_core.NativeMixture(args), t, x, 0, False, 0.0, True, rho, False, 0.0)
     expected = state.residual_helmholtz_result()
 
@@ -50,9 +46,6 @@ def test_cppad_eos_contribution_recording_matches_double_value_path() -> None:
 def test_cppad_eos_contribution_recording_rejects_active_association() -> None:
     args = _neutral_args()
     args.assoc_num = [1, 1]
-
-    if not _core._native_cppad_smoke()["cppad_compiled"]:
-        return
 
     with pytest.raises(_core.NativeValueError, match="unsupported"):
         _core._native_cppad_eos_contributions(310.0, 8200.0, [0.35, 0.65], args)

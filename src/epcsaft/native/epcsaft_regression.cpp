@@ -9,11 +9,13 @@
 #include <string>
 
 
-#ifdef EPCSAFT_HAS_CERES
+#ifndef EPCSAFT_HAS_CERES
+#error "EPCSAFT_HAS_CERES must be defined; Ceres is a required native dependency."
+#endif
+
 #include <ceres/cost_function.h>
 #include <ceres/problem.h>
 #include <ceres/solver.h>
-#endif
 
 using Index = Eigen::Index;
 using thermo_detail::kDispersionA0;
@@ -294,12 +296,6 @@ PureNeutralStateScalar<Scalar> pure_neutral_state_scalar_cpp(
 }
 
 PureNeutralFusedState evaluate_fused_state_cpp(double t, double rho, const vector<double> &x) {
-#ifndef EPCSAFT_HAS_CPPAD
-    (void)t;
-    (void)rho;
-    (void)x;
-    throw ValueError("CppAD support is disabled in this native build.");
-#else
     std::vector<CppADScalar> ax(kSeedCount);
     ax[kSeedRho] = rho;
     ax[kSeedM] = x[0];
@@ -335,7 +331,6 @@ PureNeutralFusedState evaluate_fused_state_cpp(double t, double rho, const vecto
         out.dlnfugdtheta[static_cast<size_t>(j)] = jacobian[1 * kSeedCount + j + 1];
     }
     return out;
-#endif
 }
 
 epcsaft::native::cppad_support::CppADDerivativeResult cppad_pure_neutral_parameter_derivatives_cpp(
@@ -343,7 +338,6 @@ epcsaft::native::cppad_support::CppADDerivativeResult cppad_pure_neutral_paramet
     double rho,
     const add_args &base_args
 ) {
-#ifdef EPCSAFT_HAS_CPPAD
     if (base_args.m.size() != 1 || base_args.s.size() != 1 || base_args.e.size() != 1) {
         throw ValueError("unsupported: pure-neutral m/sigma/epsilon derivatives require exactly one component.");
     }
@@ -388,16 +382,6 @@ epcsaft::native::cppad_support::CppADDerivativeResult cppad_pure_neutral_paramet
     result.rows = 3;
     result.cols = kThetaSize;
     return result;
-#else
-    (void)t;
-    (void)rho;
-    (void)base_args;
-    epcsaft::native::cppad_support::CppADDerivativeResult result;
-    result.supported = false;
-    result.backend = "cppad_disabled";
-    result.message = "CppAD support is disabled in this native build";
-    return result;
-#endif
 }
 
 add_args pure_neutral_args_with_theta_cpp(const add_args &base_args, const vector<double> &x) {
@@ -1884,11 +1868,6 @@ PureNeutralRegressionResult fit_pure_neutral_ceres_cpp(
     if (x0.size() != kThetaSize || lower.size() != kThetaSize || upper.size() != kThetaSize) {
         throw ValueError("Native Ceres pure-neutral regression requires 3-variable starts and bounds for m, s, and e.");
     }
-#ifndef EPCSAFT_HAS_CERES
-    (void)density_scale;
-    (void)pure_vle_scale;
-    throw ValueError("ceres_disabled: Ceres support is not enabled in this native build.");
-#else
     PureNeutralRegressionResult result = solve_one_start_ceres_cpp(
         base_args,
         density_records,
@@ -1905,7 +1884,6 @@ PureNeutralRegressionResult fit_pure_neutral_ceres_cpp(
     result.derivative_backend = "cppad_implicit";
     result.jacobian_backend = result.derivative_backend;
     return result;
-#endif
 }
 
 GenericRegressionDebugResult evaluate_generic_regression_debug_cpp(
@@ -1961,14 +1939,6 @@ GenericRegressionResult fit_generic_ceres_cpp(
     if (!is_binary_kij && !is_pure_ion_parameter_set) {
         throw ValueError("unsupported: native Ceres generic regression has no native analytic/CppAD/implicit derivative path for this target set.");
     }
-#ifndef EPCSAFT_HAS_CERES
-    (void)base_args_by_record;
-    (void)records;
-    (void)target_indices;
-    (void)target_indices_2;
-    (void)max_nfev;
-    throw ValueError("ceres_disabled: Ceres support is not enabled in this native build.");
-#else
     vector<double> start = canonical_start_cpp(x0, lower, upper);
     GenericRegressionResult result = is_binary_kij
         ? solve_one_binary_kij_ceres_start_cpp(
@@ -2000,6 +1970,5 @@ GenericRegressionResult fit_generic_ceres_cpp(
     result.jacobian_available = true;
     result.jacobian_backend = "cppad_implicit";
     return result;
-#endif
 }
 

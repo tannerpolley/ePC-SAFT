@@ -133,6 +133,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
   dependencies are absent. The executable text gate blocks the retired optional-Ceres skip wording.
 - Runtime build-contract and CppAD smoke tests now require enabled Ceres/CppAD native dependencies instead of accepting
   disabled or unconfigured states as valid local test outcomes.
+- Native CppAD derivative helpers no longer keep disabled-payload branches, and native Ceres regression no longer keeps
+  unreachable disabled-backend exception branches. The source text gate now blocks those retired strings case-insensitively.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
 

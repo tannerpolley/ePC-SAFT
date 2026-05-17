@@ -1,9 +1,7 @@
 #include "epcsaft_core_internal.h"
 #include "contributions/epcsaft_contrib_internal.h"
 
-#ifdef EPCSAFT_HAS_CPPAD
 #include <cppad/cppad.hpp>
-#endif
 
 #include <map>
 #include <numeric>
@@ -1402,7 +1400,6 @@ epcsaft::native::cppad_support::CppADDerivativeResult cppad_eos_contribution_der
     const vector<double> &x,
     const add_args &cppargs
 ) {
-#ifdef EPCSAFT_HAS_CPPAD
     using CppADScalar = CppAD::AD<double>;
     if (!cppargs.assoc_num.empty()) {
         for (int sites : cppargs.assoc_num) {
@@ -1450,17 +1447,6 @@ epcsaft::native::cppad_support::CppADDerivativeResult cppad_eos_contribution_der
     result.rows = 6;
     result.cols = ncomp;
     return result;
-#else
-    (void)t;
-    (void)rho;
-    (void)x;
-    (void)cppargs;
-    epcsaft::native::cppad_support::CppADDerivativeResult result;
-    result.supported = false;
-    result.backend = "cppad_disabled";
-    result.message = "CppAD support is disabled in this native build";
-    return result;
-#endif
 }
 
 void eos_phase_objective_derivatives_cpp(
@@ -1567,7 +1553,6 @@ PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_composition_sensi
     out.density = density.rho;
     out.ln_fugacity = fugacity_coefficient_result_cpp(t, density.rho, x, cppargs).lnfugcoef.total;
 
-#ifdef EPCSAFT_HAS_CPPAD
     if (cppargs.born_model > 1) {
         out.message =
             "Born model 2 phase-state composition sensitivity requires a separate SSM/DS derivative proof.";
@@ -1723,11 +1708,6 @@ PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_composition_sensi
     out.density_backend = "implicit_density_root";
     out.message = "CppAD phase-state fugacity composition sensitivities with implicit density-root routing are available.";
     return out;
-#else
-    out.message = "CppAD support is disabled in this native build.";
-    out.density_backend = "selected_density_root";
-    return out;
-#endif
 }
 
 NeutralBinaryKijPhaseDerivatives neutral_binary_kij_phase_derivatives_cpp(

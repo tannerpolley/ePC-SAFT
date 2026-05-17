@@ -1284,7 +1284,7 @@ class ePCSAFTState:
         except _NATIVE_CALL_ERRORS as exc:
             _unsupported_derivative(f"pressure-density derivative backend failed: {exc}")
         if not bool(raw.get("cppad_compiled", False)):
-            _unsupported_derivative(str(raw.get("message", "CppAD support is disabled in this native build")))
+            _unsupported_derivative("CppAD derivative backend did not report required compiled support.")
         return _derivative_result_payload(
             supported=bool(raw.get("cppad_used", False)),
             backend=str(raw.get("derivative_backend", "cppad")),
