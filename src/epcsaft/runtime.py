@@ -362,7 +362,9 @@ def capabilities() -> dict[str, object]:
         "neutral_tp_flash",
         "neutral_lle_flash",
         "neutral_bubble_p",
+        "neutral_bubble_t",
         "neutral_dew_p",
+        "neutral_dew_t",
         "electrolyte_lle",
         "electrolyte_bubble_pressure",
     ]
@@ -484,7 +486,7 @@ def capabilities() -> dict[str, object]:
             "neutral_bubble_dew": {
                 "available": ipopt_route_available,
                 "backend": "native_ipopt_equilibrium_nlp",
-                "methods": ["bubble_p", "dew_p"],
+                "methods": ["bubble_p", "bubble_t", "dew_p", "dew_t"],
             },
             "electrolyte_lle": {
                 "available": ipopt_route_available,

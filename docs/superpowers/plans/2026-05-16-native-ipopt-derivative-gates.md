@@ -990,8 +990,8 @@ rather than returning an accepted single-phase-like postsolve.
 
 Task 8/9 continuation note: runtime capabilities now list implemented public native-Ipopt route builders instead of
 claiming all non-speciation equilibrium routes are unavailable. The route list covers homogeneous ideal reactive
-speciation, neutral TP/LLE/bubble/dew pressure, electrolyte LLE, and fixed-liquid electrolyte bubble pressure when Ipopt
-is compiled. Bubble/dew temperature, stability, and coupled reactive phase routes remain route-gated.
+speciation, neutral TP/LLE/bubble/dew pressure, fixed-pressure bubble/dew temperature, electrolyte LLE, and fixed-liquid
+electrolyte bubble pressure when Ipopt is compiled. Stability and coupled reactive phase routes remain route-gated.
 
 Task 12 continuation note: public activity-coefficient contribution decomposition now fails through the package's typed
 `InputError` instead of a generic Python unsupported-operation exception, and the regression derivative table now treats

@@ -60,9 +60,9 @@ The string-dispatched ``ePCSAFTMixture.equilibrium(kind=...)`` API remains
 supported and routes through the explicit methods.
 
 Neutral ``bubble_p(...)`` and ``dew_p(...)`` use native Ipopt fixed-temperature
-route builders when Ipopt is compiled. ``bubble_t(...)`` and ``dew_t(...)``
-remain declared API names and raise ``InputError`` until native fixed-pressure
-temperature route builders own those production solves.
+route builders when Ipopt is compiled. ``bubble_t(...)`` and ``dew_t(...)`` use
+native Ipopt fixed-pressure temperature route builders on the same dependency
+boundary.
 
 ``ePCSAFTMixture.equilibrium(kind="electrolyte_bubble_pressure", ...)`` and
 ``solve_reactive_electrolyte_bubble(...)`` use the native Ipopt fixed-liquid

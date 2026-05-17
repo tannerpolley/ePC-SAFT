@@ -9,8 +9,9 @@ The recommended direct API remains method based:
 * ``mixture.electrolyte_lle_tp(...)``
 * ``mixture.chemical_equilibrium(...)``
 
-Neutral ``mixture.bubble_p(...)`` and ``mixture.dew_p(...)`` remain public API
-names and are implemented native Ipopt pressure routes when Ipopt is compiled.
+Neutral ``mixture.bubble_p(...)``, ``mixture.bubble_t(...)``,
+``mixture.dew_p(...)``, and ``mixture.dew_t(...)`` remain public API names and
+are implemented native Ipopt bubble/dew routes when Ipopt is compiled.
 ``mixture.electrolyte_bubble_p(...)`` follows the same native Ipopt dependency
 boundary. Public routes that still lack a production native route builder fail
 loudly at the route boundary and are not advertised as implemented

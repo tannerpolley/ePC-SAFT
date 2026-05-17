@@ -93,7 +93,9 @@ def test_runtime_build_info_and_capabilities_are_json_like():
         "neutral_tp_flash",
         "neutral_lle_flash",
         "neutral_bubble_p",
+        "neutral_bubble_t",
         "neutral_dew_p",
+        "neutral_dew_t",
         "electrolyte_lle",
         "electrolyte_bubble_pressure",
     ]
@@ -128,7 +130,7 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     neutral_bubble_dew = equilibrium["neutral_bubble_dew"]
     assert neutral_bubble_dew["available"] is ipopt["available"]
     assert neutral_bubble_dew["backend"] == "native_ipopt_equilibrium_nlp"
-    assert neutral_bubble_dew["methods"] == ["bubble_p", "dew_p"]
+    assert neutral_bubble_dew["methods"] == ["bubble_p", "bubble_t", "dew_p", "dew_t"]
     neutral_lle = equilibrium["neutral_lle_flash"]
     assert neutral_lle["available"] is ipopt["available"]
     assert neutral_lle["backend"] == "native_ipopt_equilibrium_nlp"
