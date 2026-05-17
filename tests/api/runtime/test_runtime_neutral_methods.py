@@ -337,7 +337,7 @@ def test_pressure_based_state_accepts_density_guess_without_changing_closure():
     assert seeded.pressure() == pytest.approx(base.pressure())
     assert seeded.fugacity_coefficient() == pytest.approx(base.fugacity_coefficient())
 
-def test_pressure_based_state_with_poor_density_guess_falls_back_safely():
+def test_pressure_based_state_with_poor_density_guess_uses_density_recovery():
     mix = ePCSAFTMixture.from_params(
         {
             "m": np.asarray([2.8149]),
