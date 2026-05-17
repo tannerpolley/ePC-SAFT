@@ -213,7 +213,7 @@ def test_slice_targets_use_grouped_test_subpackages():
         "test_ternary_hydrocarbon_basis_tp_flash_requires_native_ipopt_route"
     ) in run_pytest.GENERIC_TEST_TARGETS
     assert (
-        "tests/equilibrium/core/test_lle.py::test_methanol_cyclohexane_lle_flash_rejects_initial_phases_seed_surface"
+        "tests/equilibrium/core/test_lle.py::test_lle_flash_requires_native_ipopt_after_validation"
         in run_pytest.GENERIC_TEST_TARGETS
     )
     assert (

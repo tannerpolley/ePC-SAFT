@@ -31,16 +31,10 @@ def _methanol_cyclohexane_mixture() -> ePCSAFTMixture:
     return ePCSAFTMixture.from_params(params, species=["Methanol", "Cyclohexane"])
 
 
-def _methanol_cyclohexane_lle_benchmark() -> tuple[np.ndarray, dict[str, object]]:
+def _methanol_cyclohexane_lle_feed() -> np.ndarray:
     methanol_poor = np.asarray([0.05, 0.95], dtype=float)
     methanol_rich = np.asarray([0.85, 0.15], dtype=float)
-    feed = 0.5 * methanol_poor + 0.5 * methanol_rich
-    initial_phases = {
-        "liq1": methanol_poor,
-        "liq2": methanol_rich,
-        "phase_fraction": 0.5,
-    }
-    return feed, initial_phases
+    return 0.5 * methanol_poor + 0.5 * methanol_rich
 
 
 def _assert_neutral_lle_route_pending(excinfo: pytest.ExceptionInfo[epcsaft.InputError]) -> None:
@@ -49,25 +43,9 @@ def _assert_neutral_lle_route_pending(excinfo: pytest.ExceptionInfo[epcsaft.Inpu
     assert "No package-owned alternate LLE solver is available" in message
 
 
-def test_methanol_cyclohexane_lle_flash_rejects_initial_phases_seed_surface() -> None:
+def test_lle_flash_requires_native_ipopt_after_validation() -> None:
     mix = _methanol_cyclohexane_mixture()
-    feed, initial_phases = _methanol_cyclohexane_lle_benchmark()
-
-    with pytest.raises(epcsaft.InputError, match="route-owned canonical initial point"):
-        mix.equilibrium(
-            kind="lle_flash",
-            T=298.15,
-            P=1.013e5,
-            z=feed,
-            backend="neutral_lle",
-            initial_phases=initial_phases,
-            options=epcsaft.EquilibriumOptions(max_iterations=240, tolerance=1.0e-10),
-        )
-
-
-def test_lle_flash_without_initial_phases_requires_native_ipopt_after_validation() -> None:
-    mix = _methanol_cyclohexane_mixture()
-    feed, _initial_phases = _methanol_cyclohexane_lle_benchmark()
+    feed = _methanol_cyclohexane_lle_feed()
 
     with pytest.raises(epcsaft.InputError) as excinfo:
         mix.equilibrium(
@@ -83,7 +61,7 @@ def test_lle_flash_without_initial_phases_requires_native_ipopt_after_validation
 
 def test_lle_flash_builds_one_native_route_request_before_ipopt_gate(monkeypatch: pytest.MonkeyPatch) -> None:
     mix = _methanol_cyclohexane_mixture()
-    feed, _initial_phases = _methanol_cyclohexane_lle_benchmark()
+    feed = _methanol_cyclohexane_lle_feed()
     calls: list[dict[str, object]] = []
 
     def fake_route(
@@ -141,7 +119,7 @@ def test_lle_flash_builds_one_native_route_request_before_ipopt_gate(monkeypatch
 
 def test_lle_flash_converts_accepted_native_route_payload(monkeypatch: pytest.MonkeyPatch) -> None:
     mix = _methanol_cyclohexane_mixture()
-    feed, _initial_phases = _methanol_cyclohexane_lle_benchmark()
+    feed = _methanol_cyclohexane_lle_feed()
     route_amounts = [[0.03, 0.47], [0.42, 0.08]]
     route_volumes = [0.001, 0.002]
 
@@ -269,7 +247,7 @@ def test_equilibrium_options_expose_explicit_solver_backend_controls() -> None:
 )
 def test_lle_flash_rejects_invalid_options_through_public_api(options, match) -> None:
     mix = _methanol_cyclohexane_mixture()
-    feed, _initial_phases = _methanol_cyclohexane_lle_benchmark()
+    feed = _methanol_cyclohexane_lle_feed()
 
     with pytest.raises(epcsaft.InputError, match=match):
         mix.equilibrium(
@@ -284,7 +262,7 @@ def test_lle_flash_rejects_invalid_options_through_public_api(options, match) ->
 @pytest.mark.parametrize("removed_key", ["max_seed_attempts", "max_density_failures", "max_total_objective_evaluations"])
 def test_lle_flash_rejects_removed_solver_budget_option_dict_keys(removed_key: str) -> None:
     mix = _methanol_cyclohexane_mixture()
-    feed, _initial_phases = _methanol_cyclohexane_lle_benchmark()
+    feed = _methanol_cyclohexane_lle_feed()
 
     with pytest.raises(epcsaft.InputError, match=removed_key):
         mix.equilibrium(
@@ -298,7 +276,7 @@ def test_lle_flash_rejects_removed_solver_budget_option_dict_keys(removed_key: s
 
 def test_lle_flash_requested_ipopt_requires_native_ipopt_route() -> None:
     mix = _methanol_cyclohexane_mixture()
-    feed, _initial_phases = _methanol_cyclohexane_lle_benchmark()
+    feed = _methanol_cyclohexane_lle_feed()
 
     with pytest.raises(epcsaft.InputError) as excinfo:
         mix.equilibrium(

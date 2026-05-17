@@ -1,5 +1,7 @@
 """Object-oriented integration tests for the pybind11 native ePC-SAFT runtime."""
 
+import inspect
+
 import numpy as np
 import pytest
 
@@ -39,6 +41,15 @@ def test_organized_public_import_modules_are_available():
     assert epcsaft.electrolyte.ElectrolyteLLEProblem is epcsaft.ElectrolyteLLEProblem
     assert epcsaft.reactive.ReactiveSpeciationProblem is epcsaft.ReactiveSpeciationProblem
     assert epcsaft.diagnostics.capabilities is epcsaft.capabilities
+
+
+def test_mixture_equilibrium_facades_do_not_expose_phase_seed_keyword():
+    removed_keyword = "initial" + "_phases"
+
+    assert removed_keyword not in inspect.signature(epcsaft.ePCSAFTMixture.equilibrium).parameters
+    assert removed_keyword not in inspect.signature(epcsaft.ePCSAFTMixture.equilibrium_curve).parameters
+    assert removed_keyword not in inspect.signature(epcsaft.ePCSAFTMixture.lle_tp).parameters
+    assert removed_keyword not in inspect.signature(epcsaft.ePCSAFTMixture.electrolyte_lle_tp).parameters
 
 
 def test_ipopt_backend_info_missing_smoke_uses_probe_status(monkeypatch: pytest.MonkeyPatch):

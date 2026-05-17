@@ -139,16 +139,3 @@ def test_electrolyte_stability_requires_native_ipopt_route_after_validation() ->
         )
 
     _assert_stability_route_pending(excinfo, route="electrolyte_stability")
-
-def test_equilibrium_curve_rejects_user_phase_seed_for_canonical_route_start() -> None:
-    mix = _case2_mixture()
-    seed = {"aq": _case2_feed(), "org": _case2_feed(), "phase_fraction": 0.5}
-
-    with pytest.raises(epcsaft.InputError, match="canonical initial points"):
-        mix.equilibrium_curve(
-            [{"z": _case2_feed()}],
-            kind="electrolyte_lle",
-            T=298.15,
-            P=1.0e5,
-            initial_phases=seed,
-        )

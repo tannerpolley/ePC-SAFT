@@ -109,24 +109,6 @@ def test_electrolyte_lle_molality_feed_requires_native_ipopt_route() -> None:
     _assert_electrolyte_lle_route_pending(excinfo)
 
 
-def test_electrolyte_lle_rejects_initial_phases_seed_surface() -> None:
-    mix = _ascani_water_butanol_nacl_mixture()
-    aq = np.asarray([0.798324680201737, 0.016320352824141723, 0.09267748348706063, 0.09267748348706063])
-    org = np.asarray([0.37006036048879404, 0.6214918588210971, 0.004223890345054407, 0.004223890345054407])
-    beta_org = 0.613766575013417
-    feed = (1.0 - beta_org) * aq + beta_org * org
-
-    with pytest.raises(epcsaft.InputError, match="route-owned canonical initial point"):
-        mix.equilibrium(
-            kind="electrolyte_lle",
-            T=298.15,
-            P=1.013e5,
-            z=feed,
-            initial_phases={"aq": aq, "org": org, "phase_fraction": beta_org},
-            options=epcsaft.EquilibriumOptions(include_phase_diagnostics=True),
-        )
-
-
 def test_equilibrium_options_default_max_iterations_remains_explicit() -> None:
     options = epcsaft.EquilibriumOptions()
 

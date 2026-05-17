@@ -221,6 +221,8 @@ def _source_blocked_terms(rel: str) -> tuple[str, ...]:
         "options.initial" + "_pressure",
         "electrolytebubbleoptions(initial" + "_pressure",
         "_with" + "_bubble" + "_continuation",
+        "initial" + "_phases" + "=none",
+        "initial" + "_phases" + " = none",
     )
 
 

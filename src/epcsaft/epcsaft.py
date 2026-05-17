@@ -624,7 +624,6 @@ class ePCSAFTMixture:
         phase_kind=None,
         phase_options=None,
         backend=None,
-        initial_phases=None,
         parent_phase=None,
         trial_phases=None,
     ):
@@ -635,11 +634,6 @@ class ePCSAFTMixture:
         if kind in {"reactive_staged_equilibrium", "reactive_staged"}:
             if balances is None or totals is None or reactions is None:
                 raise InputError(f"{kind} requires balances, totals, and reactions.")
-            if initial_phases is not None:
-                raise InputError(
-                    "reactive_staged_equilibrium uses route-owned canonical initial points; "
-                    "initial_phases is not accepted."
-                )
             phase_kwargs = {
                 "vapor_species": vapor_species,
                 "volatile_species": volatile_species,
@@ -673,10 +667,6 @@ class ePCSAFTMixture:
 
             if balances is None or totals is None or reactions is None:
                 raise InputError(f"{kind} requires balances, totals, and reactions.")
-            if initial_phases is not None:
-                raise InputError(
-                    f"{kind} uses route-owned canonical initial points; initial_phases is not accepted."
-                )
             if kind in {"reactive_lle", "reactive_lle_flash"}:
                 if phase_kind is not None and phase_kind not in {"lle_flash", "lle_tp"}:
                     raise InputError("reactive_lle phase_kind must be 'lle_flash' when provided.")
@@ -763,8 +753,6 @@ class ePCSAFTMixture:
                 initial_x = z
             if backend not in (None, "native"):
                 raise InputError("reactive_stability backend must be None or 'native'.")
-            if initial_phases is not None:
-                raise InputError("initial_phases is not supported for kind='reactive_stability'.")
             if (
                 x_liq is not None
                 or volatile_species is not None
@@ -834,10 +822,6 @@ class ePCSAFTMixture:
                     options=options,
                 )
             if route["route"] == "electrolyte_lle":
-                if initial_phases is not None:
-                    raise InputError(
-                        "electrolyte_lle uses route-owned canonical initial points; initial_phases is not accepted."
-                    )
                 try:
                     result = self.electrolyte_lle_tp(
                         T=T,
@@ -864,10 +848,6 @@ class ePCSAFTMixture:
                     diagnostics=diagnostics,
                 )
             if route["route"] == "neutral_lle":
-                if initial_phases is not None:
-                    raise InputError(
-                        "lle_flash uses route-owned canonical initial points; initial_phases is not accepted."
-                    )
                 return self.lle_tp(T=T, P=P, z=z, options=options)
             return _result_with_route_diagnostics(self.flash_tp(T=T, P=P, z=z, options=options), route)
         if kind in {
@@ -887,8 +867,6 @@ class ePCSAFTMixture:
                 raise InputError("solvent_feed and salt_molality are only supported for kind='electrolyte_lle'.")
             if volatile_species is not None or vapor_species is not None or nonvolatile_species is not None:
                 raise InputError("vapor species controls are only supported for kind='electrolyte_bubble_pressure'.")
-            if initial_phases is not None:
-                raise InputError("initial_phases is not accepted by public equilibrium routes.")
             if parent_phase is not None or trial_phases is not None:
                 raise InputError("parent_phase and trial_phases are only supported for kind='stability'.")
             if backend not in (None, "native", "neutral_vle"):
@@ -925,8 +903,6 @@ class ePCSAFTMixture:
                 raise InputError(
                     "solvent_feed and salt_molality are not supported for kind='electrolyte_bubble_pressure'."
                 )
-            if initial_phases is not None:
-                raise InputError("initial_phases is not supported for kind='electrolyte_bubble_pressure'.")
             if parent_phase is not None or trial_phases is not None:
                 raise InputError("parent_phase and trial_phases are only supported for kind='stability'.")
             if backend not in (None, "native"):
@@ -952,8 +928,6 @@ class ePCSAFTMixture:
                 raise InputError(
                     "x_liq and vapor species controls are only supported for kind='electrolyte_bubble_pressure'."
                 )
-            if initial_phases is not None:
-                raise InputError("initial_phases is not accepted by public equilibrium routes.")
             if parent_phase is not None or trial_phases is not None:
                 raise InputError("parent_phase and trial_phases are only supported for kind='stability'.")
             if backend not in (None, "native", "neutral_vle"):
@@ -976,8 +950,6 @@ class ePCSAFTMixture:
                 raise InputError("parent_phase and trial_phases are only supported for kind='stability'.")
             if backend not in (None, "native", "neutral_lle"):
                 raise InputError("LLE flash backend must be None, 'native', or 'neutral_lle'.")
-            if initial_phases is not None:
-                raise InputError("lle_flash uses route-owned canonical initial points; initial_phases is not accepted.")
             return self.lle_tp(T=T, P=P, z=z, options=options)
         if kind in {"electrolyte_lle", "electrolyte_lle_flash"}:
             if (
@@ -993,10 +965,6 @@ class ePCSAFTMixture:
                 raise InputError("parent_phase and trial_phases are only supported for kind='stability'.")
             if backend not in (None, "native", "electrolyte_lle"):
                 raise InputError("Electrolyte LLE backend must be None, 'native', or 'electrolyte_lle'.")
-            if initial_phases is not None:
-                raise InputError(
-                    "electrolyte_lle uses route-owned canonical initial points; initial_phases is not accepted."
-                )
             return self.electrolyte_lle_tp(
                 T=T,
                 P=P,
@@ -1015,8 +983,6 @@ class ePCSAFTMixture:
                 raise InputError(
                     "x_liq and vapor species controls are only supported for kind='electrolyte_bubble_pressure'."
                 )
-            if initial_phases is not None:
-                raise InputError("initial_phases is not supported for kind='electrolyte_stability'.")
             if parent_phase is not None or trial_phases is not None:
                 raise InputError("parent_phase and trial_phases are not supported for kind='electrolyte_stability'.")
             if backend not in (None, "native"):
@@ -1041,8 +1007,6 @@ class ePCSAFTMixture:
                 raise InputError(
                     "x_liq and vapor species controls are only supported for kind='electrolyte_bubble_pressure'."
                 )
-            if initial_phases is not None:
-                raise InputError("initial_phases is not accepted by public equilibrium routes.")
             if backend not in (None, "native"):
                 raise InputError("Stability backend must be None or 'native'.")
             return self.stability_tp(
@@ -1057,11 +1021,9 @@ class ePCSAFTMixture:
             "Only kind='tp_flash', kind='auto', kind='bubble_p', kind='bubble_t', kind='dew_p', kind='dew_t', kind='lle_flash', kind='electrolyte_lle', kind='electrolyte_bubble_pressure', kind='electrolyte_stability', kind='stability', kind='chemical_equilibrium', kind='reactive_staged_equilibrium', kind='reactive_lle', kind='reactive_electrolyte_lle', kind='reactive_stability', or kind='reactive_electrolyte_bubble_pressure' is supported by equilibrium."
         )
 
-    def equilibrium_curve(self, points, *, kind="electrolyte_lle", T=None, P=None, options=None, initial_phases=None):
+    def equilibrium_curve(self, points, *, kind="electrolyte_lle", T=None, P=None, options=None):
         """Solve an ordered equilibrium curve with route-owned canonical initial points."""
 
-        if initial_phases is not None:
-            raise InputError("equilibrium_curve uses route-owned canonical initial points; initial_phases is not accepted.")
         results = []
         for point in points:
             payload = dict(point)

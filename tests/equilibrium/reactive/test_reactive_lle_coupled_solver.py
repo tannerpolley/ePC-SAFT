@@ -7,7 +7,7 @@ import epcsaft
 from epcsaft import ePCSAFTMixture
 
 
-def _neutral_reactive_lle_fixture() -> tuple[ePCSAFTMixture, np.ndarray, dict[str, object], epcsaft.ReactionDefinition]:
+def _neutral_reactive_lle_fixture() -> tuple[ePCSAFTMixture, np.ndarray, epcsaft.ReactionDefinition]:
     params = {
         "MW": np.asarray([32.042e-3, 84.147e-3]),
         "m": np.asarray([1.5255, 2.5303]),
@@ -21,9 +21,9 @@ def _neutral_reactive_lle_fixture() -> tuple[ePCSAFTMixture, np.ndarray, dict[st
         "dielc": np.asarray([33.05, 2.02]),
     }
     mix = ePCSAFTMixture.from_params(params, species=["Methanol", "Cyclohexane"])
+    beta2 = 0.48813098468607985
     liq1 = np.asarray([0.11757838279937723, 0.8824216172006228])
     liq2 = np.asarray([0.7985874308392054, 0.20141256916079467])
-    beta2 = 0.48813098468607985
     feed = (1.0 - beta2) * liq1 + beta2 * liq2
     reaction = epcsaft.ReactionDefinition.from_literature_constant(
         {"Methanol": -1.0, "Cyclohexane": 1.0},
@@ -32,7 +32,7 @@ def _neutral_reactive_lle_fixture() -> tuple[ePCSAFTMixture, np.ndarray, dict[st
         standard_state="mole_fraction_activity",
         source="repo-contained model-consistent reactive LLE fixture",
     )
-    return mix, feed, {"liq1": liq1, "liq2": liq2, "phase_fraction": beta2}, reaction
+    return mix, feed, reaction
 
 
 def _assert_reactive_phase_route_pending(excinfo: pytest.ExceptionInfo[epcsaft.InputError]) -> None:
@@ -42,7 +42,7 @@ def _assert_reactive_phase_route_pending(excinfo: pytest.ExceptionInfo[epcsaft.I
 
 
 def test_neutral_reactive_lle_public_route_requires_native_ipopt() -> None:
-    mix, feed, _initial_phases, reaction = _neutral_reactive_lle_fixture()
+    mix, feed, reaction = _neutral_reactive_lle_fixture()
 
     with pytest.raises(epcsaft.InputError) as excinfo:
         mix.equilibrium(
@@ -57,20 +57,3 @@ def test_neutral_reactive_lle_public_route_requires_native_ipopt() -> None:
         )
 
     _assert_reactive_phase_route_pending(excinfo)
-
-
-def test_neutral_reactive_lle_rejects_initial_phases_seed_surface() -> None:
-    mix, feed, initial_phases, reaction = _neutral_reactive_lle_fixture()
-
-    with pytest.raises(epcsaft.InputError, match="route-owned canonical initial point"):
-        mix.equilibrium(
-            kind="reactive_lle",
-            T=298.15,
-            P=1.013e5,
-            z=feed,
-            balances={"total": {"Methanol": 1.0, "Cyclohexane": 1.0}},
-            totals={"total": 1.0},
-            reactions=[reaction],
-            initial_phases=initial_phases,
-            phase_options=epcsaft.EquilibriumOptions(max_iterations=80, tolerance=1.0e-8, min_composition=1.0e-12),
-        )

@@ -549,12 +549,12 @@ residual packing, initialization, or route acceptance.
 Task 8 continuation note: public neutral `lle_flash` now follows the same native ownership boundary as neutral
 `tp_flash`. The native route builder exposes LLE-specific contract and route-result entry points, owns the deterministic
 two-liquid initial point from the feed, submits exactly one Ipopt route call, and the public facade converts accepted
-native two-phase payloads into `liq1`/`liq2` results. Public phase seeds are rejected because the route builder owns the
-canonical initial point. Local no-Ipopt builds still fail loudly with the native Ipopt ownership message.
+native two-phase payloads into `liq1`/`liq2` results. Public phase-seed controls are no longer exposed because the route
+builder owns the canonical initial point. Local no-Ipopt builds still fail loudly with the native Ipopt ownership message.
 
-Task 8/9 continuation note: `equilibrium_curve(...)` no longer reuses an accepted split as the next route seed and now
-rejects user-supplied `initial_phases`. Ordered curve calls use each route builder's canonical initial point instead of
-carrying a Python-level continuation seed across points.
+Task 8/9 continuation note: `equilibrium_curve(...)` no longer reuses an accepted split as the next route seed and no
+longer exposes a user phase-seed keyword. Ordered curve calls use each route builder's canonical initial point instead
+of carrying a Python-level continuation seed across points.
 
 Task 8 continuation note: private native fixed-temperature bubble/dew pressure NLP contracts now exist as route-builder
 scaffolds. Each contract uses one pressure variable, two EOS phase blocks, fixed composition rows for the specified
@@ -967,6 +967,10 @@ Task 8/9/12 continuation note: public neutral LLE and reactive LLE facades no lo
 use route-owned canonical initial points. Seed-specific Python validation helpers and seeded public validation-script
 paths were removed; private native residual/Jacobian evaluator payloads still carry phase data where that diagnostic
 contract requires it.
+
+Task 8/9/12 continuation note: the broad `ePCSAFTMixture.equilibrium(...)` and `equilibrium_curve(...)` facades no
+longer expose a compatibility-only `initial_phases` keyword. Route-specific public entry points and problem dataclasses
+remain the supported public surface; private native residual/Jacobian evaluator payloads are unchanged.
 
 ### Task 13: Final Validation And Cleanup
 
