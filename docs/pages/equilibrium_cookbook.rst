@@ -129,7 +129,7 @@ result diagnostics report the derivative backend explicitly:
 - ``implicit_sensitivity_blocks``
 - ``residual_norm_by_block``
 - ``best_state_available``
-- ``association_solver_status``
+- ``association_coupling``
 
 Supported derivative labels are ``analytic``, ``cppad``,
 ``analytic_implicit`` and ``cppad_implicit``.

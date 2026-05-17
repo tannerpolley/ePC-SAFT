@@ -668,7 +668,7 @@ def _normalize_reactive_derivative_diagnostics(diagnostics: dict[str, Any]) -> N
     diagnostics.setdefault("best_state_available", True)
     diagnostics.setdefault("best_state", {"source": "native_chemical_equilibrium_result"})
     diagnostics.setdefault("row_failure_count", int(diagnostics.get("state_failure_count", 0)))
-    diagnostics.setdefault("association_solver_status", "not_coupled")
+    diagnostics.setdefault("association_coupling", {"coupled": False, "solved_variables": []})
     diagnostics.setdefault(
         "derivative_policy",
         {

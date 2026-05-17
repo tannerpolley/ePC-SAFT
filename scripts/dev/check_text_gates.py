@@ -178,6 +178,7 @@ def _source_blocked_terms(rel: str) -> tuple[str, ...]:
         "numpy.linalg." + "lstsq",
         "implicit" + "_sensitivity" + "_status",
         "not" + " implemented",
+        "association" + "_solver" + "_status",
     )
 
 

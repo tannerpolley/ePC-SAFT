@@ -898,6 +898,10 @@ Task 12 continuation note: reactive-speciation runtime capabilities no longer ex
 Capability tests now assert supported and route-gated standard-state lists directly, keeping derivative gaps out of
 status-string metadata.
 
+Task 12 continuation note: reactive-speciation diagnostics now expose structured `association_coupling` metadata instead
+of the old association solver-status string. The executable text gate blocks reintroducing that field name in source,
+tests, or scripts.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**

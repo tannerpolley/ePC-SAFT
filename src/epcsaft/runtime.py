@@ -506,7 +506,7 @@ def capabilities() -> dict[str, object]:
                     "derivative_backend_by_block",
                     "implicit_sensitivity_blocks",
                     "residual_norm_by_block",
-                    "association_solver_status",
+                    "association_coupling",
                 ],
             },
             "neutral_tp_flash": {

@@ -23,8 +23,10 @@ def test_equilibrium_capabilities_expose_derivative_policy() -> None:
         "derivative_backend_by_block",
         "implicit_sensitivity_blocks",
         "residual_norm_by_block",
-        "association_solver_status",
+        "association_coupling",
     }.issubset(set(policy["diagnostic_fields"]))
+    removed_association_status = "association" + "_solver" + "_status"
+    assert removed_association_status not in policy["diagnostic_fields"]
 
 
 def test_reactive_speciation_capabilities_gate_nonideal_standard_states() -> None:

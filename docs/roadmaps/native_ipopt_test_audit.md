@@ -127,6 +127,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
   a native Ipopt route when compiled rather than a pending route.
 - The strict text gate now blocks generic "not implemented" wording in executable source, tests, and scripts, so
   unsupported derivative or route paths must state the positive required backend/formulation instead.
+- Reactive-speciation diagnostics now expose structured `association_coupling` metadata instead of an association
+  solver-status string, and the executable text gate blocks the old field name.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
 
