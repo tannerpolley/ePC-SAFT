@@ -26,8 +26,6 @@ def test_derivative_coverage_matrix_has_required_contract_and_no_nonexact_deriva
     for row in rows:
         assert set(coverage["minimum_columns"]).issubset(row)
     assert "numerical" + "_derivative" not in json.dumps(coverage).lower()
-    removed_label = "not" + "_" + "available"
-    assert removed_label not in json.dumps(coverage).lower()
 
 
 def test_derivative_coverage_matrix_reports_only_production_supported_routes() -> None:
@@ -41,8 +39,6 @@ def test_derivative_coverage_matrix_reports_only_production_supported_routes() -
     assert {"regression", "electrolyte_property"}.issubset(row_families)
     for row in rows:
         assert row["supported"] is True
-        removed_column = "not" + "_applicable"
-        assert removed_column not in row
 
 
 def test_issue_68_required_coverage_gate_fields_are_reported_honestly() -> None:

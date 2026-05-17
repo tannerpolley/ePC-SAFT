@@ -235,6 +235,7 @@ def _source_blocked_terms(rel: str) -> tuple[str, ...]:
         "selected" + "_solver" + "_backend" + "\": \"not" + "_run",
         "residual" + "_surface" + "_only",
         "hessian" + "_strategy",
+        "hessian" + "_strategies",
         "hessian" + "_kind",
         "exact" + "_hessian" + "_required",
         "exact" + "_hessian" + "_available",
@@ -246,6 +247,8 @@ def _source_blocked_terms(rel: str) -> tuple[str, ...]:
         "activity" + "_fixed" + "_point",
         "activity" + "_or" + "_fugacity" + "_terms" + "_in" + "_residual",
         "activity" + "_derivative" + "_in" + "_jacobian",
+        "continuation" + "_state",
+        "continuation" + "_used",
         "covariance" + "_available" + "\": false",
         "fit" + "_success" + "\": none,",
         "fit" + "_message" + "\": \"\",",
@@ -262,6 +265,7 @@ def _source_blocked_terms(rel: str) -> tuple[str, ...]:
         "diagnostic" + "_failure",
         "best" + "_failure" + "_reason",
         "native" + "_status",
+        "derivative" + "_gap" + "_status",
     )
     if rel.startswith(("src/", "scripts/")):
         terms += (

@@ -100,10 +100,6 @@ def test_runtime_build_info_and_capabilities_are_json_like():
         "electrolyte_bubble_pressure",
     ]
     assert ipopt["full_constrained_nlp_available"] is ipopt["available"]
-    removed_exact_hessian = "exact" + "_hessian" + "_available"
-    removed_hessian_strategies = "hessian" + "_strategies"
-    assert removed_exact_hessian not in ipopt
-    assert removed_hessian_strategies not in ipopt
     assert info["native_dependencies"]["ipopt"]["available"] is ipopt["available"]
     cppad = info["native_dependencies"]["cppad"]
     assert cppad["backend"] == "cppad"
@@ -163,7 +159,6 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert reactive_speciation["backend"] == "native_ipopt_equilibrium_nlp"
     assert reactive_speciation["status"] == ("available" if ipopt["available"] else "ipopt_dependency_required")
     assert reactive_speciation["sweep_available"] is ipopt["available"]
-    assert "continuation_state_available" not in reactive_speciation
     assert reactive_speciation["solver_backends"] == ["auto", "ipopt"]
     assert reactive_speciation["ipopt_routes"] == ["reactive_speciation:ideal_mole_fraction"]
     assert reactive_speciation["ideal_speciation_nlp_available"] is ipopt["available"]
@@ -173,10 +168,7 @@ def test_runtime_build_info_and_capabilities_are_json_like():
         == "native_ipopt_ideal_mole_fraction_analytic_else_raise"
     )
     assert reactive_speciation["jacobian_auto_supported_standard_states"] == ["ideal_mole_fraction"]
-    removed_standard_state_field = "route" + "_gated" + "_standard" + "_states"
-    assert removed_standard_state_field not in reactive_speciation
     assert "full_constrained_nlp_available" not in reactive_speciation
-    assert "derivative_gap_status" not in reactive_speciation
     assert reactive_speciation["auto_request"] == "ideal_mole_fraction_routes_to_native_ipopt"
     assert capabilities["regression"]["pure_neutral"]["backend"] == "native_ceres"
     reactive_regression = capabilities["regression"]["reactive_electrolyte_residuals"]
@@ -191,7 +183,6 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert "fit_route" not in batch_context
     assert equilibrium["problem_objects"]["entrypoint"] == "mixture.solve_equilibrium(problem)"
     assert "ReactivePhaseEquilibriumProblem" in equilibrium["problem_objects"]["classes"]
-    assert "activity_coefficient_term_decomposition_available" not in equilibrium["contribution_maps"]
 
 def test_fast_fugacity_helper_matches_state_call_and_reports_density() -> None:
     state, _ = _ionic_state()

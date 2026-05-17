@@ -133,5 +133,3 @@ def test_explicit_reactive_staged_equilibrium_routes_reaction_coordinates_into_n
     assert result.diagnostics["fugacity_equality"]["fugacity_residual_norm"] < 1.0e-8
     assert result.diagnostics["material_balance_error"] < 1.0e-8
     assert_allclose([result.z["Methanol"], result.z["Cyclohexane"]], feed, atol=1.0e-10)
-    removed_attempt_field = "ascani" + "_benchmark" + "_attempt"
-    assert removed_attempt_field not in result.diagnostics

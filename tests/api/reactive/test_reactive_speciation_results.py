@@ -126,7 +126,6 @@ def test_reactive_speciation_sweep_auto_uses_native_ipopt_ideal_route_when_compi
 
     assert len(results) == 2
     assert all(isinstance(result, epcsaft.ReactiveSpeciationResult) for result in results)
-    assert "continuation_state" not in results[0].to_dict()
     if not _core._native_ipopt_smoke()["compiled"]:
         assert all(result.success is False for result in results)
         assert all("EPCSAFT_ENABLE_IPOPT=ON" in result.message for result in results)
@@ -135,7 +134,6 @@ def test_reactive_speciation_sweep_auto_uses_native_ipopt_ideal_route_when_compi
     assert all(result.success is True for result in results)
     assert all(result.diagnostics["selected_solver_backend"] == "native_ipopt" for result in results)
     assert all(result.diagnostics["initial_x_source"] == "initial_x" for result in results)
-    assert all("continuation_used" not in result.diagnostics for result in results)
 
 
 def test_reactive_speciation_sweep_preserves_input_validation_failure_shape() -> None:
