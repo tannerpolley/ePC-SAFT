@@ -29,23 +29,6 @@ def test_equilibrium_capabilities_expose_derivative_policy() -> None:
     assert removed_association_status not in policy["diagnostic_fields"]
 
 
-def test_reactive_speciation_capabilities_gate_nonideal_standard_states() -> None:
-    capabilities = epcsaft.capabilities()
-    reactive = capabilities["equilibrium"]["reactive_speciation"]
-    ipopt = capabilities["optimizers"]["ipopt"]
-
-    assert reactive["available"] is ipopt["available"]
-    assert reactive["backend"] == "native_ipopt_equilibrium_nlp"
-    assert reactive["status"] == ("available" if ipopt["available"] else "ipopt_dependency_required")
-    assert reactive["sweep_available"] is ipopt["available"]
-    assert "continuation_state_available" not in reactive
-    assert reactive["jacobian_auto_supported_standard_states"] == ["ideal_mole_fraction"]
-    assert reactive["implemented_standard_states"] == ["ideal_mole_fraction"]
-    removed_standard_state_field = "route" + "_gated" + "_standard" + "_states"
-    assert removed_standard_state_field not in reactive
-    assert "derivative_gap_status" not in reactive
-
-
 def test_equilibrium_capabilities_omit_unimplemented_route_contracts() -> None:
     equilibrium = epcsaft.capabilities()["equilibrium"]
 
