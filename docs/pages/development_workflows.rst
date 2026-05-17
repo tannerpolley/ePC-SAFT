@@ -44,7 +44,7 @@ Command matrix
      - Public wrapper, parameter-template, or regression API edits.
    * - Equilibrium/speciation workflows
      - ``uv run python run_pytest.py --equilibrium-api -q``
-     - Fast representative check for neutral equilibrium, electrolyte LLE, reactive speciation, route-pending reactive electrolyte bubble contracts, derivative-backend contracts, and capability reporting.
+     - Fast representative check for neutral equilibrium, electrolyte LLE, reactive speciation, reactive electrolyte bubble contracts, derivative-backend contracts, and capability reporting.
    * - Native or density/equation work
      - ``uv run python scripts/dev/build_epcsaft.py --build-only --parallel 10`` then ``uv run python run_pytest.py --runtime -q``
      - C++ iteration after ``build/dev`` is already configured.

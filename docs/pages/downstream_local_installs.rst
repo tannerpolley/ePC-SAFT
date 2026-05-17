@@ -188,8 +188,8 @@ Capability status summary
      - Native Ipopt route when compiled
      - Fixed liquid composition with neutral vapor species; ions remain liquid-only.
    * - Reactive electrolyte bubble
-     - Route pending
-     - Requires the native Ipopt electrolyte bubble route builder after speciation.
+     - Staged native route when compiled
+     - Requires native speciation followed by the native Ipopt fixed-liquid electrolyte bubble route.
    * - IPOPT
      - Optional native NLP backend
      - Owns production equilibrium solves as route builders land; Python does not provide an alternate optimizer path.

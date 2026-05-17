@@ -10,17 +10,17 @@ import numpy as np
 
 from ._types import InputError, SolutionError
 
+_CANONICAL_PRESSURE_SCALE = 1.0e5
+
 
 @dataclass(frozen=True, slots=True)
 class ElectrolyteBubbleOptions:
     """Route controls reserved for native Ipopt fixed-liquid electrolyte bubble pressure."""
 
-    initial_pressure: float = 1.0e5
     max_iterations: int = 80
     tolerance: float = 1.0e-6
     min_composition: float = 1.0e-14
     charge_tolerance: float = 1.0e-8
-    initial_y_vap: Mapping[str, float] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -111,7 +111,7 @@ def electrolyte_bubble_pressure(
         int(options.max_iterations),
         float(options.tolerance),
         float(options.tolerance),
-        max(abs(float(options.initial_pressure)) * float(options.tolerance), float(options.tolerance)),
+        max(_CANONICAL_PRESSURE_SCALE * float(options.tolerance), float(options.tolerance)),
         float(options.charge_tolerance),
         float(options.tolerance),
         max(10.0 * float(options.min_composition), 1.0e-8),

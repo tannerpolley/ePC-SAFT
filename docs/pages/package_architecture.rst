@@ -37,7 +37,7 @@ EOS harness
 Equilibrium
    Owns phase-equilibrium, stability, bubble/dew, electrolyte LLE, and
    chemical-equilibrium orchestration. It may use Python for problem objects,
-   seed handling, diagnostics, and continuation control, but production
+   request validation, result shaping, and diagnostics, but production
    thermodynamic evaluations should route through the EOS/native boundary.
 
 Regression

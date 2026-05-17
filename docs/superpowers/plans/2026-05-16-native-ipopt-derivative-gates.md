@@ -663,6 +663,11 @@ route-result binding before failing loudly when Ipopt is not compiled. The nativ
 phase charge-balance rows into the solve/postsolve contract, while Python remains a validation, serialization, and
 result-formatting layer only.
 
+Task 9/12 continuation note: public electrolyte bubble options no longer expose pressure or vapor-composition seed
+controls. Reactive electrolyte bubble sweeps no longer carry prior bubble pressure/vapor results into later points; each
+fixed-liquid bubble call uses the native route builder's canonical initial point. Reactive-regression residual contexts
+retain composition warm starts but no longer convert row-result pressure/vapor data into bubble-route seed options.
+
 ### Task 10: Make Regression Ceres-Only
 
 **Files:**

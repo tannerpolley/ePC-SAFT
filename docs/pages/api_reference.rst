@@ -60,14 +60,16 @@ Explicit mixture methods are preferred for new code: ``flash_tp(...)``,
 The string-dispatched ``ePCSAFTMixture.equilibrium(kind=...)`` API remains
 supported and routes through the explicit methods.
 
-Neutral ``bubble_p(...)``, ``bubble_t(...)``, ``dew_p(...)``, and ``dew_t(...)``
-remain declared API names. They raise ``InputError`` until native Ipopt route
-builders own those production solves.
+Neutral ``bubble_p(...)`` and ``dew_p(...)`` use native Ipopt fixed-temperature
+route builders when Ipopt is compiled. ``bubble_t(...)`` and ``dew_t(...)``
+remain declared API names and raise ``InputError`` until native fixed-pressure
+temperature route builders own those production solves.
 
 ``ePCSAFTMixture.equilibrium(kind="electrolyte_bubble_pressure", ...)`` and
-``solve_reactive_electrolyte_bubble(...)`` remain public contract names, but
-they raise ``InputError`` until the native Ipopt electrolyte bubble route
-builder owns the production solve.
+``solve_reactive_electrolyte_bubble(...)`` use the native Ipopt fixed-liquid
+electrolyte bubble route when Ipopt is compiled and the scoped staged inputs are
+supported. They do not expose public pressure or vapor-composition seed knobs;
+the route builder owns the canonical initial point.
 
 ``evaluate_fugacity_coefficients_batch(...)`` is the intended lightweight helper
 for downstream-owned repeated property loops. It reuses the previous row's

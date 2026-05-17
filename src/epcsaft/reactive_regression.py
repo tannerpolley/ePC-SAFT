@@ -243,16 +243,11 @@ class ReactiveElectrolyteBatchOptions:
 
     warm_start_rows: bool = True
     warm_start_objective: bool = True
-    reuse_density_seeds: bool = True
-    reuse_pressure_seeds: bool = True
-    max_seed_age: int | None = None
     penalty_value: float = 8.0
     failure_residual_mode: str = "penalty"
     include_state_outputs: bool = True
 
     def __post_init__(self) -> None:
-        if self.max_seed_age is not None and int(self.max_seed_age) < 0:
-            raise InputError("ReactiveElectrolyteBatchOptions.max_seed_age must be non-negative when provided.")
         mode = str(self.failure_residual_mode).strip().lower()
         if mode not in {"penalty", "drop"}:
             raise InputError("ReactiveElectrolyteBatchOptions.failure_residual_mode must be 'penalty' or 'drop'.")
@@ -709,7 +704,7 @@ class ReactiveElectrolyteRegressionContext:
             row_start_ns = time.perf_counter_ns()
             seed, seed_source = self._resolve_row_seed(row, last_row_seed=last_row_seed)
             try:
-                pressure_seed = float(seed.get("pressure", row.P_seed or row.P or 101325.0))
+                pressure_seed = float(row.P_seed or row.P or 101325.0)
                 if row.mode == "speciation":
                     solve_counter["speciation_solves"] += 1
                     raw_result = reactive_speciation_module.solve_reactive_speciation(
@@ -745,7 +740,7 @@ class ReactiveElectrolyteRegressionContext:
                         vapor_species=row.vapor_species or self.batch.vapor_species,
                         volatile_species=self.batch.volatile_species,
                         nonvolatile_species=self.batch.nonvolatile_species,
-                        options=_merge_bubble_options(self.batch.reactive_bubble_options, seed),
+                        options=self.batch.reactive_bubble_options,
                     )
                     row_result = _row_result_from_bubble(
                         context=self,
@@ -1311,45 +1306,6 @@ def _row_seed_x(
     return np.asarray(row.initial_x, dtype=float).reshape(-1)
 
 
-def _merge_bubble_options(
-    base: ReactiveElectrolyteBubbleOptions | None,
-    seed: Mapping[str, Any],
-) -> ReactiveElectrolyteBubbleOptions | None:
-    if base is None and not seed:
-        return None
-    options = base or ReactiveElectrolyteBubbleOptions()
-    if not seed:
-        return options
-    bubble_options = options.bubble_options
-    if bubble_options is None:
-        from .electrolyte_bubble import ElectrolyteBubbleOptions
-
-        bubble_options = ElectrolyteBubbleOptions(
-            initial_pressure=float(seed.get("pressure", 101325.0)),
-            initial_y_vap=seed.get("y_vap"),
-        )
-    else:
-        from .electrolyte_bubble import ElectrolyteBubbleOptions
-
-        bubble_options = ElectrolyteBubbleOptions(
-            initial_pressure=float(seed.get("pressure", bubble_options.initial_pressure)),
-            max_iterations=bubble_options.max_iterations,
-            tolerance=bubble_options.tolerance,
-            min_composition=bubble_options.min_composition,
-            charge_tolerance=bubble_options.charge_tolerance,
-            initial_y_vap=seed.get("y_vap"),
-        )
-    return ReactiveElectrolyteBubbleOptions(
-        speciation_options=options.speciation_options,
-        bubble_options=bubble_options,
-        phase_handoff_mass_tolerance=options.phase_handoff_mass_tolerance,
-        phase_handoff_charge_tolerance=options.phase_handoff_charge_tolerance,
-        phase_handoff_reaction_tolerance=options.phase_handoff_reaction_tolerance,
-        error_mode=options.error_mode,
-        penalty_value=options.penalty_value,
-    )
-
-
 def _row_result_from_speciation(
     *,
     context: ReactiveElectrolyteRegressionContext,
@@ -1501,10 +1457,7 @@ def _failed_row_result(
 def _row_seed_from_result(row_result: ReactiveElectrolyteRowResult) -> dict[str, Any]:
     seed = {
         "composition": dict(row_result.composition),
-        "pressure": row_result.pressure,
     }
-    if row_result.y_vap:
-        seed["y_vap"] = dict(row_result.y_vap)
     if row_result.composition:
         seed["warm_start"] = {"x": dict(row_result.composition)}
     return seed

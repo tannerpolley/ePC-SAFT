@@ -12,6 +12,15 @@ def _salt_mixture() -> epcsaft.ePCSAFTMixture:
     return epcsaft.ePCSAFTMixture.from_dataset("2026_Khudaida", ["H2O", "Na+", "Cl-"], x, 298.15)
 
 
+def test_electrolyte_bubble_options_do_not_expose_route_seed_controls() -> None:
+    option_fields = set(epcsaft.ElectrolyteBubbleOptions.__dataclass_fields__)
+    removed_pressure_seed = "initial" + "_pressure"
+    removed_vapor_seed = "initial" + "_y" + "_vap"
+
+    assert removed_pressure_seed not in option_fields
+    assert removed_vapor_seed not in option_fields
+
+
 def test_electrolyte_bubble_pressure_builds_native_route_before_ipopt_gate(monkeypatch) -> None:
     mix = _salt_mixture()
     calls: list[dict[str, object]] = []

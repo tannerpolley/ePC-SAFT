@@ -294,8 +294,9 @@ Electrolyte bubble and reactive bubble
 --------------------------------------
 
 Electrolyte bubble pressure uses the native Ipopt fixed-liquid bubble-pressure
-route when Ipopt is compiled. Reactive electrolyte bubble pressure remains
-route-pending until a coupled native reactive phase route owns the solve.
+route when Ipopt is compiled. Reactive electrolyte bubble pressure uses staged
+native speciation followed by the native fixed-liquid bubble route for scoped
+supported inputs.
 
 .. code-block:: python
 

@@ -141,10 +141,9 @@ Electrolyte bubble pressure
 ---------------------------
 
 ``kind="electrolyte_bubble_pressure"`` and
-``solve_reactive_electrolyte_bubble(...)`` are reserved public contract names.
-They raise until native Ipopt route builders own the production solve because
-production equilibrium routes must be native Ipopt NLPs, not package-owned
-scalar pressure searches.
+``solve_reactive_electrolyte_bubble(...)`` are native-route public contract
+names. They require an Ipopt-enabled build because production equilibrium
+routes must be native Ipopt NLPs, not package-owned scalar pressure searches.
 
 The target reactive electrolyte bubble route will first solve homogeneous
 chemical equilibrium with the native chemical solver and then hand the
@@ -167,16 +166,17 @@ strict standalone chemical-equilibrium tolerances while accepting a looser,
 documented phase-equilibrium handoff envelope when the bubble solve itself is
 well converged.
 
-Strict default behavior currently raises ``InputError`` for the route-pending
-bubble stage. Diagnostic result-mode sweeps become meaningful again after the
-native Ipopt bubble route builder lands.
+Strict default behavior raises ``InputError`` when the native Ipopt dependency
+or a required staged route is unavailable. Reactive electrolyte bubble sweeps
+evaluate each point independently; the bubble route owns its canonical initial
+point and does not accept continuation pressure or vapor-composition seeds.
 
 Solved-state derivative boundary
 --------------------------------
 
 Sequential reactive workflows contain nested solved states: association site
-fractions, reactive speciation variables, density roots, bubble-pressure roots,
-and phase-equilibrium variables. These blocks must report derivatives through
+fractions, reactive speciation variables, density roots, bubble-pressure route
+variables, and phase-equilibrium variables. These blocks must report derivatives through
 analytic residual derivatives, CppAD residual partials, implicit sensitivities,
 or strict route-boundary failures when coverage is incomplete. Approximate
 derivative substitutes are not supported.

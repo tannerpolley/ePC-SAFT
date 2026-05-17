@@ -205,6 +205,10 @@ def _source_blocked_terms(rel: str) -> tuple[str, ...]:
         "explicit" + "_cppad" + "_request" + "_raises" + "_until" + "_implemented",
         "partially" + "_available",
         "not" + "_applicable",
+        "initial" + "_y" + "_vap",
+        "options.initial" + "_pressure",
+        "electrolytebubbleoptions(initial" + "_pressure",
+        "_with" + "_bubble" + "_continuation",
     )
 
 

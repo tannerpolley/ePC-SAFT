@@ -280,7 +280,7 @@ def _solve_phase_route(
         if bubble_options is None:
             from .electrolyte_bubble import ElectrolyteBubbleOptions
 
-            bubble_options = ElectrolyteBubbleOptions(initial_pressure=float(P))
+            bubble_options = ElectrolyteBubbleOptions()
         return mixture.electrolyte_bubble_p(
             T=T,
             z=z,

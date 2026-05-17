@@ -40,10 +40,10 @@ blocks exist. For accepted ideal routes, check:
 * ``derivative_backend`` reports ``analytic``.
 * ``ipopt_solver_ran`` and ``ipopt_accepted`` describe the native NLP solve.
 
-Reactive electrolyte bubble result fields are retained as the target structured
-diagnostics shape, but the public route currently raises ``InputError`` until
-the native Ipopt electrolyte bubble route builder owns the solve. After that
-route lands, results will contain nested dictionaries:
+Reactive electrolyte bubble result fields are the staged native diagnostics
+shape. When the homogeneous speciation stage and the native Ipopt fixed-liquid
+electrolyte bubble route are both available, results contain nested
+dictionaries:
 
 * ``diagnostics["speciation"]`` is the homogeneous reactive speciation result.
 * ``diagnostics["bubble"]`` is the native Ipopt electrolyte bubble-pressure

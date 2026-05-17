@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from typing import Any
 
 from ._types import InputError, SolutionError
@@ -93,11 +93,7 @@ def solve_reactive_electrolyte_bubble(
     if not isinstance(options, ReactiveElectrolyteBubbleOptions):
         raise InputError("options must be a ReactiveElectrolyteBubbleOptions instance.")
     speciation_options = options.speciation_options or ReactiveSpeciationOptions()
-    bubble_options = options.bubble_options
-    if bubble_options is None:
-        bubble_options = ElectrolyteBubbleOptions(
-            initial_pressure=float(P_seed),
-        )
+    bubble_options = options.bubble_options or ElectrolyteBubbleOptions()
     chemical = solve_reactive_speciation(
         species=species,
         mixture_factory=mixture_factory,
@@ -183,17 +179,15 @@ def solve_reactive_electrolyte_bubble_sweep(
     volatile_species: Any = None,
     nonvolatile_species: Any = None,
     options: ReactiveElectrolyteBubbleOptions | None = None,
-    continuation: str = "auto",
+    continuation: str = "none",
 ) -> list[ReactiveElectrolyteBubbleResult]:
     """Apply the reactive electrolyte bubble route contract across sweep points."""
-    continuation_mode = _normalize_continuation(continuation)
+    _normalize_continuation(continuation)
     if options is None:
         options = ReactiveElectrolyteBubbleOptions()
     if not isinstance(options, ReactiveElectrolyteBubbleOptions):
         raise InputError("options must be a ReactiveElectrolyteBubbleOptions instance.")
     results: list[ReactiveElectrolyteBubbleResult] = []
-    last_pressure = None
-    last_y = None
     for point in points:
         if "T" not in point or "totals" not in point:
             raise InputError("Each reactive electrolyte bubble sweep point requires T and totals.")
@@ -201,14 +195,6 @@ def solve_reactive_electrolyte_bubble_sweep(
         if not isinstance(point_options, ReactiveElectrolyteBubbleOptions):
             raise InputError("Each point options entry must be a ReactiveElectrolyteBubbleOptions instance.")
         pressure_seed = float(point.get("P_seed", point.get("P", 101325.0)))
-        if continuation_mode == "auto" and (last_pressure is not None or last_y is not None):
-            point_options = _with_bubble_continuation(
-                point_options,
-                initial_pressure=float(last_pressure if last_pressure is not None else pressure_seed),
-                initial_y_vap=last_y,
-                default_pressure_seed=pressure_seed,
-            )
-            pressure_seed = float(last_pressure if last_pressure is not None else pressure_seed)
         result = solve_reactive_electrolyte_bubble(
             species=species,
             mixture_factory=mixture_factory,
@@ -224,40 +210,19 @@ def solve_reactive_electrolyte_bubble_sweep(
             options=point_options,
         )
         results.append(result)
-        if result.success:
-            last_pressure = result.P_total
-            last_y = result.y_vap
     return results
 
 
 def _normalize_continuation(value: Any) -> str:
     if isinstance(value, bool):
-        return "auto" if value else "none"
-    token = str(value).strip().lower()
-    if token in {"auto", "on", "true", "1"}:
-        return "auto"
+        token = "auto" if value else "none"
+    else:
+        token = str(value).strip().lower()
     if token in {"none", "off", "false", "0", "disabled"}:
         return "none"
-    raise InputError("continuation must be 'auto' or 'none'.")
-
-
-def _with_bubble_continuation(
-    options: ReactiveElectrolyteBubbleOptions,
-    *,
-    initial_pressure: float,
-    initial_y_vap: Mapping[str, float] | None,
-    default_pressure_seed: float,
-) -> ReactiveElectrolyteBubbleOptions:
-    base = options.bubble_options or ElectrolyteBubbleOptions(
-        initial_pressure=float(default_pressure_seed),
-    )
-    return replace(
-        options,
-        bubble_options=replace(
-            base,
-            initial_pressure=float(initial_pressure),
-            initial_y_vap=initial_y_vap or base.initial_y_vap,
-        ),
+    raise InputError(
+        "reactive electrolyte bubble sweeps do not support continuation; each point uses the native route canonical "
+        "initial point."
     )
 
 

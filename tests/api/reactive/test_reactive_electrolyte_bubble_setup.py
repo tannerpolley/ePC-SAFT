@@ -256,7 +256,7 @@ def test_reactive_electrolyte_bubble_sweep_preserves_phase_handoff_tolerances(mo
         reactions=[],
         vapor_species=["H2O"],
         options=epcsaft.ReactiveElectrolyteBubbleOptions(
-            bubble_options=epcsaft.ElectrolyteBubbleOptions(initial_pressure=101325.0),
+            bubble_options=epcsaft.ElectrolyteBubbleOptions(),
             phase_handoff_reaction_tolerance=1.0e-7,
         ),
     )

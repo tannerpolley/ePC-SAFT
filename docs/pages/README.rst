@@ -178,13 +178,14 @@ Equilibrium and speciation
 Use ``capabilities()`` and the cookbook before wiring a high-level equilibrium
 workflow. The package includes native-backed paths for neutral phase
 equilibrium, electrolyte LLE, reactive speciation, and sequential reactive
-equilibrium. Fixed-liquid electrolyte bubble pressure and scoped reactive
-electrolyte bubble pressure are route-pending until native Ipopt builders own
-those solves.
+equilibrium. Fixed-liquid electrolyte bubble pressure uses the native Ipopt
+route when Ipopt is compiled; scoped reactive electrolyte bubble pressure uses
+native speciation followed by that native bubble route for supported staged
+inputs.
 
 Important boundaries:
 
-- Electrolyte bubble pressure requires a native Ipopt route builder.
+- Electrolyte bubble pressure requires an Ipopt-enabled native build.
 - Reactive electrolyte bubble pressure requires native speciation followed by
   a native Ipopt electrolyte bubble route builder.
 - IPOPT is optional and explicit opt-in.

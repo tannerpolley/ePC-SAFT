@@ -908,9 +908,7 @@ class ePCSAFTMixture:
             return _result_with_route_diagnostics(self.dew_t(P=P, y=z, options=options), route)
         if kind in {"electrolyte_bubble_pressure", "electrolyte_bubble", "bubble_pressure"}:
             if P is not None:
-                raise InputError(
-                    "P is solved by kind='electrolyte_bubble_pressure'; use options.initial_pressure as a seed."
-                )
+                raise InputError("P is solved by kind='electrolyte_bubble_pressure'.")
             if solvent_feed is not None or salt_molality is not None:
                 raise InputError(
                     "solvent_feed and salt_molality are not supported for kind='electrolyte_bubble_pressure'."
@@ -1073,9 +1071,9 @@ class ePCSAFTMixture:
         volatile_species=None,
         nonvolatile_species=None,
         options=None,
-        continuation="auto",
+        continuation="none",
     ):
-        """Solve an ordered equilibrium sweep with workflow-specific continuation."""
+        """Solve an ordered reactive-electrolyte bubble sweep."""
         if kind not in {"reactive_electrolyte_bubble_pressure", "reactive_electrolyte_bubble"}:
             raise InputError("equilibrium_sweep currently supports kind='reactive_electrolyte_bubble_pressure'.")
         if balances is None or reactions is None:

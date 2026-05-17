@@ -118,24 +118,16 @@ def test_reactive_regression_context_runs_native_speciation_objective_and_jacobi
     with pytest.raises(epcsaft.InputError, match="native Ceres derivative coverage"):
         context.evaluate_derivatives({"Na+.sigma": 2.8232}, parameters=["Na+.sigma"])
 
-def test_reactive_regression_context_evaluates_batch_and_reuses_warm_starts(monkeypatch) -> None:
+def test_reactive_regression_context_evaluates_batch_with_composition_warm_starts(monkeypatch) -> None:
     calls: list[dict[str, object]] = []
 
     def fake_solve(**kwargs):
+        bubble_options = None if kwargs["options"] is None else kwargs["options"].bubble_options
         calls.append(
             {
                 "P_seed": kwargs["P_seed"],
                 "initial_x": list(kwargs["initial_x"]),
-                "initial_pressure": (
-                    None
-                    if kwargs["options"] is None or kwargs["options"].bubble_options is None
-                    else kwargs["options"].bubble_options.initial_pressure
-                ),
-                "initial_y_vap": (
-                    None
-                    if kwargs["options"] is None or kwargs["options"].bubble_options is None
-                    else kwargs["options"].bubble_options.initial_y_vap
-                ),
+                "bubble_options": bubble_options,
             }
         )
         return epcsaft.ReactiveElectrolyteBubbleResult(
@@ -224,8 +216,9 @@ def test_reactive_regression_context_evaluates_batch_and_reuses_warm_starts(monk
     assert first.row_results[1].cache_stats["warm_start_source"] == "previous_row"
     assert second.row_results[0].cache_stats["warm_start_source"] == "objective_cache"
     assert second.row_results[1].cache_stats["warm_start_source"] == "objective_cache"
-    assert calls[1]["initial_pressure"] == pytest.approx(121000.0)
-    assert calls[1]["initial_y_vap"] == pytest.approx({"A": 0.3, "B": 0.7})
+    assert calls[1]["P_seed"] == pytest.approx(95000.0)
+    assert calls[1]["initial_x"] == pytest.approx([0.2, 0.8])
+    assert calls[1]["bubble_options"] is None
     assert first.cache_stats["context_cache_hits"] >= 1
 
 def test_reactive_regression_objective_and_jacobian_are_consistent(monkeypatch) -> None:
