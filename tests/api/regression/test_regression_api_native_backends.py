@@ -26,9 +26,8 @@ def _minimal_nacl_records():
         }
     ]
 
-def _stub_native_generic_runner(monkeypatch, *, backend="ceres"):
+def _patch_native_generic_ceres_runner(monkeypatch):
     calls = []
-    jacobian_backend = "cppad_implicit" if backend == "ceres" else "stub"
 
     def fake_runner(
         fixed_payloads,
@@ -72,10 +71,10 @@ def _stub_native_generic_runner(monkeypatch, *, backend="ceres"):
             "nfev": 1,
             "iterations": 0,
             "starts_tried": 1,
-            "message": "stubbed native generic regression",
-            "backend": backend,
+            "message": "patched native generic Ceres regression",
+            "backend": "ceres",
             "jacobian_available": True,
-            "jacobian_backend": jacobian_backend,
+            "jacobian_backend": "cppad_implicit",
         }
 
     monkeypatch.setattr(regression_module, "_run_native_generic_ceres", fake_runner)
@@ -188,7 +187,7 @@ def test_fit_pure_ion_requires_composition_and_supported_records():
         )
 
 def test_fit_pure_ion_default_s_e_bounds_contract(monkeypatch):
-    calls = _stub_native_generic_runner(monkeypatch, backend="ceres")
+    calls = _patch_native_generic_ceres_runner(monkeypatch)
     result = epcsaft.fit_pure_ion(
         _minimal_nacl_records(),
         "Na+",
@@ -221,7 +220,7 @@ def test_fit_pure_ion_default_s_e_bounds_contract(monkeypatch):
     }
 
 def test_fit_pure_ion_accepts_d_born_and_born_user_options(monkeypatch):
-    calls = _stub_native_generic_runner(monkeypatch, backend="ceres")
+    calls = _patch_native_generic_ceres_runner(monkeypatch)
     user_options = {
         "elec_model": {
             "rel_perm": {"rule": "empirical", "differential_mode": "autodiff"},
@@ -256,7 +255,7 @@ def test_fit_pure_ion_accepts_d_born_and_born_user_options(monkeypatch):
     assert result.provenance_report["warnings"] == []
 
 def test_fit_pure_ion_passes_explicit_mean_ionic_pair_label_to_native_backend(monkeypatch):
-    calls = _stub_native_generic_runner(monkeypatch, backend="ceres")
+    calls = _patch_native_generic_ceres_runner(monkeypatch)
     records = [dict(record, pair_label="Na+Cl-") for record in _minimal_nacl_records()]
     result = epcsaft.fit_pure_ion(
         records,
@@ -279,7 +278,7 @@ def test_fit_pure_ion_passes_explicit_mean_ionic_pair_label_to_native_backend(mo
     assert mean_ionic_record["target_index_2"] == 2
 
 def test_fit_binary_pair_vle_kij_default_and_rejects_temperature_models(monkeypatch):
-    calls = _stub_native_generic_runner(monkeypatch, backend="ceres")
+    calls = _patch_native_generic_ceres_runner(monkeypatch)
     records = [
         {"T": 330.0, "P": 101325.0, "x_H2O": 0.7, "x_Ethanol": 0.3, "y_H2O": 0.5, "y_Ethanol": 0.5},
         {"T": 340.0, "P": 101325.0, "x_H2O": 0.6, "x_Ethanol": 0.4, "y_H2O": 0.4, "y_Ethanol": 0.6},
@@ -327,7 +326,7 @@ def test_fit_binary_pair_vle_kij_default_and_rejects_temperature_models(monkeypa
         )
 
 def test_fit_binary_pair_rejects_unsupported_generic_binary_optimizer_targets(monkeypatch):
-    calls = _stub_native_generic_runner(monkeypatch, backend="ceres")
+    calls = _patch_native_generic_ceres_runner(monkeypatch)
     records = [
         {"T": 330.0, "P": 101325.0, "x_H2O": 0.7, "x_Ethanol": 0.3, "y_H2O": 0.5, "y_Ethanol": 0.5},
         {"T": 340.0, "P": 101325.0, "x_H2O": 0.6, "x_Ethanol": 0.4, "y_H2O": 0.4, "y_Ethanol": 0.6},

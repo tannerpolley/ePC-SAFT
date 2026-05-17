@@ -4,80 +4,10 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-import numpy as np
 import pytest
 
 import epcsaft
-import epcsaft.regression as regression_module
 
-
-def _minimal_nacl_records():
-    return [
-        {
-            "T": 298.15,
-            "P": 101325.0,
-            "x_H2O": 0.996,
-            "x_Na+": 0.002,
-            "x_Cl-": 0.002,
-            "osmotic_coefficient": 0.974,
-            "mean_ionic_activity": 0.922,
-        }
-    ]
-
-def _stub_native_generic_runner(monkeypatch, *, backend="ceres"):
-    calls = []
-    jacobian_backend = "cppad_implicit" if backend == "ceres" else "stub"
-
-    def fake_runner(
-        fixed_payloads,
-        native_records,
-        optimization_names,
-        species,
-        theta0,
-        lower,
-        upper,
-        *,
-        component=None,
-        pair=None,
-        max_nfev=200,
-    ):
-        calls.append(
-            {
-                "fixed_payloads": fixed_payloads,
-                "native_records": native_records,
-                "optimization_names": tuple(optimization_names),
-                "species": tuple(species),
-                "theta0": np.asarray(theta0, dtype=float),
-                "lower": np.asarray(lower, dtype=float),
-                "upper": np.asarray(upper, dtype=float),
-                "component": component,
-                "pair": pair,
-                "max_nfev": int(max_nfev),
-            }
-        )
-        metrics = {str(record["term_name"]): 0.0 for record in native_records}
-        if not metrics:
-            metrics = {"residual": 0.0}
-        return {
-            "x": np.asarray(theta0, dtype=float),
-            "cost": 0.0,
-            "residual_norm": 0.0,
-            "initial_cost": 0.0,
-            "initial_residual_norm": 0.0,
-            "metrics_by_term": metrics,
-            "success": True,
-            "status": 1,
-            "nfev": 1,
-            "iterations": 0,
-            "starts_tried": 1,
-            "message": "stubbed native generic regression",
-            "backend": backend,
-            "jacobian_available": True,
-            "jacobian_backend": jacobian_backend,
-        }
-
-    monkeypatch.setattr(regression_module, "_run_native_generic_ceres", fake_runner)
-    return calls
 
 def test_public_regression_surface_includes_ion_and_binary_v1():
     assert hasattr(epcsaft, "fit_pure_parameters")
