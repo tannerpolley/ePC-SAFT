@@ -360,6 +360,7 @@ def capabilities() -> dict[str, object]:
     ipopt_public_routes = [
         "reactive_speciation:ideal_mole_fraction",
         "neutral_tp_flash",
+        "neutral_stability",
         "neutral_lle_flash",
         "neutral_bubble_p",
         "neutral_bubble_t",
@@ -476,6 +477,13 @@ def capabilities() -> dict[str, object]:
                 "backend": "native_ipopt_equilibrium_nlp",
                 "methods": ["tp_flash", "flash_tp"],
                 "ipopt_formulation": "thermodynamic_constrained_nlp",
+            },
+            "neutral_stability": {
+                "available": ipopt_route_available,
+                "backend": "native_ipopt_equilibrium_nlp",
+                "methods": ["stability_tp"],
+                "ipopt_formulation": "thermodynamic_constrained_nlp",
+                "route": "tangent_plane_distance",
             },
             "neutral_lle_flash": {
                 "available": ipopt_route_available,

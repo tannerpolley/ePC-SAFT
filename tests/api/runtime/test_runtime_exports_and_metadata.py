@@ -91,6 +91,7 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert ipopt["public_routes"] == [
         "reactive_speciation:ideal_mole_fraction",
         "neutral_tp_flash",
+        "neutral_stability",
         "neutral_lle_flash",
         "neutral_bubble_p",
         "neutral_bubble_t",
@@ -118,7 +119,6 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert capabilities["optimizers"]["ceres"]["production"] is ceres["available"]
     assert capabilities["optimizers"]["ceres"]["native_hot_loop"] is ceres["available"]
     equilibrium = capabilities["equilibrium"]
-    assert "neutral_stability" not in equilibrium
     assert "electrolyte_stability" not in equilibrium
     assert "reactive_electrolyte_bubble" not in equilibrium
     assert "reactive_phase_equilibrium" not in equilibrium
@@ -127,6 +127,11 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert neutral_tp["available"] is ipopt["available"]
     assert neutral_tp["backend"] == "native_ipopt_equilibrium_nlp"
     assert neutral_tp["methods"] == ["tp_flash", "flash_tp"]
+    neutral_stability = equilibrium["neutral_stability"]
+    assert neutral_stability["available"] is ipopt["available"]
+    assert neutral_stability["backend"] == "native_ipopt_equilibrium_nlp"
+    assert neutral_stability["methods"] == ["stability_tp"]
+    assert neutral_stability["route"] == "tangent_plane_distance"
     neutral_bubble_dew = equilibrium["neutral_bubble_dew"]
     assert neutral_bubble_dew["available"] is ipopt["available"]
     assert neutral_bubble_dew["backend"] == "native_ipopt_equilibrium_nlp"

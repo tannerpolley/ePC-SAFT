@@ -38,8 +38,8 @@ these fields as routing hints, not as proof that a physical case is valid.
      - Native Ipopt route when compiled
      - Uses native constrained-NLP route builders; no Python solve loop exists.
    * - Neutral stability
-     - Native Ipopt route required
-     - Fails loudly until native Ipopt stability route builders own production use.
+     - Native Ipopt route when compiled
+     - Uses native TPD route builders; Python does not provide an alternate solve loop.
    * - Electrolyte LLE
      - Native Ipopt route when compiled
      - Requires an Ipopt-enabled build; no alternate public optimizer path exists.
@@ -113,8 +113,8 @@ scripts.
        print("neutral LLE needs an Ipopt-enabled native build")
 
 Neutral TP flash, neutral LLE, fixed-temperature bubble/dew pressure, and
-fixed-pressure bubble/dew temperature route through native Ipopt when that
-extension is compiled. Stability remains native-Ipopt-gated.
+fixed-pressure bubble/dew temperature, and neutral stability route through
+native Ipopt when that extension is compiled.
 Downstream sweeps should inspect ``epcsaft.capabilities()`` or catch typed
 route errors instead of manufacturing alternate phase-equilibrium results.
 

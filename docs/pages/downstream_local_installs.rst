@@ -179,8 +179,8 @@ Capability status summary
      - Native Ipopt route when compiled
      - Requires an Ipopt-enabled build; Python does not provide an alternate solve loop.
    * - Neutral stability
-     - Native Ipopt route required
-     - Fails loudly until native Ipopt stability route builders own production use.
+     - Native Ipopt route when compiled
+     - Uses native TPD route builders; Python does not provide an alternate solve loop.
    * - Electrolyte LLE
      - Native Ipopt route when compiled
      - Requires an Ipopt-enabled build.

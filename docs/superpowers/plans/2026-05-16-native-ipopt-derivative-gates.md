@@ -679,6 +679,12 @@ composition, an Ipopt route-result binding, and exact objective gradients from t
 sensitivity surface. Local no-Ipopt builds return the typed dependency gate through the new binding. Public stability
 facades still remain gated until result conversion and deterministic parent/trial route selection are wired.
 
+Task 8 continuation note: public neutral stability now dispatches deterministic parent/trial TPD route requests through
+the native Ipopt stability binding and converts accepted native payloads into `StabilityResult`/`StabilityTrial`.
+Default requests enumerate the deterministic parent/trial phase set; every native route must be accepted before the
+public result is returned, and the selected public trial is the minimum accepted TPD. Python still does not own TPD
+residual packing, minimization, retry logic, or alternate solve behavior.
+
 ### Task 9: Replace Electrolyte And Reactive Phase Equilibrium Routes
 
 **Files:**
@@ -899,7 +905,11 @@ Task 12 continuation note: public electrolyte LLE no longer executes the transit
 
 Task 12 continuation note: public neutral TP flash no longer executes the native package-owned TP flash route from `tp_flash`, `flash_tp`, typed `TPFlash`, or neutral `auto` dispatch. The public adapter validates feed, mixture, and scalar inputs, then raises until a native Ipopt constrained NLP route owns production TP flash. Neutral equilibrium benchmark coverage was narrowed to property-state timing so benchmark scripts do not exercise disabled public flash/LLE routes.
 
-Task 12 continuation note: public neutral and electrolyte stability routes no longer execute native TPD searches from `stability`, `stability_tp`, `electrolyte_stability`, `electrolyte_stability_tp`, typed `StabilityAnalysis`, or reactive-stability post-speciation dispatch. The public adapters validate inputs, phase labels, charge neutrality, and electrolyte formula bases, then raise until native Ipopt stability/NLP route builders own production stability analysis.
+Task 12 continuation note: public electrolyte stability routes no longer execute legacy native TPD searches from
+`electrolyte_stability`, `electrolyte_stability_tp`, typed ionic `StabilityAnalysis`, or reactive-stability
+post-speciation dispatch. The public adapters validate inputs, phase labels, charge neutrality, and electrolyte formula
+bases, then raise until native Ipopt electrolyte stability NLP route builders own production stability analysis. Public
+neutral stability later moved onto the native Ipopt TPD route boundary.
 
 Task 12 continuation note: obsolete PR #126 and issue-specific Ceres-equilibrium handoff documents were removed from active docs. Literature benchmark metadata for blocked Ascani electrolyte LLE and reactive phase-equilibrium cases now points at this native Ipopt gate plan instead of superseded Ceres-equilibrium planning artifacts.
 

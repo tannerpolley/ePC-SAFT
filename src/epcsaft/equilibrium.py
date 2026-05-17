@@ -906,6 +906,103 @@ def _normalize_phase_token(value: Any, label: str) -> str:
     return token
 
 
+def _native_stability_trial_from_route(route: Mapping[str, Any], stability_tolerance: float) -> StabilityTrial:
+    composition = np.asarray(route.get("trial_composition", route.get("variables", [])), dtype=float).flatten()
+    if composition.size == 0 or not np.all(np.isfinite(composition)):
+        raise SolutionError("Native neutral stability route did not return a finite trial composition.", dict(route))
+    min_tpd = float(route.get("min_tpd", route.get("objective", np.nan)))
+    if not np.isfinite(min_tpd):
+        raise SolutionError("Native neutral stability route did not return a finite TPD objective.", dict(route))
+    diagnostics = {
+        "route_status": str(route.get("status", "")),
+        "solver_status": str(route.get("solver_status", "")),
+        "application_status": str(route.get("application_status", "")),
+        "derivative_backend": str(route.get("derivative_backend", "")),
+        "constraints": _json_like(route.get("constraints", [])),
+    }
+    return StabilityTrial(
+        parent_phase=str(route.get("parent_phase", "")),
+        trial_phase=str(route.get("trial_phase", "")),
+        seed_name=str(route.get("seed_name", "canonical_shifted_feed")),
+        composition=composition,
+        tpd=min_tpd,
+        iterations=0,
+        converged=bool(route.get("solver_accepted", False)),
+        unstable=min_tpd < -abs(stability_tolerance),
+        diagnostics=diagnostics,
+    )
+
+
+def _native_neutral_stability(
+    mixture: Any,
+    *,
+    T: float,
+    P: float,
+    feed: np.ndarray,
+    options: EquilibriumOptions,
+    parent_phases: tuple[str, ...],
+    trial_phases: tuple[str, ...],
+) -> StabilityResult:
+    from . import _core
+
+    route_payloads: list[Mapping[str, Any]] = []
+    for parent in parent_phases:
+        for trial in trial_phases:
+            route = _core._native_neutral_stability_tpd_route_result(
+                mixture._native,
+                T,
+                P,
+                feed.tolist(),
+                parent,
+                trial,
+                options.max_iterations,
+                options.tolerance,
+                _native_timeout_seconds(options),
+                options.tolerance,
+            )
+            if str(route.get("status", "")) == "ipopt_dependency_required":
+                _raise_native_ipopt_stability_required("stability")
+            route_payloads.append(route)
+
+    rejected = [route for route in route_payloads if not bool(route.get("accepted", False))]
+    if rejected:
+        diagnostics = {
+            "route_statuses": [str(route.get("status", "")) for route in route_payloads],
+            "solver_statuses": [str(route.get("solver_status", "")) for route in route_payloads],
+            "parent_trial_routes": [
+                [str(route.get("parent_phase", "")), str(route.get("trial_phase", ""))] for route in route_payloads
+            ],
+        }
+        raise SolutionError("Native neutral stability route was rejected.", diagnostics)
+
+    trials = tuple(_native_stability_trial_from_route(route, options.tolerance) for route in route_payloads)
+    if not trials:
+        raise SolutionError("Native neutral stability produced no trial routes.")
+    tpd_values = np.asarray([trial.tpd for trial in trials], dtype=float)
+    selected_index = int(np.argmin(tpd_values))
+    selected = trials[selected_index]
+    stable = selected.tpd >= -abs(options.tolerance)
+    return StabilityResult(
+        backend="native_equilibrium_nlp",
+        problem_kind="neutral_stability",
+        stable=stable,
+        min_tpd=selected.tpd,
+        parent_phase=selected.parent_phase,
+        trial_phase=selected.trial_phase,
+        trial_composition=selected.composition,
+        trials=trials,
+        diagnostics={
+            "backend": "ipopt",
+            "derivative_backend": "cppad_implicit",
+            "route_count": len(trials),
+            "selected_trial_index": selected_index,
+            "stability_tolerance": options.tolerance,
+            "parent_phases": list(parent_phases),
+            "trial_phases": list(trial_phases),
+        },
+    )
+
+
 def _json_like(value: Any) -> Any:
     if isinstance(value, np.ndarray):
         return value.tolist()
@@ -1210,15 +1307,21 @@ def neutral_stability(
 ) -> StabilityResult:
     """Validate a neutral stability request and require the native Ipopt route."""
     opts = _normalize_options(options)
-    _normalize_feed(z, mixture.ncomp, opts.min_composition, "stability")
+    feed = _normalize_feed(z, mixture.ncomp, opts.min_composition, "stability")
     _reject_ion_containing_mixture(mixture)
-    _positive_scalar(T, "T", "stability")
-    _positive_scalar(P, "P", "stability")
-    if parent_phase is not None:
-        _normalize_parent_phases(parent_phase)
-    if trial_phases is not None:
-        _normalize_trial_phases(trial_phases)
-    _raise_native_ipopt_stability_required("stability")
+    temperature = _positive_scalar(T, "T", "stability")
+    pressure = _positive_scalar(P, "P", "stability")
+    parents = _normalize_parent_phases(parent_phase)
+    trials = _normalize_trial_phases(trial_phases)
+    return _native_neutral_stability(
+        mixture,
+        T=temperature,
+        P=pressure,
+        feed=feed,
+        options=opts,
+        parent_phases=parents,
+        trial_phases=trials,
+    )
 
 
 def electrolyte_stability(
