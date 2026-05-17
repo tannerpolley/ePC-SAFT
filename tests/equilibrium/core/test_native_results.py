@@ -6,7 +6,11 @@ import numpy as np
 import pytest
 
 import epcsaft
-from epcsaft.equilibrium_core.native_results import neutral_two_phase_payload_to_result
+from epcsaft.equilibrium_core.native_results import (
+    native_route_solved_pressure,
+    native_route_summed_phase_amounts,
+    neutral_two_phase_payload_to_result,
+)
 
 
 def _accepted_native_payload() -> dict[str, object]:
@@ -84,3 +88,18 @@ def test_neutral_native_payload_rejection_raises_solution_error() -> None:
         neutral_two_phase_payload_to_result(payload)
 
     assert exc_info.value.diagnostics["rejection_reason"] == "phase_distance"
+
+
+def test_native_route_result_helpers_validate_fixed_temperature_payloads() -> None:
+    route = {
+        "phase_amounts": [[0.7, 0.3], [0.2, 0.8]],
+        "variables": [0.7, 0.3, 0.2, 0.8, 1.0e5],
+    }
+
+    assert np.allclose(native_route_summed_phase_amounts(route, 2, "bubble_p"), [0.9, 1.1])
+    assert native_route_solved_pressure(route, "bubble_p") == pytest.approx(1.0e5)
+
+    with pytest.raises(epcsaft.SolutionError, match="positive P"):
+        native_route_solved_pressure({"variables": [0.0]}, "bubble_p")
+    with pytest.raises(epcsaft.SolutionError, match="positive feed"):
+        native_route_summed_phase_amounts({"phase_amounts": [[1.0, -1.0], [1.0, 0.5]]}, 2, "bubble_p")

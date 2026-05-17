@@ -11,7 +11,11 @@ import numpy as np
 
 from ._types import InputError, SolutionError
 from .equilibrium_core.electrolyte_basis import build_electrolyte_basis
-from .equilibrium_core.native_results import neutral_two_phase_payload_to_result
+from .equilibrium_core.native_results import (
+    native_route_solved_pressure,
+    native_route_summed_phase_amounts,
+    neutral_two_phase_payload_to_result,
+)
 
 _ASCANI_2022_REFERENCE = {
     "authors": "Ascani, Sadowski, and Held",
@@ -853,29 +857,6 @@ def _neutral_two_phase_eos_tolerances(P: float, options: EquilibriumOptions) -> 
     return material_tolerance, pressure_tolerance, chemical_potential_tolerance, phase_distance_tolerance
 
 
-def _summed_native_phase_amounts(route: Mapping[str, Any], ncomp: int, route_label: str) -> np.ndarray:
-    try:
-        phase_amounts = np.asarray(route["phase_amounts"], dtype=float)
-    except (KeyError, TypeError, ValueError) as exc:
-        raise SolutionError(f"Native neutral {route_label} route did not return phase amounts.") from exc
-    if phase_amounts.ndim != 2 or phase_amounts.shape[1] != int(ncomp):
-        raise SolutionError(f"Native neutral {route_label} route phase amounts had an invalid shape.")
-    feed = np.sum(phase_amounts, axis=0)
-    if not np.all(np.isfinite(feed)) or np.any(feed <= 0.0):
-        raise SolutionError(f"Native neutral {route_label} route phase amounts did not define a positive feed.")
-    return feed
-
-
-def _solved_native_pressure(route: Mapping[str, Any], route_label: str) -> float:
-    try:
-        variables = np.asarray(route["variables"], dtype=float).flatten()
-    except (KeyError, TypeError, ValueError) as exc:
-        raise SolutionError(f"Native neutral {route_label} route did not return solver variables.") from exc
-    if variables.size == 0:
-        raise SolutionError(f"Native neutral {route_label} route returned no solver variables.")
-    return _positive_scalar(float(variables[-1]), "P", route_label)
-
-
 def _accepted_native_neutral_two_phase_result(
     mixture: Any,
     *,
@@ -949,9 +930,9 @@ def _native_neutral_fixed_temperature_pressure(
     if str(route.get("status", "")) == "ipopt_dependency_required":
         _raise_native_ipopt_equilibrium_required(route_label)
 
-    pressure = _solved_native_pressure(route, route_label) if bool(route.get("accepted", False)) else 1.0
+    pressure = native_route_solved_pressure(route, route_label) if bool(route.get("accepted", False)) else 1.0
     feed = (
-        _summed_native_phase_amounts(route, mixture.ncomp, route_label)
+        native_route_summed_phase_amounts(route, mixture.ncomp, route_label)
         if bool(route.get("accepted", False))
         else composition
     )

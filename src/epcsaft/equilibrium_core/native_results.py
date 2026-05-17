@@ -72,3 +72,31 @@ def neutral_two_phase_payload_to_result(
         split_detected=bool(payload.get("split_detected", True)),
         diagnostics=diagnostics,
     )
+
+
+def native_route_summed_phase_amounts(route: Mapping[str, Any], ncomp: int, route_label: str) -> np.ndarray:
+    """Return the positive feed implied by a native two-phase route result."""
+    try:
+        phase_amounts = np.asarray(route["phase_amounts"], dtype=float)
+    except (KeyError, TypeError, ValueError) as exc:
+        raise SolutionError(f"Native neutral {route_label} route did not return phase amounts.") from exc
+    if phase_amounts.ndim != 2 or phase_amounts.shape[1] != int(ncomp):
+        raise SolutionError(f"Native neutral {route_label} route phase amounts had an invalid shape.")
+    feed = np.sum(phase_amounts, axis=0)
+    if not np.all(np.isfinite(feed)) or np.any(feed <= 0.0):
+        raise SolutionError(f"Native neutral {route_label} route phase amounts did not define a positive feed.")
+    return feed
+
+
+def native_route_solved_pressure(route: Mapping[str, Any], route_label: str) -> float:
+    """Return the final pressure variable from a native fixed-temperature route."""
+    try:
+        variables = np.asarray(route["variables"], dtype=float).flatten()
+    except (KeyError, TypeError, ValueError) as exc:
+        raise SolutionError(f"Native neutral {route_label} route did not return solver variables.") from exc
+    if variables.size == 0:
+        raise SolutionError(f"Native neutral {route_label} route returned no solver variables.")
+    pressure = float(variables[-1])
+    if not np.isfinite(pressure) or pressure <= 0.0:
+        raise SolutionError(f"Native neutral {route_label} route must be a finite positive P value.")
+    return pressure
