@@ -165,7 +165,7 @@ def test_reactive_regression_context_runs_native_speciation_objective_and_jacobi
     assert objective.batch_result.failure_count == 1
     assert objective.residual_names == ("native-row.reaction.salt_dissociation",)
     assert objective.residuals.shape == (1,)
-    assert "activity and concentration routes require the EOS derivative NLP blocks" in (
+    assert "nonideal reactive speciation requires a native Ipopt Gibbs/activity NLP route builder" in (
         objective.batch_result.row_results[0].message
     )
     with pytest.raises(epcsaft.InputError, match="native Ceres derivative coverage"):

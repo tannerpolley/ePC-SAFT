@@ -611,7 +611,7 @@ Derivative availability
      - Native Ipopt constrained-NLP route when compiled; exact gradient/Jacobian callbacks are route-internal
      - Ipopt limited-memory Hessian handling is solver-internal
    * - Chemical equilibrium / reactive speciation
-     - Explicit native Ipopt ideal-mole-fraction route uses analytic derivatives when Ipopt is compiled; activity/concentration paths raise until EOS derivative NLP blocks exist
+     - Explicit native Ipopt ideal-mole-fraction route uses analytic derivatives when Ipopt is compiled; activity/concentration residual diagnostics use exact CppAD-implicit phase-state derivatives, while production nonideal solves require the native Gibbs/activity NLP route builder
      - Ipopt limited-memory Hessian handling is solver-internal
 
 Regression result payloads report optimizer and first-derivative metadata only.

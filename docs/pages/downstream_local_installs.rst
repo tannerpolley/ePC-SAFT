@@ -189,7 +189,7 @@ Capability status summary
      - Requires an Ipopt-enabled build.
    * - Reactive speciation
      - Explicit Ipopt ideal route
-     - ``solver_backend="ipopt"`` supports homogeneous ``ideal_mole_fraction`` when Ipopt is compiled; activity and concentration routes require their native EOS derivative NLP blocks.
+     - ``solver_backend="ipopt"`` supports homogeneous ``ideal_mole_fraction`` when Ipopt is compiled; activity and concentration residual diagnostics use exact CppAD-implicit phase-state derivatives, while production nonideal solves require the native Gibbs/activity NLP route builder.
    * - Electrolyte bubble pressure
      - Native Ipopt route when compiled
      - Fixed liquid composition with neutral vapor species; ions remain liquid-only.

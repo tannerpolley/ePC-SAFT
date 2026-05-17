@@ -11,6 +11,14 @@
 #include <limits>
 #include <numeric>
 
+PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_composition_sensitivity_cpp(
+    double t,
+    double p,
+    std::vector<double> x,
+    int phase,
+    const add_args& cppargs
+);
+
 namespace {
 
 constexpr int STANDARD_STATE_MOLE_FRACTION_ACTIVITY = 0;
@@ -42,6 +50,15 @@ bool standard_states_all_ideal_mole_fraction(const std::vector<int>& standard_st
         }
     }
     return true;
+}
+
+bool standard_states_require_phase_state(const std::vector<int>& standard_states) {
+    for (int value : standard_states) {
+        if (value == STANDARD_STATE_MOLE_FRACTION_ACTIVITY || value == STANDARD_STATE_CONCENTRATION) {
+            return true;
+        }
+    }
+    return false;
 }
 
 std::string standard_state_label(int value) {
@@ -121,6 +138,8 @@ struct ChemicalEvaluation {
     std::vector<double> n;
     std::vector<double> x;
     std::vector<double> gamma;
+    bool has_phase_state = false;
+    PhaseStateCompositionSensitivityResult phase_state;
     std::vector<double> mass_residuals;
     double charge_residual = 0.0;
     std::vector<double> reaction_residuals;
@@ -159,9 +178,11 @@ ChemicalDerivativeSelection select_chemical_derivative_backend(
         selection.derivative_available = true;
         return selection;
     }
-    throw ValueError(
-        "activity and concentration chemical-equilibrium residual Jacobians require EOS derivative NLP blocks."
-    );
+    selection.backend = "cppad_implicit";
+    selection.capability_path =
+        "chemical_equilibrium:" + standard_state_summary(reaction_standard_states) + ":phase_state_cppad_implicit";
+    selection.derivative_available = true;
+    return selection;
 }
 
 bool should_evaluate_activity_coefficients(const ChemicalEquilibriumOptionsNative& options) {
@@ -294,8 +315,168 @@ Eigen::MatrixXd cppad_ideal_log_amount_jacobian(
     return out;
 }
 
+std::vector<double> log_mole_fraction_terms(const ChemicalEvaluation& state, double floor) {
+    std::vector<double> out(state.x.size(), 0.0);
+    for (std::size_t index = 0; index < out.size(); ++index) {
+        out[index] = std::log(std::max(state.x[index], floor));
+    }
+    return out;
+}
+
+std::vector<double> log_activity_terms(
+    const ChemicalEvaluation& state,
+    const PhaseStateCompositionSensitivityResult& phase_state,
+    double floor
+) {
+    if (phase_state.ln_fugacity.size() != state.x.size()) {
+        throw ValueError("chemical residual phase-state fugacity payload length mismatch.");
+    }
+    std::vector<double> out(state.x.size(), 0.0);
+    for (std::size_t index = 0; index < out.size(); ++index) {
+        out[index] = std::log(std::max(state.x[index], floor)) + phase_state.ln_fugacity[index];
+    }
+    return out;
+}
+
+std::vector<double> log_concentration_terms(
+    const ChemicalEvaluation& state,
+    const PhaseStateCompositionSensitivityResult& phase_state,
+    double floor
+) {
+    if (!(std::isfinite(phase_state.density) && phase_state.density > 0.0)) {
+        throw ValueError("concentration chemical residual requires a finite positive molar density.");
+    }
+    std::vector<double> out(state.x.size(), 0.0);
+    for (std::size_t index = 0; index < out.size(); ++index) {
+        out[index] = std::log(std::max(state.x[index] * phase_state.density, floor));
+    }
+    return out;
+}
+
+std::vector<double> reaction_standard_state_log_terms(
+    const ChemicalEvaluation& state,
+    const PhaseStateCompositionSensitivityResult* phase_state,
+    int standard_state,
+    double floor
+) {
+    if (standard_state == STANDARD_STATE_IDEAL_MOLE_FRACTION) {
+        return log_mole_fraction_terms(state, floor);
+    }
+    if (phase_state == nullptr) {
+        throw ValueError("chemical residual evaluation requires a phase-state derivative block.");
+    }
+    if (standard_state == STANDARD_STATE_MOLE_FRACTION_ACTIVITY) {
+        return log_activity_terms(state, *phase_state, floor);
+    }
+    if (standard_state == STANDARD_STATE_CONCENTRATION) {
+        return log_concentration_terms(state, *phase_state, floor);
+    }
+    throw ValueError("reaction standard state code is outside the native speciation contract.");
+}
+
+std::vector<double> log_mole_fraction_log_amount_jacobian_row(
+    const ChemicalEvaluation& state,
+    std::size_t species
+) {
+    const std::size_t ncomp = state.x.size();
+    std::vector<double> row(ncomp, 0.0);
+    for (std::size_t variable = 0; variable < ncomp; ++variable) {
+        row[variable] = (species == variable ? 1.0 : 0.0) - state.x[variable];
+    }
+    return row;
+}
+
+std::vector<double> log_activity_log_amount_jacobian_row(
+    const ChemicalEvaluation& state,
+    const PhaseStateCompositionSensitivityResult& phase_state,
+    std::size_t species
+) {
+    const std::size_t ncomp = state.x.size();
+    if (phase_state.jacobian_row_major.size() != ncomp * ncomp) {
+        throw ValueError("chemical activity residual Jacobian requires supported phase-state fugacity sensitivities.");
+    }
+    std::vector<double> row = log_mole_fraction_log_amount_jacobian_row(state, species);
+    for (std::size_t variable = 0; variable < ncomp; ++variable) {
+        double dlnphi = 0.0;
+        for (std::size_t k = 0; k < ncomp; ++k) {
+            const double dxk_dlogn = state.x[k] * ((k == variable ? 1.0 : 0.0) - state.x[variable]);
+            dlnphi += phase_state.jacobian_row_major[species * ncomp + k] * dxk_dlogn;
+        }
+        row[variable] += dlnphi;
+    }
+    return row;
+}
+
+std::vector<double> log_concentration_log_amount_jacobian_row(
+    const ChemicalEvaluation& state,
+    const PhaseStateCompositionSensitivityResult& phase_state,
+    std::size_t species
+) {
+    const std::size_t ncomp = state.x.size();
+    if (phase_state.density_composition_derivative.size() != ncomp) {
+        throw ValueError("concentration chemical residual Jacobian requires supported density composition sensitivities.");
+    }
+    if (!(std::isfinite(phase_state.density) && phase_state.density > 0.0)) {
+        throw ValueError("concentration chemical residual Jacobian requires a finite positive molar density.");
+    }
+    std::vector<double> row = log_mole_fraction_log_amount_jacobian_row(state, species);
+    for (std::size_t variable = 0; variable < ncomp; ++variable) {
+        double drho_dlogn = 0.0;
+        for (std::size_t k = 0; k < ncomp; ++k) {
+            const double dxk_dlogn = state.x[k] * ((k == variable ? 1.0 : 0.0) - state.x[variable]);
+            drho_dlogn += phase_state.density_composition_derivative[k] * dxk_dlogn;
+        }
+        row[variable] += drho_dlogn / phase_state.density;
+    }
+    return row;
+}
+
+std::vector<double> reaction_standard_state_log_amount_jacobian_row(
+    const ChemicalEvaluation& state,
+    const PhaseStateCompositionSensitivityResult* phase_state,
+    int standard_state,
+    std::size_t species
+) {
+    if (standard_state == STANDARD_STATE_IDEAL_MOLE_FRACTION) {
+        return log_mole_fraction_log_amount_jacobian_row(state, species);
+    }
+    if (phase_state == nullptr) {
+        throw ValueError("chemical residual Jacobian requires a phase-state derivative block.");
+    }
+    if (standard_state == STANDARD_STATE_MOLE_FRACTION_ACTIVITY) {
+        return log_activity_log_amount_jacobian_row(state, *phase_state, species);
+    }
+    if (standard_state == STANDARD_STATE_CONCENTRATION) {
+        return log_concentration_log_amount_jacobian_row(state, *phase_state, species);
+    }
+    throw ValueError("reaction standard state code is outside the native speciation contract.");
+}
+
+PhaseStateCompositionSensitivityResult evaluate_phase_state_sensitivity(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    double p,
+    const ChemicalEvaluation& state,
+    int phase
+) {
+    PhaseStateCompositionSensitivityResult phase_state =
+        phase_state_ln_fugacity_composition_sensitivity_cpp(t, p, state.x, phase, mixture->args());
+    if (!phase_state.supported) {
+        const std::string message = phase_state.message.empty()
+            ? "phase-state fugacity composition sensitivity was not available."
+            : phase_state.message;
+        throw ValueError("chemical residual " + message);
+    }
+    if (phase_state.ln_fugacity.size() != state.x.size()) {
+        throw ValueError("chemical residual phase-state fugacity payload length mismatch.");
+    }
+    return phase_state;
+}
+
 ChemicalEvaluation evaluate_chemical(
     const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    double p,
     const Eigen::VectorXd& log_n,
     const Eigen::MatrixXd& balances,
     const Eigen::VectorXd& totals,
@@ -305,20 +486,33 @@ ChemicalEvaluation evaluate_chemical(
     const ChemicalEquilibriumOptionsNative& options,
     ChemicalEvaluationCounters* counters
 ) {
-    if (!standard_states_all_ideal_mole_fraction(reaction_standard_states)) {
-        throw ValueError("chemical residual evaluation requires registered EOS derivative NLP blocks.");
-    }
     ChemicalEvaluation out;
     if (counters != nullptr) {
         counters->residual_evaluations += 1;
     }
     out.n = moles_from_log_amounts(log_n);
     out.x = composition_from_moles(out.n, options.min_mole_fraction);
+    const bool needs_phase_state = standard_states_require_phase_state(reaction_standard_states);
+    const int phase = phase_token_to_int_chemical(options.phase);
+    if (needs_phase_state) {
+        if (counters != nullptr) {
+            counters->activity_evaluations += 1;
+        }
+        out.phase_state = evaluate_phase_state_sensitivity(mixture, t, p, out, phase);
+        out.has_phase_state = true;
+    }
     if (should_evaluate_activity_coefficients(options)) {
         if (counters != nullptr) {
             counters->activity_evaluations += 1;
         }
-        out.gamma = std::vector<double>(out.x.size(), 1.0);
+        if (needs_phase_state) {
+            out.gamma.reserve(out.phase_state.ln_fugacity.size());
+            for (double value : out.phase_state.ln_fugacity) {
+                out.gamma.push_back(std::exp(value));
+            }
+        } else {
+            out.gamma = std::vector<double>(out.x.size(), 1.0);
+        }
     }
 
     Eigen::VectorXd n_vec = Eigen::Map<const Eigen::VectorXd>(out.n.data(), static_cast<Eigen::Index>(out.n.size()));
@@ -336,12 +530,14 @@ ChemicalEvaluation evaluate_chemical(
     for (Eigen::Index r = 0; r < reactions.rows(); ++r) {
         double value = -log_k[r];
         const int standard_state = reaction_standard_states[static_cast<std::size_t>(r)];
-        if (standard_state != STANDARD_STATE_IDEAL_MOLE_FRACTION) {
-            throw ValueError("chemical residual evaluation requires registered EOS derivative NLP blocks.");
-        }
+        const std::vector<double> log_terms = reaction_standard_state_log_terms(
+            out,
+            needs_phase_state ? &out.phase_state : nullptr,
+            standard_state,
+            options.min_mole_fraction
+        );
         for (Eigen::Index i = 0; i < reactions.cols(); ++i) {
-            const double species_activity = out.x[static_cast<std::size_t>(i)];
-            value += reactions(r, i) * std::log(std::max(species_activity, options.min_mole_fraction));
+            value += reactions(r, i) * log_terms[static_cast<std::size_t>(i)];
         }
         reaction[r] = value;
     }
@@ -355,8 +551,54 @@ ChemicalEvaluation evaluate_chemical(
     return out;
 }
 
+Eigen::MatrixXd phase_state_log_amount_jacobian(
+    const ChemicalEvaluation& current,
+    const Eigen::MatrixXd& balances,
+    const Eigen::MatrixXd& reactions,
+    const std::vector<double>& charges,
+    const std::vector<int>& reaction_standard_states,
+    const PhaseStateCompositionSensitivityResult& phase_state
+) {
+    const Eigen::Index nvars = static_cast<Eigen::Index>(current.n.size());
+    const Eigen::Index rows = balances.rows() + 1 + reactions.rows();
+    Eigen::MatrixXd jac = Eigen::MatrixXd::Zero(rows, nvars);
+    for (Eigen::Index r = 0; r < balances.rows(); ++r) {
+        for (Eigen::Index j = 0; j < nvars; ++j) {
+            jac(r, j) = balances(r, j) * current.n[static_cast<std::size_t>(j)];
+        }
+    }
+    const Eigen::Index charge_row = balances.rows();
+    if (static_cast<Eigen::Index>(charges.size()) == nvars) {
+        for (Eigen::Index j = 0; j < nvars; ++j) {
+            jac(charge_row, j) = charges[static_cast<std::size_t>(j)] * current.n[static_cast<std::size_t>(j)];
+        }
+    }
+    for (Eigen::Index r = 0; r < reactions.rows(); ++r) {
+        const Eigen::Index row = balances.rows() + 1 + r;
+        const int standard_state = reaction_standard_states[static_cast<std::size_t>(r)];
+        for (Eigen::Index species = 0; species < reactions.cols(); ++species) {
+            const double coefficient = reactions(r, species);
+            if (coefficient == 0.0) {
+                continue;
+            }
+            const std::vector<double> species_jacobian = reaction_standard_state_log_amount_jacobian_row(
+                current,
+                &phase_state,
+                standard_state,
+                static_cast<std::size_t>(species)
+            );
+            for (Eigen::Index variable = 0; variable < nvars; ++variable) {
+                jac(row, variable) += coefficient * species_jacobian[static_cast<std::size_t>(variable)];
+            }
+        }
+    }
+    return jac;
+}
+
 Eigen::MatrixXd chemical_residual_jacobian(
     const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    double p,
     const Eigen::VectorXd& log_n,
     const ChemicalEvaluation& current,
     const Eigen::MatrixXd& balances,
@@ -393,6 +635,31 @@ Eigen::MatrixXd chemical_residual_jacobian(
             reactions,
             log_k,
             mixture->args().z
+        );
+    }
+    if (selected.backend == "cppad_implicit") {
+        if (counters != nullptr) {
+            counters->jacobian_evaluations += 1;
+            if (!current.has_phase_state) {
+                counters->activity_evaluations += 1;
+            }
+        }
+        const PhaseStateCompositionSensitivityResult phase_state = current.has_phase_state
+            ? current.phase_state
+            : evaluate_phase_state_sensitivity(
+                mixture,
+                t,
+                p,
+                current,
+                phase_token_to_int_chemical(options.phase)
+            );
+        return phase_state_log_amount_jacobian(
+            current,
+            balances,
+            reactions,
+            mixture->args().z,
+            reaction_standard_states,
+            phase_state
         );
     }
     (void)mixture;
@@ -490,10 +757,10 @@ ChemicalResidualEvaluationNative evaluate_chemical_equilibrium_residual_native(
         }
     }
 
-    (void)t;
-    (void)p;
     (void)phase_token_to_int_chemical(options.phase);
-    const std::string activity_model = "ideal";
+    const std::string activity_model = standard_states_require_phase_state(reaction_standard_states)
+        ? "eos_phase_state"
+        : "ideal";
     ChemicalDerivativeSelection derivative_selection = select_chemical_derivative_backend(
         options,
         reaction_standard_states
@@ -501,6 +768,8 @@ ChemicalResidualEvaluationNative evaluate_chemical_equilibrium_residual_native(
     ChemicalEvaluationCounters counters;
     ChemicalEvaluation current = evaluate_chemical(
         mixture,
+        t,
+        p,
         log_n,
         balances,
         totals,
@@ -512,6 +781,8 @@ ChemicalResidualEvaluationNative evaluate_chemical_equilibrium_residual_native(
     );
     Eigen::MatrixXd jac = chemical_residual_jacobian(
         mixture,
+        t,
+        p,
         log_n,
         current,
         balances,
@@ -622,8 +893,7 @@ ChemicalEquilibriumResultNative chemical_equilibrium_native(
     }
     if (!standard_states_all_ideal_mole_fraction(reaction_standard_states)) {
         throw ValueError(
-            "Native Ipopt reactive speciation currently supports ideal_mole_fraction standard states; "
-            "activity and concentration routes require the EOS derivative NLP blocks."
+            "Native Ipopt nonideal reactive speciation requires a native Ipopt Gibbs/activity NLP route builder."
         );
     }
 

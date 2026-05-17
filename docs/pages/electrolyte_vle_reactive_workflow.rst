@@ -21,8 +21,9 @@ diagnostics; it does not own pressure-search or phase-equilibrium solve loops.
 ``ReactiveSpeciationOptions`` accepts ``solver_backend="auto" | "ipopt"``.
 ``auto`` uses the native Ipopt constrained-NLP route for homogeneous
 ``ideal_mole_fraction`` speciation when the extension is built with Ipopt.
-Explicit ``ipopt`` selects the same route. Activity and concentration standard
-states still require the EOS derivative NLP blocks.
+Explicit ``ipopt`` selects the same route. Activity and concentration residual
+diagnostics use exact CppAD-implicit phase-state derivatives, while production
+nonideal solves still require the native Gibbs/activity NLP route builder.
 
 The target IPOPT formulation is constrained Gibbs minimization with formal
 material, charge, and reaction constraints plus exact gradients/Jacobians from
@@ -48,7 +49,7 @@ The near-term reactive workflow is sequential and fixed-constant first:
    ``ReactionDefinition.log_equilibrium_constant`` or
    ``ReactionDefinition.from_literature_constant(...)``;
 2. evaluate native-Ipopt ideal reactive speciation where that route applies, or
-   fail loudly until activity-coupled speciation has native EOS derivative NLP blocks;
+   fail loudly until activity-coupled speciation has a native Gibbs/activity NLP route builder;
 3. hand the equilibrated composition to phase or electrolyte-equilibrium
    routes; and
 4. regress ePC-SAFT pure, binary, or electrolyte parameters against that fixed
@@ -61,8 +62,9 @@ parameter regression.
 The native Ipopt ideal route solves material balances, charge balance, and
 reaction constraints in amount variables with exact analytic derivatives.
 ``jacobian_backend="auto"`` is accepted for this ideal route and reports the
-analytic derivative backend. Activity- or concentration-coupled standard states
-raise until their EOS derivative NLP blocks are implemented. Diagnostics report
+analytic derivative backend. Activity- or concentration-coupled residual diagnostics
+use exact CppAD-implicit phase-state derivatives, but production nonideal solves raise
+until their native Gibbs/activity NLP builder is implemented. Diagnostics report
 ``requested_jacobian_backend`` and ``derivative_backend`` for strict
 route-boundary failures. Approximate Jacobian substitutes are not supported.
 

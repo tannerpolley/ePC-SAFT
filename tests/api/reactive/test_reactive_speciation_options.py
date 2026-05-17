@@ -26,8 +26,8 @@ def _assert_reactive_speciation_native_derivative_route_required(
     excinfo: pytest.ExceptionInfo[epcsaft.InputError],
 ) -> None:
     message = str(excinfo.value)
-    assert "Native Ipopt reactive speciation currently supports ideal_mole_fraction standard states" in message
-    assert "activity and concentration routes require the EOS derivative NLP blocks" in message
+    assert "Native Ipopt nonideal reactive speciation requires" in message
+    assert "Gibbs/activity NLP route builder" in message
 
 
 @pytest.mark.parametrize("standard_state", ["ideal_mole_fraction", "concentration", "mole_fraction_activity"])
