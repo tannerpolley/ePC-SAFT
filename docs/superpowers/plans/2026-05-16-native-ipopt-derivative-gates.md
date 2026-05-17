@@ -345,6 +345,9 @@ Task 2/12 continuation note: runtime Ipopt capabilities no longer emit the redun
 `full_constrained_nlp_available` flag. Ipopt availability, public routes, and constrained-NLP formulations carry that
 contract, and the text gate blocks the retired field in active source/tests/scripts.
 
+Task 2/12 continuation note: implemented equilibrium capability rows no longer emit redundant route `status` strings.
+Native route-result payloads keep dependency and solver statuses where they explain an actual route execution.
+
 ### Task 3: Build Dependency Boundary
 
 **Files:**

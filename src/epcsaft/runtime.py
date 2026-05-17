@@ -367,7 +367,6 @@ def capabilities() -> dict[str, object]:
         "electrolyte_bubble_pressure",
     ]
     ipopt_route_available = bool(ipopt.get("available", False))
-    ipopt_route_status = "available" if ipopt_route_available else "ipopt_dependency_required"
     ceres_available = bool(ceres.get("available", False))
     cppad_capability = {
         **cppad,
@@ -474,27 +473,23 @@ def capabilities() -> dict[str, object]:
                 "available": ipopt_route_available,
                 "backend": "native_ipopt_equilibrium_nlp",
                 "methods": ["tp_flash", "flash_tp"],
-                "status": ipopt_route_status,
                 "ipopt_formulation": "thermodynamic_constrained_nlp",
             },
             "neutral_lle_flash": {
                 "available": ipopt_route_available,
                 "backend": "native_ipopt_equilibrium_nlp",
                 "methods": ["lle_flash", "lle_tp"],
-                "status": ipopt_route_status,
                 "ipopt_formulation": "thermodynamic_constrained_nlp",
             },
             "neutral_bubble_dew": {
                 "available": ipopt_route_available,
                 "backend": "native_ipopt_equilibrium_nlp",
                 "methods": ["bubble_p", "dew_p"],
-                "status": ipopt_route_status,
             },
             "electrolyte_lle": {
                 "available": ipopt_route_available,
                 "backend": "native_ipopt_equilibrium_nlp",
                 "methods": ["electrolyte_lle", "electrolyte_lle_tp"],
-                "status": ipopt_route_status,
                 "solver_backends": ["auto", "ipopt"],
                 "ipopt_available": bool(ipopt["available"]),
                 "explicit_ipopt_request": "routes_to_native_ipopt_when_compiled",
@@ -504,12 +499,10 @@ def capabilities() -> dict[str, object]:
                 "available": ipopt_route_available,
                 "backend": "native_ipopt_equilibrium_nlp",
                 "scope": "fixed liquid composition with neutral vapor species; ions remain liquid-only",
-                "status": ipopt_route_status,
             },
             "reactive_speciation": {
                 "available": ipopt_route_available,
                 "backend": "native_ipopt_equilibrium_nlp",
-                "status": ipopt_route_status,
                 "sweep_available": ipopt_route_available,
                 "activity_output_modes": ["auto", "always", "never"],
                 "jacobian_auto_policy": "native_ipopt_ideal_mole_fraction_analytic_else_raise",

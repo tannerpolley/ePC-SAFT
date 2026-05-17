@@ -174,7 +174,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
   configuration-status label, and the executable text gate blocks the retired label.
 - Equilibrium capabilities now list implemented native Ipopt routes only. Unimplemented stability, reactive bubble, and
   reactive phase-equilibrium routes remain public API contracts that fail loudly, but they are no longer advertised as
-  available-false capability rows. Implemented but locally uncompiled Ipopt routes use `ipopt_dependency_required`.
+  available-false capability rows. Implemented route capability rows use `available` plus backend/method/formulation
+  metadata; native route-result payloads retain `ipopt_dependency_required` for local no-Ipopt builds.
 - Derivative coverage matrices now represent out-of-scope rows through the existing classification/backend labels
   instead of carrying a redundant negative applicability column. Active source, tests, and scripts now block the retired
   column label.
@@ -289,4 +290,6 @@ Still ongoing:
 - Runtime Ipopt capabilities no longer emit the redundant `full_constrained_nlp_available` flag; Ipopt availability,
   public routes, and constrained-NLP formulations carry that contract, and the text gate blocks the retired field in
   active source/tests/scripts.
+- Implemented equilibrium capability rows no longer emit redundant route `status` strings; native route-result payloads
+  keep dependency and solver statuses where they are needed to explain an actual route execution.
 - New strict dependency and solver ownership gates that require Task 3 and native Ipopt implementation to pass.
