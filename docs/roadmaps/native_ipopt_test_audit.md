@@ -235,6 +235,9 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
 - Executable tests now describe public equilibrium failures as native-Ipopt gates instead of stale unowned-route status.
   One duplicate nonexact-derivative route-gate assertion was deleted, and the text gate blocks the stale unowned-route
   token in active source, tests, and scripts.
+- Duplicate negative assertions for retired derivative/status/debug labels were pruned from runtime, CppAD,
+  reactive-speciation, and Khudaida diagnostic tests. The retained tests assert current backend, Jacobian/gradient
+  shape, route-gate, and JSON-safe diagnostic contracts, while the text gate owns retired-label prevention.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
 

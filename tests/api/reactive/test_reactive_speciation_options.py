@@ -48,12 +48,20 @@ def test_reaction_definition_rejects_unknown_standard_state() -> None:
             standard_state="unknown_basis",
         )
 
-def test_reactive_speciation_options_expose_jacobian_backend_selector() -> None:
-    assert "backend" not in {field.name for field in fields(epcsaft.ReactiveSpeciationOptions)}
-    assert "jacobian_backend" in {field.name for field in fields(epcsaft.ReactiveSpeciationOptions)}
-    assert "finite" + "_difference_step" not in {field.name for field in fields(epcsaft.ReactiveSpeciationOptions)}
-    assert "damp" + "ing" not in {field.name for field in fields(epcsaft.ReactiveSpeciationOptions)}
-    assert "solver_backend" in {field.name for field in fields(epcsaft.ReactiveSpeciationOptions)}
+def test_reactive_speciation_options_public_surface_is_current_fields() -> None:
+    assert {field.name for field in fields(epcsaft.ReactiveSpeciationOptions)} == {
+        "max_iterations",
+        "tolerance",
+        "min_mole_fraction",
+        "jacobian_backend",
+        "solver_backend",
+        "phase",
+        "error_mode",
+        "activity_output",
+        "mass_tolerance",
+        "charge_tolerance",
+        "reaction_tolerance",
+    }
 
 @pytest.mark.parametrize(
     ("options", "message"),

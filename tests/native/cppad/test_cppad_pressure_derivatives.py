@@ -44,7 +44,6 @@ def test_pressure_density_derivative_result_reports_backend_contract() -> None:
     assert set(("supported", "backend", "message", "value", "jacobian", "shape")).issubset(result)
     assert result["backend"] == "cppad"
     assert result["shape"] == [1, 1]
-    assert "numerical" + "_derivative" not in str(result).lower()
     if result["supported"]:
         assert np.asarray(result["jacobian"], dtype=float).shape == (1, 1)
 
@@ -67,7 +66,6 @@ def test_pressure_parameter_derivative_result_supports_neutral_binary_kij() -> N
     assert set(("supported", "backend", "message", "value", "jacobian", "shape")).issubset(result)
     assert result["supported"] is True
     assert result["backend"] == "cppad"
-    assert "numerical" + "_derivative" not in str(result).lower()
     assert result["shape"] == [1, 2]
     assert result["parameter_order"] == ("k_ij:A:B", "l_ij:A:B")
     assert np.asarray(result["jacobian"], dtype=float).shape == (1, 2)
@@ -83,4 +81,3 @@ def test_pressure_parameter_derivative_result_supports_pure_neutral_m_sigma_epsi
     assert result["shape"] == [1, 3]
     assert result["parameter_order"] == ("m:A", "sigma:A", "epsilon:A")
     assert np.asarray(result["jacobian"], dtype=float).shape == (1, 3)
-    assert "numerical" + "_derivative" not in str(result).lower()

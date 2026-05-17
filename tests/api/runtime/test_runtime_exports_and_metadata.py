@@ -67,7 +67,6 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert "source_git_commit" in info
     assert info["native_extension_available"] is True
     assert "native_dependencies" in info
-    assert "optional" + "_dependencies" not in info
 
     capabilities = epcsaft.capabilities()
     assert capabilities["native_extension"] is True
@@ -104,9 +103,6 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert cppad["status"] == "enabled_available"
     assert cppad["compiled"] is True
     assert cppad["available"] is True
-    assert "numerical" + "_derivative" not in capabilities["derivatives"]
-    assert "autodiff" not in capabilities["derivatives"]
-    assert "eigen_forward" not in capabilities["derivatives"]
     assert capabilities["derivatives"]["cppad"] == {
         **cppad,
         "scope": "package-wide AD substrate; production derivative routes are listed in coverage_matrix",
@@ -169,7 +165,6 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     assert batch_context["backend"] == "batch_residual_evaluation_context"
     assert "ReactiveElectrolyteRegressionContext" in batch_context["classes"]
     assert batch_context["methods"] == ["evaluate_objective"]
-    assert "fit_route" not in batch_context
     assert equilibrium["problem_objects"]["entrypoint"] == "mixture.solve_equilibrium(problem)"
     assert "ReactivePhaseEquilibriumProblem" in equilibrium["problem_objects"]["classes"]
     assert equilibrium["repeated_state_properties"]["density_seed_parameter"] == "rho_guess"

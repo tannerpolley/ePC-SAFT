@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import json
-
 import numpy as np
 
 import epcsaft
@@ -35,4 +33,3 @@ def test_electrolyte_lle_residual_surface_reports_cppad_implicit_jacobian() -> N
     assert payload["diagnostics"]["derivative_available"] is True
     assert len(payload["jacobian_row_major"]) == len(payload["residual"]) * len(payload["variables"])
     assert payload["diagnostics"]["residual_surface"] == "native_electrolyte_lle_transformed_variables"
-    assert "numerical" + "_derivative" not in json.dumps(payload, default=str).lower()

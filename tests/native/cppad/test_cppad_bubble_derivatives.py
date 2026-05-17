@@ -15,10 +15,9 @@ def test_cppad_pressure_derivative_api_underpins_bubble_policy() -> None:
 
     assert pressure_density["backend"] == "cppad"
     assert pressure_density["shape"] == [1, 1]
-    assert "numerical" + "_derivative" not in str(pressure_density).lower()
 
 
-def test_neutral_bubble_reports_no_nonexact_root_derivative() -> None:
+def test_neutral_bubble_uses_native_ipopt_route_gate() -> None:
     mix, _species, _pressure, _density, _temperature, composition = _neutral_state()
 
     with pytest.raises(epcsaft.InputError, match=r"bubble_p requires a native Ipopt equilibrium NLP route"):

@@ -352,6 +352,11 @@ Task 10/12 continuation note: reactive-regression row results no longer expose a
 Per-row `success`, `message`, and `failure_diagnostics` carry row outcome and failure details while native solver-status
 diagnostics remain route-local.
 
+Task 2 continuation note: duplicate negative assertions for retired derivative/status/debug labels were pruned from
+focused runtime, CppAD, reactive-speciation, and Khudaida diagnostic tests. The retained assertions now check the current
+backend, Jacobian/gradient shape, route-gate, and JSON-safe diagnostic contracts, while the tracked text gate owns
+prevention of the retired labels.
+
 ### Task 3: Build Dependency Boundary
 
 **Files:**
