@@ -26,7 +26,7 @@ def _minimal_nacl_records():
         }
     ]
 
-def _patch_native_generic_ceres_runner(monkeypatch):
+def _patch_native_generic_ceres_runner(monkeypatch, *, omit_result_keys=()):
     calls = []
 
     def fake_runner(
@@ -59,7 +59,7 @@ def _patch_native_generic_ceres_runner(monkeypatch):
         metrics = {str(record["term_name"]): 0.0 for record in native_records}
         if not metrics:
             metrics = {"residual": 0.0}
-        return {
+        result = {
             "x": np.asarray(theta0, dtype=float),
             "cost": 0.0,
             "residual_norm": 0.0,
@@ -78,6 +78,9 @@ def _patch_native_generic_ceres_runner(monkeypatch):
             "jacobian_available": True,
             "jacobian_backend": "cppad_implicit",
         }
+        for key in omit_result_keys:
+            result.pop(key, None)
+        return result
 
     monkeypatch.setattr(regression_module, "_run_native_generic_ceres", fake_runner)
     return calls
@@ -220,6 +223,21 @@ def test_fit_pure_ion_default_s_e_bounds_contract(monkeypatch):
         "osmotic_coefficient",
         "mean_ionic_activity",
     }
+
+@pytest.mark.parametrize("missing_key", ["optimizer_backend", "derivative_backend"])
+def test_fit_pure_ion_requires_native_ceres_backend_metadata(monkeypatch, missing_key):
+    _patch_native_generic_ceres_runner(monkeypatch, omit_result_keys=(missing_key,))
+
+    with pytest.raises(RuntimeError, match=rf"missing required '{missing_key}' metadata"):
+        epcsaft.fit_pure_ion(
+            _minimal_nacl_records(),
+            "Na+",
+            dataset="2026_Khudaida",
+            species=["H2O", "Na+", "Cl-"],
+            solvent="H2O",
+            initial_guess={"s": 2.6, "e": 210.0},
+            bounds={"s": (2.4, 3.2), "e": (150.0, 300.0)},
+        )
 
 def test_fit_pure_ion_accepts_d_born_and_born_user_options(monkeypatch):
     calls = _patch_native_generic_ceres_runner(monkeypatch)
