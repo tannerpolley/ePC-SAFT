@@ -4,9 +4,6 @@ import numpy as np
 import pytest
 
 import epcsaft
-from tests.api.reactive.test_reactive_speciation_options import (
-    _assert_reactive_speciation_native_derivative_route_required,
-)
 from tests.equilibrium.core.test_vle import _assert_tp_flash_route_pending
 from tests.helpers.native_cases import _neutral_state
 
@@ -88,30 +85,6 @@ def test_reactive_ideal_speciation_auto_uses_native_ipopt_route() -> None:
     assert result.success is True
     assert result.diagnostics["requested_solver_backend"] == "auto"
     assert result.diagnostics["selected_solver_backend"] == "native_ipopt"
-
-
-def test_activity_coupled_reactive_speciation_auto_reaches_native_derivative_gate() -> None:
-    mix = epcsaft.ePCSAFTMixture.from_params(
-        {
-            "m": np.asarray([1.0, 1.0]),
-            "s": np.asarray([3.0, 3.0]),
-            "e": np.asarray([200.0, 200.0]),
-        },
-        species=["A", "B"],
-    )
-
-    with pytest.raises(epcsaft.InputError) as excinfo:
-        mix.chemical_equilibrium(
-            T=298.15,
-            P=1.0e5,
-            balances={"total": {"A": 1.0, "B": 1.0}},
-            totals={"total": 1.0},
-            reactions=[epcsaft.ReactionDefinition({"A": -1.0, "B": 1.0}, np.log(3.0))],
-            initial_x=[0.5, 0.5],
-            options=epcsaft.ReactiveSpeciationOptions(jacobian_backend="auto"),
-        )
-
-    _assert_reactive_speciation_native_derivative_route_required(excinfo)
 
 
 def test_explicit_cppad_ideal_reactive_speciation_routes_to_native_ipopt() -> None:

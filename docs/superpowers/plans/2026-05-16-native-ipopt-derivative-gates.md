@@ -330,6 +330,10 @@ later removed that no-op public flag.
 Task 2 continuation note: a duplicate TP-flash route-pending test for the retired stability-precheck option was removed.
 The route-specific TP-flash test still verifies the native route payload before the local no-Ipopt gate.
 
+Task 2 continuation note: the duplicate equilibrium-core activity-coupled reactive-speciation derivative-gate test was
+removed. Retained API reactive-speciation tests still cover activity-coupled, concentration-standard-state, and
+result-mode native derivative gates.
+
 ### Task 3: Build Dependency Boundary
 
 **Files:**

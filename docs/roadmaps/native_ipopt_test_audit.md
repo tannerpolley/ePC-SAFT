@@ -278,4 +278,7 @@ Still ongoing:
 
 - Continue pruning duplicate route-gate and status/debug tests when structured route or derivative coverage already
   exists.
+- The duplicate equilibrium-core activity-coupled reactive-speciation derivative-gate test was removed. Retained API
+  reactive-speciation tests still cover activity-coupled, concentration-standard-state, and result-mode native derivative
+  gates.
 - New strict dependency and solver ownership gates that require Task 3 and native Ipopt implementation to pass.
