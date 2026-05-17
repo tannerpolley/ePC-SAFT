@@ -319,7 +319,6 @@ def validate_regression_provenance(
     terms: Sequence[FitTerm] | None = None,
     species: Sequence[str] | None = None,
     charges: Sequence[float] | Mapping[str, float] | None = None,
-    strict: bool = True,
 ) -> dict[str, Any]:
     """Validate provenance declarations for fitted parameters.
 
@@ -333,7 +332,6 @@ def validate_regression_provenance(
     fitted: list[str] = []
     parameter_sources: dict[str, str] = {}
     data_sources: dict[str, list[str]] = {}
-    warnings: list[str] = []
     errors: list[str] = []
 
     for item in parameters:
@@ -379,16 +377,14 @@ def validate_regression_provenance(
             elif item.source not in _DIRECT_BINARY_SOURCES:
                 errors.append(f"{item.parameter} for {item.pair[0]}:{item.pair[1]} requires declared data provenance.")
 
-    if errors and strict:
-        raise InputError("; ".join(errors))
     if errors:
-        warnings.extend(errors)
+        raise InputError("; ".join(errors))
     return {
         "fitted_parameters": fitted,
         "fixed_parameters": [],
         "parameter_sources": parameter_sources,
         "data_sources_by_parameter": data_sources,
-        "warnings": warnings,
+        "warnings": [],
         "backend_policy": "native_regression_only",
     }
 
@@ -1758,7 +1754,6 @@ def _fit_pure_ion_internal(
         ),
         terms=terms,
         species=normalized_species,
-        strict=True,
     )
     T_ref = float(np.mean([_float_from_record(record, "T", required=True) for record in normalized_records]))
     seed_payload, source_key = _pure_seed_payload(normalized_component, T_ref, "", dataset, None)
@@ -1930,7 +1925,6 @@ def _fit_binary_pair_internal(
         terms=terms,
         species=normalized_species,
         charges=charges,
-        strict=True,
     )
     dataset_obj = _load_dataset(dataset)
     current = {
@@ -2928,7 +2922,7 @@ def fit_liquid_electrolyte_parameters(
         )
     provenance_report: dict[str, Any] = {}
     if provenance:
-        provenance_report = validate_regression_provenance(provenance, species=labels, strict=False)
+        provenance_report = validate_regression_provenance(provenance, species=labels)
     optimizer_backend = _optimizer_backend_from_options(solver_options, "ceres")
     if optimizer_backend != "ceres":
         raise InputError("liquid-electrolyte regression is currently implemented for optimizer_backend='ceres'.")

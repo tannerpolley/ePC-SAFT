@@ -21,7 +21,6 @@ def test_provenance_validation_rejects_indirect_dborn_without_electrostatic_data
                     source="mixed_reactive_vle",
                 )
             ],
-            strict=True,
         )
 
     report = epcsaft.validate_regression_provenance(
@@ -32,7 +31,6 @@ def test_provenance_validation_rejects_indirect_dborn_without_electrostatic_data
                 source="explicit_override",
             )
         ],
-        strict=True,
     )
     assert report["warnings"] == []
     assert report["parameter_sources"]["MEAH+.d_born"] == "explicit_override"
@@ -49,7 +47,6 @@ def test_provenance_validation_gates_ion_involving_binary_interactions():
             ],
             species=["MEACOO-", "HCO3-"],
             charges=[-1.0, -1.0],
-            strict=True,
         )
 
     with pytest.raises(InputError, match=r"neutral-ion.*direct"):
@@ -63,7 +60,6 @@ def test_provenance_validation_gates_ion_involving_binary_interactions():
             ],
             species=["CO2", "MEACOO-"],
             charges=[0.0, -1.0],
-            strict=True,
         )
 
     report = epcsaft.validate_regression_provenance(
@@ -76,7 +72,6 @@ def test_provenance_validation_gates_ion_involving_binary_interactions():
         ],
         species=["MEAH+", "MEACOO-"],
         charges=[1.0, -1.0],
-        strict=True,
     )
     assert report["warnings"] == []
     assert report["data_sources_by_parameter"]["MEAH+:MEACOO-.k_ij"] == ["direct_electrolyte_activity"]
