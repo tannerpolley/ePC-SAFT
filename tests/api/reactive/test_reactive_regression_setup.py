@@ -60,7 +60,6 @@ def test_reactive_electrolyte_regression_public_surfaces_are_current() -> None:
         "residual_names",
         "failure_diagnostics",
         "active_bounds",
-        "solver_status",
         "elapsed_seconds",
         "partial_pressures",
         "y_vap",

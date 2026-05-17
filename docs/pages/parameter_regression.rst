@@ -429,8 +429,8 @@ Structured outputs follow stable field names:
 - per-row: ``row_id``, ``success``, ``message``, ``composition``, ``pressure``,
   ``ln_fugacity``, ``activity_coefficients``, ``density``,
   ``relative_permittivity``, ``residuals``, ``residual_names``,
-  ``failure_diagnostics``, ``active_bounds``, ``solver_status``,
-  ``elapsed_seconds``, ``partial_pressures``, ``y_vap``,
+  ``failure_diagnostics``, ``active_bounds``, ``elapsed_seconds``,
+  ``partial_pressures``, ``y_vap``,
   ``named_reaction_residuals``, ``source``, ``split``, ``metadata``
 - batch: ``success_count``, ``failure_count``, ``row_results``, ``residuals``,
   ``residual_names``, ``residual_row_map``, ``diagnostics``, ``cache_stats``,

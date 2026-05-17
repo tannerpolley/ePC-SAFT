@@ -316,7 +316,6 @@ class ReactiveElectrolyteRowResult:
     residual_names: tuple[str, ...]
     failure_diagnostics: Mapping[str, Any]
     active_bounds: Mapping[str, bool]
-    solver_status: str
     elapsed_seconds: float
     partial_pressures: Mapping[str, float] = field(default_factory=dict)
     y_vap: Mapping[str, float] = field(default_factory=dict)
@@ -342,7 +341,6 @@ class ReactiveElectrolyteRowResult:
             "residual_names": list(self.residual_names),
             "failure_diagnostics": _json_like(self.failure_diagnostics),
             "active_bounds": _json_like(self.active_bounds),
-            "solver_status": self.solver_status,
             "elapsed_seconds": float(self.elapsed_seconds),
             "partial_pressures": _json_like(self.partial_pressures),
             "y_vap": _json_like(self.y_vap),
@@ -1231,7 +1229,6 @@ def _row_result_from_speciation(
         residual_names=(),
         failure_diagnostics=dict(raw_result.diagnostics if not raw_result.success else {}),
         active_bounds={},
-        solver_status="success" if raw_result.success else "failure",
         elapsed_seconds=float(elapsed_seconds),
         named_reaction_residuals=dict(raw_result.named_reaction_residuals),
         source=row.source,
@@ -1287,7 +1284,6 @@ def _row_result_from_bubble(
             else {}
         ),
         active_bounds={},
-        solver_status="success" if bool(getattr(raw_result, "success", False)) else "failure",
         elapsed_seconds=float(elapsed_seconds),
         partial_pressures=dict(getattr(raw_result, "partial_pressures", {}) or {}),
         y_vap=dict(getattr(raw_result, "y_vap", {}) or {}),
@@ -1319,7 +1315,6 @@ def _failed_row_result(
         residual_names=(),
         failure_diagnostics=diagnostics,
         active_bounds={},
-        solver_status="exception",
         elapsed_seconds=float(elapsed_seconds),
         source=row.source,
         split=row.split,

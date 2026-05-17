@@ -292,4 +292,6 @@ Still ongoing:
   active source/tests/scripts.
 - Implemented equilibrium capability rows no longer emit redundant route `status` strings; native route-result payloads
   keep dependency and solver statuses where they are needed to explain an actual route execution.
+- Reactive-regression row results no longer expose a redundant `solver_status` field; per-row `success`, `message`, and
+  `failure_diagnostics` carry row outcome and failure details while native solver-status diagnostics remain route-local.
 - New strict dependency and solver ownership gates that require Task 3 and native Ipopt implementation to pass.
