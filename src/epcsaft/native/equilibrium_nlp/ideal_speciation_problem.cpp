@@ -715,13 +715,6 @@ ChemicalEquilibriumResultNative solve_ideal_speciation_chemical_equilibrium_ipop
     result.diagnostics_bool["charge_constraint_in_nlp"] = charge_constraint_increases_rank(request);
     result.diagnostics_bool["ipopt_solver_ran"] = ipopt_result.ipopt.solver_ran;
     result.diagnostics_bool["ipopt_accepted"] = ipopt_result.ipopt.accepted;
-    result.diagnostics_int["iterations"] = 0;
-    result.diagnostics_int["state_failure_count"] = 0;
-    result.diagnostics_int["residual_evaluation_count"] = 0;
-    result.diagnostics_int["jacobian_evaluation_count"] = 0;
-    result.diagnostics_int["state_evaluation_count"] = 0;
-    result.diagnostics_int["activity_evaluation_count"] = 0;
-    result.diagnostics_int["density_solve_count"] = 0;
     result.diagnostics_double["residual_norm"] = residual_norm;
     result.diagnostics_double["tolerance"] = options.tolerance;
     result.diagnostics_double["objective"] = ipopt_result.ipopt.objective;

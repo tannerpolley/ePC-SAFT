@@ -478,6 +478,11 @@ activity/concentration coefficient evaluation code after the exact-derivative ga
 fail at the EOS derivative NLP block boundary, while the retained residual/Jacobian diagnostic surface is explicitly
 ideal homogeneous speciation only.
 
+Task 6/12 continuation note: native ideal chemical-equilibrium diagnostics no longer publish zero-valued
+state/density/activity evaluation counters after the hidden state-closure path was removed. The retained diagnostics
+report actual residual/Jacobian counters on the private residual evaluator and solver/derivative evidence on the native
+Ipopt ideal-speciation route.
+
 ### Task 7: Build EOS Phase Blocks For Equilibrium
 
 **Files:**

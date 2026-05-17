@@ -498,7 +498,6 @@ ChemicalResidualEvaluationNative evaluate_chemical_equilibrium_residual_native(
         options,
         reaction_standard_states
     );
-    int state_failure_count = 0;
     ChemicalEvaluationCounters counters;
     ChemicalEvaluation current = evaluate_chemical(
         mixture,
@@ -563,12 +562,8 @@ ChemicalResidualEvaluationNative evaluate_chemical_equilibrium_residual_native(
     out.diagnostics_bool["derivative_available"] = derivative_selection.derivative_available;
     out.diagnostics_bool["jacobian_available"] = derivative_selection.derivative_available;
     out.diagnostics_bool["activity_coefficients_evaluated"] = !current.gamma.empty();
-    out.diagnostics_int["state_failure_count"] = state_failure_count;
     out.diagnostics_int["residual_evaluation_count"] = counters.residual_evaluations;
     out.diagnostics_int["jacobian_evaluation_count"] = counters.jacobian_evaluations;
-    out.diagnostics_int["state_evaluation_count"] = 0;
-    out.diagnostics_int["activity_evaluation_count"] = counters.activity_evaluations;
-    out.diagnostics_int["density_solve_count"] = 0;
     out.diagnostics_double["residual_norm"] = current.residual_norm;
     out.diagnostics_double["objective"] = out.objective;
     out.diagnostics_vector["phase_handoff_composition"] = current.x;
