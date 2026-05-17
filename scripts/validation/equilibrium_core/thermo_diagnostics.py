@@ -826,7 +826,7 @@ def _sanitize_solver_diagnostics(diagnostics: dict[str, Any]) -> dict[str, Any]:
     out: dict[str, Any] = {}
     for key in (
         "acceptance_gate",
-        "best_failure_reason",
+        "rejection_reason",
         "solver_residual_norm",
         "gibbs_delta",
         "material_balance_error",

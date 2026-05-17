@@ -158,6 +158,8 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
   backends and raise-on-unsupported behavior, while concrete solve diagnostics carry route-specific fields.
 - Khudaida validation reports no longer use generic package/comparison status or package-missing report keys; retained
   fields describe finite AAD counts and unusable comparison rows directly.
+- Electrolyte LLE confidence reports now use accepted/rejected outcomes and rejection reasons instead of diagnostic
+  failure status labels.
 - The ideal reactive-speciation Ipopt route now reports the positive analytical derivative backend without no-op activity
   derivative policy or Hessian-mode diagnostics.
 - Native Ipopt smoke and route result payloads no longer expose Hessian-strategy or exact-Hessian-required fields; those

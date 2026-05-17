@@ -75,7 +75,7 @@ class BenchmarkMetrics:
 @dataclass(frozen=True)
 class BenchmarkPrediction:
     case: BenchmarkCase
-    status: str
+    outcome: str
     diagnostics: dict[str, Any]
     metrics: BenchmarkMetrics | None
     organic_formula: np.ndarray | None
@@ -97,7 +97,7 @@ class ContinuationMetrics:
 @dataclass(frozen=True)
 class OracleCheck:
     case_key: str
-    native_status: str
+    native_outcome: str
     native_gibbs_delta: float
     oracle_gibbs_delta: float
     native_minus_oracle_gibbs_delta: float
@@ -186,13 +186,13 @@ def predict_case(
         )
     except SolutionError as exc:
         diagnostics = _diagnostics_from_exception(exc)
-        return BenchmarkPrediction(case, "diagnostic_failure", diagnostics, None, None, None, None)
+        return BenchmarkPrediction(case, "rejected", diagnostics, None, None, None, None)
 
     diagnostics = dict(result.diagnostics)
     phases = {phase.label: phase for phase in result.phases}
     if "aq" not in phases or "org" not in phases:
-        diagnostics["best_failure_reason"] = "native result did not contain aq/org phase labels"
-        return BenchmarkPrediction(case, "diagnostic_failure", diagnostics, None, None, None, None)
+        diagnostics["rejection_reason"] = "native result did not contain aq/org phase labels"
+        return BenchmarkPrediction(case, "rejected", diagnostics, None, None, None, None)
     aq_formula = explicit_to_formula(phases["aq"].composition)
     org_formula = explicit_to_formula(phases["org"].composition)
     metrics = _metrics(case, org_formula, aq_formula, diagnostics)
@@ -270,7 +270,7 @@ def continuation_metrics(predictions: Sequence[BenchmarkPrediction]) -> list[Con
     for series_key, series in grouped.items():
         ordered = sorted(series, key=lambda item: item.case.tie_line)
         for left, right in zip(ordered, ordered[1:]):
-            if left.status != "accepted" or right.status != "accepted":
+            if left.outcome != "accepted" or right.outcome != "accepted":
                 rows.append(
                     ContinuationMetrics(
                         series_key, left.case.case_key, right.case.case_key, math.nan, math.nan, False, True
@@ -313,7 +313,7 @@ def oracle_checks(suite: BenchmarkSuite, predictions: Sequence[BenchmarkPredicti
         checks.append(
             OracleCheck(
                 case_key=case.case_key,
-                native_status=prediction.status,
+                native_outcome=prediction.outcome,
                 native_gibbs_delta=native_delta,
                 oracle_gibbs_delta=oracle_delta,
                 native_minus_oracle_gibbs_delta=(
@@ -501,7 +501,7 @@ def _with_salt(feed_formula: np.ndarray, salt: float) -> np.ndarray:
 def _write_benchmark_csv(path: Path, predictions: Sequence[BenchmarkPrediction]) -> None:
     fieldnames = [
         "case_key",
-        "status",
+        "outcome",
         "temperature_K",
         "salt_wtfrac",
         "tie_line",
@@ -518,7 +518,7 @@ def _write_benchmark_csv(path: Path, predictions: Sequence[BenchmarkPrediction])
         "tpd_trial_count",
         "tpd_polish_iterations",
         "acceptance_gate",
-        "best_failure_reason",
+        "rejection_reason",
     ]
     rows = []
     for prediction in predictions:
@@ -527,7 +527,7 @@ def _write_benchmark_csv(path: Path, predictions: Sequence[BenchmarkPrediction])
         rows.append(
             {
                 "case_key": prediction.case.case_key,
-                "status": prediction.status,
+                "outcome": prediction.outcome,
                 "temperature_K": prediction.case.temperature_K,
                 "salt_wtfrac": prediction.case.salt_wtfrac,
                 "tie_line": prediction.case.tie_line,
@@ -544,7 +544,7 @@ def _write_benchmark_csv(path: Path, predictions: Sequence[BenchmarkPrediction])
                 "tpd_trial_count": diag.get("tpd_trial_count", math.nan),
                 "tpd_polish_iterations": diag.get("tpd_polish_iterations", math.nan),
                 "acceptance_gate": diag.get("acceptance_gate", ""),
-                "best_failure_reason": diag.get("best_failure_reason", ""),
+                "rejection_reason": diag.get("rejection_reason", ""),
             }
         )
     _write_csv(path, fieldnames, rows)
@@ -563,9 +563,9 @@ def _write_stress_csv(path: Path, rows: Sequence[BenchmarkPrediction]) -> None:
         path,
         [
             "case_key",
-            "status",
+            "outcome",
             "acceptance_gate",
-            "best_failure_reason",
+            "rejection_reason",
             "solver_residual_norm",
             "gibbs_delta",
             "phase_distance",
@@ -573,9 +573,9 @@ def _write_stress_csv(path: Path, rows: Sequence[BenchmarkPrediction]) -> None:
         [
             {
                 "case_key": row.case.case_key,
-                "status": row.status,
+                "outcome": row.outcome,
                 "acceptance_gate": row.diagnostics.get("acceptance_gate", ""),
-                "best_failure_reason": row.diagnostics.get("best_failure_reason", ""),
+                "rejection_reason": row.diagnostics.get("rejection_reason", ""),
                 "solver_residual_norm": row.diagnostics.get("solver_residual_norm", math.nan),
                 "gibbs_delta": row.diagnostics.get("gibbs_delta", math.nan),
                 "phase_distance": row.diagnostics.get("phase_distance", math.nan),
@@ -594,13 +594,13 @@ def _write_summary(
     oracle: Sequence[OracleCheck],
     stress: Sequence[BenchmarkPrediction],
 ) -> None:
-    accepted = [item for item in predictions if item.status == "accepted"]
+    accepted = [item for item in predictions if item.outcome == "accepted"]
     summary = {
         "suite": suite.name,
         "mode": mode,
         "case_count": len(predictions),
         "accepted_count": len(accepted),
-        "diagnostic_failure_count": len(predictions) - len(accepted),
+        "rejected_count": len(predictions) - len(accepted),
         "max_grand_aad": max((item.metrics.grand_aad for item in accepted if item.metrics), default=math.nan),
         "max_abs_error": max((item.metrics.max_abs_error for item in accepted if item.metrics), default=math.nan),
         "continuation_rows": len(continuation),
@@ -623,7 +623,7 @@ def _write_plots(
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    accepted = [item for item in predictions if item.status == "accepted"]
+    accepted = [item for item in predictions if item.outcome == "accepted"]
     residual_labels = ["solver_residual_norm", "material_balance_error", "charge_balance_error", "phase_distance"]
     residual_values = [
         max(
@@ -728,7 +728,7 @@ def _all_tielines_plot(path: Path, predictions: Sequence[BenchmarkPrediction]) -
 
     fig, ax = plt.subplots(figsize=(8.4, 6.0))
     rows: list[dict[str, Any]] = []
-    status_colors = {"accepted": "#2ca02c", "diagnostic_failure": "#d62728"}
+    outcome_colors = {"accepted": "#2ca02c", "rejected": "#d62728"}
     grouped: dict[int, list[BenchmarkPrediction]] = {}
     for prediction in predictions:
         grouped.setdefault(prediction.case.figure, []).append(prediction)
@@ -754,22 +754,22 @@ def _all_tielines_plot(path: Path, predictions: Sequence[BenchmarkPrediction]) -
             )
             rows.extend(
                 [
-                    _tieline_plot_row(case, "experimental_aqueous", prediction.status, exp_aq),
-                    _tieline_plot_row(case, "experimental_organic", prediction.status, exp_org),
-                    _tieline_plot_row(case, "feed", prediction.status, case.feed_formula),
+                    _tieline_plot_row(case, "experimental_aqueous", prediction.outcome, exp_aq),
+                    _tieline_plot_row(case, "experimental_organic", prediction.outcome, exp_org),
+                    _tieline_plot_row(case, "feed", prediction.outcome, case.feed_formula),
                 ]
             )
             ax.scatter(
                 [case.feed_formula[1]],
                 [case.feed_formula[2]],
-                color=status_colors.get(prediction.status, "#7f7f7f"),
+                color=outcome_colors.get(prediction.outcome, "#7f7f7f"),
                 marker="x",
                 s=24,
                 linewidths=1.2,
                 alpha=0.8,
             )
             if (
-                prediction.status == "accepted"
+                prediction.outcome == "accepted"
                 and prediction.organic_formula is not None
                 and prediction.aqueous_formula is not None
             ):
@@ -783,16 +783,16 @@ def _all_tielines_plot(path: Path, predictions: Sequence[BenchmarkPrediction]) -
                 )
                 rows.extend(
                     [
-                        _tieline_plot_row(case, "native_aqueous", prediction.status, prediction.aqueous_formula),
-                        _tieline_plot_row(case, "native_organic", prediction.status, prediction.organic_formula),
+                        _tieline_plot_row(case, "native_aqueous", prediction.outcome, prediction.aqueous_formula),
+                        _tieline_plot_row(case, "native_organic", prediction.outcome, prediction.organic_formula),
                     ]
                 )
 
-    ax.scatter([], [], color=status_colors["accepted"], marker="x", label="native accepted feed")
-    ax.scatter([], [], color=status_colors["diagnostic_failure"], marker="x", label="native diagnostic failure feed")
+    ax.scatter([], [], color=outcome_colors["accepted"], marker="x", label="native accepted feed")
+    ax.scatter([], [], color=outcome_colors["rejected"], marker="x", label="native rejected feed")
     ax.set_xlabel(r"$x_{\mathrm{ethanol}}$")
     ax.set_ylabel(r"$x_{\mathrm{isobutanol}}$")
-    ax.set_title("Khudaida 2026 electrolyte LLE tie-lines and native result status")
+    ax.set_title("Khudaida 2026 electrolyte LLE tie-lines and native result outcome")
     ax.grid(True, alpha=0.25)
     ax.legend(loc="best", fontsize=8)
     fig.tight_layout()
@@ -801,14 +801,14 @@ def _all_tielines_plot(path: Path, predictions: Sequence[BenchmarkPrediction]) -
     plt.close(fig)
     _write_csv(
         path.parent / f"{path.stem}.csv",
-        ["case_key", "figure", "tie_line", "point_type", "status", "x_water", "x_ethanol", "x_isobutanol", "x_nacl"],
+        ["case_key", "figure", "tie_line", "point_type", "outcome", "x_water", "x_ethanol", "x_isobutanol", "x_nacl"],
         rows,
     )
-    _write_mpl_style_contract(path, "Khudaida 2026 electrolyte LLE tie-lines and native result status")
+    _write_mpl_style_contract(path, "Khudaida 2026 electrolyte LLE tie-lines and native result outcome")
 
 
 def _tieline_plot_row(
-    case: BenchmarkCase, point_type: str, status: str, composition: Sequence[float]
+    case: BenchmarkCase, point_type: str, outcome: str, composition: Sequence[float]
 ) -> dict[str, Any]:
     values = list(composition)
     return {
@@ -816,7 +816,7 @@ def _tieline_plot_row(
         "figure": case.figure,
         "tie_line": case.tie_line,
         "point_type": point_type,
-        "status": status,
+        "outcome": outcome,
         "x_water": values[0],
         "x_ethanol": values[1],
         "x_isobutanol": values[2],
