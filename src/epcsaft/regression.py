@@ -1612,10 +1612,10 @@ def _run_native_generic_score(
         "starts_tried": 1,
         "message": "evaluated native generic residual score without optimization",
         "backend": "diagnostic_residual_score",
-        "optimizer_backend": "not_applicable",
-        "derivative_backend": "not_applicable",
+        "optimizer_backend": "diagnostic_residual_score",
+        "derivative_backend": "diagnostic_residual_score",
         "jacobian_available": False,
-        "jacobian_backend": "not_applicable",
+        "jacobian_backend": "diagnostic_residual_score",
     }
 
 

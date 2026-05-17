@@ -187,6 +187,13 @@ def _source_blocked_terms(rel: str) -> tuple[str, ...]:
         "optional" + "_dependencies",
         "dependency" + "_not" + "_compiled",
         "reactive" + "_flash" + "_tp",
+        "optimizer" + "_backend" + "\": \"not" + "_applicable",
+        "optimizer" + "_backend == \"not" + "_applicable",
+        "derivative" + "_backend" + "\": \"not" + "_applicable",
+        "derivative" + "_backend == \"not" + "_applicable",
+        "jacobian" + "_backend" + "\": \"not" + "_applicable",
+        "jacobian" + "_backend == \"not" + "_applicable",
+        "jacobian" + "_backend = \"not" + "_applicable",
     )
 
 
