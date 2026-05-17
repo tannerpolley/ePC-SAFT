@@ -923,6 +923,10 @@ Task 7/12 continuation note: the stale `reactive_flash_tp` alias guard and its d
 test were removed. The retained staged workflow tests cover the explicit `phase_kind` path, and the executable text gate
 now blocks reintroducing that alias in source, tests, or scripts.
 
+Task 2/12 continuation note: duplicate equilibrium capability tests that only repeated route status fields already
+covered by the runtime metadata test were deleted. The retained capability tests cover derivative policy,
+reactive-speciation standard-state gates, and reactive phase-equilibrium reaction-scope metadata.
+
 ### Task 13: Final Validation And Cleanup
 
 **Files:**

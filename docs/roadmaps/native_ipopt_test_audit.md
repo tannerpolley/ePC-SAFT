@@ -140,6 +140,9 @@ Plan: `docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md`
   wording.
 - The stale `reactive_flash_tp` staged-workflow alias guard and duplicate route-pending test were removed. Explicit
   `phase_kind` staged workflow coverage remains, and the executable text gate blocks the old alias token.
+- Duplicate equilibrium capability tests that only repeated runtime metadata route-status checks were deleted. The
+  retained capability tests cover derivative policy, reactive-speciation standard-state gates, and reactive
+  phase-equilibrium reaction-scope metadata.
 
 The failure list from the initial full-duration run has been retired. Each listed node now passes individually after the dependency, contract, and derivative-surface cleanup slices:
 
