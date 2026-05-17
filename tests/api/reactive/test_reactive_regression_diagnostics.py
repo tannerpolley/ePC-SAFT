@@ -123,5 +123,16 @@ def test_reactive_regression_reporting_helpers_write_outputs(monkeypatch, tmp_pa
     assert rows_csv.exists()
     assert residuals_csv.exists()
     assert params_csv.exists()
-    assert "objective" in summary.read_text(encoding="utf-8")
-    assert "covariance_available" not in json.loads(summary.read_text(encoding="utf-8"))
+    payload = json.loads(summary.read_text(encoding="utf-8"))
+    assert "objective" in payload
+    assert not {
+        "fit_success",
+        "fit_message",
+        "termination_reason",
+        "fit_iterations",
+        "objective_initial",
+        "objective_final",
+        "gradient_norm",
+        "step_norm",
+        "covariance_available",
+    } & payload.keys()

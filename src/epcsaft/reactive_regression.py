@@ -922,16 +922,7 @@ def summarize_regression_result(
         }
     else:
         objective_result = result
-        fit_payload = {
-            "fit_success": None,
-            "fit_message": "",
-            "termination_reason": "objective_only",
-            "fit_iterations": None,
-            "objective_initial": None,
-            "objective_final": float(objective_result.objective),
-            "gradient_norm": None,
-            "step_norm": None,
-        }
+        fit_payload = {}
     batch = objective_result.batch_result
     row_norms: list[tuple[str, float]] = []
     source_counter: dict[str, list[float]] = {}

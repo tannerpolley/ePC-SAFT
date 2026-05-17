@@ -245,6 +245,13 @@ def _source_blocked_terms(rel: str) -> tuple[str, ...]:
         "activity" + "_or" + "_fugacity" + "_terms" + "_in" + "_residual",
         "activity" + "_derivative" + "_in" + "_jacobian",
         "covariance" + "_available" + "\": false",
+        "fit" + "_success" + "\": none,",
+        "fit" + "_message" + "\": \"\",",
+        "termination" + "_reason" + "\": \"objective" + "_only\",",
+        "fit" + "_iterations" + "\": none,",
+        "objective" + "_initial" + "\": none,",
+        "gradient" + "_norm" + "\": none,",
+        "step" + "_norm" + "\": none,",
     )
     if rel.startswith(("src/", "scripts/")):
         terms += (
