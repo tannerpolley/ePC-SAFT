@@ -135,7 +135,8 @@ public:
         int trial_phase,
         std::string problem_name,
         std::vector<double> charges = {},
-        bool require_charge_constraint = false
+        bool require_charge_constraint = false,
+        std::vector<double> initial_composition = {}
     )
         : args_(std::move(args)),
           temperature_(temperature),
@@ -146,10 +147,22 @@ public:
           parent_phase_label_(phase_label(parent_phase)),
           trial_phase_label_(phase_label(trial_phase)),
           problem_name_(std::move(problem_name)),
-          charges_(std::move(charges)) {
+          charges_(std::move(charges)),
+          initial_composition_(
+              initial_composition.empty()
+                  ? std::vector<double>{}
+                  : normalized_positive_values(initial_composition, "stability trial initial composition")
+          ) {
         require_positive_finite(temperature_, "stability temperature");
         require_positive_finite(pressure_, "stability pressure");
         species_count_ = static_cast<int>(feed_composition_.size());
+        if (!initial_composition_.empty()) {
+            require_size(
+                initial_composition_,
+                static_cast<std::size_t>(species_count_),
+                "stability trial initial composition"
+            );
+        }
         if (charges_.empty()) {
             if (require_charge_constraint) {
                 throw ValueError("electrolyte stability route requires charge data.");
@@ -171,6 +184,16 @@ public:
             }
             if (std::abs(feed_charge) > charge_balance_tolerance_) {
                 throw ValueError("electrolyte stability feed must be charge neutral.");
+            }
+            if (!initial_composition_.empty()) {
+                double initial_charge = 0.0;
+                for (int index = 0; index < species_count_; ++index) {
+                    initial_charge += initial_composition_[static_cast<std::size_t>(index)]
+                        * charges_[static_cast<std::size_t>(index)];
+                }
+                if (std::abs(initial_charge) > charge_balance_tolerance_) {
+                    throw ValueError("electrolyte stability trial initial composition must be charge neutral.");
+                }
             }
         }
         parent_state_ = phase_state_sensitivity(
@@ -210,6 +233,9 @@ public:
     }
 
     std::vector<double> initial_point() const override {
+        if (!initial_composition_.empty()) {
+            return initial_composition_;
+        }
         if (has_charge_constraint()) {
             return feed_composition_;
         }
@@ -352,6 +378,7 @@ private:
     std::string trial_phase_label_;
     std::string problem_name_;
     std::vector<double> charges_;
+    std::vector<double> initial_composition_;
     PhaseStateCompositionSensitivityResult parent_state_;
     std::vector<double> parent_reduced_potential_;
     int species_count_ = 0;
@@ -401,7 +428,8 @@ StabilityRouteResult solve_stability_tpd_route(
     std::vector<double> charges,
     bool require_charge_constraint,
     const IpoptSolveOptions& options,
-    double stability_tolerance
+    double stability_tolerance,
+    const std::vector<double>& trial_initial_composition
 ) {
     const IpoptAdapterInfo adapter = native_ipopt_adapter_info();
     StabilityRouteResult out;
@@ -428,9 +456,11 @@ StabilityRouteResult solve_stability_tpd_route(
         trial_phase,
         problem_name,
         std::move(charges),
-        require_charge_constraint
+        require_charge_constraint,
+        trial_initial_composition
     );
     out.parent_reduced_potential = problem.parent_reduced_potential();
+    out.initial_composition = problem.initial_point();
     const IpoptSolveResult solve = solve_ipopt_nlp(problem, options);
     out.ran = solve.solver_ran;
     out.solver_accepted = solve.accepted;
@@ -501,7 +531,8 @@ StabilityRouteResult solve_neutral_stability_tpd_route(
     int parent_phase,
     int trial_phase,
     const IpoptSolveOptions& options,
-    double stability_tolerance
+    double stability_tolerance,
+    const std::vector<double>& trial_initial_composition
 ) {
     return solve_stability_tpd_route(
         args,
@@ -515,7 +546,8 @@ StabilityRouteResult solve_neutral_stability_tpd_route(
         {},
         false,
         options,
-        stability_tolerance
+        stability_tolerance,
+        trial_initial_composition
     );
 }
 
@@ -525,7 +557,8 @@ StabilityRouteResult solve_electrolyte_stability_tpd_route(
     double pressure,
     const std::vector<double>& feed_composition,
     const IpoptSolveOptions& options,
-    double stability_tolerance
+    double stability_tolerance,
+    const std::vector<double>& trial_initial_composition
 ) {
     return solve_stability_tpd_route(
         args,
@@ -539,7 +572,8 @@ StabilityRouteResult solve_electrolyte_stability_tpd_route(
         args.z,
         true,
         options,
-        stability_tolerance
+        stability_tolerance,
+        trial_initial_composition
     );
 }
 

@@ -1,0 +1,5 @@
+name,value
+material_balance_norm,8.673617379884035e-19
+charge_balance_norm,8.673617379884035e-19
+neutral_fugacity_residual_norm,3.2576874531287103e-10
+salt_pair_fugacity_residual_norm,1.830358087318018e-11

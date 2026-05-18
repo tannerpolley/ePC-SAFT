@@ -1,32 +1,660 @@
 {
-  "status": "accepted",
-  "lane": "ascani_2022_distributed_ion_lle",
-  "source_records": [
+  "schema_version": 1,
+  "stage": "A-C",
+  "lane_id": "ascani_2022_distributed_ion_lle",
+  "status": "accepted_public_native_ipopt",
+  "status_reason": "all shared native Ipopt gates and hard TPDF certification passed",
+  "source_assets": [
     "data/reference/multiphase/ascani_case2_model_comparison.csv",
-    "analyses/paper_validation/native/2022_ascani/data/processed/source_expected_phase_compositions.csv"
+    "docs/papers/md/Ascani, Sadowski, Held - 2022 - Calculation of Multiphase Equilibria Containing Mixed Solvents and M.md",
+    "docs/papers/md/Ascani, Sadowski, Held - 2022 - Supporting Information for Calculation of multiphase equilibria containing mixed solvents and mixed..md"
   ],
+  "command_list": [
+    "uv run python scripts/dev/doctor.py --require-ipopt",
+    "uv run python run_pytest.py tests/native/equilibrium/test_route_builders.py tests/native/equilibrium/test_electrolyte_lle_residual_surface.py tests/native/equilibrium/test_electrolyte_lle_residual_jacobian.py tests/equilibrium/electrolyte -q",
+    "uv run python analyses\\paper_validation\\native\\2022_ascani\\scripts\\run_all.py",
+    "uv run python run_pytest.py tests/workflows/paper_validation/test_ascani_2022_lle_validation.py tests/workflows/benchmarks/test_benchmark_literature_suite.py -q",
+    "uv run python scripts/benchmarks/benchmark_literature_suite.py --case ascani_2022_distributed_ion_lle --json build/validation/ascani_2022_lle.json"
+  ],
+  "resolved_tolerances": {
+    "material_balance_abs": 1e-08,
+    "charge_balance_abs": 1e-08,
+    "neutral_fugacity_abs": 1e-07,
+    "salt_pair_fugacity_abs": 1e-07,
+    "density_recompute_rel": 1e-08,
+    "density_min_mol_m3": 1000.0,
+    "phase_distance_min": 0.1,
+    "minimum_phase_fraction_min": 0.0001,
+    "ghat_delta_max": -1e-08,
+    "tpdf_tolerance": 1e-08,
+    "trace_floor": 1e-10
+  },
   "feed": {
     "species": [
       "H2O",
       "Butanol",
       "Na+",
+      "K+",
       "Cl-"
     ],
+    "mass_fractions": {
+      "H2O": 0.8094,
+      "Butanol": 0.1728,
+      "NaCl": 0.0054,
+      "KCl": 0.0124
+    },
     "mole_fractions": [
-      0.5354703554910729,
-      0.3877543953556046,
-      0.0383876245766612,
-      0.0383876245766612
+      0.9403742328474496,
+      0.04879524350242891,
+      0.0019339333595015447,
+      0.0034813284655591703,
+      0.005415261825060715
     ],
     "temperature_K": 298.15,
     "pressure_Pa": 100000.0
   },
+  "attempt_matrix": [
+    {
+      "basis": "paper_era_no_ssm_ds_born",
+      "attempted": true,
+      "accepted": true
+    },
+    {
+      "basis": "ssm_ds_born_comparison",
+      "attempted": false,
+      "accepted": false,
+      "reason": "primary basis accepted"
+    }
+  ],
+  "deterministic_seed_payloads": [
+    {
+      "name": "source_expected_or_table_seed",
+      "source": "source_table",
+      "aqueous_phase_composition": [
+        0.9679299141624303,
+        0.02044972044803502,
+        0.0020838843245448223,
+        0.0037262983702224754,
+        0.005810182694767298
+      ],
+      "organic_phase_composition": [
+        0.6031080543711426,
+        0.39572864457461265,
+        9.861713701764707e-05,
+        0.00048303339010474913,
+        0.0005816505271223963
+      ]
+    },
+    {
+      "name": "water_rich_salt_rich_seed",
+      "source": "deterministic",
+      "aqueous_phase_composition": [
+        0.9790209790209791,
+        0.009990009990009992,
+        0.0019980019980019984,
+        0.003496503496503497,
+        0.005494505494505495
+      ],
+      "organic_phase_composition": [
+        0.6031080543711426,
+        0.39572864457461265,
+        9.861713701764707e-05,
+        0.00048303339010474913,
+        0.0005816505271223963
+      ]
+    },
+    {
+      "name": "butanol_rich_trace_salt_seed",
+      "source": "deterministic",
+      "aqueous_phase_composition": [
+        0.9679299141624303,
+        0.02044972044803502,
+        0.0020838843245448223,
+        0.0037262983702224754,
+        0.005810182694767298
+      ],
+      "organic_phase_composition": [
+        0.05000000000000001,
+        0.9490000000000001,
+        0.00020000000000000004,
+        0.00030000000000000003,
+        0.0005000000000000001
+      ]
+    },
+    {
+      "name": "balanced_feed_perturbation_seed",
+      "source": "deterministic",
+      "aqueous_phase_composition": [
+        0.9423776355074567,
+        0.04698158279033952,
+        0.0019000524231193973,
+        0.0034203384279823997,
+        0.005320390851101797
+      ],
+      "organic_phase_composition": [
+        0.9403742328474497,
+        0.04879524350242892,
+        0.001933933359501545,
+        0.0034813284655591708,
+        0.005415261825060716
+      ]
+    },
+    {
+      "name": "stage_a_accepted_mapped_seed",
+      "source": "stage_a_mapped_by_feed_cation_ratio",
+      "aqueous_phase_composition": [
+        0.9679299141624303,
+        0.02044972044803502,
+        0.0020838843245448223,
+        0.0037262983702224754,
+        0.005810182694767298
+      ],
+      "organic_phase_composition": [
+        0.3669603621384759,
+        0.6162856098801314,
+        0.002991653466254559,
+        0.005385360524441814,
+        0.008377013990696373
+      ]
+    }
+  ],
+  "ipopt_runtime_diagnostics": {
+    "runtime_ipopt": {
+      "backend": "ipopt",
+      "status": "enabled_available",
+      "required": false,
+      "compiled": true,
+      "available": true,
+      "adapter_available": true,
+      "adapter_kind": "native_tnlp_adapter",
+      "adapter_source_available": true,
+      "requires_exact_gradient": true,
+      "requires_exact_jacobian": true
+    },
+    "solver_backend": "ipopt",
+    "solver_status": "success",
+    "application_status": "solve_succeeded",
+    "last_callback_exception": ""
+  },
+  "derivative_diagnostics": {
+    "derivative_backend": "cppad_implicit",
+    "gradient_approximation": "exact",
+    "jacobian_approximation": "exact",
+    "exact_gradient_required": true,
+    "exact_jacobian_required": true
+  },
+  "hessian_approximation_diagnostics": {
+    "hessian_approximation": "limited-memory",
+    "exact_hessian_required": false
+  },
+  "density_diagnostics": {
+    "density_backend": "liquid_pressure_root",
+    "phase_densities": [
+      51254.4517211639,
+      21044.52987150119
+    ],
+    "density_recompute_relative_errors": [
+      {
+        "phase": "aq",
+        "reported_density_mol_m3": 51254.4517211639,
+        "recomputed_density_mol_m3": 51254.4517211639,
+        "relative_error": 0.0
+      },
+      {
+        "phase": "org",
+        "reported_density_mol_m3": 21044.52987150119,
+        "recomputed_density_mol_m3": 21044.52987150119,
+        "relative_error": 0.0
+      }
+    ]
+  },
+  "material_charge_fugacity_residuals": {
+    "material_balance_norm": 8.673617379884035e-19,
+    "charge_balance_norm": 8.673617379884035e-19,
+    "neutral_fugacity_residual_norm": 3.2576874531287103e-10,
+    "salt_pair_fugacity_residual_norm": 1.830358087318018e-11,
+    "neutral_log_fugacity_residuals_raw": {
+      "H2O": -1.6653345369377348e-13,
+      "Butanol": -3.2576874531287103e-10
+    },
+    "salt_pair_log_fugacity_residuals_raw": {
+      "NaCl": -1.830358087318018e-11,
+      "KCl": 4.376943252282217e-12
+    }
+  },
+  "tpdf_stability_results": {
+    "accepted": true,
+    "status": "accepted",
+    "tolerance": 1e-08,
+    "feed_unstable": true,
+    "final_phases_stable": true,
+    "failure_reason": "",
+    "trials": [
+      {
+        "parent_phase": "feed",
+        "expected": "unstable",
+        "seed_name": "feed_like",
+        "status": "accepted",
+        "solver_status": "success",
+        "application_status": "solve_succeeded",
+        "min_tpd": -1.2378212225154374e-11,
+        "tolerance": 1e-08,
+        "trial_composition": [
+          0.9403742324588346,
+          0.04879524387165866,
+          0.0019339333638314366,
+          0.0034813284709219903,
+          0.005415261834753426
+        ],
+        "initial_composition": [
+          0.9403742328474497,
+          0.04879524350242892,
+          0.001933933359501545,
+          0.0034813284655591708,
+          0.005415261825060716
+        ],
+        "restart_count": 0,
+        "failure_reason": ""
+      },
+      {
+        "parent_phase": "feed",
+        "expected": "unstable",
+        "seed_name": "returned_aq_phase",
+        "status": "accepted",
+        "solver_status": "success",
+        "application_status": "solve_succeeded",
+        "min_tpd": -1.0303631639995367e-11,
+        "tolerance": 1e-08,
+        "trial_composition": [
+          0.9403742324272059,
+          0.04879524390369518,
+          0.001933933363782844,
+          0.003481328470766574,
+          0.005415261834549418
+        ],
+        "initial_composition": [
+          0.9679299141624303,
+          0.02044972044803502,
+          0.0020838843245448223,
+          0.0037262983702224754,
+          0.005810182694767298
+        ],
+        "restart_count": 0,
+        "failure_reason": ""
+      },
+      {
+        "parent_phase": "feed",
+        "expected": "unstable",
+        "seed_name": "returned_org_phase",
+        "status": "accepted",
+        "solver_status": "success",
+        "application_status": "solve_succeeded",
+        "min_tpd": -0.09607343786579076,
+        "tolerance": 1e-08,
+        "trial_composition": [
+          0.48154323057451676,
+          0.5180634243441292,
+          3.0925108776882954e-05,
+          0.00016574743190014008,
+          0.00019667254067702304
+        ],
+        "initial_composition": [
+          0.6031080543711426,
+          0.39572864457461265,
+          9.861713701764707e-05,
+          0.00048303339010474913,
+          0.0005816505271223963
+        ],
+        "restart_count": 0,
+        "failure_reason": ""
+      },
+      {
+        "parent_phase": "aq",
+        "expected": "stable",
+        "seed_name": "feed_like",
+        "status": "accepted",
+        "solver_status": "success",
+        "application_status": "solve_succeeded",
+        "min_tpd": -1.5931241496467066e-12,
+        "tolerance": 1e-08,
+        "trial_composition": [
+          0.9679299141750302,
+          0.020449720408491356,
+          0.0020838843391957113,
+          0.003726298369043543,
+          0.005810182708239254
+        ],
+        "initial_composition": [
+          0.9403742328474497,
+          0.04879524350242892,
+          0.001933933359501545,
+          0.0034813284655591708,
+          0.005415261825060716
+        ],
+        "restart_count": 0,
+        "failure_reason": ""
+      },
+      {
+        "parent_phase": "aq",
+        "expected": "stable",
+        "seed_name": "returned_aq_phase",
+        "status": "accepted",
+        "solver_status": "success",
+        "application_status": "solve_succeeded",
+        "min_tpd": -2.0677816310875696e-11,
+        "tolerance": 1e-08,
+        "trial_composition": [
+          0.9679299140964178,
+          0.020449720479565454,
+          0.002083884333449418,
+          0.0037262983785589826,
+          0.005810182712008401
+        ],
+        "initial_composition": [
+          0.9679299141624303,
+          0.02044972044803502,
+          0.0020838843245448223,
+          0.0037262983702224754,
+          0.005810182694767298
+        ],
+        "restart_count": 0,
+        "failure_reason": ""
+      },
+      {
+        "parent_phase": "aq",
+        "expected": "stable",
+        "seed_name": "returned_org_phase",
+        "status": "accepted",
+        "solver_status": "success",
+        "application_status": "solve_succeeded",
+        "min_tpd": 1.5581582007181786e-10,
+        "tolerance": 1e-08,
+        "trial_composition": [
+          0.6031080550314131,
+          0.3957286438573004,
+          9.861714762681964e-05,
+          0.00048303340801650855,
+          0.0005816505556433281
+        ],
+        "initial_composition": [
+          0.6031080543711426,
+          0.39572864457461265,
+          9.861713701764707e-05,
+          0.00048303339010474913,
+          0.0005816505271223963
+        ],
+        "restart_count": 0,
+        "failure_reason": ""
+      },
+      {
+        "parent_phase": "aq",
+        "expected": "stable",
+        "seed_name": "water_rich",
+        "status": "accepted",
+        "solver_status": "success",
+        "application_status": "solve_succeeded",
+        "min_tpd": -5.4005148303391644e-12,
+        "tolerance": 1e-08,
+        "trial_composition": [
+          0.967929914085109,
+          0.020449720472630366,
+          0.0020838843390109003,
+          0.003726298382119459,
+          0.005810182721130359
+        ],
+        "initial_composition": [
+          0.9743319342046305,
+          0.01483754214524818,
+          0.0019339333595015454,
+          0.0034813284655591708,
+          0.005415261825060717
+        ],
+        "restart_count": 0,
+        "failure_reason": ""
+      },
+      {
+        "parent_phase": "aq",
+        "expected": "stable",
+        "seed_name": "organic_rich",
+        "status": "accepted",
+        "solver_status": "success",
+        "application_status": "solve_succeeded",
+        "min_tpd": 1.4266553106793197e-10,
+        "tolerance": 1e-08,
+        "trial_composition": [
+          0.6031080548860615,
+          0.3957286440434672,
+          9.861714540626104e-05,
+          0.0004830333898294509,
+          0.0005816505352357119
+        ],
+        "initial_composition": [
+          0.0499729236908747,
+          0.9494855501266193,
+          9.669666797507725e-05,
+          0.00017406642327795854,
+          0.0002707630912530358
+        ],
+        "restart_count": 0,
+        "failure_reason": ""
+      },
+      {
+        "parent_phase": "aq",
+        "expected": "stable",
+        "seed_name": "salt_rich",
+        "status": "accepted",
+        "solver_status": "success",
+        "application_status": "solve_succeeded",
+        "min_tpd": -1.1671495902547402e-11,
+        "tolerance": 1e-08,
+        "trial_composition": [
+          0.9679299141090679,
+          0.020449720480170363,
+          0.0020838843193090252,
+          0.003726298386071832,
+          0.0058101827053808576
+        ],
+        "initial_composition": [
+          0.8991891958549953,
+          0.0466581858943975,
+          0.009669666797507725,
+          0.017406642327795853,
+          0.027076309125303583
+        ],
+        "restart_count": 0,
+        "failure_reason": ""
+      },
+      {
+        "parent_phase": "org",
+        "expected": "stable",
+        "seed_name": "feed_like",
+        "status": "accepted",
+        "solver_status": "success",
+        "application_status": "solve_succeeded",
+        "min_tpd": -1.1277440353091306e-11,
+        "tolerance": 1e-08,
+        "trial_composition": [
+          0.967929914080172,
+          0.02044972049584565,
+          0.002083884333289945,
+          0.0037262983787011293,
+          0.005810182711991073
+        ],
+        "initial_composition": [
+          0.9403742328474497,
+          0.04879524350242892,
+          0.001933933359501545,
+          0.0034813284655591708,
+          0.005415261825060716
+        ],
+        "restart_count": 0,
+        "failure_reason": ""
+      },
+      {
+        "parent_phase": "org",
+        "expected": "stable",
+        "seed_name": "returned_aq_phase",
+        "status": "accepted",
+        "solver_status": "success",
+        "application_status": "solve_succeeded",
+        "min_tpd": 3.048058333510184e-12,
+        "tolerance": 1e-08,
+        "trial_composition": [
+          0.967929914106316,
+          0.02044972046445757,
+          0.0020838843280159194,
+          0.0037262983865973204,
+          0.00581018271461324
+        ],
+        "initial_composition": [
+          0.9679299141624303,
+          0.02044972044803502,
+          0.0020838843245448223,
+          0.0037262983702224754,
+          0.005810182694767298
+        ],
+        "restart_count": 0,
+        "failure_reason": ""
+      },
+      {
+        "parent_phase": "org",
+        "expected": "stable",
+        "seed_name": "returned_org_phase",
+        "status": "accepted",
+        "solver_status": "success",
+        "application_status": "solve_succeeded",
+        "min_tpd": 8.932954895343907e-12,
+        "tolerance": 1e-08,
+        "trial_composition": [
+          0.603108054791027,
+          0.3957286441000828,
+          9.861714738895955e-05,
+          0.00048303340705615084,
+          0.0005816505544451104
+        ],
+        "initial_composition": [
+          0.6031080543711426,
+          0.39572864457461265,
+          9.861713701764707e-05,
+          0.00048303339010474913,
+          0.0005816505271223963
+        ],
+        "restart_count": 0,
+        "failure_reason": ""
+      },
+      {
+        "parent_phase": "org",
+        "expected": "stable",
+        "seed_name": "water_rich",
+        "status": "accepted",
+        "solver_status": "success",
+        "application_status": "solve_succeeded",
+        "min_tpd": -2.5471813894228923e-11,
+        "tolerance": 1e-08,
+        "trial_composition": [
+          0.9679299140971465,
+          0.02044972048471953,
+          0.002083884333823076,
+          0.003726298375243913,
+          0.005810182709066989
+        ],
+        "initial_composition": [
+          0.9743319342046305,
+          0.01483754214524818,
+          0.0019339333595015454,
+          0.0034813284655591708,
+          0.005415261825060717
+        ],
+        "restart_count": 0,
+        "failure_reason": ""
+      },
+      {
+        "parent_phase": "org",
+        "expected": "stable",
+        "seed_name": "organic_rich",
+        "status": "accepted",
+        "solver_status": "success",
+        "application_status": "solve_succeeded",
+        "min_tpd": 2.7886739408051794e-12,
+        "tolerance": 1e-08,
+        "trial_composition": [
+          0.6031080544685875,
+          0.39572864444024075,
+          9.861714690210223e-05,
+          0.00048303339868377464,
+          0.0005816505455858768
+        ],
+        "initial_composition": [
+          0.0499729236908747,
+          0.9494855501266193,
+          9.669666797507725e-05,
+          0.00017406642327795854,
+          0.0002707630912530358
+        ],
+        "restart_count": 0,
+        "failure_reason": ""
+      },
+      {
+        "parent_phase": "org",
+        "expected": "stable",
+        "seed_name": "salt_rich",
+        "status": "accepted",
+        "solver_status": "success",
+        "application_status": "solve_succeeded",
+        "min_tpd": -9.836950481609263e-12,
+        "tolerance": 1e-08,
+        "trial_composition": [
+          0.9679299141274975,
+          0.020449720471407366,
+          0.0020838843321852865,
+          0.0037262983683622277,
+          0.005810182700547514
+        ],
+        "initial_composition": [
+          0.8991891958549953,
+          0.0466581858943975,
+          0.009669666797507725,
+          0.017406642327795853,
+          0.027076309125303583
+        ],
+        "restart_count": 0,
+        "failure_reason": ""
+      }
+    ]
+  },
+  "ghat_feed": -5.579856812851343,
+  "ghat_split": -5.584342484214913,
+  "ghat_delta": -0.004485671363569921,
+  "retained_outputs": [
+    "analyses/paper_validation/native/2022_ascani/results/electrolyte_lle/summary.json",
+    "analyses/paper_validation/native/2022_ascani/data/processed/feed_conversion_table.csv",
+    "analyses/paper_validation/native/2022_ascani/data/processed/source_expected_phase_compositions.csv",
+    "analyses/paper_validation/native/2022_ascani/results/electrolyte_lle/phase_split.csv",
+    "analyses/paper_validation/native/2022_ascani/figures/stability_summary/stability_summary.csv",
+    "analyses/paper_validation/native/2022_ascani/figures/density_summary/density_summary.csv",
+    "analyses/paper_validation/native/2022_ascani/figures/residual_summary/residual_summary.csv"
+  ],
+  "blockers": [],
+  "claim_boundary": {
+    "accepted_route": true,
+    "paper_match_claim": "not_claimed",
+    "note": "This proves the public native Ipopt liquid-root route for Ascani 2022 Case Study 2; exact paper matching remains a separate source-backed comparison claim."
+  },
   "expected": {
+    "status": "accepted_public_native_ipopt",
     "accepted": true,
     "solver_backend": "ipopt",
     "material_balance_abs": 1e-08,
     "charge_balance_abs": 1e-08,
-    "phase_distance_min": 0.1
+    "neutral_fugacity_abs": 1e-07,
+    "salt_pair_fugacity_abs": 1e-07,
+    "density_recompute_rel": 1e-08,
+    "density_min_mol_m3": 1000.0,
+    "phase_distance_min": 0.1,
+    "minimum_phase_fraction_min": 0.0001,
+    "ghat_delta_max": -1e-08,
+    "tpdf_tolerance": 1e-08,
+    "trace_floor": 1e-10
   },
   "solve": {
     "accepted": true,
@@ -48,68 +676,74 @@
       "rejection_reason": "accepted",
       "derivative_backend": "cppad_implicit",
       "phase_count": 2,
-      "species_count": 4,
-      "material_balance_norm": 1.1102230246251565e-16,
+      "species_count": 5,
+      "material_balance_norm": 8.673617379884035e-19,
       "pressure_consistency_norm": 0.0,
-      "chemical_potential_consistency_norm": 3.410605131648481e-12,
-      "ln_fugacity_consistency_norm": 3.410605131648481e-12,
-      "charge_balance_norm": 0.0,
+      "chemical_potential_consistency_norm": 3.2576874531287103e-10,
+      "ln_fugacity_consistency_norm": 3.2576874531287103e-10,
+      "charge_balance_norm": 8.673617379884035e-19,
       "fixed_composition_norm": 0.0,
       "phase_amount_total_norm": 0.0,
-      "phase_distance": 0.6051716778059667,
-      "objective": 7.955974624235347e-24,
-      "gibbs_feed": -18.95852710968984,
-      "gibbs_split": -18.992333167826303,
-      "gibbs_delta": -0.03380605813646298,
+      "phase_distance": 0.37527892412657776,
+      "objective": 5.323974093056409e-20,
+      "gibbs_feed": -5.579856812851343,
+      "gibbs_split": -5.584342484214913,
+      "gibbs_delta": -0.004485671363569921,
       "minimum_phase_fraction": 0.001,
       "density_backend": "liquid_pressure_root",
       "constraints": [
-        -1.6573409311604337e-12,
-        -1.2381207170619746e-12,
-        -3.410605131648481e-12,
-        1.1102230246251565e-16,
+        1.6653345369377348e-13,
+        3.2576874531287103e-10,
+        1.830358087318018e-11,
+        -4.376943252282217e-12,
         0.0,
         0.0,
-        0.0
+        -2.168404344971009e-19,
+        -4.336808689942018e-19,
+        -8.673617379884035e-19
       ],
       "phase_amount_totals": [
-        0.38623356376089746,
-        0.6137664362391025
+        0.9244681189588114,
+        0.07553188104118858
       ],
       "phase_volumes": [
-        7.0448067393710215e-06,
-        3.971732979315409e-05
+        1.8036835590167508e-05,
+        3.5891455643052857e-06
       ],
       "phase_densities": [
-        54825.28876234033,
-        15453.366060497221
+        51254.4517211639,
+        21044.52987150119
       ],
       "phase_compositions": [
         [
-          0.7983247546678951,
-          0.016320331355798044,
-          0.09267745698815341,
-          0.09267745698815341
+          0.9679299141624303,
+          0.02044972044803502,
+          0.0020838843245448223,
+          0.0037262983702224754,
+          0.005810182694767298
         ],
         [
-          0.370060216796647,
-          0.6214920091617647,
-          0.004223887020794141,
-          0.004223887020794141
+          0.6031080543711427,
+          0.39572864457461276,
+          9.86171370176471e-05,
+          0.00048303339010474924,
+          0.0005816505271223964
         ]
       ],
       "phase_ln_fugacity_coefficients": [
         [
-          -3.570131080139525,
-          -0.9455679637432586,
-          -191.26270865648615,
-          -194.66932306328044
+          -3.4518464382538596,
+          -1.4290276652939031,
+          -192.09894637672258,
+          -160.77749140632878,
+          -195.30317975365412
         ],
         [
-          -2.801281345236005,
-          -4.5852793642763725,
-          -188.06060230215246,
-          -191.69469049464416
+          -2.9787831316421687,
+          -4.3917871879918735,
+          -189.2330624303418,
+          -158.91926646098426,
+          -192.8168223593531
         ]
       ],
       "route_status": "accepted",
@@ -117,7 +751,553 @@
       "application_status": "solve_succeeded",
       "last_callback_exception": "",
       "solver_backend": "ipopt",
-      "problem_name": "electrolyte_lle_eos"
-    }
+      "problem_name": "electrolyte_lle_eos",
+      "adapter_kind": "native_tnlp_adapter",
+      "exact_gradient_required": true,
+      "exact_jacobian_required": true,
+      "gradient_approximation": "exact",
+      "jacobian_approximation": "exact",
+      "hessian_approximation": "limited-memory",
+      "feed_basis": {
+        "composition_basis": "mole_fraction"
+      },
+      "electrolyte_basis": {
+        "neutral_indices": [
+          0,
+          1
+        ],
+        "charged_indices": [
+          2,
+          3,
+          4
+        ],
+        "cation_indices": [
+          2,
+          3
+        ],
+        "anion_indices": [
+          4
+        ],
+        "salt_pairs": [
+          {
+            "label": "NaCl",
+            "cation": 2,
+            "anion": 4,
+            "cation_stoich": 1,
+            "anion_stoich": 1,
+            "cation_charge": 1.0,
+            "anion_charge": -1.0
+          },
+          {
+            "label": "KCl",
+            "cation": 3,
+            "anion": 4,
+            "cation_stoich": 1,
+            "anion_stoich": 1,
+            "cation_charge": 1.0,
+            "anion_charge": -1.0
+          }
+        ],
+        "formula_feed": [
+          0.9454943322104804,
+          0.04906092123630218,
+          0.0019444631364948432,
+          0.003500283416722642
+        ],
+        "e_matrix": [
+          [
+            1.0,
+            0.0,
+            1.0
+          ],
+          [
+            0.0,
+            1.0,
+            1.0
+          ]
+        ],
+        "basis_rank": 2,
+        "variable_model": "ascani_transformed_salt_pairs"
+      },
+      "variable_model": "ascani_transformed_salt_pairs",
+      "salt_pairs": [
+        {
+          "label": "NaCl",
+          "cation": 2,
+          "anion": 4,
+          "cation_stoich": 1,
+          "anion_stoich": 1,
+          "cation_charge": 1.0,
+          "anion_charge": -1.0
+        },
+        {
+          "label": "KCl",
+          "cation": 3,
+          "anion": 4,
+          "cation_stoich": 1,
+          "anion_stoich": 1,
+          "cation_charge": 1.0,
+          "anion_charge": -1.0
+        }
+      ],
+      "basis_rank": 2,
+      "formula_feed": [
+        0.9454943322104804,
+        0.04906092123630218,
+        0.0019444631364948432,
+        0.003500283416722642
+      ],
+      "species_labels": [
+        "H2O",
+        "Butanol",
+        "Na+",
+        "K+",
+        "Cl-"
+      ],
+      "charge_vector": [
+        0.0,
+        0.0,
+        1.0,
+        1.0,
+        -1.0
+      ],
+      "density_recompute_relative_errors": [
+        {
+          "phase": "aq",
+          "reported_density_mol_m3": 51254.4517211639,
+          "recomputed_density_mol_m3": 51254.4517211639,
+          "relative_error": 0.0
+        },
+        {
+          "phase": "org",
+          "reported_density_mol_m3": 21044.52987150119,
+          "recomputed_density_mol_m3": 21044.52987150119,
+          "relative_error": 0.0
+        }
+      ],
+      "trace_floor": 1e-10,
+      "neutral_log_fugacity_residuals_raw": {
+        "H2O": -1.6653345369377348e-13,
+        "Butanol": -3.2576874531287103e-10
+      },
+      "neutral_log_fugacity_residuals_weighted": {
+        "H2O": -1.6653345369377348e-13,
+        "Butanol": -3.2576874531287103e-10
+      },
+      "salt_pair_log_fugacity_residuals_raw": {
+        "NaCl": -1.830358087318018e-11,
+        "KCl": 4.376943252282217e-12
+      },
+      "salt_pair_log_fugacity_residuals_weighted": {
+        "NaCl": -1.830358087318018e-11,
+        "KCl": 4.376943252282217e-12
+      },
+      "neutral_fugacity_residual_norm": 3.2576874531287103e-10,
+      "salt_pair_fugacity_residual_norm": 1.830358087318018e-11,
+      "mean_ionic_fugacity_residual_norm": 1.830358087318018e-11,
+      "neutral_fugacity_residual_tolerance": 1e-07,
+      "salt_pair_fugacity_residual_tolerance": 1e-07,
+      "tpdf_stability": {
+        "accepted": true,
+        "status": "accepted",
+        "tolerance": 1e-08,
+        "feed_unstable": true,
+        "final_phases_stable": true,
+        "failure_reason": "",
+        "trials": [
+          {
+            "parent_phase": "feed",
+            "expected": "unstable",
+            "seed_name": "feed_like",
+            "status": "accepted",
+            "solver_status": "success",
+            "application_status": "solve_succeeded",
+            "min_tpd": -1.2378212225154374e-11,
+            "tolerance": 1e-08,
+            "trial_composition": [
+              0.9403742324588346,
+              0.04879524387165866,
+              0.0019339333638314366,
+              0.0034813284709219903,
+              0.005415261834753426
+            ],
+            "initial_composition": [
+              0.9403742328474497,
+              0.04879524350242892,
+              0.001933933359501545,
+              0.0034813284655591708,
+              0.005415261825060716
+            ],
+            "restart_count": 0,
+            "failure_reason": ""
+          },
+          {
+            "parent_phase": "feed",
+            "expected": "unstable",
+            "seed_name": "returned_aq_phase",
+            "status": "accepted",
+            "solver_status": "success",
+            "application_status": "solve_succeeded",
+            "min_tpd": -1.0303631639995367e-11,
+            "tolerance": 1e-08,
+            "trial_composition": [
+              0.9403742324272059,
+              0.04879524390369518,
+              0.001933933363782844,
+              0.003481328470766574,
+              0.005415261834549418
+            ],
+            "initial_composition": [
+              0.9679299141624303,
+              0.02044972044803502,
+              0.0020838843245448223,
+              0.0037262983702224754,
+              0.005810182694767298
+            ],
+            "restart_count": 0,
+            "failure_reason": ""
+          },
+          {
+            "parent_phase": "feed",
+            "expected": "unstable",
+            "seed_name": "returned_org_phase",
+            "status": "accepted",
+            "solver_status": "success",
+            "application_status": "solve_succeeded",
+            "min_tpd": -0.09607343786579076,
+            "tolerance": 1e-08,
+            "trial_composition": [
+              0.48154323057451676,
+              0.5180634243441292,
+              3.0925108776882954e-05,
+              0.00016574743190014008,
+              0.00019667254067702304
+            ],
+            "initial_composition": [
+              0.6031080543711426,
+              0.39572864457461265,
+              9.861713701764707e-05,
+              0.00048303339010474913,
+              0.0005816505271223963
+            ],
+            "restart_count": 0,
+            "failure_reason": ""
+          },
+          {
+            "parent_phase": "aq",
+            "expected": "stable",
+            "seed_name": "feed_like",
+            "status": "accepted",
+            "solver_status": "success",
+            "application_status": "solve_succeeded",
+            "min_tpd": -1.5931241496467066e-12,
+            "tolerance": 1e-08,
+            "trial_composition": [
+              0.9679299141750302,
+              0.020449720408491356,
+              0.0020838843391957113,
+              0.003726298369043543,
+              0.005810182708239254
+            ],
+            "initial_composition": [
+              0.9403742328474497,
+              0.04879524350242892,
+              0.001933933359501545,
+              0.0034813284655591708,
+              0.005415261825060716
+            ],
+            "restart_count": 0,
+            "failure_reason": ""
+          },
+          {
+            "parent_phase": "aq",
+            "expected": "stable",
+            "seed_name": "returned_aq_phase",
+            "status": "accepted",
+            "solver_status": "success",
+            "application_status": "solve_succeeded",
+            "min_tpd": -2.0677816310875696e-11,
+            "tolerance": 1e-08,
+            "trial_composition": [
+              0.9679299140964178,
+              0.020449720479565454,
+              0.002083884333449418,
+              0.0037262983785589826,
+              0.005810182712008401
+            ],
+            "initial_composition": [
+              0.9679299141624303,
+              0.02044972044803502,
+              0.0020838843245448223,
+              0.0037262983702224754,
+              0.005810182694767298
+            ],
+            "restart_count": 0,
+            "failure_reason": ""
+          },
+          {
+            "parent_phase": "aq",
+            "expected": "stable",
+            "seed_name": "returned_org_phase",
+            "status": "accepted",
+            "solver_status": "success",
+            "application_status": "solve_succeeded",
+            "min_tpd": 1.5581582007181786e-10,
+            "tolerance": 1e-08,
+            "trial_composition": [
+              0.6031080550314131,
+              0.3957286438573004,
+              9.861714762681964e-05,
+              0.00048303340801650855,
+              0.0005816505556433281
+            ],
+            "initial_composition": [
+              0.6031080543711426,
+              0.39572864457461265,
+              9.861713701764707e-05,
+              0.00048303339010474913,
+              0.0005816505271223963
+            ],
+            "restart_count": 0,
+            "failure_reason": ""
+          },
+          {
+            "parent_phase": "aq",
+            "expected": "stable",
+            "seed_name": "water_rich",
+            "status": "accepted",
+            "solver_status": "success",
+            "application_status": "solve_succeeded",
+            "min_tpd": -5.4005148303391644e-12,
+            "tolerance": 1e-08,
+            "trial_composition": [
+              0.967929914085109,
+              0.020449720472630366,
+              0.0020838843390109003,
+              0.003726298382119459,
+              0.005810182721130359
+            ],
+            "initial_composition": [
+              0.9743319342046305,
+              0.01483754214524818,
+              0.0019339333595015454,
+              0.0034813284655591708,
+              0.005415261825060717
+            ],
+            "restart_count": 0,
+            "failure_reason": ""
+          },
+          {
+            "parent_phase": "aq",
+            "expected": "stable",
+            "seed_name": "organic_rich",
+            "status": "accepted",
+            "solver_status": "success",
+            "application_status": "solve_succeeded",
+            "min_tpd": 1.4266553106793197e-10,
+            "tolerance": 1e-08,
+            "trial_composition": [
+              0.6031080548860615,
+              0.3957286440434672,
+              9.861714540626104e-05,
+              0.0004830333898294509,
+              0.0005816505352357119
+            ],
+            "initial_composition": [
+              0.0499729236908747,
+              0.9494855501266193,
+              9.669666797507725e-05,
+              0.00017406642327795854,
+              0.0002707630912530358
+            ],
+            "restart_count": 0,
+            "failure_reason": ""
+          },
+          {
+            "parent_phase": "aq",
+            "expected": "stable",
+            "seed_name": "salt_rich",
+            "status": "accepted",
+            "solver_status": "success",
+            "application_status": "solve_succeeded",
+            "min_tpd": -1.1671495902547402e-11,
+            "tolerance": 1e-08,
+            "trial_composition": [
+              0.9679299141090679,
+              0.020449720480170363,
+              0.0020838843193090252,
+              0.003726298386071832,
+              0.0058101827053808576
+            ],
+            "initial_composition": [
+              0.8991891958549953,
+              0.0466581858943975,
+              0.009669666797507725,
+              0.017406642327795853,
+              0.027076309125303583
+            ],
+            "restart_count": 0,
+            "failure_reason": ""
+          },
+          {
+            "parent_phase": "org",
+            "expected": "stable",
+            "seed_name": "feed_like",
+            "status": "accepted",
+            "solver_status": "success",
+            "application_status": "solve_succeeded",
+            "min_tpd": -1.1277440353091306e-11,
+            "tolerance": 1e-08,
+            "trial_composition": [
+              0.967929914080172,
+              0.02044972049584565,
+              0.002083884333289945,
+              0.0037262983787011293,
+              0.005810182711991073
+            ],
+            "initial_composition": [
+              0.9403742328474497,
+              0.04879524350242892,
+              0.001933933359501545,
+              0.0034813284655591708,
+              0.005415261825060716
+            ],
+            "restart_count": 0,
+            "failure_reason": ""
+          },
+          {
+            "parent_phase": "org",
+            "expected": "stable",
+            "seed_name": "returned_aq_phase",
+            "status": "accepted",
+            "solver_status": "success",
+            "application_status": "solve_succeeded",
+            "min_tpd": 3.048058333510184e-12,
+            "tolerance": 1e-08,
+            "trial_composition": [
+              0.967929914106316,
+              0.02044972046445757,
+              0.0020838843280159194,
+              0.0037262983865973204,
+              0.00581018271461324
+            ],
+            "initial_composition": [
+              0.9679299141624303,
+              0.02044972044803502,
+              0.0020838843245448223,
+              0.0037262983702224754,
+              0.005810182694767298
+            ],
+            "restart_count": 0,
+            "failure_reason": ""
+          },
+          {
+            "parent_phase": "org",
+            "expected": "stable",
+            "seed_name": "returned_org_phase",
+            "status": "accepted",
+            "solver_status": "success",
+            "application_status": "solve_succeeded",
+            "min_tpd": 8.932954895343907e-12,
+            "tolerance": 1e-08,
+            "trial_composition": [
+              0.603108054791027,
+              0.3957286441000828,
+              9.861714738895955e-05,
+              0.00048303340705615084,
+              0.0005816505544451104
+            ],
+            "initial_composition": [
+              0.6031080543711426,
+              0.39572864457461265,
+              9.861713701764707e-05,
+              0.00048303339010474913,
+              0.0005816505271223963
+            ],
+            "restart_count": 0,
+            "failure_reason": ""
+          },
+          {
+            "parent_phase": "org",
+            "expected": "stable",
+            "seed_name": "water_rich",
+            "status": "accepted",
+            "solver_status": "success",
+            "application_status": "solve_succeeded",
+            "min_tpd": -2.5471813894228923e-11,
+            "tolerance": 1e-08,
+            "trial_composition": [
+              0.9679299140971465,
+              0.02044972048471953,
+              0.002083884333823076,
+              0.003726298375243913,
+              0.005810182709066989
+            ],
+            "initial_composition": [
+              0.9743319342046305,
+              0.01483754214524818,
+              0.0019339333595015454,
+              0.0034813284655591708,
+              0.005415261825060717
+            ],
+            "restart_count": 0,
+            "failure_reason": ""
+          },
+          {
+            "parent_phase": "org",
+            "expected": "stable",
+            "seed_name": "organic_rich",
+            "status": "accepted",
+            "solver_status": "success",
+            "application_status": "solve_succeeded",
+            "min_tpd": 2.7886739408051794e-12,
+            "tolerance": 1e-08,
+            "trial_composition": [
+              0.6031080544685875,
+              0.39572864444024075,
+              9.861714690210223e-05,
+              0.00048303339868377464,
+              0.0005816505455858768
+            ],
+            "initial_composition": [
+              0.0499729236908747,
+              0.9494855501266193,
+              9.669666797507725e-05,
+              0.00017406642327795854,
+              0.0002707630912530358
+            ],
+            "restart_count": 0,
+            "failure_reason": ""
+          },
+          {
+            "parent_phase": "org",
+            "expected": "stable",
+            "seed_name": "salt_rich",
+            "status": "accepted",
+            "solver_status": "success",
+            "application_status": "solve_succeeded",
+            "min_tpd": -9.836950481609263e-12,
+            "tolerance": 1e-08,
+            "trial_composition": [
+              0.9679299141274975,
+              0.020449720471407366,
+              0.0020838843321852865,
+              0.0037262983683622277,
+              0.005810182700547514
+            ],
+            "initial_composition": [
+              0.8991891958549953,
+              0.0466581858943975,
+              0.009669666797507725,
+              0.017406642327795853,
+              0.027076309125303583
+            ],
+            "restart_count": 0,
+            "failure_reason": ""
+          }
+        ]
+      }
+    },
+    "blocker": {}
   }
 }

@@ -321,11 +321,11 @@ LITERATURE_CASES: OrderedDict[str, BenchmarkCase] = OrderedDict(
             BenchmarkCase(
                 id="ascani_2022_distributed_ion_lle",
                 title="Ascani 2022 distributed-ion electrolyte LLE",
-                source="Ascani 2022 mixed-solvent distributed-ion electrolyte LLE benchmark family; executable source-like NaCl split sanity case",
+                source="Ascani 2022 Case Study 2 mixed-solvent mixed-electrolyte LLE benchmark through the public native Ipopt route",
                 model_setup={
                     "route": "public electrolyte_lle API through native Ipopt Gibbs minimization",
                     "dataset": "2022_Ascani",
-                    "species": ["H2O", "Butanol", "Na+", "Cl-"],
+                    "species": ["H2O", "Butanol", "Na+", "K+", "Cl-"],
                 },
                 input_records=(
                     "data/reference/multiphase/ascani_case2_model_comparison.csv",
@@ -333,6 +333,7 @@ LITERATURE_CASES: OrderedDict[str, BenchmarkCase] = OrderedDict(
                 ),
                 expected={
                     "accepted": True,
+                    "status": "accepted_public_native_ipopt",
                     "solver_backend": "ipopt",
                     "phase_distance_min": 0.1,
                     "aqueous_ion_fraction_exceeds_organic": True,
@@ -341,7 +342,15 @@ LITERATURE_CASES: OrderedDict[str, BenchmarkCase] = OrderedDict(
                 tolerances={
                     "material_balance_abs": 1.0e-8,
                     "charge_balance_abs": 1.0e-8,
+                    "neutral_fugacity_abs": 1.0e-7,
+                    "salt_pair_fugacity_abs": 1.0e-7,
+                    "density_recompute_rel": 1.0e-8,
+                    "density_min_mol_m3": 1000.0,
                     "phase_distance_min": 0.1,
+                    "minimum_phase_fraction_min": 1.0e-4,
+                    "ghat_delta_max": -1.0e-8,
+                    "tpdf_tolerance": 1.0e-8,
+                    "trace_floor": 1.0e-10,
                 },
                 command="uv run python analyses/paper_validation/native/2022_ascani/scripts/run_all.py",
                 status=EXECUTABLE,
@@ -351,11 +360,13 @@ LITERATURE_CASES: OrderedDict[str, BenchmarkCase] = OrderedDict(
                 ),
                 validation_paths=(
                     "analyses/paper_validation/native/2022_ascani/results/electrolyte_lle/summary.json",
-                    "analyses/paper_validation/native/2022_ascani/figures/figure_4b/output/figure_4b.svg",
-                    "analyses/paper_validation/native/2022_ascani/figures/table_5/output/table_5_fugacity.svg",
-                    "analyses/paper_validation/native/2022_ascani/figures/gibbs_summary/output/gibbs_summary.svg",
+                    "analyses/paper_validation/native/2022_ascani/data/processed/feed_conversion_table.csv",
+                    "analyses/paper_validation/native/2022_ascani/results/electrolyte_lle/phase_split.csv",
+                    "analyses/paper_validation/native/2022_ascani/figures/stability_summary/stability_summary.csv",
+                    "analyses/paper_validation/native/2022_ascani/figures/density_summary/density_summary.csv",
+                    "analyses/paper_validation/native/2022_ascani/figures/residual_summary/residual_summary.csv",
                 ),
-                notes="Executable native Ipopt electrolyte LLE gate. It proves an accepted, physically sensible phase split through the public API; it is not a forced exact match to Ascani 2022 Case 2.",
+                notes="Executable native Ipopt electrolyte LLE gate for full Ascani 2022 Case Study 2. It proves an accepted, physically sensible phase split through the public API and hard TPDF certification; exact paper-match remains a separate comparison claim.",
             ),
         ),
         (

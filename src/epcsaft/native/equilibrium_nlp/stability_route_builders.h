@@ -57,6 +57,7 @@ struct StabilityRouteResult {
     std::vector<double> variables;
     std::vector<double> constraints;
     std::vector<double> trial_composition;
+    std::vector<double> initial_composition;
     std::vector<double> parent_reduced_potential;
 };
 
@@ -84,7 +85,8 @@ StabilityRouteResult solve_neutral_stability_tpd_route(
     int parent_phase,
     int trial_phase,
     const IpoptSolveOptions& options,
-    double stability_tolerance
+    double stability_tolerance,
+    const std::vector<double>& trial_initial_composition = {}
 );
 
 StabilityRouteResult solve_electrolyte_stability_tpd_route(
@@ -93,7 +95,8 @@ StabilityRouteResult solve_electrolyte_stability_tpd_route(
     double pressure,
     const std::vector<double>& feed_composition,
     const IpoptSolveOptions& options,
-    double stability_tolerance
+    double stability_tolerance,
+    const std::vector<double>& trial_initial_composition = {}
 );
 
 }  // namespace epcsaft::native::equilibrium_nlp

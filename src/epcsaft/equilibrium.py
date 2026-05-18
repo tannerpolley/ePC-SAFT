@@ -33,6 +33,9 @@ _ASCANI_2022_REFERENCE = {
     "doi": "10.1021/acs.jced.1c00866",
 }
 
+_ELECTROLYTE_LLE_TRACE_FLOOR = 1.0e-10
+_ELECTROLYTE_LLE_TPDF_TOLERANCE = 1.0e-8
+
 
 def _raise_native_ipopt_equilibrium_required(route: str) -> None:
     raise InputError(f"{route} requires a native Ipopt equilibrium NLP route.")
@@ -680,6 +683,9 @@ def _accepted_native_neutral_two_phase_result(
     problem_kind: str,
     phase_labels: tuple[str, str],
     route_family: str = "neutral",
+    feed_diagnostics: Mapping[str, Any] | None = None,
+    electrolyte_basis_diagnostics: Mapping[str, Any] | None = None,
+    options: EquilibriumOptions | None = None,
 ) -> EquilibriumResult:
     from . import _core
 
@@ -748,6 +754,34 @@ def _accepted_native_neutral_two_phase_result(
                     },
                 )
             )
+        density_errors = []
+        for phase in phases:
+            if float(phase.density) < 1000.0:
+                raise SolutionError(
+                    "Native electrolyte LLE route accepted a non-liquid density root.",
+                    {"phase": phase.label, "density_mol_m3": float(phase.density)},
+                )
+            state = mixture.state(T, phase.composition, P=P, phase="liq", rho_guess=phase.density)
+            recomputed_density = float(state.molar_density())
+            rel_error = abs(recomputed_density - float(phase.density)) / max(abs(float(phase.density)), 1.0)
+            density_errors.append(
+                {
+                    "phase": phase.label,
+                    "reported_density_mol_m3": float(phase.density),
+                    "recomputed_density_mol_m3": recomputed_density,
+                    "relative_error": rel_error,
+                }
+            )
+            if rel_error > 1.0e-8:
+                raise SolutionError(
+                    "Native electrolyte LLE liquid density recomputation failed.",
+                    {"phase": phase.label, "relative_error": rel_error},
+                )
+        if float(postsolve.get("gibbs_delta", 0.0)) >= -1.0e-8:
+            raise SolutionError(
+                "Native electrolyte LLE route did not lower the retained Gibbs objective.",
+                {"gibbs_delta": float(postsolve.get("gibbs_delta", 0.0))},
+            )
         diagnostics = dict(postsolve)
         diagnostics["route_status"] = str(route.get("status", ""))
         diagnostics["solver_status"] = str(route.get("solver_status", ""))
@@ -755,6 +789,51 @@ def _accepted_native_neutral_two_phase_result(
         diagnostics["last_callback_exception"] = str(route.get("last_callback_exception", ""))
         diagnostics["solver_backend"] = str(route.get("backend", "ipopt"))
         diagnostics["problem_name"] = str(route.get("problem_name", "electrolyte_lle_eos"))
+        diagnostics["adapter_kind"] = str(route.get("adapter_kind", "native_tnlp_adapter"))
+        diagnostics["exact_gradient_required"] = bool(route.get("exact_gradient_required", True))
+        diagnostics["exact_jacobian_required"] = bool(route.get("exact_jacobian_required", True))
+        diagnostics["gradient_approximation"] = str(route.get("gradient_approximation", "exact"))
+        diagnostics["jacobian_approximation"] = str(route.get("jacobian_approximation", "exact"))
+        diagnostics["hessian_approximation"] = str(route.get("hessian_approximation", "limited-memory"))
+        diagnostics["feed_basis"] = _json_like(feed_diagnostics or {})
+        basis_payload = dict(electrolyte_basis_diagnostics or {})
+        diagnostics["electrolyte_basis"] = _json_like(basis_payload)
+        if basis_payload:
+            diagnostics["variable_model"] = str(basis_payload.get("variable_model", ""))
+            diagnostics["salt_pairs"] = _json_like(basis_payload.get("salt_pairs", ()))
+            diagnostics["basis_rank"] = int(basis_payload.get("basis_rank", 0))
+            diagnostics["formula_feed"] = _json_like(basis_payload.get("formula_feed", ()))
+        diagnostics["species_labels"] = list(getattr(mixture, "species", ()))
+        diagnostics["charge_vector"] = _mixture_charges(mixture).tolist()
+        diagnostics["density_recompute_relative_errors"] = density_errors
+        _add_electrolyte_lle_residual_diagnostics(
+            diagnostics,
+            phases=tuple(phases),
+            basis=basis_payload,
+            trace_floor=_ELECTROLYTE_LLE_TRACE_FLOOR,
+        )
+        if float(diagnostics["material_balance_norm"]) > 1.0e-8:
+            raise SolutionError("Native electrolyte LLE material-balance gate failed.", diagnostics)
+        if float(diagnostics["charge_balance_norm"]) > 1.0e-8:
+            raise SolutionError("Native electrolyte LLE charge-balance gate failed.", diagnostics)
+        diagnostics["neutral_fugacity_residual_tolerance"] = 1.0e-7
+        diagnostics["salt_pair_fugacity_residual_tolerance"] = 1.0e-7
+        if float(diagnostics["neutral_fugacity_residual_norm"]) > 1.0e-7:
+            raise SolutionError("Native electrolyte LLE neutral fugacity gate failed.", diagnostics)
+        if float(diagnostics["salt_pair_fugacity_residual_norm"]) > 1.0e-7:
+            raise SolutionError("Native electrolyte LLE salt-pair fugacity gate failed.", diagnostics)
+        tpdf_certificate = _electrolyte_lle_tpdf_certificate(
+            mixture,
+            T=T,
+            P=P,
+            feed=feed,
+            phases=tuple(phases),
+            options=_normalize_options(options),
+            stability_tolerance=_ELECTROLYTE_LLE_TPDF_TOLERANCE,
+        )
+        diagnostics["tpdf_stability"] = tpdf_certificate
+        if not bool(tpdf_certificate.get("accepted", False)):
+            raise SolutionError("Native electrolyte LLE hard TPDF stability certification failed.", diagnostics)
         return EquilibriumResult(
             backend="native_equilibrium_nlp",
             problem_kind=problem_kind,
@@ -1328,6 +1407,282 @@ def _json_like(value: Any) -> Any:
     return value
 
 
+def _phase_log_fugacity_vector(phase: EquilibriumPhase) -> np.ndarray:
+    x = np.asarray(phase.composition, dtype=float)
+    ln_phi = np.asarray(phase.ln_fugacity_coefficient, dtype=float)
+    if ln_phi.shape != x.shape:
+        raise SolutionError("Electrolyte LLE phase is missing retained ln fugacity coefficients.")
+    return np.log(np.maximum(x, 1.0e-300)) + ln_phi
+
+
+def _add_electrolyte_lle_residual_diagnostics(
+    diagnostics: dict[str, Any],
+    *,
+    phases: tuple[EquilibriumPhase, EquilibriumPhase],
+    basis: Mapping[str, Any],
+    trace_floor: float,
+) -> None:
+    if len(phases) != 2:
+        raise SolutionError("Electrolyte LLE residual diagnostics require exactly two phases.")
+    left, right = phases
+    left_ln_f = _phase_log_fugacity_vector(left)
+    right_ln_f = _phase_log_fugacity_vector(right)
+    neutral_indices = tuple(int(index) for index in basis.get("neutral_indices", ()))
+    salt_pairs = tuple(dict(pair) for pair in basis.get("salt_pairs", ()))
+    species = list(diagnostics.get("species_labels", ()))
+
+    neutral_raw: dict[str, float] = {}
+    neutral_weighted: dict[str, float] = {}
+    for index in neutral_indices:
+        label = species[index] if 0 <= index < len(species) else f"species_{index}"
+        raw = float(left_ln_f[index] - right_ln_f[index])
+        weight = _trace_residual_weight(left.composition[index], right.composition[index], trace_floor=trace_floor)
+        neutral_raw[label] = raw
+        neutral_weighted[label] = raw * weight
+
+    salt_raw: dict[str, float] = {}
+    salt_weighted: dict[str, float] = {}
+    for pair in salt_pairs:
+        cation = int(pair["cation"])
+        anion = int(pair["anion"])
+        c_stoich = float(pair.get("cation_stoich", 1.0))
+        a_stoich = float(pair.get("anion_stoich", 1.0))
+        left_value = c_stoich * left_ln_f[cation] + a_stoich * left_ln_f[anion]
+        right_value = c_stoich * right_ln_f[cation] + a_stoich * right_ln_f[anion]
+        raw = float(left_value - right_value)
+        weight = _trace_residual_weight(
+            left.composition[cation],
+            right.composition[cation],
+            left.composition[anion],
+            right.composition[anion],
+            trace_floor=trace_floor,
+        )
+        label = str(pair.get("label", f"{cation}:{anion}"))
+        salt_raw[label] = raw
+        salt_weighted[label] = raw * weight
+
+    diagnostics["trace_floor"] = float(trace_floor)
+    diagnostics["neutral_log_fugacity_residuals_raw"] = neutral_raw
+    diagnostics["neutral_log_fugacity_residuals_weighted"] = neutral_weighted
+    diagnostics["salt_pair_log_fugacity_residuals_raw"] = salt_raw
+    diagnostics["salt_pair_log_fugacity_residuals_weighted"] = salt_weighted
+    neutral_norm = max((abs(value) for value in neutral_weighted.values()), default=0.0)
+    salt_norm = max((abs(value) for value in salt_weighted.values()), default=0.0)
+    diagnostics["neutral_fugacity_residual_norm"] = float(neutral_norm)
+    diagnostics["salt_pair_fugacity_residual_norm"] = float(salt_norm)
+    diagnostics["mean_ionic_fugacity_residual_norm"] = float(salt_norm)
+
+
+def _trace_residual_weight(*values: float, trace_floor: float) -> float:
+    if trace_floor <= 0.0:
+        return 1.0
+    minimum = min(abs(float(value)) for value in values)
+    return min(1.0, minimum / trace_floor)
+
+
+def _electrolyte_lle_tpdf_certificate(
+    mixture: Any,
+    *,
+    T: float,
+    P: float,
+    feed: np.ndarray,
+    phases: tuple[EquilibriumPhase, EquilibriumPhase],
+    options: EquilibriumOptions,
+    stability_tolerance: float,
+) -> dict[str, Any]:
+    from . import _core
+
+    charges = _mixture_charges(mixture)
+    seeds = _electrolyte_lle_tpdf_seed_set(feed=feed, phases=phases, charges=charges)
+    trial_records: list[dict[str, Any]] = []
+    parent_specs: list[tuple[str, np.ndarray, str]] = [("feed", np.asarray(feed, dtype=float), "unstable")]
+    parent_specs.extend((phase.label, np.asarray(phase.composition, dtype=float), "stable") for phase in phases)
+    max_iterations = min(int(options.max_iterations), 120)
+    for parent_label, parent_composition, expected in parent_specs:
+        for seed_name, trial_seed in seeds:
+            restart_count = 0
+            try:
+                route = _core._native_electrolyte_stability_tpd_route_result(
+                    mixture._native,
+                    T,
+                    P,
+                    parent_composition.tolist(),
+                    max_iterations,
+                    options.tolerance,
+                    _native_timeout_seconds(options),
+                    stability_tolerance,
+                    np.asarray(trial_seed, dtype=float).tolist(),
+                )
+            except Exception as exc:
+                trial_records.append(
+                    {
+                        "parent_phase": parent_label,
+                        "seed_name": seed_name,
+                        "status": "solver_exception",
+                        "min_tpd": None,
+                        "tolerance": stability_tolerance,
+                        "failure_reason": str(exc),
+                    }
+                )
+                continue
+            if not bool(route.get("accepted", False)):
+                restart = np.asarray(route.get("variables", ()), dtype=float).reshape(-1)
+                if restart.size == feed.size and np.all(np.isfinite(restart)) and np.all(restart > 0.0):
+                    try:
+                        route = _core._native_electrolyte_stability_tpd_route_result(
+                            mixture._native,
+                            T,
+                            P,
+                            parent_composition.tolist(),
+                            max_iterations,
+                            options.tolerance,
+                            _native_timeout_seconds(options),
+                            stability_tolerance,
+                            restart.tolist(),
+                        )
+                        restart_count = 1
+                    except Exception:
+                        pass
+            min_tpd = float(route.get("min_tpd", route.get("objective", np.nan)))
+            accepted = bool(route.get("accepted", False)) and np.isfinite(min_tpd)
+            trial_records.append(
+                {
+                    "parent_phase": parent_label,
+                    "expected": expected,
+                    "seed_name": seed_name,
+                    "status": str(route.get("status", "")),
+                    "solver_status": str(route.get("solver_status", "")),
+                    "application_status": str(route.get("application_status", "")),
+                    "min_tpd": None if not np.isfinite(min_tpd) else min_tpd,
+                    "tolerance": stability_tolerance,
+                    "trial_composition": _json_like(route.get("trial_composition", ())),
+                    "initial_composition": _json_like(route.get("initial_composition", trial_seed)),
+                    "restart_count": restart_count,
+                    "failure_reason": "" if accepted else "solver_rejected",
+                }
+            )
+            if parent_label == "feed" and accepted and min_tpd < -abs(stability_tolerance):
+                break
+    feed_trials = [row for row in trial_records if row["parent_phase"] == "feed"]
+    phase_trials = [row for row in trial_records if row["parent_phase"] != "feed"]
+    accepted_feed_trials = [
+        row for row in feed_trials if row.get("status") == "accepted" and row.get("min_tpd") is not None
+    ]
+    accepted_phase_trials = [
+        row for row in phase_trials if row.get("status") == "accepted" and row.get("min_tpd") is not None
+    ]
+    rejected_feed_trials = len(accepted_feed_trials) != len(feed_trials)
+    rejected_phase_trials = len(accepted_phase_trials) != len(phase_trials)
+    feed_unstable = any(float(row["min_tpd"]) < -abs(stability_tolerance) for row in accepted_feed_trials)
+    final_phases_stable = bool(phase_trials) and not rejected_phase_trials and all(
+        float(row["min_tpd"]) >= -abs(stability_tolerance) for row in accepted_phase_trials
+    )
+    if (not feed_unstable and rejected_feed_trials) or rejected_phase_trials:
+        return {
+            "accepted": False,
+            "status": "blocked_solver",
+            "tolerance": stability_tolerance,
+            "feed_unstable": feed_unstable,
+            "final_phases_stable": final_phases_stable,
+            "trials": trial_records,
+        }
+    accepted = feed_unstable and final_phases_stable
+    failed_trial = None
+    if not feed_unstable:
+        failed_trial = "feed_not_unstable"
+    elif not final_phases_stable:
+        failed_trial = "final_phase_unstable"
+    return {
+        "accepted": accepted,
+        "status": "accepted" if accepted else "failed_gate",
+        "tolerance": stability_tolerance,
+        "feed_unstable": feed_unstable,
+        "final_phases_stable": final_phases_stable,
+        "failure_reason": "" if accepted else failed_trial,
+        "trials": trial_records,
+    }
+
+
+def _electrolyte_lle_tpdf_seed_set(
+    *,
+    feed: np.ndarray,
+    phases: tuple[EquilibriumPhase, EquilibriumPhase],
+    charges: np.ndarray,
+) -> tuple[tuple[str, np.ndarray], ...]:
+    feed = np.asarray(feed, dtype=float)
+    charged_total = float(np.sum(feed[np.abs(charges) > 1.0e-12]))
+    seeds: list[tuple[str, np.ndarray]] = [
+        ("feed_like", feed),
+    ]
+    for phase in phases:
+        seeds.append((f"returned_{phase.label}_phase", np.asarray(phase.composition, dtype=float)))
+    seeds.extend(
+        [
+            (
+                "water_rich",
+                _charge_neutral_electrolyte_seed(
+                    feed=feed,
+                    charges=charges,
+                    neutral_weights=(0.985, 0.015),
+                    ion_fraction=max(charged_total, 1.0e-6),
+                ),
+            ),
+            (
+                "organic_rich",
+                _charge_neutral_electrolyte_seed(
+                    feed=feed,
+                    charges=charges,
+                    neutral_weights=(0.05, 0.95),
+                    ion_fraction=max(min(charged_total * 0.05, 1.0e-3), 1.0e-6),
+                ),
+            ),
+            (
+                "salt_rich",
+                _charge_neutral_electrolyte_seed(
+                    feed=feed,
+                    charges=charges,
+                    neutral_weights=None,
+                    ion_fraction=min(max(charged_total * 5.0, 0.05), 0.2),
+                ),
+            ),
+        ]
+    )
+    return tuple(seeds)
+
+
+def _charge_neutral_electrolyte_seed(
+    *,
+    feed: np.ndarray,
+    charges: np.ndarray,
+    neutral_weights: tuple[float, float] | None,
+    ion_fraction: float,
+) -> np.ndarray:
+    feed = np.asarray(feed, dtype=float)
+    charges = np.asarray(charges, dtype=float)
+    neutral_indices = np.flatnonzero(np.abs(charges) <= 1.0e-12)
+    charged_indices = np.flatnonzero(np.abs(charges) > 1.0e-12)
+    if neutral_indices.size < 2 or charged_indices.size == 0:
+        return feed.copy()
+    ion_fraction = float(np.clip(ion_fraction, 1.0e-8, 0.5))
+    out = np.zeros_like(feed, dtype=float)
+    charged_template = feed[charged_indices]
+    charged_sum = float(np.sum(charged_template))
+    if charged_sum <= 0.0:
+        return feed.copy()
+    out[charged_indices] = charged_template / charged_sum * ion_fraction
+    if neutral_weights is None:
+        neutral_template = feed[neutral_indices]
+    else:
+        neutral_template = np.ones(neutral_indices.size, dtype=float) * _ELECTROLYTE_LLE_TRACE_FLOOR
+        neutral_template[0] = float(neutral_weights[0])
+        neutral_template[1] = float(neutral_weights[1])
+    neutral_template = np.asarray(neutral_template, dtype=float)
+    neutral_template = np.maximum(neutral_template, _ELECTROLYTE_LLE_TRACE_FLOOR)
+    neutral_template /= float(np.sum(neutral_template))
+    out[neutral_indices] = neutral_template * (1.0 - ion_fraction)
+    return out / float(np.sum(out))
+
+
 def reactive_phase_equilibrium(
     mixture: Any,
     *,
@@ -1698,7 +2053,12 @@ def electrolyte_stability(
     )
     charges = _mixture_charges(mixture)
     _require_charge_neutral(feed, charges, "electrolyte_stability feed")
-    electrolyte_formula_basis(mixture.species, charges, feed, salt_labels=tuple(feed_diagnostics.get("salt_molality", {})))
+    electrolyte_basis_diagnostics = electrolyte_formula_basis(
+        mixture.species,
+        charges,
+        feed,
+        salt_labels=tuple(feed_diagnostics.get("salt_molality", {})),
+    )
     return _native_electrolyte_stability(
         mixture,
         T=temperature,
@@ -1733,26 +2093,52 @@ def electrolyte_lle_flash_native(
     )
     charges = _mixture_charges(mixture)
     _require_charge_neutral(feed, charges, "electrolyte_lle feed")
-    electrolyte_formula_basis(mixture.species, charges, feed, salt_labels=tuple(feed_diagnostics.get("salt_molality", {})))
+    electrolyte_basis_diagnostics = electrolyte_formula_basis(
+        mixture.species,
+        charges,
+        feed,
+        salt_labels=tuple(feed_diagnostics.get("salt_molality", {})),
+    )
     from . import _core
 
-    route_tolerances = neutral_two_phase_eos_tolerances(P, opts)
-    material_tolerance, pressure_tolerance, chemical_potential_tolerance, phase_distance_tolerance = route_tolerances
-    charge_tolerance = min(opts.tolerance, 1.0e-8)
-    route = _core._native_electrolyte_lle_eos_route_result(
-        mixture._native,
-        T,
-        P,
-        feed.tolist(),
-        opts.max_iterations,
-        opts.tolerance,
-        _native_timeout_seconds(opts),
-        material_tolerance,
-        pressure_tolerance,
-        charge_tolerance,
-        chemical_potential_tolerance,
-        phase_distance_tolerance,
-    )
+    def run_route(route_options: EquilibriumOptions) -> tuple[Mapping[str, Any], tuple[float, float, float, float]]:
+        route_tolerances = neutral_two_phase_eos_tolerances(P, route_options)
+        material_tolerance, pressure_tolerance, chemical_potential_tolerance, phase_distance_tolerance = route_tolerances
+        charge_tolerance = min(route_options.tolerance, 1.0e-8)
+        route_result = _core._native_electrolyte_lle_eos_route_result(
+            mixture._native,
+            T,
+            P,
+            feed.tolist(),
+            route_options.max_iterations,
+            route_options.tolerance,
+            _native_timeout_seconds(route_options),
+            material_tolerance,
+            pressure_tolerance,
+            charge_tolerance,
+            chemical_potential_tolerance,
+            phase_distance_tolerance,
+        )
+        return route_result, route_tolerances
+
+    route_options = opts
+    route, route_tolerances = run_route(route_options)
+    postsolve = route.get("postsolve", {})
+    if (
+        bool(route.get("accepted", False))
+        and isinstance(postsolve, Mapping)
+        and float(postsolve.get("ln_fugacity_consistency_norm", 0.0)) > 1.0e-7
+        and opts.tolerance > 1.0e-8
+    ):
+        route_options = EquilibriumOptions(
+            max_iterations=max(opts.max_iterations, 500),
+            tolerance=1.0e-8,
+            min_composition=opts.min_composition,
+            jacobian_backend=opts.jacobian_backend,
+            solver_backend=opts.solver_backend,
+            timeout_seconds=opts.timeout_seconds,
+        )
+        route, route_tolerances = run_route(route_options)
     if str(route.get("status", "")) == "ipopt_dependency_required":
         _raise_native_ipopt_lle_required("electrolyte_lle")
     return _accepted_native_neutral_two_phase_result(
@@ -1766,4 +2152,7 @@ def electrolyte_lle_flash_native(
         problem_kind="electrolyte_lle",
         phase_labels=("aq", "org"),
         route_family="electrolyte",
+        feed_diagnostics=feed_diagnostics,
+        electrolyte_basis_diagnostics=electrolyte_basis_diagnostics,
+        options=route_options,
     )

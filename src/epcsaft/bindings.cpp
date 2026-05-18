@@ -694,6 +694,9 @@ py::dict neutral_two_phase_eos_route_result_to_dict(
     out["accepted"] = result.accepted;
     out["exact_gradient_required"] = result.exact_gradient_required;
     out["exact_jacobian_required"] = result.exact_jacobian_required;
+    out["gradient_approximation"] = "exact";
+    out["jacobian_approximation"] = "exact";
+    out["hessian_approximation"] = "limited-memory";
     out["status"] = result.status;
     out["solver_status"] = result.solver_status;
     out["application_status"] = result.application_status;
@@ -754,6 +757,9 @@ py::dict reactive_two_phase_eos_route_result_to_dict(
     out["accepted"] = result.accepted;
     out["exact_gradient_required"] = result.exact_gradient_required;
     out["exact_jacobian_required"] = result.exact_jacobian_required;
+    out["gradient_approximation"] = "exact";
+    out["jacobian_approximation"] = "exact";
+    out["hessian_approximation"] = "limited-memory";
     out["status"] = result.status;
     out["solver_status"] = result.solver_status;
     out["application_status"] = result.application_status;
@@ -825,6 +831,9 @@ py::dict stability_route_result_to_dict(
     out["stable"] = result.stable;
     out["exact_gradient_required"] = result.exact_gradient_required;
     out["exact_jacobian_required"] = result.exact_jacobian_required;
+    out["gradient_approximation"] = "exact";
+    out["jacobian_approximation"] = "exact";
+    out["hessian_approximation"] = "limited-memory";
     out["status"] = result.status;
     out["solver_status"] = result.solver_status;
     out["application_status"] = result.application_status;
@@ -836,6 +845,7 @@ py::dict stability_route_result_to_dict(
     out["variables"] = result.variables;
     out["constraints"] = result.constraints;
     out["trial_composition"] = result.trial_composition;
+    out["initial_composition"] = result.initial_composition;
     out["parent_reduced_potential"] = result.parent_reduced_potential;
     return out;
 }
@@ -2510,7 +2520,8 @@ PYBIND11_MODULE(_core, m) {
         int max_iterations,
         double tolerance,
         double timeout_seconds,
-        double stability_tolerance
+        double stability_tolerance,
+        const std::vector<double>& trial_initial_composition
     ) {
         if (!mixture) {
             throw ValueError("Neutral stability TPD route result requires a native mixture.");
@@ -2526,10 +2537,23 @@ PYBIND11_MODULE(_core, m) {
                 stability_phase_token_to_int(parent_phase),
                 stability_phase_token_to_int(trial_phase),
                 options,
-                stability_tolerance
+                stability_tolerance,
+                trial_initial_composition
             )
         );
-    });
+    },
+        py::arg("mixture"),
+        py::arg("temperature"),
+        py::arg("pressure"),
+        py::arg("feed_composition"),
+        py::arg("parent_phase"),
+        py::arg("trial_phase"),
+        py::arg("max_iterations"),
+        py::arg("tolerance"),
+        py::arg("timeout_seconds"),
+        py::arg("stability_tolerance"),
+        py::arg("trial_initial_composition") = std::vector<double>{}
+    );
     m.def("_native_electrolyte_stability_tpd_route_result", [](
         const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
         double temperature,
@@ -2538,7 +2562,8 @@ PYBIND11_MODULE(_core, m) {
         int max_iterations,
         double tolerance,
         double timeout_seconds,
-        double stability_tolerance
+        double stability_tolerance,
+        const std::vector<double>& trial_initial_composition
     ) {
         if (!mixture) {
             throw ValueError("Electrolyte stability TPD route result requires a native mixture.");
@@ -2552,10 +2577,21 @@ PYBIND11_MODULE(_core, m) {
                 pressure,
                 feed_composition,
                 options,
-                stability_tolerance
+                stability_tolerance,
+                trial_initial_composition
             )
         );
-    });
+    },
+        py::arg("mixture"),
+        py::arg("temperature"),
+        py::arg("pressure"),
+        py::arg("feed_composition"),
+        py::arg("max_iterations"),
+        py::arg("tolerance"),
+        py::arg("timeout_seconds"),
+        py::arg("stability_tolerance"),
+        py::arg("trial_initial_composition") = std::vector<double>{}
+    );
     m.def("_native_neutral_two_phase_eos_postsolve", [](
         const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
         double temperature,

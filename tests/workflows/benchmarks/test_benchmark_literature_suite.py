@@ -45,7 +45,9 @@ def test_literature_benchmark_payload_tracks_executable_and_blocked_issue_119_ca
     assert by_case["figiel_2025_ssm_ds_born"]["expected"]["miac_probe"] == 0.7732309439080085
     assert by_case["ascani_2022_distributed_ion_lle"]["status"] == EXECUTABLE
     assert by_case["ascani_2022_distributed_ion_lle"]["expected"]["solver_backend"] == "ipopt"
+    assert by_case["ascani_2022_distributed_ion_lle"]["expected"]["status"] == "accepted_public_native_ipopt"
     assert by_case["ascani_2022_distributed_ion_lle"]["tolerances"]["phase_distance_min"] == 0.1
+    assert by_case["ascani_2022_distributed_ion_lle"]["tolerances"]["tpdf_tolerance"] == 1.0e-8
     assert by_case["khudaida_2026_salting_out_lle"]["status"] == EXECUTABLE
     assert by_case["baygi_mea_association_and_mea_water_binary"]["status"] == BLOCKED
     assert by_case["baygi_mea_association_and_mea_water_binary"]["expected"] is None

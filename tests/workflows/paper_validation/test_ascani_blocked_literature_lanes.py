@@ -26,7 +26,7 @@ def test_ascani_2022_lle_lane_records_accepted_ipopt_phase_split() -> None:
     assert result.returncode == 0, result.stdout + result.stderr
     summary_path = ASCANI_2022 / "results" / "electrolyte_lle" / "summary.json"
     payload = json.loads(summary_path.read_text(encoding="utf-8"))
-    assert payload["status"] == "accepted"
+    assert payload["status"] == "accepted_public_native_ipopt"
     assert payload["solve"]["runtime_ipopt"]["status"] == "enabled_available"
     assert payload["solve"]["accepted"] is True
     assert payload["solve"]["solver_backend"] == "ipopt"
@@ -38,6 +38,8 @@ def test_ascani_2022_lle_lane_records_accepted_ipopt_phase_split() -> None:
     assert diagnostics["material_balance_norm"] <= payload["expected"]["material_balance_abs"]
     assert diagnostics["charge_balance_norm"] <= payload["expected"]["charge_balance_abs"]
     assert diagnostics["phase_distance"] >= payload["expected"]["phase_distance_min"]
+    assert diagnostics["hessian_approximation"] == "limited-memory"
+    assert diagnostics["tpdf_stability"]["accepted"] is True
 
     phases = diagnostics["phase_compositions"]
     org_phase = max(phases, key=lambda phase: phase[1])
@@ -50,12 +52,14 @@ def test_ascani_2022_lle_lane_records_accepted_ipopt_phase_split() -> None:
     assert aq_ion_fraction > org_ion_fraction
 
     expected_outputs = (
-        ASCANI_2022 / "figures" / "figure_4b" / "output" / "figure_4b.svg",
-        ASCANI_2022 / "figures" / "figure_4b" / "output" / "data" / "current_phase_compositions.csv",
-        ASCANI_2022 / "figures" / "table_5" / "output" / "table_5_fugacity.svg",
-        ASCANI_2022 / "figures" / "table_5" / "output" / "data" / "table_5_fugacity_comparison.csv",
-        ASCANI_2022 / "figures" / "gibbs_summary" / "output" / "gibbs_summary.svg",
-        ASCANI_2022 / "figures" / "gibbs_summary" / "output" / "data" / "gibbs_comparison.csv",
+        ASCANI_2022 / "data" / "processed" / "feed_conversion_table.csv",
+        ASCANI_2022 / "data" / "processed" / "source_expected_phase_compositions.csv",
+        ASCANI_2022 / "results" / "electrolyte_lle" / "phase_split.csv",
+        ASCANI_2022 / "figures" / "figure_4" / "output" / "data" / "current_phase_compositions.csv",
+        ASCANI_2022 / "figures" / "table_5_fugacity" / "output" / "data" / "table_5_fugacity_comparison.csv",
+        ASCANI_2022 / "figures" / "stability_summary" / "stability_summary.csv",
+        ASCANI_2022 / "figures" / "density_summary" / "density_summary.csv",
+        ASCANI_2022 / "figures" / "residual_summary" / "residual_summary.csv",
     )
     for output in expected_outputs:
         assert output.exists(), output

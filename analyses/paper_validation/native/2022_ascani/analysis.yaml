@@ -1,7 +1,7 @@
 id: ascani_2022_distributed_ion_lle
-title: Ascani 2022 distributed-ion electrolyte LLE
+title: Ascani 2022 full Case Study 2 distributed-ion electrolyte LLE
 status: executable
-summary: Source-like Ascani 2022 mixed-solvent electrolyte LLE sanity lane through the public API and native Ipopt Gibbs minimization.
+summary: Full Ascani 2022 Case Study 2 validation through the public electrolyte_lle API and native Ipopt liquid-root Gibbs minimization route.
 source_assets:
   - path: docs/papers/md/Ascani, Sadowski, Held - 2022 - Calculation of Multiphase Equilibria Containing Mixed Solvents and M.md
     kind: paper_markdown
@@ -10,31 +10,55 @@ source_assets:
   - path: data/reference/multiphase/ascani_case2_model_comparison.csv
     kind: source_backed_case2_comparison
 commands:
+  ipopt_setup:
+    - $env:PATH = "C:\ProgramData\miniconda3\envs\ePC-SAFT\Library\bin;$env:PATH"
+    - $env:EPCSAFT_RUNTIME_DLL_DIRS = "C:\ProgramData\miniconda3\envs\ePC-SAFT\Library\bin"
+    - uv run python scripts/dev/build_epcsaft.py --clean --profile ipopt --ipopt-root C:\ProgramData\miniconda3\envs\ePC-SAFT\Library --parallel 4
+    - uv run python scripts/dev/doctor.py --require-ipopt
   paper_validation:
     - uv run python analyses\paper_validation\native\2022_ascani\scripts\run_all.py
 expected:
-  feed_species: [H2O, Butanol, Na+, Cl-]
+  status: accepted_public_native_ipopt
+  feed_species: [H2O, Butanol, Na+, K+, Cl-]
+  formula_species: [H2O, Butanol, NaCl, KCl]
   temperature_K: 298.15
   pressure_Pa: 100000.0
-  accepted: true
   solver_backend: ipopt
-  phase_distance_min: 0.1
+  derivative_backend: cppad_implicit
+  density_backend: liquid_pressure_root
+  hessian_approximation: limited-memory
   aqueous_ion_fraction_exceeds_organic: true
   organic_butanol_exceeds_aqueous: true
 tolerances:
   material_balance_abs: 1.0e-8
   charge_balance_abs: 1.0e-8
+  neutral_fugacity_abs: 1.0e-7
+  salt_pair_fugacity_abs: 1.0e-7
+  density_recompute_rel: 1.0e-8
+  density_min_mol_m3: 1000.0
   phase_distance_min: 0.1
+  minimum_phase_fraction_min: 1.0e-4
+  ghat_delta_max: -1.0e-8
+  tpdf_tolerance: 1.0e-8
+  trace_floor: 1.0e-10
 outputs:
+  - path: analyses/paper_validation/native/2022_ascani/data/processed/feed_conversion_table.csv
+    kind: mass_to_explicit_ion_mole_fraction_conversion
   - path: analyses/paper_validation/native/2022_ascani/data/processed/source_expected_phase_compositions.csv
     kind: normalized_source_expectations
   - path: analyses/paper_validation/native/2022_ascani/results/electrolyte_lle/summary.json
-    kind: accepted_solve_summary
-  - path: analyses/paper_validation/native/2022_ascani/figures/figure_4b/output/figure_4b.svg
-    kind: paper_figure_style_phase_diagram
-  - path: analyses/paper_validation/native/2022_ascani/figures/table_5/output/table_5_fugacity.svg
-    kind: paper_table_fugacity_comparison_figure
-  - path: analyses/paper_validation/native/2022_ascani/figures/gibbs_summary/output/gibbs_summary.svg
-    kind: gibbs_ln_fugacity_basis_comparison_figure
+    kind: accepted_public_native_ipopt_summary
+  - path: analyses/paper_validation/native/2022_ascani/results/electrolyte_lle/phase_split.csv
+    kind: retained_phase_split
+  - path: analyses/paper_validation/native/2022_ascani/figures/figure_4/output/data/current_phase_compositions.csv
+    kind: figure_4_case2_phase_composition_data
+  - path: analyses/paper_validation/native/2022_ascani/figures/table_5_fugacity/output/data/table_5_fugacity_comparison.csv
+    kind: table_5_fugacity_comparison_data
+  - path: analyses/paper_validation/native/2022_ascani/figures/stability_summary/stability_summary.csv
+    kind: hard_tpdf_stability_summary
+  - path: analyses/paper_validation/native/2022_ascani/figures/density_summary/density_summary.csv
+    kind: density_root_recompute_summary
+  - path: analyses/paper_validation/native/2022_ascani/figures/residual_summary/residual_summary.csv
+    kind: residual_gate_summary
 claim_boundary:
-  note: This gate proves accepted native Ipopt electrolyte LLE execution and a physically sensible water/ion-rich versus butanol-rich phase split at the paper temperature and pressure. It does not claim an exact match to Ascani 2022 Case 2 mixed NaCl/KCl phase compositions.
+  note: This lane proves accepted public native Ipopt liquid-root electrolyte LLE execution for full Ascani 2022 Case Study 2 with hard TPDF certification. It does not claim exact paper-match unless the separate source comparison tolerances pass.
