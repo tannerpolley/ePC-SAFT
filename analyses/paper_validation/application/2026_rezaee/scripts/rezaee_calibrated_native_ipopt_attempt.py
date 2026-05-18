@@ -54,6 +54,18 @@ SEPARATE_PHASE_ROWS_CSV = (
     / "processed"
     / "rezaee_2026_calibrated_separate_phase_residual_rows.csv"
 )
+NATIVE_LOGK_FIT_ROWS_CSV = (
+    ANALYSIS_DIR
+    / "data"
+    / "processed"
+    / "rezaee_2026_native_logk_fit_rows.csv"
+)
+NATIVE_LOGK_FIT_PUBLIC_ROUTE_ROWS_CSV = (
+    ANALYSIS_DIR
+    / "data"
+    / "processed"
+    / "rezaee_2026_native_logk_fit_public_route_rows.csv"
+)
 SUMMARY_JSON = (
     ANALYSIS_DIR
     / "results"
@@ -71,6 +83,14 @@ SPECIES_LABELS = replay.AQ_LABELS + replay.ORG_LABELS
 CHARGES = np.array([0.0, 1.0, 1.0, -1.0, 1.0, -1.0, 1.0, 0.0, 0.0, 0.0, 0.0])
 CL_INDEX = SPECIES_LABELS.index("Cl-")
 H_INDEX = SPECIES_LABELS.index("H+")
+FIT_EXPERIMENTS = tuple(range(1, 17)) + (25, 26)
+HOLDOUT_EXPERIMENTS = tuple(range(17, 25))
+TARGET_RESPONSES_CSV = (
+    ANALYSIS_DIR
+    / "data"
+    / "input"
+    / "rezaee_2025_doe_extraction_responses.csv"
+)
 
 
 @dataclass(frozen=True)
@@ -366,8 +386,245 @@ def _public_route_attempt(
     return payload
 
 
+def _native_phase_model_log_quotients(
+    aqueous_mix: epcsaft.ePCSAFTMixture,
+    organic_mix: epcsaft.ePCSAFTMixture,
+    row: pd.Series,
+) -> tuple[float, float]:
+    aqueous_x = replay._aqueous_x(row)
+    organic_x = replay._organic_x(row)
+    aqueous_state = aqueous_mix.state(T=replay.TEMPERATURE_K, x=aqueous_x, P=replay.PRESSURE_PA)
+    organic_state = organic_mix.state(T=replay.TEMPERATURE_K, x=organic_x, P=replay.PRESSURE_PA)
+    aqueous_ln_activity = np.log(np.clip(aqueous_x, 1.0e-300, None)) + np.asarray(
+        aqueous_state.fugacity_coefficient(),
+        dtype=float,
+    )
+    organic_ln_activity = np.log(np.clip(organic_x, 1.0e-300, None)) + np.asarray(
+        organic_state.fugacity_coefficient(),
+        dtype=float,
+    )
+    li_ln_q = (
+        organic_ln_activity[replay.ORG_LABELS.index("RLi")]
+        + aqueous_ln_activity[replay.AQ_LABELS.index("H2O")]
+        - aqueous_ln_activity[replay.AQ_LABELS.index("Li+")]
+        - aqueous_ln_activity[replay.AQ_LABELS.index("OH-")]
+        - organic_ln_activity[replay.ORG_LABELS.index("DES")]
+    )
+    na_ln_q = (
+        organic_ln_activity[replay.ORG_LABELS.index("RNa")]
+        + aqueous_ln_activity[replay.AQ_LABELS.index("H2O")]
+        - aqueous_ln_activity[replay.AQ_LABELS.index("Na+")]
+        - aqueous_ln_activity[replay.AQ_LABELS.index("OH-")]
+        - organic_ln_activity[replay.ORG_LABELS.index("DES")]
+    )
+    return float(li_ln_q), float(na_ln_q)
+
+
+def _fit_native_log_constants(
+    aqueous_mix: epcsaft.ePCSAFTMixture,
+    organic_mix: epcsaft.ePCSAFTMixture,
+) -> tuple[dict[str, float], dict[str, float], pd.DataFrame]:
+    rows = pd.read_csv(replay.EQUILIBRIUM_CSV)
+    records: list[dict[str, Any]] = []
+    for _, row in rows.iterrows():
+        experiment_no = int(row["experiment_no"])
+        li_ln_q, na_ln_q = _native_phase_model_log_quotients(aqueous_mix, organic_mix, row)
+        records.append(
+            {
+                "experiment_no": experiment_no,
+                "split": "fit" if experiment_no in FIT_EXPERIMENTS else "holdout",
+                "lnQ_Li_native": li_ln_q,
+                "lnQ_Na_native": na_ln_q,
+            }
+        )
+    fit_df = pd.DataFrame.from_records(records)
+    training = fit_df.loc[fit_df["split"] == "fit"]
+    log_constants = {
+        "Li": float(training["lnQ_Li_native"].mean()),
+        "Na": float(training["lnQ_Na_native"].mean()),
+    }
+    constants = {key: math.exp(value) for key, value in log_constants.items()}
+    fit_df["lnK_Li_fitted"] = log_constants["Li"]
+    fit_df["lnK_Na_fitted"] = log_constants["Na"]
+    fit_df["Li_ln_residual_to_fit"] = fit_df["lnQ_Li_native"] - log_constants["Li"]
+    fit_df["Na_ln_residual_to_fit"] = fit_df["lnQ_Na_native"] - log_constants["Na"]
+    return constants, log_constants, fit_df
+
+
+def _target_response_by_experiment() -> dict[int, Any]:
+    targets = pd.read_csv(TARGET_RESPONSES_CSV)
+    return {int(row.experiment_no): row for row in targets.itertuples(index=False)}
+
+
+def _route_extraction_metrics(result: Any, experiment_no: int, target_by_experiment: dict[int, Any]) -> dict[str, float]:
+    phases = np.asarray([phase.composition for phase in result.phases], dtype=float)
+    phase_totals = np.asarray(
+        [float(phase.diagnostics["amount_total"]) for phase in result.phases],
+        dtype=float,
+    )
+    amounts = phases * phase_totals[:, None]
+    li_total = float(amounts[:, SPECIES_LABELS.index("Li+")].sum() + amounts[:, SPECIES_LABELS.index("RLi")].sum())
+    na_total = float(amounts[:, SPECIES_LABELS.index("Na+")].sum() + amounts[:, SPECIES_LABELS.index("RNa")].sum())
+    li_extraction = 100.0 * float(amounts[1, SPECIES_LABELS.index("RLi")]) / li_total
+    na_extraction = 100.0 * float(amounts[1, SPECIES_LABELS.index("RNa")]) / na_total
+    selectivity = li_extraction / na_extraction
+    target = target_by_experiment[experiment_no]
+    li_exp = float(target.li_extraction_pct_exp)
+    na_exp = float(target.na_extraction_pct_exp)
+    selectivity_exp = float(target.li_na_selectivity_exp)
+    return {
+        "li_extraction_pct_calc": li_extraction,
+        "na_extraction_pct_calc": na_extraction,
+        "selectivity_calc": selectivity,
+        "li_extraction_pct_exp": li_exp,
+        "na_extraction_pct_exp": na_exp,
+        "selectivity_exp": selectivity_exp,
+        "li_extraction_abs_pp": abs(li_extraction - li_exp),
+        "na_extraction_abs_pp": abs(na_extraction - na_exp),
+        "selectivity_abs_pct": 100.0 * abs(selectivity - selectivity_exp) / max(abs(selectivity_exp), 1.0e-300),
+    }
+
+
+def _fitted_native_logk_public_route(
+    mixture: epcsaft.ePCSAFTMixture,
+    aqueous_mix: epcsaft.ePCSAFTMixture,
+    organic_mix: epcsaft.ePCSAFTMixture,
+) -> dict[str, Any]:
+    constants, log_constants, fit_df = _fit_native_log_constants(aqueous_mix, organic_mix)
+    NATIVE_LOGK_FIT_ROWS_CSV.parent.mkdir(parents=True, exist_ok=True)
+    fit_df.to_csv(NATIVE_LOGK_FIT_ROWS_CSV, index=False)
+    target_by_experiment = _target_response_by_experiment()
+    options = epcsaft.EquilibriumOptions(
+        max_iterations=180,
+        tolerance=1.0e-8,
+        min_composition=1.0e-14,
+        timeout_seconds=60.0,
+    )
+    rows = pd.read_csv(replay.EQUILIBRIUM_CSV)
+    records: list[dict[str, Any]] = []
+    for _, row in rows.iterrows():
+        experiment_no = int(row["experiment_no"])
+        split = "fit" if experiment_no in FIT_EXPERIMENTS else "holdout"
+        basis = _public_attempt_basis(row)
+        record: dict[str, Any] = {
+            "experiment_no": experiment_no,
+            "split": split,
+            "accepted": False,
+        }
+        try:
+            result = mixture.equilibrium(
+                kind="reactive_electrolyte_lle",
+                T=replay.TEMPERATURE_K,
+                P=replay.PRESSURE_PA,
+                z=basis.neutralized_feed,
+                balances=basis.balances,
+                totals=basis.totals,
+                reactions=replay._rezaee_phase_tagged_reactions(constants),
+                phase_models={"aq": aqueous_mix, "org": organic_mix},
+                options=options,
+            )
+        except SolutionError as exc:
+            diagnostics = getattr(exc, "diagnostics", None) or {}
+            record.update(
+                {
+                    "error_type": type(exc).__name__,
+                    "solver_status": diagnostics.get("solver_status"),
+                    "route_status": diagnostics.get("reactive_route_status"),
+                    "rejection_reason": diagnostics.get("rejection_reason"),
+                    "reaction_stationarity_norm": diagnostics.get("reaction_stationarity_norm"),
+                    "charge_balance_norm": diagnostics.get("charge_balance_norm"),
+                }
+            )
+        except Exception as exc:  # pragma: no cover - retained diagnostic script path.
+            record.update(
+                {
+                    "error_type": type(exc).__name__,
+                    "error": str(exc),
+                }
+            )
+        else:
+            diagnostics = dict(getattr(result, "diagnostics", {}) or {})
+            record.update(
+                {
+                    "accepted": True,
+                    "solver_backend": getattr(result, "backend", None),
+                    "derivative_backend": diagnostics.get("derivative_backend"),
+                    "density_backend": diagnostics.get("density_backend"),
+                    "solver_status": diagnostics.get("solver_status"),
+                    "route_status": diagnostics.get("reactive_route_status"),
+                    "rejection_reason": diagnostics.get("rejection_reason"),
+                    "reaction_stationarity_norm": diagnostics.get("reaction_stationarity_norm"),
+                    "charge_balance_norm": diagnostics.get("charge_balance_norm"),
+                    "phase_distance": diagnostics.get("phase_distance"),
+                }
+            )
+            record.update(_route_extraction_metrics(result, experiment_no, target_by_experiment))
+        records.append(record)
+
+    route_df = pd.DataFrame.from_records(records)
+    route_df.to_csv(NATIVE_LOGK_FIT_PUBLIC_ROUTE_ROWS_CSV, index=False)
+    holdout = route_df.loc[route_df["split"] == "holdout"]
+    all_holdout_rows_solve = bool(holdout["accepted"].all())
+    metrics: dict[str, Any] = {}
+    if all_holdout_rows_solve:
+        metrics = {
+            "li_extraction_aard_pp": float(holdout["li_extraction_abs_pp"].mean()),
+            "na_extraction_aard_pp": float(holdout["na_extraction_abs_pp"].mean()),
+            "selectivity_aard_pct": float(holdout["selectivity_abs_pct"].mean()),
+        }
+    gate_passed = (
+        all_holdout_rows_solve
+        and metrics["li_extraction_aard_pp"] <= 20.0
+        and metrics["na_extraction_aard_pp"] <= 20.0
+        and metrics["selectivity_aard_pct"] <= 25.0
+    )
+    if gate_passed:
+        status = "accepted_public_native_ipopt"
+    elif all_holdout_rows_solve:
+        status = "failed_gate"
+    else:
+        status = "blocked_solver"
+    return {
+        "status": status,
+        "fit_method": "mean logK on native x*phi phase-model standard state",
+        "constant_source": "fit_rows_1_16_25_26",
+        "fit_rows": list(FIT_EXPERIMENTS),
+        "holdout_rows": list(HOLDOUT_EXPERIMENTS),
+        "fit_row_count": int((route_df["split"] == "fit").sum()),
+        "holdout_row_count": int(len(holdout)),
+        "all_fit_rows_solve": bool(route_df.loc[route_df["split"] == "fit", "accepted"].all()),
+        "all_holdout_rows_solve": all_holdout_rows_solve,
+        "log_equilibrium_constants": log_constants,
+        "equilibrium_constants": constants,
+        "fit_ln_residual_summary": {
+            "Li_std": float(fit_df.loc[fit_df["split"] == "fit", "Li_ln_residual_to_fit"].std(ddof=0)),
+            "Na_std": float(fit_df.loc[fit_df["split"] == "fit", "Na_ln_residual_to_fit"].std(ddof=0)),
+            "holdout_Li_max_abs": float(fit_df.loc[fit_df["split"] == "holdout", "Li_ln_residual_to_fit"].abs().max()),
+            "holdout_Na_max_abs": float(fit_df.loc[fit_df["split"] == "holdout", "Na_ln_residual_to_fit"].abs().max()),
+        },
+        "holdout_metrics": metrics,
+        "holdout_requirement": {
+            "all_holdout_rows_solve": True,
+            "li_extraction_aard_pp_max": 20.0,
+            "na_extraction_aard_pp_max": 20.0,
+            "selectivity_aard_pct_max": 25.0,
+        },
+        "public_api": 'mix.equilibrium(kind="reactive_electrolyte_lle")',
+        "phase_models": {
+            "aq_species": list(aqueous_mix.species),
+            "org_species": list(organic_mix.species),
+            "contract": 'phase_models={"aq": aqueous_mix, "org": organic_mix}',
+        },
+        "outputs": {
+            "logk_fit_rows_csv": str(NATIVE_LOGK_FIT_ROWS_CSV.relative_to(ANALYSIS_DIR)),
+            "public_route_rows_csv": str(NATIVE_LOGK_FIT_PUBLIC_ROUTE_ROWS_CSV.relative_to(ANALYSIS_DIR)),
+        },
+    }
+
+
 def _write_report(summary: dict[str, Any]) -> None:
     attempt = summary["public_route_attempt"]
+    fitted = summary["fitted_native_logk_public_route"]
     lines = [
         "# Rezaee 2026 calibrated native Ipopt attempt",
         "",
@@ -399,6 +656,16 @@ def _write_report(summary: dict[str, Any]) -> None:
         f"- source_charge: {attempt['source_charge']:.6e}",
         f"- neutralized_charge: {attempt['neutralized_charge']:.6e}",
         f"- neutralization: {attempt['neutralization_delta']:.6e} added to {attempt['neutralization_species']}",
+        "",
+        "## Fitted public route gate",
+        "",
+        f"- status: {fitted['status']}",
+        f"- fit_method: {fitted['fit_method']}",
+        f"- all_fit_rows_solve: {fitted['all_fit_rows_solve']}",
+        f"- all_holdout_rows_solve: {fitted['all_holdout_rows_solve']}",
+        f"- holdout Li extraction AARD / percentage points: {fitted['holdout_metrics'].get('li_extraction_aard_pp')}",
+        f"- holdout Na extraction AARD / percentage points: {fitted['holdout_metrics'].get('na_extraction_aard_pp')}",
+        f"- holdout selectivity AARD / percent: {fitted['holdout_metrics'].get('selectivity_aard_pct')}",
     ]
     if attempt.get("error"):
         lines.extend(["", "### Error", "", attempt["error"]])
@@ -428,6 +695,11 @@ def main() -> int:
         constants,
         {"aq": aqueous_mix, "org": calibrated_organic_mix},
     )
+    fitted_native_logk_public_route = _fitted_native_logk_public_route(
+        mixture,
+        aqueous_mix,
+        calibrated_organic_mix,
+    )
     summary = {
         "status": "diagnostic_attempt",
         "calibration": {
@@ -451,11 +723,16 @@ def main() -> int:
             "rows_csv": str(SEPARATE_PHASE_ROWS_CSV.relative_to(ANALYSIS_DIR)),
         },
         "public_route_attempt": public_attempt,
+        "fitted_native_logk_public_route": fitted_native_logk_public_route,
         "outputs": {
             "summary_json": str(SUMMARY_JSON.relative_to(ANALYSIS_DIR)),
             "report_md": str(REPORT_MD.relative_to(ANALYSIS_DIR)),
             "rows_csv": str(ROWS_CSV.relative_to(ANALYSIS_DIR)),
             "separate_phase_rows_csv": str(SEPARATE_PHASE_ROWS_CSV.relative_to(ANALYSIS_DIR)),
+            "native_logk_fit_rows_csv": str(NATIVE_LOGK_FIT_ROWS_CSV.relative_to(ANALYSIS_DIR)),
+            "native_logk_fit_public_route_rows_csv": str(
+                NATIVE_LOGK_FIT_PUBLIC_ROUTE_ROWS_CSV.relative_to(ANALYSIS_DIR)
+            ),
         },
     }
     SUMMARY_JSON.parent.mkdir(parents=True, exist_ok=True)

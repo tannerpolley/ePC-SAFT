@@ -90,6 +90,31 @@ def _build_summary(command_results: list[dict[str, Any]]) -> dict[str, Any]:
     cross_phase = replay["package_phase_tagged_cross_phase"]
     public_attempt = calibrated_attempt["public_route_attempt"]
     public_phase_model_attempt_accepted = bool(public_attempt.get("accepted", False))
+    fitted_route = calibrated_attempt.get("fitted_native_logk_public_route", {})
+    fitted_route_status = str(fitted_route.get("status", "not_started"))
+    fitted_route_rows_solve = bool(
+        fitted_route.get("all_fit_rows_solve", False)
+        and fitted_route.get("all_holdout_rows_solve", False)
+    )
+    fitted_gate_accepted = fitted_route_status == "accepted_public_native_ipopt"
+    if fitted_gate_accepted:
+        lane_status = "accepted_public_native_ipopt"
+        status_reason = (
+            "source constants were tried first and retained; a separate native-standard-state fitted "
+            "public Ipopt route solved the held-out Rezaee rows within the requested extraction/selectivity gates"
+        )
+    elif fitted_route_status == "failed_gate":
+        lane_status = "failed_gate"
+        status_reason = (
+            "source constants were tried first and retained; the native-standard-state fitted public Ipopt route "
+            "solved the held-out Rezaee rows but failed the requested extraction/selectivity gates"
+        )
+    else:
+        lane_status = "blocked_solver"
+        status_reason = (
+            "source constants and retained diagnostics were tried first, but this lane has not produced an "
+            "accepted public native Ipopt reactive_electrolyte_lle solve or the required fitted holdout gate"
+        )
     source_files = sorted(_rel(path) for path in INPUT_DIR.glob("*") if path.is_file())
     retained_outputs = (
         PROCESSED_DIR / "rezaee_2025_extraction_target_summary.csv",
@@ -99,6 +124,8 @@ def _build_summary(command_results: list[dict[str, Any]]) -> dict[str, Any]:
         PROCESSED_DIR / "rezaee_2026_reactive_epcsaft_option_scan_rows.csv",
         PROCESSED_DIR / "rezaee_2026_calibrated_native_ipopt_attempt_rows.csv",
         PROCESSED_DIR / "rezaee_2026_calibrated_separate_phase_residual_rows.csv",
+        PROCESSED_DIR / "rezaee_2026_native_logk_fit_rows.csv",
+        PROCESSED_DIR / "rezaee_2026_native_logk_fit_public_route_rows.csv",
         PROCESSED_DIR / "rezaee_2026_paper_basis_reaction_coordinate_rows.csv",
         PROCESSED_DIR / "rezaee_2026_section32_basis_inference_rows.csv",
         PROCESSED_DIR / "rezaee_2026_section32_equilibrium_replication_rows.csv",
@@ -128,11 +155,8 @@ def _build_summary(command_results: list[dict[str, Any]]) -> dict[str, Any]:
         "schema_version": 1,
         "stage": "E",
         "lane_id": "rezaee_2026_reactive_electrolyte_lle",
-        "status": "blocked_solver",
-        "status_reason": (
-            "source constants and retained diagnostics were tried first, but this lane has not produced an "
-            "accepted public native Ipopt reactive_electrolyte_lle solve or the required fitted holdout gate"
-        ),
+        "status": lane_status,
+        "status_reason": status_reason,
         "validation_lane": "rezaee_2026_application_reactive_electrolyte_lle",
         "public_api": 'mix.equilibrium(kind="reactive_electrolyte_lle")',
         "required_solver_backend": "ipopt",
@@ -141,7 +165,7 @@ def _build_summary(command_results: list[dict[str, Any]]) -> dict[str, Any]:
         "hessian_approximation": "limited-memory",
         "phase_models_supported": (
             "accepted_public_native_ipopt"
-            if public_phase_model_attempt_accepted
+            if public_phase_model_attempt_accepted or fitted_route_rows_solve
             else "public_api_supported_solver_rejected"
         ),
         "row_count": int(replay["row_count"]),
@@ -180,6 +204,22 @@ def _build_summary(command_results: list[dict[str, Any]]) -> dict[str, Any]:
             "density_backend": public_attempt.get("density_backend"),
             "diagnostics": public_attempt.get("diagnostics"),
         },
+        "phase_model_fitted_public_route": {
+            "status": fitted_route_status,
+            "attempt_source": "native_logk_fit_public_route",
+            "phase_models": fitted_route.get("phase_models"),
+            "public_api": fitted_route.get("public_api"),
+            "fit_method": fitted_route.get("fit_method"),
+            "constant_source": fitted_route.get("constant_source"),
+            "fit_row_count": fitted_route.get("fit_row_count"),
+            "holdout_row_count": fitted_route.get("holdout_row_count"),
+            "all_fit_rows_solve": fitted_route.get("all_fit_rows_solve"),
+            "all_holdout_rows_solve": fitted_route.get("all_holdout_rows_solve"),
+            "holdout_metrics": fitted_route.get("holdout_metrics"),
+            "log_equilibrium_constants": fitted_route.get("log_equilibrium_constants"),
+            "fit_ln_residual_summary": fitted_route.get("fit_ln_residual_summary"),
+            "outputs": fitted_route.get("outputs"),
+        },
         "paper_basis": {
             "status": paper_basis["status"],
             "row_count": paper_basis["row_count"],
@@ -199,15 +239,25 @@ def _build_summary(command_results: list[dict[str, Any]]) -> dict[str, Any]:
             "paper_reference_aard_pct": section32["paper_reference_AARD_pct"]["after_table9_kij"],
         },
         "fit_holdout_gate": {
-            "status": "not_started",
+            "status": fitted_route_status,
             "fit_rows": "experiments 1-16 and 25-26",
             "holdout_rows": "experiments 17-24",
+            "fit_method": fitted_route.get("fit_method"),
+            "constant_source": fitted_route.get("constant_source"),
+            "all_fit_rows_solve": fitted_route.get("all_fit_rows_solve"),
+            "all_holdout_rows_solve": fitted_route.get("all_holdout_rows_solve"),
             "holdout_requirement": {
                 "all_holdout_rows_solve": True,
-                "li_na_extraction_aard_pct_max": 20.0,
+                "li_extraction_aard_pp_max": 20.0,
+                "na_extraction_aard_pp_max": 20.0,
                 "selectivity_aard_pct_max": 25.0,
             },
-            "reason": "native public reactive_electrolyte_lle route has not closed, so fitted-route validation remains gated",
+            "holdout_metrics": fitted_route.get("holdout_metrics"),
+            "reason": (
+                "native-standard-state fitted route solved all held-out rows but failed the extraction/selectivity gate"
+                if fitted_route_status == "failed_gate"
+                else "native-standard-state fitted public route validation did not close"
+            ),
         },
         "paper_constant_claim": "not_proven",
         "figure_comparisons": {
@@ -227,8 +277,14 @@ def _build_summary(command_results: list[dict[str, Any]]) -> dict[str, Any]:
         "commands": command_results,
         "blockers": [
             {
-                "kind": "blocked_solver",
-                "reason": "no accepted public native Ipopt reactive_electrolyte_lle solve retained for Rezaee 2026",
+                "kind": "failed_gate" if fitted_route_status == "failed_gate" else "blocked_solver",
+                "reason": (
+                    "native-standard-state fitted public Ipopt route solved all held-out rows but failed "
+                    "the requested Li/Na extraction and selectivity gates"
+                    if fitted_route_status == "failed_gate"
+                    else "no accepted public native Ipopt fitted holdout gate retained for Rezaee 2026"
+                ),
+                "holdout_metrics": fitted_route.get("holdout_metrics"),
             },
             {
                 "kind": "failed_gate",
@@ -239,7 +295,13 @@ def _build_summary(command_results: list[dict[str, Any]]) -> dict[str, Any]:
         ],
         "conclusion": (
             "Direct published-constant closure is not supported by the current source-backed inputs. "
-            "This is a strict blocked_solver lane, not accepted route evidence."
+            "A native-standard-state fitted public Ipopt route now solves all source rows, but the held-out "
+            "extraction/selectivity metrics fail the requested gate."
+            if fitted_route_status == "failed_gate"
+            else (
+                "Direct published-constant closure is not supported by the current source-backed inputs. "
+                "This is a strict blocked_solver lane, not accepted route evidence."
+            )
         ),
     }
 

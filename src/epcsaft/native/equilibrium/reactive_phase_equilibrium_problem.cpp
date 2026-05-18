@@ -1316,7 +1316,10 @@ public:
     }
 
     int constraint_count() const override {
-        return balance_rows_ + separation_constraint_count();
+        return balance_rows_
+            + phase_tagged_reaction_constraint_count()
+            + phase_charge_constraint_count()
+            + separation_constraint_count();
     }
 
     int jacobian_nonzero_count() const override {
@@ -1329,6 +1332,14 @@ public:
         out.variable_upper = variable_upper_bounds_;
         out.constraint_lower.assign(static_cast<std::size_t>(balance_rows_), 0.0);
         out.constraint_upper.assign(static_cast<std::size_t>(balance_rows_), 0.0);
+        for (int row = 0; row < phase_tagged_reaction_constraint_count(); ++row) {
+            out.constraint_lower.push_back(0.0);
+            out.constraint_upper.push_back(0.0);
+        }
+        for (int row = 0; row < phase_charge_constraint_count(); ++row) {
+            out.constraint_lower.push_back(0.0);
+            out.constraint_upper.push_back(0.0);
+        }
         if (separation_constraint_count() > 0) {
             out.constraint_lower.push_back(minimum_phase_distance_);
             out.constraint_upper.push_back(1.0e12);
@@ -1359,6 +1370,12 @@ public:
     std::vector<double> constraints(const std::vector<double>& variables) const override {
         const ReactivePhaseResidualEvaluationNative& eval = evaluate_cached(variables);
         std::vector<double> out = eval.element_balance_residuals;
+        if (phase_tagged_reaction_constraint_count() > 0) {
+            out.insert(out.end(), eval.reaction_residuals_cross_phase.begin(), eval.reaction_residuals_cross_phase.end());
+        }
+        if (phase_charge_constraint_count() > 0) {
+            out.insert(out.end(), eval.phase_charge_residuals.begin(), eval.phase_charge_residuals.end());
+        }
         if (separation_constraint_count() > 0) {
             out.push_back(phase_separation(variables));
         }
@@ -1375,8 +1392,24 @@ public:
                 out.cols.push_back(col);
             }
         }
+        for (int reaction_row = 0; reaction_row < phase_tagged_reaction_constraint_count(); ++reaction_row) {
+            const int row = balance_rows_ + reaction_row;
+            for (int col = 0; col < variable_count(); ++col) {
+                out.rows.push_back(row);
+                out.cols.push_back(col);
+            }
+        }
+        for (int charge_row = 0; charge_row < phase_charge_constraint_count(); ++charge_row) {
+            const int row = balance_rows_ + phase_tagged_reaction_constraint_count() + charge_row;
+            for (int col = 0; col < variable_count(); ++col) {
+                out.rows.push_back(row);
+                out.cols.push_back(col);
+            }
+        }
         if (separation_constraint_count() > 0) {
-            const int row = balance_rows_;
+            const int row = balance_rows_
+                + phase_tagged_reaction_constraint_count()
+                + phase_charge_constraint_count();
             for (int col = 0; col < variable_count(); ++col) {
                 out.rows.push_back(row);
                 out.cols.push_back(col);
@@ -1400,6 +1433,35 @@ public:
                 const double coefficient =
                     balance_matrix_row_major_[static_cast<std::size_t>(row) * ncomp + species];
                 values.push_back(coefficient * eval.phase2_amounts[species]);
+            }
+        }
+        if (phase_tagged_reaction_constraint_count() > 0) {
+            const std::size_t nvars = static_cast<std::size_t>(variable_count());
+            for (int reaction_row = 0; reaction_row < phase_tagged_reaction_constraint_count(); ++reaction_row) {
+                const std::size_t residual_row = static_cast<std::size_t>(balance_rows_ + reaction_row);
+                values.insert(
+                    values.end(),
+                    eval.jacobian_row_major.begin() + static_cast<std::ptrdiff_t>(residual_row * nvars),
+                    eval.jacobian_row_major.begin() + static_cast<std::ptrdiff_t>((residual_row + 1) * nvars)
+                );
+            }
+        }
+        if (phase_charge_constraint_count() > 0) {
+            std::vector<double> charges = mixture_->args().z;
+            if (charges.size() != ncomp) {
+                charges.assign(ncomp, 0.0);
+            }
+            for (std::size_t species = 0; species < ncomp; ++species) {
+                values.push_back(charges[species] * eval.phase1_amounts[species]);
+            }
+            for (std::size_t species = 0; species < ncomp; ++species) {
+                values.push_back(0.0);
+            }
+            for (std::size_t species = 0; species < ncomp; ++species) {
+                values.push_back(0.0);
+            }
+            for (std::size_t species = 0; species < ncomp; ++species) {
+                values.push_back(charges[species] * eval.phase2_amounts[species]);
             }
         }
         if (separation_constraint_count() > 0) {
@@ -1480,6 +1542,26 @@ public:
     }
 
 private:
+    int phase_tagged_reaction_constraint_count() const {
+        if (reaction_phase_stoichiometry_row_major_.empty()) {
+            return 0;
+        }
+        return reaction_rows_;
+    }
+
+    int phase_charge_constraint_count() const {
+        std::vector<double> charges = mixture_->args().z;
+        if (charges.size() != feed_.size()) {
+            return 0;
+        }
+        for (double charge : charges) {
+            if (std::abs(charge) > 1.0e-12) {
+                return 2;
+            }
+        }
+        return 0;
+    }
+
     int separation_constraint_count() const {
         return minimum_phase_distance_ > 0.0 ? 1 : 0;
     }

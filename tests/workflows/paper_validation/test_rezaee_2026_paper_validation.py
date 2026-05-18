@@ -76,16 +76,25 @@ def test_rezaee_source_backed_paper_validation_generates_pre_surrogate_rows() ->
     assert by_figure["fig10"]["package_case_id"] == "held_2014_s2_no_born_table9_kij_pH_stoich"
 
     lane_payload = json.loads(lane_summary.read_text(encoding="utf-8"))
-    assert lane_payload["status"] == "blocked_solver"
+    assert lane_payload["status"] == "failed_gate"
     assert lane_payload["public_api"] == 'mix.equilibrium(kind="reactive_electrolyte_lle")'
     assert lane_payload["required_derivative_backend"] == "cppad_implicit"
     assert lane_payload["required_density_backend"] == "liquid_pressure_root"
-    assert lane_payload["phase_models_supported"] == "public_api_supported_solver_rejected"
+    assert lane_payload["phase_models_supported"] == "accepted_public_native_ipopt"
     assert lane_payload["phase_model_public_route_attempt"]["status"] == "blocked_solver"
     assert lane_payload["phase_model_public_route_attempt"]["diagnostics"]["derivative_backend"] == "cppad_implicit"
     assert lane_payload["phase_model_public_route_attempt"]["diagnostics"]["density_backend"] == "liquid_pressure_root"
+    fitted_route = lane_payload["phase_model_fitted_public_route"]
+    assert fitted_route["status"] == "failed_gate"
+    assert fitted_route["all_fit_rows_solve"] is True
+    assert fitted_route["all_holdout_rows_solve"] is True
+    assert fitted_route["public_api"] == 'mix.equilibrium(kind="reactive_electrolyte_lle")'
+    assert fitted_route["holdout_metrics"]["li_extraction_aard_pp"] > 20.0
+    assert fitted_route["holdout_metrics"]["na_extraction_aard_pp"] > 20.0
+    assert fitted_route["holdout_metrics"]["selectivity_aard_pct"] > 25.0
     assert lane_payload["paper_constant_claim"] == "not_proven"
-    assert lane_payload["fit_holdout_gate"]["status"] == "not_started"
+    assert lane_payload["fit_holdout_gate"]["status"] == "failed_gate"
+    assert lane_payload["fit_holdout_gate"]["all_holdout_rows_solve"] is True
     assert lane_payload["row_count"] == 26
     assert lane_payload["source_text_mismatch"] == {
         "available_si_equilibrium_rows": 26,
@@ -102,4 +111,4 @@ def test_rezaee_source_backed_paper_validation_generates_pre_surrogate_rows() ->
     assert lane_payload["residual_metrics"]["max_abs_charge_residual"] <= 1.0e-6
     assert lane_payload["residual_metrics"]["max_element_balance_norm"] <= 1.0e-10
     assert lane_payload["convention_scan"]["acceptance"]["closed_by_simple_convention_scan"] is False
-    assert "strict blocked_solver lane" in lane_payload["conclusion"]
+    assert "fitted public Ipopt route now solves all source rows" in lane_payload["conclusion"]
