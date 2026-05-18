@@ -46,6 +46,24 @@ def test_build_script_can_disable_only_ipopt() -> None:
     assert settings.enable_ipopt is False
 
 
+def test_build_script_uses_local_windows_ipopt_sdk_default(monkeypatch, tmp_path) -> None:
+    ipopt_root = tmp_path / "Documents" / "deps" / "ipopt-msvc"
+    ipopt_root.mkdir(parents=True)
+    monkeypatch.delenv("EPCSAFT_IPOPT_ROOT", raising=False)
+    monkeypatch.delenv("EPCSAFT_PEP517_IPOPT_ROOT", raising=False)
+
+    args = build_epcsaft._parser().parse_args([])
+    settings = build_epcsaft._resolve_settings(args)
+
+    assert build_epcsaft.resolve_ipopt_root_for_build(
+        None,
+        enable_ipopt=settings.enable_ipopt,
+        ipopt_dir=args.ipopt_dir,
+        default_root=ipopt_root,
+        label="Ipopt root",
+    ) == ipopt_root.resolve()
+
+
 def test_build_script_profiles_resolve_optional_native_dependency_state() -> None:
     full = build_epcsaft._resolve_settings(build_epcsaft._parser().parse_args(["--profile", "full"]))
     fast = build_epcsaft._resolve_settings(build_epcsaft._parser().parse_args(["--profile", "fast"]))

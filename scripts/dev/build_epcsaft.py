@@ -13,8 +13,10 @@ from typing import NamedTuple
 
 try:
     from scripts.dev.native_runtime_env import apply_native_runtime_env
+    from scripts.dev.native_runtime_env import resolve_ipopt_root_for_build
 except ModuleNotFoundError:  # pragma: no cover - direct script execution
     from native_runtime_env import apply_native_runtime_env
+    from native_runtime_env import resolve_ipopt_root_for_build
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 BUILD_DIR = REPO_ROOT / "build" / "dev"
@@ -110,15 +112,6 @@ def _env() -> dict[str, str]:
     env["TMPDIR"] = str(temp_root.resolve())
     env.setdefault("PIP_DISABLE_PIP_VERSION_CHECK", "1")
     return env
-
-
-def _resolve_optional_dir(raw_path: Path | str | None, *, label: str) -> Path | None:
-    if raw_path is None:
-        return None
-    path = Path(raw_path).expanduser().resolve()
-    if not path.is_dir():
-        raise FileNotFoundError(f"{label} does not exist or is not a directory: {path}")
-    return path
 
 
 def _ipopt_root_prefers_msvc(ipopt_root: Path | None) -> bool:
@@ -642,8 +635,10 @@ def main() -> int:
     settings = _resolve_settings(args)
     use_system_ceres = bool(args.use_system_ceres or args.ceres_dir is not None)
     ipopt_root_env = os.environ.get("EPCSAFT_IPOPT_ROOT") or os.environ.get("EPCSAFT_PEP517_IPOPT_ROOT")
-    ipopt_root = _resolve_optional_dir(
+    ipopt_root = resolve_ipopt_root_for_build(
         args.ipopt_root if args.ipopt_root is not None else ipopt_root_env,
+        enable_ipopt=settings.enable_ipopt,
+        ipopt_dir=args.ipopt_dir,
         label="Ipopt root",
     )
     use_system_ipopt = bool(

@@ -17,15 +17,25 @@ function Invoke-CheckedNative {
     }
 }
 
-if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
+function Resolve-UvCommand {
+    $command = Get-Command uv -ErrorAction SilentlyContinue
+    if ($command) {
+        return $command.Source
+    }
+    $localUv = Join-Path $env:USERPROFILE ".local\bin\uv.exe"
+    if (Test-Path -LiteralPath $localUv) {
+        return $localUv
+    }
     throw "uv is not installed or is not on PATH. Install uv first: https://docs.astral.sh/uv/getting-started/installation/"
 }
 
-Invoke-CheckedNative uv @("--version")
-Invoke-CheckedNative uv @("python", "pin", "3.13")
-Invoke-CheckedNative uv @("sync", "--no-install-project")
+$uv = Resolve-UvCommand
 
-$defaultIpoptRoot = "C:\ProgramData\miniconda3\envs\ePC-SAFT\Library"
+Invoke-CheckedNative $uv @("--version")
+Invoke-CheckedNative $uv @("python", "pin", "3.13")
+Invoke-CheckedNative $uv @("sync", "--no-install-project")
+
+$defaultIpoptRoot = Join-Path $env:USERPROFILE "Documents\deps\ipopt-msvc"
 $ipoptRoot = $env:EPCSAFT_IPOPT_ROOT
 if ([string]::IsNullOrWhiteSpace($ipoptRoot)) {
     $ipoptRoot = $env:EPCSAFT_PEP517_IPOPT_ROOT
@@ -42,6 +52,6 @@ if (-not ([string]::IsNullOrWhiteSpace($ipoptRoot))) {
     }
 }
 
-Invoke-CheckedNative uv @("run", "python", "scripts\dev\build_epcsaft.py")
-Invoke-CheckedNative uv @("run", "python", "scripts\dev\doctor.py", "--require-ipopt")
-Invoke-CheckedNative uv @("run", "python", "scripts\dev\validate_project.py", "quick")
+Invoke-CheckedNative $uv @("run", "python", "scripts\dev\build_epcsaft.py")
+Invoke-CheckedNative $uv @("run", "python", "scripts\dev\doctor.py", "--require-ipopt")
+Invoke-CheckedNative $uv @("run", "python", "scripts\dev\validate_project.py", "quick")

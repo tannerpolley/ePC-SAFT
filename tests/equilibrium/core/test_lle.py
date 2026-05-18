@@ -55,6 +55,8 @@ def test_lle_flash_builds_one_native_route_request_before_ipopt_gate(monkeypatch
         max_iterations,
         tolerance,
         timeout_seconds,
+        hessian_mode,
+        iteration_history_limit,
         material_tolerance,
         pressure_tolerance,
         chemical_potential_tolerance,
@@ -117,6 +119,8 @@ def test_lle_flash_converts_accepted_native_route_payload(monkeypatch: pytest.Mo
         max_iterations,
         tolerance,
         timeout_seconds,
+        hessian_mode,
+        iteration_history_limit,
         material_tolerance,
         pressure_tolerance,
         chemical_potential_tolerance,
@@ -216,6 +220,8 @@ def test_equilibrium_options_public_surface_is_current_fields() -> None:
         "jacobian_backend",
         "solver_backend",
         "timeout_seconds",
+        "hessian_mode",
+        "ipopt_iteration_history_limit",
     }
     assert {field.name for field in fields(epcsaft.LLEProblem)} == {"T", "P", "z", "options"}
     assert {field.name for field in fields(epcsaft.ElectrolyteLLEProblem)} == {
@@ -229,6 +235,8 @@ def test_equilibrium_options_public_surface_is_current_fields() -> None:
     assert epcsaft.EquilibriumOptions().solver_backend == "auto"
     assert epcsaft.EquilibriumOptions().timeout_seconds is None
     assert epcsaft.EquilibriumOptions().max_iterations == 180
+    assert epcsaft.EquilibriumOptions().hessian_mode == "auto"
+    assert epcsaft.EquilibriumOptions().ipopt_iteration_history_limit == 20
 
 
 @pytest.mark.parametrize(
@@ -242,6 +250,9 @@ def test_equilibrium_options_public_surface_is_current_fields() -> None:
         (epcsaft.EquilibriumOptions(solver_backend="new" + "ton"), "solver_backend"),
         (epcsaft.EquilibriumOptions(timeout_seconds=0.0), "timeout_seconds"),
         (epcsaft.EquilibriumOptions(timeout_seconds=float("nan")), "timeout_seconds"),
+        (epcsaft.EquilibriumOptions(hessian_mode="quasi_newton"), "hessian_mode"),
+        (epcsaft.EquilibriumOptions(ipopt_iteration_history_limit=-1), "ipopt_iteration_history_limit"),
+        (epcsaft.EquilibriumOptions(ipopt_iteration_history_limit=True), "ipopt_iteration_history_limit"),
     ],
 )
 def test_lle_flash_rejects_invalid_options_through_public_api(options, match) -> None:

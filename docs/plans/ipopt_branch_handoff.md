@@ -75,13 +75,14 @@ Recommended implementation order recorded in the plan:
 Use this Windows Ipopt setup when an Ipopt-enabled proof is needed:
 
 ```powershell
-$env:PATH = "C:\ProgramData\miniconda3\envs\ePC-SAFT\Library\bin;$env:PATH"
-$env:EPCSAFT_RUNTIME_DLL_DIRS = "C:\ProgramData\miniconda3\envs\ePC-SAFT\Library\bin"
-uv run python scripts/dev/build_epcsaft.py --clean --profile ipopt --ipopt-root C:\ProgramData\miniconda3\envs\ePC-SAFT\Library --parallel 4
+$env:EPCSAFT_IPOPT_ROOT = "$env:USERPROFILE\Documents\deps\ipopt-msvc"
+$env:PATH = "$env:EPCSAFT_IPOPT_ROOT\bin;$env:PATH"
+$env:EPCSAFT_RUNTIME_DLL_DIRS = "$env:EPCSAFT_IPOPT_ROOT\bin"
+uv run python scripts/dev/build_epcsaft.py --clean --profile ipopt --ipopt-root $env:EPCSAFT_IPOPT_ROOT --parallel 4
 uv run python scripts/dev/doctor.py --require-ipopt
 ```
 
-Do not treat fast-profile `Ipopt=OFF` evidence as Ipopt proof.
+Do not treat any `Ipopt=OFF` build evidence as Ipopt proof.
 
 ## Khudaida Diagnostic Context
 

@@ -75,10 +75,24 @@ struct NeutralTwoPhaseEosRouteResult {
     std::string adapter_kind = "native_tnlp_adapter";
     std::string problem_name = "neutral_two_phase_eos";
     std::string derivative_backend = "analytic_cppad";
+    std::string gradient_approximation = "exact";
+    std::string jacobian_approximation = "exact";
+    std::string hessian_approximation = "limited-memory";
+    std::string hessian_backend = "limited-memory";
+    std::string scaling_method = "user-scaling";
     std::string status;
     std::string solver_status;
     std::string application_status;
     std::string last_callback_exception;
+    int iteration_count = 0;
+    int iteration_history_limit = 0;
+    int iteration_history_size = 0;
+    int variable_scaling_count = 0;
+    int constraint_scaling_count = 0;
+    int eval_h_calls = 0;
+    bool exact_hessian_available = false;
+    bool warm_start_requested = false;
+    bool warm_start_used = false;
     double objective = 0.0;
     std::vector<double> variables;
     std::vector<double> constraints;
@@ -127,9 +141,23 @@ struct ReactiveTwoPhaseEosRouteResult {
     std::string adapter_kind = "native_tnlp_adapter";
     std::string problem_name = "reactive_two_phase_eos";
     std::string derivative_backend = "analytic_cppad";
+    std::string gradient_approximation = "exact";
+    std::string jacobian_approximation = "exact";
+    std::string hessian_approximation = "limited-memory";
+    std::string hessian_backend = "limited-memory";
+    std::string scaling_method = "user-scaling";
     std::string status;
     std::string solver_status;
     std::string application_status;
+    int iteration_count = 0;
+    int iteration_history_limit = 0;
+    int iteration_history_size = 0;
+    int variable_scaling_count = 0;
+    int constraint_scaling_count = 0;
+    int eval_h_calls = 0;
+    bool exact_hessian_available = false;
+    bool warm_start_requested = false;
+    bool warm_start_used = false;
     int phase_count = 0;
     int species_count = 0;
     int balance_row_count = 0;
@@ -142,6 +170,10 @@ struct ReactiveTwoPhaseEosRouteResult {
     std::vector<double> phase_volumes;
     ReactiveTwoPhaseEosPostsolve postsolve;
 };
+
+void apply_ipopt_solve_metadata(NeutralTwoPhaseEosRouteResult& out, const IpoptSolveResult& solve);
+
+void apply_ipopt_solve_metadata(ReactiveTwoPhaseEosRouteResult& out, const IpoptSolveResult& solve);
 
 NeutralTwoPhaseEosNlpContract evaluate_neutral_two_phase_eos_nlp_contract(
     const add_args& args,

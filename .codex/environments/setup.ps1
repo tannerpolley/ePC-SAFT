@@ -9,10 +9,6 @@ Set-StrictMode -Version Latest
 $repoRoot = (git rev-parse --show-toplevel).Trim()
 Set-Location $repoRoot
 
-if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
-    throw "uv is required for this repo workflow. Install uv, then rerun setup."
-}
-
 function Invoke-CheckedNative {
     param(
         [Parameter(Mandatory = $true)]
@@ -26,8 +22,22 @@ function Invoke-CheckedNative {
     }
 }
 
+function Resolve-UvCommand {
+    $command = Get-Command uv -ErrorAction SilentlyContinue
+    if ($command) {
+        return $command.Source
+    }
+    $localUv = Join-Path $env:USERPROFILE ".local\bin\uv.exe"
+    if (Test-Path -LiteralPath $localUv) {
+        return $localUv
+    }
+    throw "uv is required for this repo workflow. Install uv, then rerun setup."
+}
+
+$uv = Resolve-UvCommand
+
 function Set-NativeIpoptEnvironment {
-    $defaultIpoptRoot = "C:\ProgramData\miniconda3\envs\ePC-SAFT\Library"
+    $defaultIpoptRoot = Join-Path $env:USERPROFILE "Documents\deps\ipopt-msvc"
     $candidate = $env:EPCSAFT_IPOPT_ROOT
 
     if ([string]::IsNullOrWhiteSpace($candidate)) {
@@ -37,7 +47,7 @@ function Set-NativeIpoptEnvironment {
         $candidate = $defaultIpoptRoot
     }
     if ([string]::IsNullOrWhiteSpace($candidate)) {
-        throw "Native Ipopt is required for this ePC-SAFT setup. Set EPCSAFT_IPOPT_ROOT or install Ipopt at $defaultIpoptRoot."
+        throw "Native Ipopt is required for this ePC-SAFT setup. Set EPCSAFT_IPOPT_ROOT or install the local Ipopt SDK at $defaultIpoptRoot."
     }
 
     $ipoptRoot = (Resolve-Path -LiteralPath $candidate).Path
@@ -64,17 +74,17 @@ function Set-NativeIpoptEnvironment {
 
 function Invoke-NativeBuild {
     Set-NativeIpoptEnvironment
-    Invoke-CheckedNative uv @("run", "python", "scripts/dev/build_epcsaft.py")
+    Invoke-CheckedNative $uv @("run", "python", "scripts/dev/build_epcsaft.py")
 }
 
 function Invoke-NativeDoctor {
     Set-NativeIpoptEnvironment
-    Invoke-CheckedNative uv @("run", "python", "scripts/dev/doctor.py", "--require-ipopt")
+    Invoke-CheckedNative $uv @("run", "python", "scripts/dev/doctor.py", "--require-ipopt")
 }
 
 switch ($Step) {
     "Setup" {
-        Invoke-CheckedNative uv @("sync", "--no-install-project")
+        Invoke-CheckedNative $uv @("sync", "--no-install-project")
         Invoke-NativeBuild
         Invoke-NativeDoctor
     }

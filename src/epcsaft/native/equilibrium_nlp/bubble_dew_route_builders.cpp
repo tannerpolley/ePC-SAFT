@@ -1000,6 +1000,7 @@ NeutralTwoPhaseEosRouteResult solve_pressure_route(
     out.solver_accepted = solve.accepted;
     out.solver_status = solve.solver_status;
     out.application_status = solve.application_status;
+    apply_ipopt_solve_metadata(out, solve);
     out.objective = solve.objective;
     out.variables = solve.variables;
     out.constraints = solve.constraints;
@@ -1068,6 +1069,7 @@ NeutralTwoPhaseEosRouteResult solve_temperature_route(
     out.solver_accepted = solve.accepted;
     out.solver_status = solve.solver_status;
     out.application_status = solve.application_status;
+    apply_ipopt_solve_metadata(out, solve);
     out.objective = solve.objective;
     out.variables = solve.variables;
     out.constraints = solve.constraints;

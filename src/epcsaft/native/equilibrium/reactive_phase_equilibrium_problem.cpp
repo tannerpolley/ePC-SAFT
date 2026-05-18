@@ -1873,6 +1873,7 @@ epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult solve_reactive_
     out.accepted = solve.accepted;
     out.solver_status = solve.solver_status;
     out.application_status = solve.application_status;
+    epcsaft::native::equilibrium_nlp::apply_ipopt_solve_metadata(out, solve);
     out.objective = solve.objective;
     out.variables = solve.variables;
     out.constraints = solve.constraints;
@@ -1969,6 +1970,7 @@ epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult solve_reactive_
     out.accepted = solve.accepted;
     out.solver_status = solve.solver_status;
     out.application_status = solve.application_status;
+    epcsaft::native::equilibrium_nlp::apply_ipopt_solve_metadata(out, solve);
     out.objective = solve.objective;
     out.variables = solve.variables;
     out.constraints = solve.constraints;

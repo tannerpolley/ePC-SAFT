@@ -69,6 +69,8 @@ class EquilibriumOptions:
     jacobian_backend: Literal["auto", "analytic", "cppad"] = "auto"
     solver_backend: Literal["auto", "ipopt"] = "auto"
     timeout_seconds: float | None = None
+    hessian_mode: Literal["auto", "exact", "limited-memory"] = "auto"
+    ipopt_iteration_history_limit: int = 20
 
 
 def _classify_problem_route(mixture: Any, kind: str) -> dict[str, str]:
@@ -794,6 +796,8 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
             "jacobian_backend",
             "solver_backend",
             "timeout_seconds",
+            "hessian_mode",
+            "ipopt_iteration_history_limit",
         }
         unknown = sorted(set(raw) - allowed)
         if unknown:
@@ -819,6 +823,16 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
     if solver_backend not in {"auto", "ipopt"}:
         raise InputError("options.solver_backend must be 'auto' or 'ipopt'.")
     timeout_seconds = _optional_positive_float_option(options.timeout_seconds, "timeout_seconds")
+    hessian_mode = str(options.hessian_mode).strip().lower().replace("_", "-")
+    if hessian_mode not in {"auto", "exact", "limited-memory"}:
+        raise InputError("options.hessian_mode must be 'auto', 'exact', or 'limited-memory'.")
+    if isinstance(options.ipopt_iteration_history_limit, bool) or not isinstance(
+        options.ipopt_iteration_history_limit, Integral
+    ):
+        raise InputError("options.ipopt_iteration_history_limit must be an integer greater than or equal to zero.")
+    ipopt_iteration_history_limit = int(options.ipopt_iteration_history_limit)
+    if ipopt_iteration_history_limit < 0:
+        raise InputError("options.ipopt_iteration_history_limit must be an integer greater than or equal to zero.")
     return EquilibriumOptions(
         max_iterations=max_iterations,
         tolerance=tolerance,
@@ -826,6 +840,8 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
         jacobian_backend=jacobian_backend,  # type: ignore[arg-type]
         solver_backend=solver_backend,  # type: ignore[arg-type]
         timeout_seconds=timeout_seconds,
+        hessian_mode=hessian_mode,  # type: ignore[arg-type]
+        ipopt_iteration_history_limit=ipopt_iteration_history_limit,
     )
 
 
@@ -849,6 +865,10 @@ def _optional_positive_float_option(value: Any, label: str) -> float | None:
 
 def _native_timeout_seconds(options: EquilibriumOptions) -> float:
     return 0.0 if options.timeout_seconds is None else float(options.timeout_seconds)
+
+
+def _native_ipopt_option_args(options: EquilibriumOptions) -> tuple[str, int]:
+    return options.hessian_mode, int(options.ipopt_iteration_history_limit)
 
 
 def _normalize_feed(z: Any, ncomp: int, min_composition: float, kind: str) -> np.ndarray:
@@ -1248,6 +1268,7 @@ def _native_neutral_fixed_temperature_pressure(
         options.max_iterations,
         options.tolerance,
         _native_timeout_seconds(options),
+        *_native_ipopt_option_args(options),
         *route_tolerances,
     )
     if str(route.get("status", "")) == "ipopt_dependency_required":
@@ -1297,6 +1318,7 @@ def _native_neutral_fixed_pressure_temperature(
         options.max_iterations,
         options.tolerance,
         _native_timeout_seconds(options),
+        *_native_ipopt_option_args(options),
         *route_tolerances,
     )
     if str(route.get("status", "")) == "ipopt_dependency_required":
@@ -1340,6 +1362,7 @@ def _native_neutral_tp_flash(
         options.max_iterations,
         options.tolerance,
         _native_timeout_seconds(options),
+        *_native_ipopt_option_args(options),
         *tolerances,
     )
     if str(route.get("status", "")) == "ipopt_dependency_required":
@@ -1376,6 +1399,7 @@ def _native_neutral_lle_flash(
         options.max_iterations,
         options.tolerance,
         _native_timeout_seconds(options),
+        *_native_ipopt_option_args(options),
         *tolerances,
     )
     if str(route.get("status", "")) == "ipopt_dependency_required":
@@ -1448,6 +1472,7 @@ def _native_reactive_two_phase_flash(
             options.max_iterations,
             options.tolerance,
             _native_timeout_seconds(options),
+            *_native_ipopt_option_args(options),
             material_tolerance,
             chemical_potential_tolerance,
             chemical_potential_tolerance,
@@ -1471,6 +1496,7 @@ def _native_reactive_two_phase_flash(
             options.max_iterations,
             options.tolerance,
             _native_timeout_seconds(options),
+            *_native_ipopt_option_args(options),
             material_tolerance,
             chemical_potential_tolerance,
             chemical_potential_tolerance,
@@ -1572,6 +1598,7 @@ def _native_neutral_stability(
                 options.max_iterations,
                 options.tolerance,
                 _native_timeout_seconds(options),
+                *_native_ipopt_option_args(options),
                 options.tolerance,
             )
             if str(route.get("status", "")) == "ipopt_dependency_required":
@@ -1636,6 +1663,7 @@ def _native_electrolyte_stability(
         options.max_iterations,
         options.tolerance,
         _native_timeout_seconds(options),
+        *_native_ipopt_option_args(options),
         options.tolerance,
     )
     if str(route.get("status", "")) == "ipopt_dependency_required":
@@ -1783,6 +1811,7 @@ def _electrolyte_lle_tpdf_certificate(
                     max_iterations,
                     options.tolerance,
                     _native_timeout_seconds(options),
+                    *_native_ipopt_option_args(options),
                     stability_tolerance,
                     np.asarray(trial_seed, dtype=float).tolist(),
                 )
@@ -1810,6 +1839,7 @@ def _electrolyte_lle_tpdf_certificate(
                             max_iterations,
                             options.tolerance,
                             _native_timeout_seconds(options),
+                            *_native_ipopt_option_args(options),
                             stability_tolerance,
                             restart.tolist(),
                         )
@@ -2169,6 +2199,8 @@ def _equilibrium_options_from_reactive_options(options: Any) -> EquilibriumOptio
         min_composition=float(options.min_mole_fraction),
         jacobian_backend=str(options.jacobian_backend),
         solver_backend="auto",
+        hessian_mode="auto",
+        ipopt_iteration_history_limit=20,
     )
 
 
@@ -2442,6 +2474,8 @@ def electrolyte_lle_flash_native(
             route_options.max_iterations,
             route_options.tolerance,
             _native_timeout_seconds(route_options),
+            route_options.hessian_mode,
+            route_options.ipopt_iteration_history_limit,
             material_tolerance,
             pressure_tolerance,
             charge_tolerance,
@@ -2466,6 +2500,8 @@ def electrolyte_lle_flash_native(
             jacobian_backend=opts.jacobian_backend,
             solver_backend=opts.solver_backend,
             timeout_seconds=opts.timeout_seconds,
+            hessian_mode=opts.hessian_mode,
+            ipopt_iteration_history_limit=opts.ipopt_iteration_history_limit,
         )
         route, route_tolerances = run_route(route_options)
     if str(route.get("status", "")) == "ipopt_dependency_required":

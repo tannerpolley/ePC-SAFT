@@ -20,6 +20,8 @@ def test_electrolyte_bubble_pressure_builds_native_route_before_ipopt_gate(monke
         "tolerance",
         "min_composition",
         "charge_tolerance",
+        "hessian_mode",
+        "ipopt_iteration_history_limit",
     }
     mix = _salt_mixture()
     calls: list[dict[str, object]] = []
@@ -30,6 +32,8 @@ def test_electrolyte_bubble_pressure_builds_native_route_before_ipopt_gate(monke
         liquid_composition,
         max_iterations,
         tolerance,
+        hessian_mode,
+        iteration_history_limit,
         phase_total_tolerance,
         pressure_tolerance,
         charge_tolerance,

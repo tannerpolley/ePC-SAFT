@@ -35,6 +35,180 @@ def _ascani_electrolyte_mixture() -> tuple[epcsaft.ePCSAFTMixture, list[float]]:
     return mix, feed
 
 
+def test_current_public_route_nlps_reject_exact_hessian_without_provider() -> None:
+    neutral = _neutral_binary_mixture()
+    ionic = _ionic_mixture()
+    electrolyte, electrolyte_feed = _ascani_electrolyte_mixture()
+    reactive_feed = [0.3, 0.7]
+    reactive_phase_amounts = [[0.1, 0.4], [0.2, 0.3]]
+    reactive_volumes = [0.005, 0.004]
+    reactive_totals = [1.0]
+    reactive_stoichiometry = [-1.0, 1.0]
+
+    cases = [
+        (
+            "neutral_tp_flash",
+            lambda: _core._native_neutral_tp_flash_eos_route_result(
+                neutral._native,
+                300.0,
+                1.0e5,
+                [0.4, 0.6],
+                30,
+                1.0e-8,
+                0.0,
+                "exact",
+                20,
+                1.0e-7,
+                1.0e-5,
+                1.0e-7,
+                1.0e-4,
+            ),
+        ),
+        (
+            "neutral_lle",
+            lambda: _core._native_neutral_lle_eos_route_result(
+                neutral._native,
+                298.15,
+                1.013e5,
+                [0.45, 0.55],
+                30,
+                1.0e-8,
+                0.0,
+                "exact",
+                20,
+                1.0e-7,
+                1.0e-5,
+                1.0e-7,
+                1.0e-4,
+            ),
+        ),
+        (
+            "neutral_bubble_dew",
+            lambda: _core._native_neutral_bubble_p_eos_route_result(
+                neutral._native,
+                300.0,
+                [0.35, 0.65],
+                30,
+                1.0e-8,
+                0.0,
+                "exact",
+                20,
+                1.0e-7,
+                1.0e-5,
+                1.0e-7,
+                1.0e-4,
+            ),
+        ),
+        (
+            "electrolyte_lle",
+            lambda: _core._native_electrolyte_lle_eos_route_result(
+                electrolyte._native,
+                298.15,
+                1.013e5,
+                electrolyte_feed,
+                30,
+                1.0e-8,
+                0.0,
+                "exact",
+                20,
+                1.0e-7,
+                1.0e-5,
+                1.0e-8,
+                1.0e-7,
+                1.0e-4,
+            ),
+        ),
+        (
+            "electrolyte_stability",
+            lambda: _core._native_electrolyte_stability_tpd_route_result(
+                ionic._native,
+                298.15,
+                1.013e5,
+                [0.9998, 1.0e-4, 1.0e-4],
+                30,
+                1.0e-8,
+                0.0,
+                "exact",
+                20,
+                1.0e-8,
+            ),
+        ),
+        (
+            "neutral_stability",
+            lambda: _core._native_neutral_stability_tpd_route_result(
+                neutral._native,
+                300.0,
+                1.0e5,
+                [0.3, 0.7],
+                "vap",
+                "vap",
+                30,
+                1.0e-8,
+                0.0,
+                "exact",
+                20,
+                1.0e-8,
+            ),
+        ),
+        (
+            "reactive_lle",
+            lambda: _core._native_reactive_lle_eos_route_result(
+                neutral._native,
+                300.0,
+                1.0e5,
+                reactive_feed,
+                1,
+                [1.0, 1.0],
+                reactive_totals,
+                1,
+                reactive_stoichiometry,
+                [float(np.log(3.0))],
+                10,
+                1.0e-8,
+                0.0,
+                "exact",
+                20,
+                1.0e-8,
+                1.0e-3,
+                1.0e-8,
+                1.0e-3,
+                1.0e-12,
+                [0],
+                [],
+            ),
+        ),
+        (
+            "reactive_two_phase",
+            lambda: _core._native_reactive_two_phase_eos_route_result(
+                neutral._native,
+                300.0,
+                1.0e5,
+                reactive_phase_amounts,
+                reactive_volumes,
+                1,
+                [1.0, 1.0],
+                reactive_totals,
+                1,
+                reactive_stoichiometry,
+                [float(np.log(3.0))],
+                10,
+                1.0e-8,
+                0.0,
+                "exact",
+                20,
+                1.0e-8,
+                1.0e-6,
+                1.0e-6,
+                1.0e-3,
+            ),
+        ),
+    ]
+
+    for name, call in cases:
+        with pytest.raises(_core.NativeValueError, match="exact Hessian mode requires"):
+            call()
+
+
 def test_neutral_two_phase_eos_nlp_contract_uses_phase_system_blocks() -> None:
     mix = _neutral_binary_mixture()
     temperature = 300.0
@@ -176,6 +350,8 @@ def test_neutral_stability_tpd_route_result_uses_ipopt_adapter_gate() -> None:
         30,
         1.0e-8,
         0.0,
+        "limited-memory",
+        20,
         1.0e-8,
     )
 
@@ -248,6 +424,8 @@ def test_electrolyte_stability_tpd_route_result_uses_ipopt_adapter_gate() -> Non
         30,
         1.0e-8,
         0.0,
+        "limited-memory",
+        20,
         1.0e-8,
     )
 
@@ -358,6 +536,8 @@ def test_electrolyte_lle_route_result_uses_ipopt_adapter_gate_and_charge_rows() 
         500,
         1.0e-8,
         0.0,
+        "limited-memory",
+        20,
         1.0e-8,
         1.0e-3,
         1.0e-7,
@@ -579,6 +759,8 @@ def test_neutral_fixed_temperature_pressure_route_result_uses_ipopt_adapter_gate
         30,
         1.0e-8,
         0.0,
+        "limited-memory",
+        20,
         1.0e-7,
         1.0e-5,
         1.0e-7,
@@ -633,6 +815,8 @@ def test_neutral_fixed_pressure_temperature_route_result_uses_ipopt_adapter_gate
         30,
         1.0e-8,
         0.0,
+        "limited-memory",
+        20,
         1.0e-7,
         1.0e-5,
         1.0e-7,
@@ -694,6 +878,8 @@ def test_neutral_two_phase_eos_route_result_translates_solver_and_postsolve() ->
         feed_amounts.tolist(),
         30,
         1.0e-8,
+        "limited-memory",
+        20,
         1.0e-7,
         1.0e-5,
         1.0e-7,
@@ -738,6 +924,8 @@ def test_neutral_lle_route_result_uses_ipopt_adapter_gate() -> None:
         30,
         1.0e-8,
         0.0,
+        "limited-memory",
+        20,
         1.0e-7,
         1.0e-5,
         1.0e-7,
@@ -1113,6 +1301,8 @@ def test_reactive_two_phase_eos_route_result_uses_native_ipopt_gate() -> None:
         10,
         1.0e-8,
         0.0,
+        "limited-memory",
+        20,
         1.0e-8,
         1.0e-6,
         1.0e-6,
@@ -1201,6 +1391,8 @@ def test_reactive_lle_eos_route_builder_owns_canonical_initial_point() -> None:
         10,
         1.0e-8,
         0.0,
+        "limited-memory",
+        20,
         1.0e-8,
         1.0e-3,
         1.0e-8,
@@ -1319,6 +1511,8 @@ def test_reactive_electrolyte_lle_eos_route_builder_uses_liquid_root_residual_ro
         10,
         1.0e-8,
         0.0,
+        "limited-memory",
+        20,
         1.0e-8,
         1.0e-3,
         1.0e-8,

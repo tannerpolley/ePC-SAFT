@@ -1431,6 +1431,7 @@ equilibrium_nlp::NeutralTwoPhaseEosRouteResult solve_electrolyte_lle_liquid_root
     out.accepted = solve.accepted;
     out.solver_status = solve.solver_status;
     out.application_status = solve.application_status;
+    equilibrium_nlp::apply_ipopt_solve_metadata(out, solve);
     const auto last_exception = solve.diagnostics_string.find("last_callback_exception");
     if (last_exception != solve.diagnostics_string.end()) {
         out.last_callback_exception = last_exception->second;

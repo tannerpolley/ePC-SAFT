@@ -258,6 +258,8 @@ def _native_route_payload(
         options.max_iterations,
         options.tolerance,
         _native_timeout_seconds(options),
+        options.hessian_mode,
+        options.ipopt_iteration_history_limit,
         material_tolerance,
         pressure_tolerance,
         min(options.tolerance, 1.0e-8),

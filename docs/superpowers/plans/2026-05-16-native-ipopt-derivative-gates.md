@@ -427,7 +427,7 @@ they report the Ceres regression path and CppAD derivative backend instead of st
 
 Task 4 note: the adapter boundary now lives under `src/epcsaft/native/equilibrium_nlp/`. The local fast build intentionally reports Ipopt disabled, so the quadratic smoke is dependency-gated locally and will execute only in an Ipopt-enabled build.
 
-Task 4 continuation note: the local Windows Ipopt proof uses the install root at `C:\ProgramData\miniconda3\envs\ePC-SAFT\Library` with the MSVC toolchain. The old MinGW probe compiled/linked against that root but crashed because the Ipopt C++ ABI is MSVC-oriented. The supported proof command is `uv run python scripts/dev/build_epcsaft.py --clean --profile ipopt --ipopt-root C:\ProgramData\miniconda3\envs\ePC-SAFT\Library --parallel 4`, followed by setting both `PATH` and `EPCSAFT_RUNTIME_DLL_DIRS` to the Ipopt `Library\bin` directory for Ipopt-executing tests. This adapter proof passed with the native quadratic Ipopt smoke before the active dev build was restored to the default no-Ipopt quick profile.
+Task 4 continuation note: the local Windows Ipopt proof uses the SDK root at `%USERPROFILE%\Documents\deps\ipopt-msvc` with the MSVC toolchain. The old MinGW probe compiled/linked against the MSVC-oriented Ipopt tree but crashed because the Ipopt C++ ABI is MSVC-oriented. The supported proof command is `uv run python scripts/dev/build_epcsaft.py --clean --profile ipopt --ipopt-root $env:USERPROFILE\Documents\deps\ipopt-msvc --parallel 4`, followed by setting both `PATH` and `EPCSAFT_RUNTIME_DLL_DIRS` to the SDK `bin` directory for Ipopt-executing tests. This adapter proof passed with the native quadratic Ipopt smoke before the active dev build was restored to the default no-Ipopt quick profile.
 
 ### Task 5: Add Gibbs And Reaction Blocks
 
@@ -462,7 +462,7 @@ Task 5 note: the convex coverage is deliberately limited to homogeneous ideal re
 - [x] Add tests for ideal, nonideal, charged, and failure diagnostics.
 - [x] Commit route slices covering reactive speciation through native Ipopt.
 
-Task 6 progress note: the first route slice adds explicit `solver_backend="ipopt"` support for homogeneous `ideal_mole_fraction` reactive speciation through a new native `equilibrium_nlp` ideal-speciation problem and the generic Ipopt adapter. The route uses species amounts as variables, material balances as equality constraints, a reduced ideal Gibbs objective, analytical gradients/Jacobians, one deterministic initial point, and Ipopt limited-memory Hessian behavior as solver-internal behavior only. Local proof covered both the no-Ipopt dependency gate and the Ipopt-enabled MSVC build at `C:\ProgramData\miniconda3\envs\ePC-SAFT\Library`. A second slice added exact charge-balance constraints when the charge row is independent of material balances and proved a charged ideal association case through the native Ipopt route. A later slice routes homogeneous activity and concentration standard-state speciation through a nonideal Gibbs/activity NLP using exact CppAD-implicit phase-state sensitivities; mixed standard-state bases still fail loudly until their thermodynamic objective is specified.
+Task 6 progress note: the first route slice adds explicit `solver_backend="ipopt"` support for homogeneous `ideal_mole_fraction` reactive speciation through a new native `equilibrium_nlp` ideal-speciation problem and the generic Ipopt adapter. The route uses species amounts as variables, material balances as equality constraints, a reduced ideal Gibbs objective, analytical gradients/Jacobians, one deterministic initial point, and Ipopt limited-memory Hessian behavior as solver-internal behavior only. Local proof covered both the no-Ipopt dependency gate and the Ipopt-enabled MSVC SDK build at `%USERPROFILE%\Documents\deps\ipopt-msvc`. A second slice added exact charge-balance constraints when the charge row is independent of material balances and proved a charged ideal association case through the native Ipopt route. A later slice routes homogeneous activity and concentration standard-state speciation through a nonideal Gibbs/activity NLP using exact CppAD-implicit phase-state sensitivities; mixed standard-state bases still fail loudly until their thermodynamic objective is specified.
 
 Task 6 continuation note: the public helper that manufactured missing implicit-derivative payloads was removed. Reactive speciation now records implicit solve results only for real analytical/CppAD-backed solved-state sensitivities; unsupported implicit derivative requests raise instead of returning placeholder diagnostics.
 
@@ -1284,8 +1284,8 @@ with source distribution, wheel build, wheel install, and wheel smoke import pas
 reported Ceres and CppAD enabled with Ipopt disabled for the normal quick/package path.
 
 Task 13 validation note: the current branch was also rebuilt with the documented Ipopt profile:
-`uv run python scripts/dev/build_epcsaft.py --clean --profile ipopt --ipopt-root C:\ProgramData\miniconda3\envs\ePC-SAFT\Library --parallel 4`.
-With `C:\ProgramData\miniconda3\envs\ePC-SAFT\Library\bin` on `PATH` and in `EPCSAFT_RUNTIME_DLL_DIRS`, the focused
+`uv run python scripts/dev/build_epcsaft.py --clean --profile ipopt --ipopt-root $env:USERPROFILE\Documents\deps\ipopt-msvc --parallel 4`.
+With `%USERPROFILE%\Documents\deps\ipopt-msvc\bin` on `PATH` and in `EPCSAFT_RUNTIME_DLL_DIRS`, the focused
 Ipopt proof passed: native Ipopt smoke contract, accepted quadratic Ipopt adapter solve, explicit ideal reactive
 speciation, charged ideal reactive speciation, auto-selected ideal reactive speciation, public nonideal reactive
 speciation, and private nonideal chemical-equilibrium Ipopt route (`7 passed in 0.51s`).

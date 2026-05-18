@@ -102,6 +102,19 @@ def test_native_route_diagnostics_merges_postsolve_and_solver_metadata() -> None
         "backend": "ipopt",
         "problem_name": "electrolyte_lle_eos",
         "adapter_kind": "native_tnlp_adapter",
+        "gradient_approximation": "exact",
+        "jacobian_approximation": "exact",
+        "hessian_approximation": "exact",
+        "hessian_backend": "analytic",
+        "scaling_method": "user-scaling",
+        "iteration_count": 7,
+        "iteration_history_limit": 3,
+        "iteration_history_size": 3,
+        "variable_scaling_count": 2,
+        "constraint_scaling_count": 1,
+        "exact_hessian_available": True,
+        "warm_start_requested": True,
+        "warm_start_used": True,
         "exact_gradient_required": True,
         "exact_jacobian_required": True,
         "postsolve": {
@@ -121,6 +134,17 @@ def test_native_route_diagnostics_merges_postsolve_and_solver_metadata() -> None
     assert diagnostics["solver_backend"] == "ipopt"
     assert diagnostics["problem_name"] == "electrolyte_lle_eos"
     assert diagnostics["adapter_kind"] == "native_tnlp_adapter"
+    assert diagnostics["hessian_approximation"] == "exact"
+    assert diagnostics["hessian_backend"] == "analytic"
+    assert diagnostics["scaling_method"] == "user-scaling"
+    assert diagnostics["iteration_count"] == 7
+    assert diagnostics["iteration_history_limit"] == 3
+    assert diagnostics["iteration_history_size"] == 3
+    assert diagnostics["variable_scaling_count"] == 2
+    assert diagnostics["constraint_scaling_count"] == 1
+    assert diagnostics["exact_hessian_available"] is True
+    assert diagnostics["warm_start_requested"] is True
+    assert diagnostics["warm_start_used"] is True
     assert diagnostics["exact_gradient_required"] is True
     assert diagnostics["exact_jacobian_required"] is True
 

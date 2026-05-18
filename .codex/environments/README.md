@@ -12,8 +12,8 @@ pwsh.exe -NoProfile -ExecutionPolicy Bypass -File .codex/environments/setup.ps1
 The native build action intentionally uses the script default ``--profile fast``:
 Ceres, CppAD, and system Ipopt are enabled. The setup helper resolves
 ``EPCSAFT_IPOPT_ROOT`` first, then ``EPCSAFT_PEP517_IPOPT_ROOT``, then the local
-Windows default ``C:\ProgramData\miniconda3\envs\ePC-SAFT\Library``. It also
-adds the Ipopt ``bin`` directory to ``PATH`` and ``EPCSAFT_RUNTIME_DLL_DIRS`` so
+Windows SDK default ``%USERPROFILE%\Documents\deps\ipopt-msvc``. It also adds
+the Ipopt ``bin`` directory to ``PATH`` and ``EPCSAFT_RUNTIME_DLL_DIRS`` so
 ``doctor.py --require-ipopt`` can load the native extension in a fresh Codex
 worktree. Use ``uv run python scripts/dev/validate_project.py ceres-cppad`` when
 the task needs the focused Ceres regression/backend slice.

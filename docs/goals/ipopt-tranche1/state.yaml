@@ -1,0 +1,315 @@
+version: 2
+
+goal:
+  title: "Ipopt Tranche 1"
+  slug: "ipopt-tranche1"
+  kind: existing_plan
+  tranche: "Implement per-iteration diagnostics, scaling diagnostics, warm-start continuation state, and Hessian-mode behavior for native Ipopt equilibrium routes."
+  status: active
+  intake:
+    original_request: "PLEASE IMPLEMENT THIS PLAN: Ipopt Tranche 1 Shipshape Prep"
+    interpreted_outcome: "The score >= 9.0 Ipopt improvements are implemented, tested, and locally committed without branch-prune side effects."
+    input_shape: existing_plan
+    audience: "ePC-SAFT package maintainers and downstream consumers"
+    authority: requested
+    proof_type: test
+    completion_proof: "Focused native/Python tests pass, Ipopt-enabled proof is run or blocked with exact reason, cleanup passes, and tracked tranche changes are locally committed."
+    likely_misfire: "Diagnostics or option names are added without changing the native Ipopt adapter behavior, or exact Hessian requests silently fall back to limited-memory."
+    blind_spots_considered:
+      - "Exact Ipopt Hessian support requires Hessian-of-Lagrangian callbacks."
+      - "Fast dev builds do not prove native Ipopt behavior."
+      - "Route-level exact Hessian coverage may be uneven; exact mode must fail loudly when unavailable."
+      - "Continuation state must be route-compatible by route kind, dimensions, species order, and fixed specs."
+      - "Generated Graphify output should stay local/untracked by default."
+      - "Algorithm-registry branch/worktree cleanup is no longer part of this plan."
+    existing_plan_facts:
+      - "Implement score >= 9.0 items only: scaling, exact Hessian support, per-iteration diagnostics, and warm starts."
+      - "Recommended implementation order: diagnostics, scaling, warm starts, exact Hessian support."
+      - "Add typed public options: ipopt_iteration_history_limit, hessian_mode, continuation_state."
+      - "Preserve limited-memory as explicit selectable mode."
+      - "Default hessian_mode='auto' may select exact only when the route has verified Hessian coverage."
+      - "No branch pruning is part of this tranche."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: generated
+    url: "http://127.0.0.1:41737/ipopt-tranche1/"
+    command: "& C:\\Users\\Tanner\\Documents\\git\\codex-maintenance\\scripts\\start-goalbuddy-board.ps1 -Goal docs/goals/ipopt-tranche1 -Once -Json"
+  github_projects:
+    status: not_requested
+    url: null
+    command: "npx goalbuddy extend github-projects"
+    missing: []
+
+active_task: T999
+
+tasks:
+  - id: T001
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: low
+    objective: "Map GoalBuddy, Graphify, branch, and repo-control prerequisites before implementation."
+    inputs:
+      - "C:\\Users\\Tanner\\.codex\\GOALBUDDY.md"
+      - "C:\\Users\\Tanner\\.agents\\skills\\shipshape\\SKILL.md"
+      - "docs/plans/ipopt_branch_handoff.md"
+      - "docs/plans/ipopt_improvement_plan.md"
+      - "CONTEXT.md"
+      - "docs/roadmaps/FULL_ROADMAP.md"
+    constraints:
+      - "Read-only."
+      - "Do not prune branches or worktrees."
+    expected_output:
+      - "Prep commands"
+      - "Artifact policy"
+      - "Branch/worktree risk notes"
+    receipt:
+      result: done
+      summary: "GoalBuddy paths, Graphify markers, Ipopt handoff, and live branch state were inspected. The algorithm-registry branch prune guard was removed from tranche scope."
+      evidence:
+        - "GoalBuddy skill root resolves through codex-maintenance."
+        - "Graphify was not previously initialized in this checkout."
+        - "ipopt is ahead of origin/ipopt by the algorithm-registry handoff commit."
+        - "codex/algorithm-registry is out of scope for this tranche."
+
+  - id: T010
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Implement adapter-level Ipopt iteration diagnostics, scaling diagnostics, warm-start state, and Hessian-mode behavior with focused tests."
+    allowed_files:
+      - ".gitignore"
+      - ".graphifyignore"
+      - "docs/goals/ipopt-tranche1/goal.md"
+      - "docs/goals/ipopt-tranche1/state.yaml"
+      - "src/epcsaft/native/equilibrium_nlp/nlp_problem.h"
+      - "src/epcsaft/native/equilibrium_nlp/nlp_problem.cpp"
+      - "src/epcsaft/native/equilibrium_nlp/ipopt_adapter.h"
+      - "src/epcsaft/native/equilibrium_nlp/ipopt_adapter.cpp"
+      - "src/epcsaft/bindings.cpp"
+      - "tests/native/equilibrium/test_ipopt_adapter_contract.py"
+      - "scripts/dev/native_runtime_env.py"
+      - "scripts/dev/build_epcsaft.py"
+      - "scripts/dev/doctor.py"
+      - "scripts/dev/bootstrap_uv.ps1"
+      - ".codex/environments/setup.ps1"
+      - ".codex/environments/README.md"
+      - "tests/workflows/build/test_native_runtime_env.py"
+      - "tests/workflows/build/test_build_epcsaft.py"
+      - "analyses/paper_validation/native/2022_ascani/analysis.yaml"
+      - "docs/plans/ipopt_branch_handoff.md"
+      - "docs/roadmaps/ascani_lle_reactive_equilibrium_handoff.md"
+      - "docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md"
+    verify:
+      - "uv run python run_pytest.py tests/native/equilibrium/test_ipopt_adapter_contract.py -q"
+      - "git diff --check"
+    stop_if:
+      - "Adapter changes require route-specific thermodynamic Hessian implementations before tests can pass."
+      - "Need files outside allowed_files for this slice."
+      - "Focused tests fail twice for unrelated native build reasons."
+    receipt:
+      result: done
+      summary: "Adapter-level Ipopt diagnostics, user scaling metadata, warm-start multipliers, bounded iteration history, Hessian-mode selection, and exact-Hessian callback plumbing were implemented. The local Ipopt runtime was moved to the Windows SDK root at C:\\Users\\Tanner\\Documents\\deps\\ipopt-msvc so validation no longer depends on an external environment PATH."
+      changed_files:
+        - "src/epcsaft/native/equilibrium_nlp/nlp_problem.h"
+        - "src/epcsaft/native/equilibrium_nlp/nlp_problem.cpp"
+        - "src/epcsaft/native/equilibrium_nlp/ipopt_adapter.h"
+        - "src/epcsaft/native/equilibrium_nlp/ipopt_adapter.cpp"
+        - "src/epcsaft/bindings.cpp"
+        - "scripts/dev/native_runtime_env.py"
+        - "scripts/dev/build_epcsaft.py"
+        - "scripts/dev/doctor.py"
+        - "scripts/dev/bootstrap_uv.ps1"
+        - ".codex/environments/setup.ps1"
+        - ".codex/environments/README.md"
+        - "tests/native/equilibrium/test_ipopt_adapter_contract.py"
+        - "tests/workflows/build/test_native_runtime_env.py"
+        - "tests/workflows/build/test_build_epcsaft.py"
+        - "analyses/paper_validation/native/2022_ascani/analysis.yaml"
+        - "docs/plans/ipopt_branch_handoff.md"
+        - "docs/roadmaps/ascani_lle_reactive_equilibrium_handoff.md"
+        - "docs/superpowers/plans/2026-05-16-native-ipopt-derivative-gates.md"
+      commands:
+        - command: "uv run python run_pytest.py tests/workflows/build/test_native_runtime_env.py tests/workflows/build/test_build_epcsaft.py -q"
+          status: pass
+          summary: "14 passed"
+        - command: "uv run python scripts/dev/build_epcsaft.py --build-only --parallel 10 with EPCSAFT_IPOPT_ROOT unset and old environment paths stripped from PATH"
+          status: pass
+          summary: "native import OK; SDK IpoptRoot selected"
+        - command: "uv run python scripts/dev/doctor.py --require-ipopt with EPCSAFT_IPOPT_ROOT unset and old environment paths stripped from PATH"
+          status: pass
+          summary: "install_state: current; ipopt_status: enabled_available"
+        - command: "uv run python -c \"from epcsaft import _core; print(_core._native_ipopt_quadratic_smoke()['status'])\" with SDK bin only"
+          status: pass
+          summary: "success"
+      evidence:
+        - "scripts/dev/build_epcsaft.py --build-only --parallel 10 picked IpoptRoot=C:\\Users\\Tanner\\Documents\\deps\\ipopt-msvc with EPCSAFT_IPOPT_ROOT unset."
+        - "scripts/dev/doctor.py --require-ipopt reported ipopt_status: enabled_available and install_state: current with the SDK runtime."
+        - "tests/native/equilibrium/test_ipopt_adapter_contract.py passed in the focused adapter/API slice."
+        - "Exact Hessian mode calls eval_h for the quadratic adapter smoke; limited-memory remains explicit and reports eval_h_calls == 0."
+
+  - id: T020
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Propagate typed public EquilibriumOptions and route diagnostics for iteration history limit, hessian_mode, and continuation_state."
+    allowed_files:
+      - "src/epcsaft/equilibrium.py"
+      - "src/epcsaft/electrolyte_bubble.py"
+      - "src/epcsaft/equilibrium_core/native_results.py"
+      - "src/epcsaft/bindings.cpp"
+      - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+      - "src/epcsaft/native/equilibrium/reactive_phase_equilibrium_problem.cpp"
+      - "src/epcsaft/native/equilibrium_nlp/bubble_dew_route_builders.cpp"
+      - "src/epcsaft/native/equilibrium_nlp/route_builders.cpp"
+      - "src/epcsaft/native/equilibrium_nlp/route_builders.h"
+      - "src/epcsaft/native/equilibrium_nlp/stability_route_builders.cpp"
+      - "src/epcsaft/native/equilibrium_nlp/stability_route_builders.h"
+      - "analyses/paper_validation/application/2026_khudaida/scripts/diagnose_figures_2_7_live_ipopt.py"
+      - "tests/equilibrium/core/test_bubble_dew.py"
+      - "tests/equilibrium/core/test_lle.py"
+      - "tests/equilibrium/core/test_native_results.py"
+      - "tests/equilibrium/core/test_stability.py"
+      - "tests/equilibrium/core/test_vle.py"
+      - "tests/equilibrium/electrolyte/test_electrolyte_bubble.py"
+      - "tests/equilibrium/electrolyte/test_electrolyte_lle_results.py"
+      - "tests/equilibrium/electrolyte/test_electrolyte_lle_smokes.py"
+      - "tests/native/equilibrium/test_route_builders.py"
+      - "tests/equilibrium/core/"
+      - "tests/equilibrium/electrolyte/"
+      - "tests/api/reactive/"
+    verify:
+      - "uv run python run_pytest.py tests/equilibrium/core tests/equilibrium/electrolyte tests/api/reactive -q"
+      - "git diff --check"
+    stop_if:
+      - "Public continuation-state compatibility cannot be validated from route payloads."
+      - "Need native route files outside allowed_files."
+      - "Focused tests fail twice for unrelated native build reasons."
+    receipt:
+      result: done
+      summary: "Public Python options and native route result diagnostics now propagate hessian_mode, ipopt_iteration_history_limit, scaling metadata, iteration history, and warm-start continuation-state fields through the current native Ipopt route families."
+      changed_files:
+        - "src/epcsaft/equilibrium.py"
+        - "src/epcsaft/electrolyte_bubble.py"
+        - "src/epcsaft/equilibrium_core/native_results.py"
+        - "src/epcsaft/bindings.cpp"
+        - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+        - "src/epcsaft/native/equilibrium/reactive_phase_equilibrium_problem.cpp"
+        - "src/epcsaft/native/equilibrium_nlp/bubble_dew_route_builders.cpp"
+        - "src/epcsaft/native/equilibrium_nlp/route_builders.cpp"
+        - "src/epcsaft/native/equilibrium_nlp/route_builders.h"
+        - "src/epcsaft/native/equilibrium_nlp/stability_route_builders.cpp"
+        - "src/epcsaft/native/equilibrium_nlp/stability_route_builders.h"
+        - "analyses/paper_validation/application/2026_khudaida/scripts/diagnose_figures_2_7_live_ipopt.py"
+        - "tests/equilibrium/core/test_bubble_dew.py"
+        - "tests/equilibrium/core/test_lle.py"
+        - "tests/equilibrium/core/test_native_results.py"
+        - "tests/equilibrium/core/test_stability.py"
+        - "tests/equilibrium/core/test_vle.py"
+        - "tests/equilibrium/electrolyte/test_electrolyte_bubble.py"
+        - "tests/equilibrium/electrolyte/test_electrolyte_lle_results.py"
+        - "tests/equilibrium/electrolyte/test_electrolyte_lle_smokes.py"
+        - "tests/native/equilibrium/test_route_builders.py"
+      commands:
+        - command: "uv run python run_pytest.py tests/native/equilibrium/test_ipopt_adapter_contract.py tests/equilibrium/core/test_native_results.py tests/equilibrium/core/test_lle.py::test_equilibrium_options_public_surface_is_current_fields tests/equilibrium/core/test_lle.py::test_lle_flash_rejects_invalid_options_through_public_api tests/equilibrium/electrolyte/test_electrolyte_lle_smokes.py::test_electrolyte_lle_builds_native_route_before_ipopt_gate tests/equilibrium/electrolyte/test_electrolyte_bubble.py::test_electrolyte_bubble_pressure_builds_native_route_before_ipopt_gate -q"
+          status: pass
+          summary: "26 passed"
+        - command: "uv run python run_pytest.py tests/native/equilibrium/test_route_builders.py::test_neutral_stability_tpd_route_result_uses_ipopt_adapter_gate tests/native/equilibrium/test_route_builders.py::test_electrolyte_stability_tpd_route_result_uses_ipopt_adapter_gate tests/native/equilibrium/test_route_builders.py::test_neutral_fixed_temperature_pressure_route_result_uses_ipopt_adapter_gate tests/native/equilibrium/test_route_builders.py::test_neutral_lle_route_result_uses_ipopt_adapter_gate tests/native/equilibrium/test_route_builders.py::test_electrolyte_lle_route_result_uses_ipopt_adapter_gate_and_charge_rows tests/native/equilibrium/test_route_builders.py::test_reactive_two_phase_eos_route_result_uses_native_ipopt_gate tests/native/equilibrium/test_route_builders.py::test_reactive_lle_eos_route_builder_owns_canonical_initial_point tests/native/equilibrium/test_route_builders.py::test_reactive_electrolyte_lle_eos_route_builder_uses_liquid_root_residual_route -q"
+          status: pass
+          summary: "9 passed"
+      evidence:
+        - "Focused public/API route slice passed: tests/equilibrium/core/test_native_results.py, EquilibriumOptions validation tests, electrolyte LLE forwarding, and electrolyte bubble forwarding."
+        - "Native route-builder ABI slice passed for neutral/electrolyte stability, neutral TP/LLE, electrolyte LLE, reactive two-phase, reactive LLE, and reactive-electrolyte LLE gate tests."
+
+  - id: T030
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit exact-Hessian route coverage and decide the largest safe route-owned Hessian implementation or loud-failure gate."
+    inputs:
+      - "T010 receipt"
+      - "T020 receipt"
+      - "src/epcsaft/native/equilibrium_nlp/"
+      - "src/epcsaft/native/equilibrium/"
+    constraints:
+      - "Read-only."
+      - "Reject silent fallback under hessian_mode='exact'."
+      - "Do not claim route exact Hessian support without executable tests."
+    expected_output:
+      - "coverage matrix"
+      - "approved route implementation slice or blocked route list"
+      - "allowed_files"
+      - "verify"
+      - "stop_if"
+    receipt:
+      result: done
+      decision: "not_complete_until_final_audit"
+      summary: "Exact Hessian coverage was audited through executable gates. The adapter supports exact Hessian callbacks when a provider exists. Current public thermodynamic route NLPs do not yet expose route-owned Hessian providers, so hessian_mode='exact' fails loudly rather than silently selecting limited-memory."
+      evidence:
+        - "tests/native/equilibrium/test_route_builders.py::test_current_public_route_nlps_reject_exact_hessian_without_provider passed."
+        - "hessian_mode='auto' preserves limited-memory for routes without verified Hessian providers; hessian_mode='exact' rejects missing providers."
+
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: active
+    reasoning_hint: high
+    objective: "Audit whether Ipopt tranche 1 is complete against the user plan."
+    inputs:
+      - "All done task receipts"
+      - "Last verification"
+      - "Current dirty diff"
+      - "Ipopt build/doctor result or exact blocker"
+    constraints:
+      - "Do not implement."
+      - "Reject completion if exact Hessian requests can silently fall back."
+      - "Reject completion if public diagnostics do not report selected Hessian mode and scaling/iteration metadata."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "missing evidence"
+      - "next task if not complete"
+    receipt: null
+
+checks:
+  dirty_fingerprint: "ipopt ahead of origin/ipopt by two committed handoff/literature commits; current dirty tree is the Ipopt tranche plus local SDK workflow adoption. Generated Graphify output and GoalBuddy board assets remain ignored."
+  last_verification:
+    result: pass
+    task: "T010/T020/T030"
+    commands:
+      - "uv run python run_pytest.py tests/workflows/build/test_native_runtime_env.py tests/workflows/build/test_build_epcsaft.py -q -> 14 passed"
+      - "uv run python scripts/dev/build_epcsaft.py --build-only --parallel 10 with EPCSAFT_IPOPT_ROOT unset and old environment paths stripped from PATH -> native import OK, SDK IpoptRoot selected"
+      - "uv run python scripts/dev/doctor.py --require-ipopt with EPCSAFT_IPOPT_ROOT unset and old environment paths stripped from PATH -> install_state: current, ipopt_status: enabled_available"
+      - "pwsh.exe -NoProfile -ExecutionPolicy Bypass -File .codex/environments/setup.ps1 -Step Doctor with uv and old environment paths stripped from PATH -> SDK root selected, install_state: current"
+      - "uv run python -c \"from epcsaft import _core; print(_core._native_ipopt_quadratic_smoke()['status'])\" with only SDK bin prepended -> success"
+      - "uv run python run_pytest.py tests/native/equilibrium/test_route_builders.py::test_current_public_route_nlps_reject_exact_hessian_without_provider -q -> 1 passed"
+      - "uv run python run_pytest.py tests/native/equilibrium/test_ipopt_adapter_contract.py tests/equilibrium/core/test_native_results.py tests/equilibrium/core/test_lle.py::test_equilibrium_options_public_surface_is_current_fields tests/equilibrium/core/test_lle.py::test_lle_flash_rejects_invalid_options_through_public_api tests/equilibrium/electrolyte/test_electrolyte_lle_smokes.py::test_electrolyte_lle_builds_native_route_before_ipopt_gate tests/equilibrium/electrolyte/test_electrolyte_bubble.py::test_electrolyte_bubble_pressure_builds_native_route_before_ipopt_gate -q -> 26 passed"
+      - "uv run python run_pytest.py tests/native/equilibrium/test_route_builders.py::test_neutral_stability_tpd_route_result_uses_ipopt_adapter_gate tests/native/equilibrium/test_route_builders.py::test_electrolyte_stability_tpd_route_result_uses_ipopt_adapter_gate tests/native/equilibrium/test_route_builders.py::test_neutral_fixed_temperature_pressure_route_result_uses_ipopt_adapter_gate tests/native/equilibrium/test_route_builders.py::test_neutral_lle_route_result_uses_ipopt_adapter_gate tests/native/equilibrium/test_route_builders.py::test_electrolyte_lle_route_result_uses_ipopt_adapter_gate_and_charge_rows tests/native/equilibrium/test_route_builders.py::test_reactive_two_phase_eos_route_result_uses_native_ipopt_gate tests/native/equilibrium/test_route_builders.py::test_reactive_lle_eos_route_builder_owns_canonical_initial_point tests/native/equilibrium/test_route_builders.py::test_reactive_electrolyte_lle_eos_route_builder_uses_liquid_root_residual_route -q -> 9 passed"

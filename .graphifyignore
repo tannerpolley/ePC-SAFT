@@ -1,0 +1,30 @@
+# Graphify local context policy for ePC-SAFT.
+# Keep the graph focused on source, tests, and durable docs; skip generated and archival-heavy trees.
+
+.git/
+build/
+dist/
+wheelhouse/
+.venv/
+venv/
+.uv-cache/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+__pycache__/
+
+graphify-out/
+**/graphify-out/
+docs/_build/
+docs/latex/out/
+docs/papers/
+analyses/**/results/runs/
+analyses/**/figures/**/output/runs/
+analyses/**/logs/
+analyses/**/data/interim/
+analyses/**/data/raw/large/
+
+*.pyd
+*.dll
+*.so
+*.dylib

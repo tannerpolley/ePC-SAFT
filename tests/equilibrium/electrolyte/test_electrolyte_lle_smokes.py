@@ -48,6 +48,8 @@ def test_electrolyte_lle_builds_native_route_before_ipopt_gate(monkeypatch) -> N
                 max_iterations=70,
                 tolerance=1.0e-7,
                 timeout_seconds=9.0,
+                hessian_mode="exact",
+                ipopt_iteration_history_limit=4,
             ),
         )
 
@@ -60,6 +62,8 @@ def test_electrolyte_lle_builds_native_route_before_ipopt_gate(monkeypatch) -> N
         max_iterations,
         tolerance,
         timeout_seconds,
+        hessian_mode,
+        iteration_history_limit,
         material_tolerance,
         pressure_tolerance,
         charge_tolerance,
@@ -72,6 +76,8 @@ def test_electrolyte_lle_builds_native_route_before_ipopt_gate(monkeypatch) -> N
     assert max_iterations == 70
     assert tolerance == pytest.approx(1.0e-7)
     assert timeout_seconds == pytest.approx(9.0)
+    assert hessian_mode == "exact"
+    assert iteration_history_limit == 4
     assert material_tolerance == pytest.approx(1.0e-7)
     assert pressure_tolerance == pytest.approx(1.013e-2)
     assert charge_tolerance == pytest.approx(1.0e-8)

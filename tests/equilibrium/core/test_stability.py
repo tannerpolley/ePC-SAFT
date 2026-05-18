@@ -64,6 +64,8 @@ def test_stability_builds_one_native_route_request_before_ipopt_gate(monkeypatch
         max_iterations,
         tolerance,
         timeout_seconds,
+        hessian_mode,
+        iteration_history_limit,
         stability_tolerance,
     ):
         calls.append(
@@ -126,6 +128,8 @@ def test_stability_converts_accepted_native_route_payload(monkeypatch: pytest.Mo
         max_iterations,
         tolerance,
         timeout_seconds,
+        hessian_mode,
+        iteration_history_limit,
         stability_tolerance,
     ):
         assert temperature == pytest.approx(300.0)

@@ -19,11 +19,25 @@ _ROUTE_STRING_DIAGNOSTIC_KEYS = (
     "gradient_approximation",
     "jacobian_approximation",
     "hessian_approximation",
+    "hessian_backend",
+    "scaling_method",
 )
 
 _ROUTE_BOOL_DIAGNOSTIC_KEYS = (
     "exact_gradient_required",
     "exact_jacobian_required",
+    "exact_hessian_available",
+    "warm_start_requested",
+    "warm_start_used",
+)
+
+_ROUTE_INT_DIAGNOSTIC_KEYS = (
+    "iteration_count",
+    "iteration_history_limit",
+    "iteration_history_size",
+    "variable_scaling_count",
+    "constraint_scaling_count",
+    "eval_h_calls",
 )
 
 
@@ -52,6 +66,9 @@ def native_route_diagnostics(
     for key in _ROUTE_BOOL_DIAGNOSTIC_KEYS:
         if key in route or key in default_values:
             diagnostics[key] = bool(route.get(key, default_values.get(key, False)))
+    for key in _ROUTE_INT_DIAGNOSTIC_KEYS:
+        if key in route or key in default_values:
+            diagnostics[key] = int(route.get(key, default_values.get(key, 0)))
     return diagnostics
 
 

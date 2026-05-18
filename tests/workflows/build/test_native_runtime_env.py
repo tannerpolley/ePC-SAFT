@@ -7,6 +7,7 @@ from pathlib import Path
 from scripts.dev import build_epcsaft
 from scripts.dev import doctor
 from scripts.dev.native_runtime_env import apply_native_runtime_env
+from scripts.dev.native_runtime_env import resolve_default_windows_ipopt_sdk_root
 
 
 def test_native_runtime_env_injects_ipopt_bin_from_cmake_cache(tmp_path: Path) -> None:
@@ -58,6 +59,14 @@ def test_native_runtime_env_leaves_non_ipopt_builds_untouched(tmp_path: Path) ->
     assert env == {"PATH": "C:\\existing"}
 
 
+def test_native_runtime_env_resolves_local_windows_ipopt_sdk_default(tmp_path: Path) -> None:
+    ipopt_root = tmp_path / "Documents" / "deps" / "ipopt-msvc"
+    ipopt_root.mkdir(parents=True)
+
+    assert resolve_default_windows_ipopt_sdk_root(home=tmp_path, platform_name="nt") == ipopt_root.resolve()
+    assert resolve_default_windows_ipopt_sdk_root(home=tmp_path, platform_name="posix") is None
+
+
 def test_doctor_resolves_module_paths_by_importing(monkeypatch, tmp_path: Path) -> None:
     core_path = tmp_path / "_core.pyd"
 
@@ -72,6 +81,17 @@ def test_doctor_resolves_module_paths_by_importing(monkeypatch, tmp_path: Path) 
 
     assert path is None
     assert error == "ImportError: DLL load failed while importing _core"
+
+
+def test_doctor_reports_user_local_uv_when_not_on_path(monkeypatch, tmp_path: Path) -> None:
+    local_uv = tmp_path / ".local" / "bin" / "uv.exe"
+    local_uv.parent.mkdir(parents=True)
+    local_uv.write_text("", encoding="utf-8")
+    monkeypatch.setattr(doctor.shutil, "which", lambda name: None)
+    monkeypatch.setattr(doctor.sys, "platform", "win32")
+    monkeypatch.setattr(doctor.Path, "home", staticmethod(lambda: tmp_path))
+
+    assert doctor._tool_path("uv") == str(local_uv)
 
 
 def test_build_status_reports_ipopt_runtime_dll_dir(monkeypatch, tmp_path: Path) -> None:

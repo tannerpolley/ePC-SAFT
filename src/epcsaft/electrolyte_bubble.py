@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from numbers import Integral
 from typing import Any
 
 import numpy as np
@@ -21,6 +22,8 @@ class ElectrolyteBubbleOptions:
     tolerance: float = 1.0e-6
     min_composition: float = 1.0e-14
     charge_tolerance: float = 1.0e-8
+    hessian_mode: str = "auto"
+    ipopt_iteration_history_limit: int = 20
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,6 +77,20 @@ def electrolyte_bubble_pressure(
         options = ElectrolyteBubbleOptions()
     if not isinstance(options, ElectrolyteBubbleOptions):
         raise InputError("electrolyte_bubble_pressure options must be an ElectrolyteBubbleOptions instance.")
+    hessian_mode = str(options.hessian_mode).strip().lower().replace("_", "-")
+    if hessian_mode not in {"auto", "exact", "limited-memory"}:
+        raise InputError("ElectrolyteBubbleOptions.hessian_mode must be 'auto', 'exact', or 'limited-memory'.")
+    if isinstance(options.ipopt_iteration_history_limit, bool) or not isinstance(
+        options.ipopt_iteration_history_limit, Integral
+    ):
+        raise InputError(
+            "ElectrolyteBubbleOptions.ipopt_iteration_history_limit must be an integer greater than or equal to zero."
+        )
+    iteration_history_limit = int(options.ipopt_iteration_history_limit)
+    if iteration_history_limit < 0:
+        raise InputError(
+            "ElectrolyteBubbleOptions.ipopt_iteration_history_limit must be an integer greater than or equal to zero."
+        )
     if x_liq is None:
         if z is None:
             raise InputError("electrolyte_bubble_pressure requires x_liq or z.")
@@ -110,6 +127,8 @@ def electrolyte_bubble_pressure(
         x_values.tolist(),
         int(options.max_iterations),
         float(options.tolerance),
+        hessian_mode,
+        iteration_history_limit,
         float(options.tolerance),
         max(_CANONICAL_PRESSURE_SCALE * float(options.tolerance), float(options.tolerance)),
         float(options.charge_tolerance),

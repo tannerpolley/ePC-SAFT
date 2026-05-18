@@ -130,7 +130,14 @@ def _cmake_cache_value(name: str, cache_path: Path = DEV_BUILD_CACHE) -> str | N
 
 
 def _tool_path(name: str) -> str:
-    return shutil.which(name) or "<missing>"
+    found = shutil.which(name)
+    if found is not None:
+        return found
+    if name == "uv" and sys.platform.startswith("win"):
+        local_uv = Path.home() / ".local" / "bin" / "uv.exe"
+        if local_uv.is_file():
+            return str(local_uv)
+    return "<missing>"
 
 
 def _cmake_generator(cache_path: Path = DEV_BUILD_CACHE) -> str | None:
