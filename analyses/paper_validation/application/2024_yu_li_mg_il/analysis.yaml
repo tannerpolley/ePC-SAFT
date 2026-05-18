@@ -1,0 +1,50 @@
+analysis_id: 2024_yu_li_mg_il
+title: Yu 2024 Li/Mg extraction with HOEMIM Tf2N and TOP
+kind: paper_validation
+status: scaffolded_blocked
+package: epcsaft
+scope:
+  objective: Validate public reactive-electrolyte LLE behavior against Yu 2024 Li/Mg brine extraction and ePC-SAFT predictions.
+  not_objectives:
+    - Add application-specific extraction-efficiency or selectivity APIs to epcsaft.
+    - Claim direct reproduction without source supplementary tables.
+    - Replace accepted native Ipopt equilibrium with static extraction-efficiency formulas.
+source_assets:
+  required_in_worktree:
+    - docs/papers/md/Yu - 2024 - Highly efficient lithium extraction*.md
+    - docs/papers/md/Yu - 2024 - Supporting*.md
+  observed_external_checkout:
+    - C:/Users/Tanner/Documents/git/ePC-SAFT/docs/papers/md/Yu - 2024 - Highly efficient lithium extraction from magnesium-rich brines with ionic.md
+figure_targets:
+  figure_2: Ligand screening for Li extraction and Li/Mg selectivity.
+  figure_3: IL cation screening with TOP.
+  figure_4: pH, IL concentration, and organic-to-aqueous ratio optimization.
+  figure_6: Paper ePC-SAFT extraction-efficiency predictions for Li+ and Mg2+.
+  figure_7: Van't Hoff thermodynamic analysis.
+  figure_8: Binding-energy mechanism comparison.
+  figure_9: ESP mechanism comparison.
+  figure_10: IGM mechanism comparison.
+  figure_11: Washing and stripping.
+  figure_12: Recycle behavior.
+model_contract:
+  route: public generic reactive-electrolyte LLE
+  required_solver_backend: ipopt
+  required_density_route: fixed_TP_liquid_root
+  required_diagnostics:
+    - accepted solve
+    - aqueous and organic phase compositions
+    - phase split
+    - liquid densities
+    - Li+ transfer diagnostics
+    - Mg2+ rejection diagnostics
+    - phase charge residuals
+    - material and element balance residuals
+    - reaction residuals for phase-tagged cation exchange
+commands:
+  run_all: uv run python analyses/paper_validation/application/2024_yu_li_mg_il/scripts/run_all.py
+completion_blockers:
+  - Source markdown is not yet present in this worktree.
+  - Supplementary tables referenced by the paper must be found and normalized.
+  - A public native Ipopt reactive-electrolyte LLE route must support the phase-tagged Li+ exchange chemistry.
+  - Model outputs must prove accepted liquid-root phase states and not just extraction-efficiency algebra.
+

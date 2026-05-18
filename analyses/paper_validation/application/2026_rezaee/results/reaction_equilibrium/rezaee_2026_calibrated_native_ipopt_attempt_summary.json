@@ -1,29 +1,22 @@
 {
   "status": "diagnostic_attempt",
   "calibration": {
-    "status": "current_package_paper_constants_refit_candidate",
-    "source_project": "C:\\Users\\Tanner\\Documents\\git\\ePC-SAFT-ipopt-profile",
-    "source_file": "ephemeral uv run --with scipy in this worktree from Rezaee source rows",
+    "status": "paper_constants_refit_calibration",
+    "source_project": "C:\\Users\\Tanner\\Documents\\git\\Lithium_Extraction\\analyses\\rezaee_2026_pcsaft_epcsaft",
+    "source_file": "data\\processed\\rezaee_2026_reactive_equilibrium_paper_k_calibration.json",
     "source_metrics": {
-      "max_abs_ln_residual": 2.5853676721430503,
-      "mean_abs_ln_residual": 1.1203375645736178,
-      "median_abs_ln_residual": 1.1338754213860742,
-      "rms_ln_residual": 1.2964598164453938
+      "max_abs_ln_residual": 5.385099469559602,
+      "mean_abs_ln_residual": 1.5569707657701175,
+      "median_abs_ln_residual": 1.2822520386159937,
+      "rms_ln_residual": 1.9668747778503808
     }
   },
   "source_phase_residuals": {
     "row_count": 26,
-    "median_abs_ln_residual": 367.96195280884126,
-    "mean_abs_ln_residual": 368.00963507265794,
-    "max_abs_ln_residual": 385.8555255811541,
+    "median_abs_ln_residual": 334.45097016649595,
+    "mean_abs_ln_residual": 333.2010637066505,
+    "max_abs_ln_residual": 345.51307848867134,
     "rows_csv": "data\\processed\\rezaee_2026_calibrated_native_ipopt_attempt_rows.csv"
-  },
-  "separate_phase_residuals": {
-    "row_count": 26,
-    "median_abs_ln_residual": 1.1338754213860742,
-    "mean_abs_ln_residual": 1.1203375645736178,
-    "max_abs_ln_residual": 2.5853676721430503,
-    "rows_csv": "data\\processed\\rezaee_2026_calibrated_separate_phase_residual_rows.csv"
   },
   "public_route_attempt": {
     "experiment_no": 1,
@@ -74,7 +67,7 @@
     },
     "accepted": false,
     "error_type": "SolutionError",
-    "error": "('Native reactive LLE route was rejected.', {'accepted': False, 'rejection_reason': '', 'derivative_backend': 'cppad_implicit', 'density_backend': 'liquid_pressure_root', 'phase_count': 0, 'species_count': 0, 'balance_row_count': 0, 'reaction_count': 0, 'conserved_balance_norm': 0.0, 'charge_balance_norm': 0.0, 'pressure_consistency_norm': 0.0, 'phase_equilibrium_norm': 0.0, 'reaction_stationarity_norm': 0.0, 'phase_distance': 0.0, 'objective': 0.0, 'standard_mu_rt': [], 'constraints': [], 'reaction_stationarity_residuals': [], 'phase_equilibrium_residuals': [], 'phase_charge_residuals': [], 'phase_amount_totals': [], 'phase_volumes': [], 'phase_densities': [], 'phase_compositions': [], 'phase_ln_fugacity_coefficients': [], 'route_status': 'solver_rejected', 'solver_status': 'wall_time_exceeded'})",
+    "error": "('Native reactive LLE route was rejected.', {'accepted': False, 'rejection_reason': '', 'derivative_backend': 'cppad_implicit', 'density_backend': 'liquid_pressure_root', 'phase_count': 0, 'species_count': 0, 'balance_row_count': 0, 'reaction_count': 0, 'conserved_balance_norm': 0.0, 'charge_balance_norm': 0.0, 'pressure_consistency_norm': 0.0, 'phase_equilibrium_norm': 0.0, 'reaction_stationarity_norm': 0.0, 'phase_distance': 0.0, 'objective': 0.0, 'standard_mu_rt': [], 'constraints': [], 'reaction_stationarity_residuals': [], 'phase_equilibrium_residuals': [], 'phase_charge_residuals': [], 'phase_amount_totals': [], 'phase_volumes': [], 'phase_densities': [], 'phase_compositions': [], 'phase_ln_fugacity_coefficients': [], 'route_status': 'solver_rejected', 'solver_status': 'error_in_step_computation'})",
     "diagnostics": {
       "accepted": false,
       "rejection_reason": "",
@@ -102,13 +95,12 @@
       "phase_compositions": [],
       "phase_ln_fugacity_coefficients": [],
       "route_status": "solver_rejected",
-      "solver_status": "wall_time_exceeded"
+      "solver_status": "error_in_step_computation"
     }
   },
   "outputs": {
     "summary_json": "results\\reaction_equilibrium\\rezaee_2026_calibrated_native_ipopt_attempt_summary.json",
     "report_md": "results\\reaction_equilibrium\\rezaee_2026_calibrated_native_ipopt_attempt.md",
-    "rows_csv": "data\\processed\\rezaee_2026_calibrated_native_ipopt_attempt_rows.csv",
-    "separate_phase_rows_csv": "data\\processed\\rezaee_2026_calibrated_separate_phase_residual_rows.csv"
+    "rows_csv": "data\\processed\\rezaee_2026_calibrated_native_ipopt_attempt_rows.csv"
   }
 }

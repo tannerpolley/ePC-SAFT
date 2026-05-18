@@ -1,0 +1,47 @@
+analysis_id: 2024_hubach_li_tcb
+title: Hubach 2024 Li extraction with tetracyanoborate ionic liquids
+kind: paper_validation
+status: scaffolded_blocked
+package: epcsaft
+scope:
+  objective: Validate package electrolyte or reactive-electrolyte LLE behavior against Hubach 2024 IL/TBP lithium extraction data.
+  not_objectives:
+    - Add application-specific extraction-efficiency APIs to epcsaft.
+    - Claim reproduction before source tables are normalized into this worktree.
+    - Treat a dependency or route-construction check as validation.
+source_assets:
+  required_in_worktree:
+    - docs/papers/md/Hubach et al. - 2024 - Li+ Extraction*.md
+    - docs/papers/md/Hubach et al. - 2024 - Supporting Information*.md
+  observed_external_checkout:
+    - C:/Users/Tanner/Documents/git/ePC-SAFT/docs/papers/md/Hubach et al. - 2024 - Li+ Extraction from Aqueous Medium Using Tetracyanoborate Ionic Liquids-Experiments and ePC-SAFT Mod.md
+    - C:/Users/Tanner/Documents/git/ePC-SAFT/docs/papers/md/Hubach et al. - 2024 - Supporting Information - Li+ Extraction from Aqueous Medium Using Tetracyanoborate Ionic Liquids-Experiments and ePC-SAFT Mod.md
+figure_targets:
+  figure_1: IL cation solubility in water and water plus LiCl.
+  figure_2: TBP solubility in the organic phase.
+  figure_3: IL-cation effect on Li extraction efficiency.
+  figure_4: Li feed-concentration effect.
+  figure_5: TBP-content effect.
+  figure_6: Organic-to-aqueous ratio experimental extraction efficiency.
+  figure_7: Paper ePC-SAFT and experiment comparison for organic-to-aqueous ratio.
+model_contract:
+  route: public generic electrolyte or reactive-electrolyte LLE
+  required_solver_backend: ipopt
+  required_density_route: fixed_TP_liquid_root
+  required_diagnostics:
+    - accepted solve
+    - aqueous and organic phase compositions
+    - phase split
+    - liquid densities
+    - fugacity or electrochemical-potential residuals
+    - material balance residuals
+    - charge balance residuals
+    - association or reaction residuals for Li+/TBP coordination if represented explicitly
+commands:
+  run_all: uv run python analyses/paper_validation/application/2024_hubach_li_tcb/scripts/run_all.py
+completion_blockers:
+  - Source markdown and SI tables are not yet present in this worktree.
+  - Source tables must be normalized into data/input before executable validation.
+  - A public package native Ipopt route must produce accepted liquid-root results.
+  - The Hubach SI IL-cation table appears to need PDF visual QA because the OCR/table ordering can conflict with the main-text ordering.
+
