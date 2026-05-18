@@ -1,0 +1,114 @@
+{
+  "status": "diagnostic_attempt",
+  "calibration": {
+    "status": "current_package_paper_constants_refit_candidate",
+    "source_project": "C:\\Users\\Tanner\\Documents\\git\\ePC-SAFT-ipopt-profile",
+    "source_file": "ephemeral uv run --with scipy in this worktree from Rezaee source rows",
+    "source_metrics": {
+      "max_abs_ln_residual": 2.5853676721430503,
+      "mean_abs_ln_residual": 1.1203375645736178,
+      "median_abs_ln_residual": 1.1338754213860742,
+      "rms_ln_residual": 1.2964598164453938
+    }
+  },
+  "source_phase_residuals": {
+    "row_count": 26,
+    "median_abs_ln_residual": 367.96195280884126,
+    "mean_abs_ln_residual": 368.00963507265794,
+    "max_abs_ln_residual": 385.8555255811541,
+    "rows_csv": "data\\processed\\rezaee_2026_calibrated_native_ipopt_attempt_rows.csv"
+  },
+  "separate_phase_residuals": {
+    "row_count": 26,
+    "median_abs_ln_residual": 1.1338754213860742,
+    "mean_abs_ln_residual": 1.1203375645736178,
+    "max_abs_ln_residual": 2.5853676721430503,
+    "rows_csv": "data\\processed\\rezaee_2026_calibrated_separate_phase_residual_rows.csv"
+  },
+  "public_route_attempt": {
+    "experiment_no": 1,
+    "source_charge": -1.4999956409844466e-07,
+    "neutralized_charge": 2.168404344971009e-19,
+    "neutralization_species": "H+",
+    "neutralization_delta": 1.4999956409844466e-07,
+    "balances": {
+      "aqueous_oxygen_pool": {
+        "H2O": 1.0,
+        "OH-": 1.0
+      },
+      "lithium_total": {
+        "Li+": 1.0,
+        "RLi": 1.0
+      },
+      "sodium_total": {
+        "Na+": 1.0,
+        "RNa": 1.0
+      },
+      "chloride_total": {
+        "Cl-": 1.0
+      },
+      "proton_total": {
+        "H+": 1.0
+      },
+      "ammonium_total": {
+        "NH4+": 1.0
+      },
+      "organic_carrier_total": {
+        "DES": 1.0,
+        "RLi": 1.0,
+        "RNa": 1.0
+      },
+      "topo_total": {
+        "TOPO": 1.0
+      }
+    },
+    "totals": {
+      "aqueous_oxygen_pool": 0.48959382126780976,
+      "lithium_total": 0.00333664767629224,
+      "sodium_total": 0.011037191586143915,
+      "chloride_total": 0.00520298444641126,
+      "proton_total": 0.0007789476714399667,
+      "ammonium_total": 2.8483915351323373e-07,
+      "organic_carrier_total": 0.4405999101501802,
+      "topo_total": 0.059400014850034016
+    },
+    "accepted": false,
+    "error_type": "SolutionError",
+    "error": "('Native reactive LLE route was rejected.', {'accepted': False, 'rejection_reason': '', 'derivative_backend': 'cppad_implicit', 'density_backend': 'liquid_pressure_root', 'phase_count': 0, 'species_count': 0, 'balance_row_count': 0, 'reaction_count': 0, 'conserved_balance_norm': 0.0, 'charge_balance_norm': 0.0, 'pressure_consistency_norm': 0.0, 'phase_equilibrium_norm': 0.0, 'reaction_stationarity_norm': 0.0, 'phase_distance': 0.0, 'objective': 0.0, 'standard_mu_rt': [], 'constraints': [], 'reaction_stationarity_residuals': [], 'phase_equilibrium_residuals': [], 'phase_charge_residuals': [], 'phase_amount_totals': [], 'phase_volumes': [], 'phase_densities': [], 'phase_compositions': [], 'phase_ln_fugacity_coefficients': [], 'route_status': 'solver_rejected', 'solver_status': 'wall_time_exceeded'})",
+    "diagnostics": {
+      "accepted": false,
+      "rejection_reason": "",
+      "derivative_backend": "cppad_implicit",
+      "density_backend": "liquid_pressure_root",
+      "phase_count": 0,
+      "species_count": 0,
+      "balance_row_count": 0,
+      "reaction_count": 0,
+      "conserved_balance_norm": 0.0,
+      "charge_balance_norm": 0.0,
+      "pressure_consistency_norm": 0.0,
+      "phase_equilibrium_norm": 0.0,
+      "reaction_stationarity_norm": 0.0,
+      "phase_distance": 0.0,
+      "objective": 0.0,
+      "standard_mu_rt": [],
+      "constraints": [],
+      "reaction_stationarity_residuals": [],
+      "phase_equilibrium_residuals": [],
+      "phase_charge_residuals": [],
+      "phase_amount_totals": [],
+      "phase_volumes": [],
+      "phase_densities": [],
+      "phase_compositions": [],
+      "phase_ln_fugacity_coefficients": [],
+      "route_status": "solver_rejected",
+      "solver_status": "wall_time_exceeded"
+    }
+  },
+  "outputs": {
+    "summary_json": "results\\reaction_equilibrium\\rezaee_2026_calibrated_native_ipopt_attempt_summary.json",
+    "report_md": "results\\reaction_equilibrium\\rezaee_2026_calibrated_native_ipopt_attempt.md",
+    "rows_csv": "data\\processed\\rezaee_2026_calibrated_native_ipopt_attempt_rows.csv",
+    "separate_phase_rows_csv": "data\\processed\\rezaee_2026_calibrated_separate_phase_residual_rows.csv"
+  }
+}

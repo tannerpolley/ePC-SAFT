@@ -1,0 +1,37 @@
+{
+  "status": "current_package_paper_constants_refit_candidate",
+  "source_project": "C:\\Users\\Tanner\\Documents\\git\\ePC-SAFT-ipopt-profile",
+  "source_file": "ephemeral uv run --with scipy in this worktree from Rezaee source rows",
+  "source_summary": "results\\reaction_equilibrium\\rezaee_2026_reactive_equilibrium_fit_summary.json",
+  "row_count": 26,
+  "equilibrium_constants": {
+    "Li": 3.2983e-09,
+    "Na": 1.1476e-12
+  },
+  "parameters": {
+    "RLi": {
+      "epsilon_over_k_K": 483.9313631528143,
+      "m": 11.627738123871014,
+      "sigma_A": 3.4399133374230404
+    },
+    "RNa": {
+      "epsilon_over_k_K": 465.2928070584698,
+      "m": 7.93749806880211,
+      "sigma_A": 2.93714587339908
+    },
+    "organic_binary_interactions": {
+      "DES_RLi": -0.14084026723733287,
+      "DES_RNa": -0.3345351008404377,
+      "DES_TOPO": 0.18501098112003433,
+      "RLi_RNa": -0.43656787113027645,
+      "TOPO_RLi": -0.046662769559869394,
+      "TOPO_RNa": -0.20802552833873064
+    }
+  },
+  "metrics": {
+    "max_abs_ln_residual": 2.5853676721430503,
+    "mean_abs_ln_residual": 1.1203375645736178,
+    "median_abs_ln_residual": 1.1338754213860742,
+    "rms_ln_residual": 1.2964598164453938
+  }
+}
