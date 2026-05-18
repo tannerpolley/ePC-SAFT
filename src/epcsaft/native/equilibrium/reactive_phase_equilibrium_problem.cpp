@@ -995,6 +995,32 @@ public:
             mixture_->args().z,
             options_.min_composition
         );
+        if (minimum_phase_distance_ > 0.0) {
+            const std::vector<double> first_amounts = exp_amounts(initial_variables_, 0, ncomp);
+            const std::vector<double> second_amounts = exp_amounts(initial_variables_, ncomp, ncomp);
+            const std::vector<double> first = composition_from_amounts(
+                first_amounts,
+                sum_amounts(first_amounts),
+                options_.min_composition
+            );
+            const std::vector<double> second = composition_from_amounts(
+                second_amounts,
+                sum_amounts(second_amounts),
+                options_.min_composition
+            );
+            double max_distance = 0.0;
+            for (std::size_t species = 0; species < ncomp; ++species) {
+                const double diff = first[species] - second[species];
+                if (std::abs(diff) > max_distance) {
+                    max_distance = std::abs(diff);
+                    separation_species_index_ = static_cast<int>(species);
+                    separation_sign_ = diff >= 0.0 ? 1.0 : -1.0;
+                }
+            }
+            if (max_distance <= 0.0) {
+                throw ValueError("Reactive liquid-root LLE NLP requires distinct initial phases for phase-separation gating.");
+            }
+        }
     }
 
     std::string name() const override {
@@ -1006,19 +1032,21 @@ public:
     }
 
     int constraint_count() const override {
-        return 0;
+        return separation_constraint_count();
     }
 
     int jacobian_nonzero_count() const override {
-        return 0;
+        return variable_count() * constraint_count();
     }
 
     epcsaft::native::equilibrium_nlp::NlpBounds bounds() const override {
         epcsaft::native::equilibrium_nlp::NlpBounds out;
         out.variable_lower.assign(initial_variables_.size(), std::log(options_.min_composition));
         out.variable_upper.assign(initial_variables_.size(), 50.0);
-        out.constraint_lower = {};
-        out.constraint_upper = {};
+        if (separation_constraint_count() > 0) {
+            out.constraint_lower = {minimum_phase_distance_};
+            out.constraint_upper = {1.0e12};
+        }
         return out;
     }
 
@@ -1043,24 +1071,35 @@ public:
     }
 
     std::vector<double> constraints(const std::vector<double>& variables) const override {
-        (void)variables;
-        return {};
+        if (separation_constraint_count() == 0) {
+            return {};
+        }
+        return {phase_separation(variables)};
     }
 
     epcsaft::native::equilibrium_nlp::NlpJacobianStructure jacobian_structure() const override {
-        return {};
+        epcsaft::native::equilibrium_nlp::NlpJacobianStructure out;
+        out.rows.reserve(static_cast<std::size_t>(jacobian_nonzero_count()));
+        out.cols.reserve(static_cast<std::size_t>(jacobian_nonzero_count()));
+        for (int col = 0; col < variable_count(); ++col) {
+            out.rows.push_back(0);
+            out.cols.push_back(col);
+        }
+        return out;
     }
 
     std::vector<double> jacobian_values(const std::vector<double>& variables) const override {
-        (void)variables;
-        return {};
+        if (separation_constraint_count() == 0) {
+            return {};
+        }
+        return phase_separation_jacobian(variables);
     }
 
     epcsaft::native::equilibrium_nlp::NlpScaling scaling() const override {
         epcsaft::native::equilibrium_nlp::NlpScaling out;
         out.objective = 1.0;
         out.variables.assign(initial_variables_.size(), 1.0);
-        out.constraints = {};
+        out.constraints.assign(static_cast<std::size_t>(constraint_count()), 1.0);
         return out;
     }
 
@@ -1109,6 +1148,56 @@ public:
     }
 
 private:
+    int separation_constraint_count() const {
+        return minimum_phase_distance_ > 0.0 ? 1 : 0;
+    }
+
+    double phase_separation(const std::vector<double>& variables) const {
+        const std::size_t ncomp = feed_.size();
+        const std::vector<double> first_amounts = exp_amounts(variables, 0, ncomp);
+        const std::vector<double> second_amounts = exp_amounts(variables, ncomp, ncomp);
+        const std::vector<double> first = composition_from_amounts(
+            first_amounts,
+            sum_amounts(first_amounts),
+            options_.min_composition
+        );
+        const std::vector<double> second = composition_from_amounts(
+            second_amounts,
+            sum_amounts(second_amounts),
+            options_.min_composition
+        );
+        const std::size_t selected = static_cast<std::size_t>(separation_species_index_);
+        return separation_sign_ * (first[selected] - second[selected]);
+    }
+
+    std::vector<double> phase_separation_jacobian(const std::vector<double>& variables) const {
+        const std::size_t ncomp = feed_.size();
+        const std::vector<double> first_amounts = exp_amounts(variables, 0, ncomp);
+        const std::vector<double> second_amounts = exp_amounts(variables, ncomp, ncomp);
+        const std::vector<double> first = composition_from_amounts(
+            first_amounts,
+            sum_amounts(first_amounts),
+            options_.min_composition
+        );
+        const std::vector<double> second = composition_from_amounts(
+            second_amounts,
+            sum_amounts(second_amounts),
+            options_.min_composition
+        );
+
+        std::vector<double> row(static_cast<std::size_t>(variable_count()), 0.0);
+        const std::size_t selected = static_cast<std::size_t>(separation_species_index_);
+        for (std::size_t species = 0; species < ncomp; ++species) {
+            const double first_indicator = species == selected ? 1.0 : 0.0;
+            row[species] = separation_sign_ * first[selected] * (first_indicator - first[species]);
+
+            const std::size_t second_offset = ncomp + species;
+            const double second_indicator = species == selected ? 1.0 : 0.0;
+            row[second_offset] = -separation_sign_ * second[selected] * (second_indicator - second[species]);
+        }
+        return row;
+    }
+
     std::shared_ptr<ePCSAFTMixtureNative> mixture_;
     double temperature_ = 0.0;
     double target_pressure_ = 0.0;
@@ -1124,6 +1213,8 @@ private:
     std::vector<double> reaction_phase_stoichiometry_row_major_;
     std::vector<double> initial_variables_;
     double minimum_phase_distance_ = 1.0e-8;
+    int separation_species_index_ = 0;
+    double separation_sign_ = 1.0;
 };
 
 epcsaft::native::equilibrium_nlp::NeutralTwoPhaseEosNlpContract reactive_liquid_root_contract_from_problem(
@@ -1134,6 +1225,8 @@ epcsaft::native::equilibrium_nlp::NeutralTwoPhaseEosNlpContract reactive_liquid_
     const epcsaft::native::equilibrium_nlp::NlpBounds bounds = problem.bounds();
     const epcsaft::native::equilibrium_nlp::NlpJacobianStructure structure = problem.jacobian_structure();
     const ReactivePhaseResidualEvaluationNative eval = problem.evaluate(initial);
+    const std::vector<double> constraints = problem.constraints(initial);
+    const std::vector<double> jacobian = problem.jacobian_values(initial);
 
     epcsaft::native::equilibrium_nlp::NeutralTwoPhaseEosNlpContract out;
     out.problem_name = problem.name();
@@ -1154,10 +1247,10 @@ epcsaft::native::equilibrium_nlp::NeutralTwoPhaseEosNlpContract reactive_liquid_
     out.constraint_upper_bounds = bounds.constraint_upper;
     out.objective_at_initial = eval.objective;
     out.gradient_at_initial = eval.gradient;
-    out.constraints_at_initial = {};
+    out.constraints_at_initial = constraints;
     out.jacobian_rows = structure.rows;
     out.jacobian_cols = structure.cols;
-    out.jacobian_values_at_initial = {};
+    out.jacobian_values_at_initial = jacobian;
     return out;
 }
 

@@ -1,6 +1,6 @@
 id: ascani_2023_reactive_phase_equilibrium
 title: Ascani 2023 chemical plus phase equilibrium
-status: blocked_missing_source_targets
+status: blocked_solver
 summary: Source-backed Ascani 2023 reactive LLE validation lane for esterification systems.
 source_assets:
   - path: docs/papers/md/Ascani - 2023 - Simultaneous Predictions of Chemical and Phase Equilibria in Systems with an Esterif.md

@@ -1,6 +1,10 @@
 {
+  "schema_version": 1,
+  "stage": "F",
   "lane": "mea_co2_pressure_speciation",
-  "status": "blocked",
+  "lane_id": "mea_co2_pressure_speciation",
+  "status": "blocked_capability",
+  "status_reason": "SSM/DS Born composition sensitivity remains unavailable for phase-state residuals",
   "source_paths": [
     "analyses/data_validation/mea_co2_pressure_speciation/data/input/MEA_CO2_H2O_phase2/pure/any_solvent.csv",
     "analyses/data_validation/mea_co2_pressure_speciation/data/input/MEA_CO2_H2O_phase2/mixed/binary_interaction/k_ij.csv",
@@ -26,6 +30,7 @@
   "public_api": "epcsaft.solve_reactive_speciation",
   "required_solver_backend": "ipopt",
   "required_derivative_backend": "cppad_implicit",
+  "required_activity_source": "liquid ePC-SAFT state at true-species composition",
   "accepted_native_ipopt_speciation": false,
   "retained_outputs": [
     "analyses/data_validation/mea_co2_pressure_speciation/data/processed/selected_jou_row.json",
@@ -39,6 +44,7 @@
     "exception_type": "NativeValueError",
     "exception_message": "chemical residual Born model 2 phase-state composition sensitivity requires a separate SSM/DS derivative proof."
   },
+  "pressure_model": "liquid_co2_fugacity_with_ideal_vapor_side",
   "vapor_side_assumption": "ideal_fugacity",
   "blocker": "SSM/DS Born composition sensitivity is not implemented for phase-state residuals.",
   "exception_type": "SolutionError",

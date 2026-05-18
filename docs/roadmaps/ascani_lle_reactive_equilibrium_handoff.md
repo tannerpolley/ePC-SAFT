@@ -78,7 +78,7 @@ Accepted A-C evidence requires all of these:
 - Ipopt compiled and available in the active build.
 - `derivative_backend == "cppad_implicit"`.
 - Exact objective gradients and exact constraint Jacobians.
-- No finite-difference derivative proof.
+- No approximated derivative proof.
 - `hessian_approximation == "limited-memory"` explicitly retained and reported. Exact Hessians are not required for A-C.
 - `density_backend == "liquid_pressure_root"`.
 - No independent phase-volume variables in the public electrolyte LLE NLP.

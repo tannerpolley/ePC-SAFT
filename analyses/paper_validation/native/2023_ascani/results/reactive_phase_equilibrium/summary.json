@@ -1,36 +1,115 @@
 {
-  "status": "blocked",
-  "lane": "ascani_2023_reactive_phase_equilibrium",
+  "schema_version": 1,
+  "stage": "D-E",
+  "lane_id": "ascani_2023_reactive_phase_equilibrium",
+  "status": "blocked_solver",
+  "status_reason": "source-backed public native Ipopt reactive LLE route attempt remains blocked by solver closure",
   "source_records": [
     "docs/papers/md/Ascani - 2023 - Simultaneous Predictions of Chemical and Phase Equilibria in Systems with an Esterif.md"
   ],
   "source_markers_present": [
     "Table 1. PC-SAFT pure-component parameters",
     "Table 2. Binary interaction parameters",
+    "Table 3. PC-SAFT pure-component parameters of hypothetical mixture",
     "Table 4. Obtained"
   ],
-  "source_facts": {
-    "system_1": {
+  "stage_d_reactive_foundation": {
+    "status": "blocked_solver",
+    "homogeneous_ce_branch": {
+      "status": "accepted_public_native_ipopt",
+      "public_api": "epcsaft.solve_reactive_speciation",
+      "solver_backend": "native_ipopt",
+      "derivative_backend": "cppad_implicit",
+      "reaction_residual_norm": 1.0203198730351914e-08,
+      "composition": {
+        "A": 0.35678917151479833,
+        "B": 0.35678917151479833,
+        "C": 0.28642165697040345
+      }
+    },
+    "hypothetical_reactive_tie_line": {
+      "status": "blocked_solver",
+      "public_api": "mix.equilibrium(kind=\"reactive_lle\")",
+      "exception_type": "SolutionError",
+      "exception_message": "('Native reactive LLE route was rejected.', {'accepted': False, 'rejection_reason': '', 'derivative_backend': 'cppad_implicit', 'density_backend': 'liquid_pressure_root', 'phase_count': 0, 'species_count': 0, 'balance_row_count': 0, 'reaction_count': 0, 'conserved_balance_norm': 0.0, 'charge_balance_norm': 0.0, 'pressure_consistency_norm': 0.0, 'phase_equilibrium_norm': 0.0, 'reaction_stationarity_norm': 0.0, 'phase_distance': 0.0, 'objective': 0.0, 'standard_mu_rt': [], 'constraints': [], 'reaction_stationarity_residuals': [], 'phase_equilibrium_residuals': [], 'phase_charge_residuals': [], 'phase_amount_totals': [], 'phase_volumes': [], 'phase_densities': [], 'phase_compositions': [], 'phase_ln_fugacity_coefficients': [], 'route_status': 'solver_rejected', 'solver_status': 'wall_time_exceeded'})",
+      "feed": [
+        0.45,
+        0.45,
+        0.1
+      ]
+    },
+    "source_basis": "Ascani 2023 Table 3, Figure 3, K_a=2.25"
+  },
+  "stage_e_ascani_2023": {
+    "status": "blocked_solver",
+    "system_1_route_gate": {
+      "status": "blocked_solver",
+      "public_api": "mix.equilibrium(kind=\"reactive_lle\")",
+      "exception_type": "SolutionError",
+      "exception_message": "('Native reactive LLE route was rejected.', {'accepted': False, 'rejection_reason': '', 'derivative_backend': 'cppad_implicit', 'density_backend': 'liquid_pressure_root', 'phase_count': 0, 'species_count': 0, 'balance_row_count': 0, 'reaction_count': 0, 'conserved_balance_norm': 0.0, 'charge_balance_norm': 0.0, 'pressure_consistency_norm': 0.0, 'phase_equilibrium_norm': 0.0, 'reaction_stationarity_norm': 0.0, 'phase_distance': 0.0, 'objective': 0.0, 'standard_mu_rt': [], 'constraints': [], 'reaction_stationarity_residuals': [], 'phase_equilibrium_residuals': [], 'phase_charge_residuals': [], 'phase_amount_totals': [], 'phase_volumes': [], 'phase_densities': [], 'phase_compositions': [], 'phase_ln_fugacity_coefficients': [], 'route_status': 'solver_rejected', 'solver_status': 'wall_time_exceeded'})",
+      "feed": [
+        0.25,
+        0.25,
+        0.25,
+        0.25
+      ],
+      "paper_match_status": "blocked_source_data"
+    },
+    "source_basis": {
       "reaction": "acetic acid + 1-pentanol <=> pentyl acetate + water",
       "temperature_K": 318.15,
-      "pressure_bar": 1.0,
-      "K_a": 43.99
+      "pressure_bar": 1.013,
+      "K_a": 43.99,
+      "parameter_tables": [
+        "Table 1",
+        "Table 2",
+        "Table 4"
+      ]
     },
-    "system_2": {
-      "reaction": "acetic acid + 1-hexanol <=> hexyl acetate + water",
-      "temperature_K": 353.6,
-      "pressure_bar": 1.0,
-      "K_a": 22.92
+    "paper_match_status": "blocked_source_data"
+  },
+  "solver_contract": {
+    "solver_backend": "ipopt",
+    "derivative_backend": "cppad_implicit",
+    "density_backend": "liquid_pressure_root",
+    "hessian_approximation": "limited-memory",
+    "phase_volumes_are_nlp_variables": false,
+    "exact_gradient_required": true,
+    "exact_jacobian_required": true
+  },
+  "allowed_statuses": [
+    "accepted_public_native_ipopt",
+    "blocked_capability",
+    "blocked_solver",
+    "blocked_source_data",
+    "failed_gate",
+    "not_started"
+  ],
+  "blockers": [
+    {
+      "status": "blocked_solver",
+      "public_api": "mix.equilibrium(kind=\"reactive_lle\")",
+      "exception_type": "SolutionError",
+      "exception_message": "('Native reactive LLE route was rejected.', {'accepted': False, 'rejection_reason': '', 'derivative_backend': 'cppad_implicit', 'density_backend': 'liquid_pressure_root', 'phase_count': 0, 'species_count': 0, 'balance_row_count': 0, 'reaction_count': 0, 'conserved_balance_norm': 0.0, 'charge_balance_norm': 0.0, 'pressure_consistency_norm': 0.0, 'phase_equilibrium_norm': 0.0, 'reaction_stationarity_norm': 0.0, 'phase_distance': 0.0, 'objective': 0.0, 'standard_mu_rt': [], 'constraints': [], 'reaction_stationarity_residuals': [], 'phase_equilibrium_residuals': [], 'phase_charge_residuals': [], 'phase_amount_totals': [], 'phase_volumes': [], 'phase_densities': [], 'phase_compositions': [], 'phase_ln_fugacity_coefficients': [], 'route_status': 'solver_rejected', 'solver_status': 'wall_time_exceeded'})",
+      "feed": [
+        0.45,
+        0.45,
+        0.1
+      ]
+    },
+    {
+      "status": "blocked_solver",
+      "public_api": "mix.equilibrium(kind=\"reactive_lle\")",
+      "exception_type": "SolutionError",
+      "exception_message": "('Native reactive LLE route was rejected.', {'accepted': False, 'rejection_reason': '', 'derivative_backend': 'cppad_implicit', 'density_backend': 'liquid_pressure_root', 'phase_count': 0, 'species_count': 0, 'balance_row_count': 0, 'reaction_count': 0, 'conserved_balance_norm': 0.0, 'charge_balance_norm': 0.0, 'pressure_consistency_norm': 0.0, 'phase_equilibrium_norm': 0.0, 'reaction_stationarity_norm': 0.0, 'phase_distance': 0.0, 'objective': 0.0, 'standard_mu_rt': [], 'constraints': [], 'reaction_stationarity_residuals': [], 'phase_equilibrium_residuals': [], 'phase_charge_residuals': [], 'phase_amount_totals': [], 'phase_volumes': [], 'phase_densities': [], 'phase_compositions': [], 'phase_ln_fugacity_coefficients': [], 'route_status': 'solver_rejected', 'solver_status': 'wall_time_exceeded'})",
+      "feed": [
+        0.25,
+        0.25,
+        0.25,
+        0.25
+      ],
+      "paper_match_status": "blocked_source_data"
     }
-  },
-  "blocker": {
-    "kind": "missing_source_target_rows",
-    "message": "The local paper markdown provides model parameters and equilibrium constants, but this repo does not yet contain machine-readable source feed and phase-composition target rows for an Ascani 2023 reactive LLE gate."
-  },
-  "not_substituted": [
-    "toy reactive LLE fixtures",
-    "route construction tests",
-    "monkeypatched native payloads",
-    "non-literature random benchmarks"
-  ]
+  ],
+  "claim_boundary": "No Ascani 2023 Figure 8/9 or tie-line paper-match claim is proven. The retained route attempts use source constants and public APIs only."
 }

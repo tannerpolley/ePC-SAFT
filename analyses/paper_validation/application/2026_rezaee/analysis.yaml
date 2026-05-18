@@ -1,6 +1,6 @@
 id: rezaee_2026_paper_validation
 title: Rezaee 2025/2026 paper validation
-status: executable_diagnostic
+status: blocked_solver
 summary: In-worktree source-backed diagnostic validation of Rezaee source rows, reaction-equilibrium conventions, and Section 3.2 reaction-coordinate replication.
 owner: project
 boundary:

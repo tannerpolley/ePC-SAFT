@@ -72,7 +72,12 @@ def test_rezaee_source_backed_paper_validation_generates_pre_surrogate_rows() ->
     assert by_figure["fig10"]["package_case_id"] == "held_2014_s2_no_born_table9_kij_pH_stoich"
 
     lane_payload = json.loads(lane_summary.read_text(encoding="utf-8"))
-    assert lane_payload["status"] == "source_backed_diagnostic_complete"
+    assert lane_payload["status"] == "blocked_solver"
+    assert lane_payload["public_api"] == 'mix.equilibrium(kind="reactive_electrolyte_lle")'
+    assert lane_payload["required_derivative_backend"] == "cppad_implicit"
+    assert lane_payload["required_density_backend"] == "liquid_pressure_root"
+    assert lane_payload["paper_constant_claim"] == "not_proven"
+    assert lane_payload["fit_holdout_gate"]["status"] == "not_started"
     assert lane_payload["row_count"] == 26
     assert lane_payload["source_text_mismatch"] == {
         "available_si_equilibrium_rows": 26,
@@ -89,4 +94,4 @@ def test_rezaee_source_backed_paper_validation_generates_pre_surrogate_rows() ->
     assert lane_payload["residual_metrics"]["max_abs_charge_residual"] <= 1.0e-6
     assert lane_payload["residual_metrics"]["max_element_balance_norm"] <= 1.0e-10
     assert lane_payload["convention_scan"]["acceptance"]["closed_by_simple_convention_scan"] is False
-    assert "Direct published-constant closure is not supported" in lane_payload["conclusion"]
+    assert "strict blocked_solver lane" in lane_payload["conclusion"]

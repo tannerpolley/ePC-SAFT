@@ -1,7 +1,7 @@
 id: mea_co2_pressure_speciation
 title: MEA-CO2-H2O pressure and speciation data validation
 kind: data_validation
-status: blocked
+status: blocked_capability
 package: epcsaft
 summary: Package-local validation lane for copied MEA Phase 2 true-species parameters, Jou 1995 CO2 partial pressure rows, and public native Ipopt reactive speciation.
 boundary:

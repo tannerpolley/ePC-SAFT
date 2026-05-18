@@ -352,13 +352,22 @@ def _summary(
         SOURCE_MANIFEST_CSV,
     ]
     summary = {
+        "schema_version": 1,
+        "stage": "F",
         "lane": "mea_co2_pressure_speciation",
+        "lane_id": "mea_co2_pressure_speciation",
         "status": status,
+        "status_reason": (
+            "public native Ipopt homogeneous reactive speciation solve accepted"
+            if status == "accepted_public_native_ipopt"
+            else "SSM/DS Born composition sensitivity remains unavailable for phase-state residuals"
+        ),
         "source_paths": [_rel(path) for path in source_paths],
         "selected_source_row": row,
         "public_api": "epcsaft.solve_reactive_speciation",
         "required_solver_backend": "ipopt",
         "required_derivative_backend": "cppad_implicit",
+        "required_activity_source": "liquid ePC-SAFT state at true-species composition",
         "accepted_native_ipopt_speciation": bool(solve_payload and solve_payload["accepted_native_ipopt_speciation"]),
         "retained_outputs": [
             _rel(PROCESSED_DIR / "selected_jou_row.json"),
@@ -368,6 +377,7 @@ def _summary(
         ],
         "solve": solve_payload,
         "diagnostic": diagnostic,
+        "pressure_model": "liquid_co2_fugacity_with_ideal_vapor_side",
         "vapor_side_assumption": "ideal_fugacity",
     }
     if error is not None:
@@ -398,11 +408,11 @@ def main() -> int:
     diagnostic = None
     if error is not None:
         diagnostic = _diagnose_native_residual(row, user_options)
-    status = "executable" if solve_payload and solve_payload["accepted_native_ipopt_speciation"] else "blocked"
+    status = "accepted_public_native_ipopt" if solve_payload and solve_payload["accepted_native_ipopt_speciation"] else "blocked_capability"
     summary = _summary(status=status, row=row, solve_payload=solve_payload, error=error, diagnostic=diagnostic)
     _write_json(SUMMARY_JSON, summary)
     print(json.dumps(_json_like(summary), indent=2))
-    return 0 if status == "executable" else 1
+    return 0 if status == "accepted_public_native_ipopt" else 1
 
 
 if __name__ == "__main__":

@@ -115,8 +115,21 @@ def _build_summary(command_results: list[dict[str, Any]]) -> dict[str, Any]:
         for entry in figure_comparison["figures"]
     ]
     return {
-        "status": "source_backed_diagnostic_complete",
-        "validation_lane": "rezaee_2026_application_diagnostic",
+        "schema_version": 1,
+        "stage": "E",
+        "lane_id": "rezaee_2026_reactive_electrolyte_lle",
+        "status": "blocked_solver",
+        "status_reason": (
+            "source constants and retained diagnostics were tried first, but this lane has not produced an "
+            "accepted public native Ipopt reactive_electrolyte_lle solve or the required fitted holdout gate"
+        ),
+        "validation_lane": "rezaee_2026_application_reactive_electrolyte_lle",
+        "public_api": 'mix.equilibrium(kind="reactive_electrolyte_lle")',
+        "required_solver_backend": "ipopt",
+        "required_derivative_backend": "cppad_implicit",
+        "required_density_backend": "liquid_pressure_root",
+        "hessian_approximation": "limited-memory",
+        "phase_models_supported": "blocked_solver",
         "row_count": int(replay["row_count"]),
         "source_files": source_files,
         "source_text_mismatch": {
@@ -155,6 +168,18 @@ def _build_summary(command_results: list[dict[str, Any]]) -> dict[str, Any]:
             "selectivity_aard_pct": float(direct["selectivity_AARD_pct"]),
             "paper_reference_aard_pct": section32["paper_reference_AARD_pct"]["after_table9_kij"],
         },
+        "fit_holdout_gate": {
+            "status": "not_started",
+            "fit_rows": "experiments 1-16 and 25-26",
+            "holdout_rows": "experiments 17-24",
+            "holdout_requirement": {
+                "all_holdout_rows_solve": True,
+                "li_na_extraction_aard_pct_max": 20.0,
+                "selectivity_aard_pct_max": 25.0,
+            },
+            "reason": "native public reactive_electrolyte_lle route has not closed, so fitted-route validation remains gated",
+        },
+        "paper_constant_claim": "not_proven",
         "figure_comparisons": {
             "status": figure_comparison["status"],
             "figure_count": int(figure_comparison["figure_count"]),
@@ -170,9 +195,21 @@ def _build_summary(command_results: list[dict[str, Any]]) -> dict[str, Any]:
         },
         "retained_outputs": [_rel(path) for path in retained_outputs + tuple(figure_outputs)],
         "commands": command_results,
+        "blockers": [
+            {
+                "kind": "blocked_solver",
+                "reason": "no accepted public native Ipopt reactive_electrolyte_lle solve retained for Rezaee 2026",
+            },
+            {
+                "kind": "failed_gate",
+                "reason": "published constants do not satisfy the requested extraction/selectivity closure gate",
+                "li_extraction_aard_pct": float(direct["Li_extraction_AARD_pct"]),
+                "selectivity_aard_pct": float(direct["selectivity_AARD_pct"]),
+            },
+        ],
         "conclusion": (
-            "Direct published-constant closure is not supported by the current source-backed inputs; "
-            "the executable validation gate is the reproducible diagnostic evidence for that gap."
+            "Direct published-constant closure is not supported by the current source-backed inputs. "
+            "This is a strict blocked_solver lane, not accepted route evidence."
         ),
     }
 
