@@ -33,10 +33,14 @@ def test_rezaee_source_backed_paper_validation_generates_pre_surrogate_rows() ->
     )
     figure_summary = ANALYSIS / "results" / "reaction_equilibrium" / "rezaee_2026_package_figure_comparison_summary.json"
     lane_summary = ANALYSIS / "results" / "reaction_equilibrium" / "summary.json"
+    calibrated_attempt = (
+        ANALYSIS / "results" / "reaction_equilibrium" / "rezaee_2026_calibrated_native_ipopt_attempt_summary.json"
+    )
 
     assert target_summary.exists()
     assert section32_rows.exists()
     assert figure_summary.exists()
+    assert calibrated_attempt.exists()
     assert lane_summary.exists()
 
     replay_payload = json.loads(replay_summary.read_text(encoding="utf-8"))
@@ -76,6 +80,10 @@ def test_rezaee_source_backed_paper_validation_generates_pre_surrogate_rows() ->
     assert lane_payload["public_api"] == 'mix.equilibrium(kind="reactive_electrolyte_lle")'
     assert lane_payload["required_derivative_backend"] == "cppad_implicit"
     assert lane_payload["required_density_backend"] == "liquid_pressure_root"
+    assert lane_payload["phase_models_supported"] == "public_api_supported_solver_rejected"
+    assert lane_payload["phase_model_public_route_attempt"]["status"] == "blocked_solver"
+    assert lane_payload["phase_model_public_route_attempt"]["diagnostics"]["derivative_backend"] == "cppad_implicit"
+    assert lane_payload["phase_model_public_route_attempt"]["diagnostics"]["density_backend"] == "liquid_pressure_root"
     assert lane_payload["paper_constant_claim"] == "not_proven"
     assert lane_payload["fit_holdout_gate"]["status"] == "not_started"
     assert lane_payload["row_count"] == 26

@@ -106,14 +106,45 @@ def _hypothetical_mixture() -> epcsaft.ePCSAFTMixture:
     )
 
 
-def _hypothetical_reaction(standard_state: str = "mole_fraction_activity") -> epcsaft.ReactionDefinition:
+def _hypothetical_reaction(
+    standard_state: str = "mole_fraction_activity",
+    *,
+    log_equilibrium_constant: float | None = None,
+    source: str = "Ascani 2023 Table 3 and Figure 3",
+) -> epcsaft.ReactionDefinition:
     return epcsaft.ReactionDefinition.from_literature_constant(
         {"A": -1.0, "B": -1.0, "C": 1.0},
-        log_equilibrium_constant=math.log(2.25),
+        log_equilibrium_constant=math.log(2.25) if log_equilibrium_constant is None else log_equilibrium_constant,
         name="ascani_2023_hypothetical_A_plus_B_to_C",
         standard_state=standard_state,
-        source="Ascani 2023 Table 3 and Figure 3",
+        source=source,
     )
+
+
+def _pure_liquid_standard_diagnostics(
+    mix: epcsaft.ePCSAFTMixture,
+    *,
+    temperature: float,
+    pressure: float,
+) -> dict[str, Any]:
+    """Convert Ascani Eq. 10 gamma activity constants to this route's x*phi convention."""
+    pure_ln_phi: dict[str, float] = {}
+    for index, species in enumerate(mix.species):
+        composition = np.zeros(int(mix.ncomp), dtype=float)
+        composition[index] = 1.0
+        state = mix.state(T=temperature, x=composition, P=pressure, phase="liq")
+        pure_ln_phi[species] = float(np.asarray(state.fugacity_coefficient(), dtype=float)[index])
+    stoichiometry = {"A": -1.0, "B": -1.0, "C": 1.0}
+    log_k_adjustment = sum(stoichiometry[label] * pure_ln_phi[label] for label in stoichiometry)
+    source_log_k = math.log(2.25)
+    return {
+        "source_activity_standard_state": "Ascani 2023 Eq. (10) mole-fraction activity coefficient gamma",
+        "native_route_standard_state": "mole_fraction_activity using liquid EOS x*phi_i",
+        "source_log_equilibrium_constant": source_log_k,
+        "native_log_equilibrium_constant": source_log_k + log_k_adjustment,
+        "native_log_k_adjustment": log_k_adjustment,
+        "pure_liquid_ln_fugacity_coefficients": pure_ln_phi,
+    }
 
 
 def _run_hypothetical_homogeneous_ce() -> dict[str, Any]:
@@ -157,24 +188,65 @@ def _run_hypothetical_homogeneous_ce() -> dict[str, Any]:
 
 def _run_hypothetical_reactive_lle() -> dict[str, Any]:
     mix = _hypothetical_mixture()
-    feed = np.asarray([0.20, 0.70, 0.10], dtype=float)
+    temperature = 300.0
+    pressure = 1.0e5
+    feed = np.asarray([0.50, 0.30, 0.20], dtype=float)
     balances = {"A_total": {"A": 1.0, "C": 1.0}, "B_total": {"B": 1.0, "C": 1.0}}
     totals = {"A_total": float(feed[0] + feed[2]), "B_total": float(feed[1] + feed[2])}
+    standard_state = _pure_liquid_standard_diagnostics(mix, temperature=temperature, pressure=pressure)
+    reaction = _hypothetical_reaction(
+        log_equilibrium_constant=float(standard_state["native_log_equilibrium_constant"]),
+        source=(
+            "Ascani 2023 Eq. (10), Table 3, and Figure 3; source K_a converted "
+            "from gamma activity to native liquid x*phi route convention"
+        ),
+    )
+    try:
+        homogeneous_seed = epcsaft.solve_reactive_speciation(
+            species=["A", "B", "C"],
+            mixture_factory=lambda x, T, P: mix,
+            T=temperature,
+            P=pressure,
+            balances=balances,
+            totals=totals,
+            reactions=[reaction],
+            initial_x=feed,
+            options=epcsaft.ReactiveSpeciationOptions(
+                solver_backend="ipopt",
+                jacobian_backend="cppad",
+                tolerance=1.0e-5,
+                max_iterations=120,
+                activity_output="always",
+            ),
+        )
+    except Exception as exc:
+        return {
+            "status": "blocked_solver",
+            "public_api": 'mix.equilibrium(kind="reactive_lle")',
+            "exception_type": type(exc).__name__,
+            "exception_message": str(exc),
+            "feed": feed.tolist(),
+            "standard_state_conversion": standard_state,
+        }
+    route_initial = np.asarray(
+        [homogeneous_seed.x["A"], homogeneous_seed.x["B"], homogeneous_seed.x["C"]],
+        dtype=float,
+    )
     phase_options = epcsaft.EquilibriumOptions(
-        max_iterations=350,
-        tolerance=2.0e-6,
+        max_iterations=1200,
+        tolerance=1.0e-5,
         min_composition=1.0e-12,
-        timeout_seconds=20.0,
+        timeout_seconds=25.0,
     )
     try:
         result = mix.equilibrium(
             kind="reactive_lle",
-            T=300.0,
-            P=1.0e5,
-            z=feed,
+            T=temperature,
+            P=pressure,
+            z=route_initial,
             balances=balances,
             totals=totals,
-            reactions=[_hypothetical_reaction()],
+            reactions=[reaction],
             phase_options=phase_options,
         )
     except Exception as exc:
@@ -184,12 +256,30 @@ def _run_hypothetical_reactive_lle() -> dict[str, Any]:
             "exception_type": type(exc).__name__,
             "exception_message": str(exc),
             "feed": feed.tolist(),
+            "route_initial_composition": route_initial.tolist(),
+            "route_initial_source": "public native Ipopt homogeneous CE handoff",
+            "homogeneous_seed": {
+                "public_api": "epcsaft.solve_reactive_speciation",
+                "status": "accepted_public_native_ipopt" if homogeneous_seed.success else "failed_gate",
+                "reaction_residual_norm": homogeneous_seed.diagnostics.get("reaction_residual_norm"),
+                "composition": homogeneous_seed.x,
+            },
+            "standard_state_conversion": standard_state,
             "solver_options": _phase_options_summary(phase_options),
         }
     return {
         "status": _status_from_public_route(result),
         "public_api": 'mix.equilibrium(kind="reactive_lle")',
         "feed": feed.tolist(),
+        "route_initial_composition": route_initial.tolist(),
+        "route_initial_source": "public native Ipopt homogeneous CE handoff",
+        "homogeneous_seed": {
+            "public_api": "epcsaft.solve_reactive_speciation",
+            "status": "accepted_public_native_ipopt" if homogeneous_seed.success else "failed_gate",
+            "reaction_residual_norm": homogeneous_seed.diagnostics.get("reaction_residual_norm"),
+            "composition": homogeneous_seed.x,
+        },
+        "standard_state_conversion": standard_state,
         "solver_options": _phase_options_summary(phase_options),
         "phase_distance": result.diagnostics.get("phase_distance"),
         "reaction_stationarity_norm": result.diagnostics.get("reaction_stationarity_norm"),
@@ -319,7 +409,8 @@ def main() -> int:
     system1 = _run_system1_reactive_lle()
     stage_d_status = _overall_status(str(homogeneous["status"]), str(hypothetical_lle["status"]))
     stage_e_status = str(system1["status"])
-    status = _overall_status(stage_d_status, stage_e_status)
+    route_status = _overall_status(stage_d_status, stage_e_status)
+    status = "blocked_source_data" if route_status == "accepted_public_native_ipopt" else route_status
     summary = {
         "schema_version": 1,
         "stage": "D-E",
@@ -328,6 +419,8 @@ def main() -> int:
         "status_reason": (
             "source-backed public native Ipopt reactive LLE route attempt remains blocked by solver closure"
             if status == "blocked_solver"
+            else "public native Ipopt route gates accepted; Figure 8/9 and tie-line paper-match targets remain source-data blocked"
+            if status == "blocked_source_data"
             else "strict route gates evaluated"
         ),
         "source_records": [_rel(SOURCE_MD)],
@@ -362,13 +455,22 @@ def main() -> int:
         "allowed_statuses": sorted(STRICT_STATUSES),
         "blockers": [
             item
-            for item in (hypothetical_lle if hypothetical_lle["status"] != "accepted_public_native_ipopt" else None,
-                         system1 if system1["status"] != "accepted_public_native_ipopt" else None)
+            for item in (
+                hypothetical_lle if hypothetical_lle["status"] != "accepted_public_native_ipopt" else None,
+                system1 if system1["status"] != "accepted_public_native_ipopt" else None,
+                {
+                    "status": "blocked_source_data",
+                    "reason": "Ascani 2023 Figure 8/9 and reactive tie-line paper-match target rows are not machine-readable in this worktree.",
+                    "paper_match_status": "blocked_source_data",
+                }
+                if status == "blocked_source_data"
+                else None,
+            )
             if item is not None
         ],
         "claim_boundary": (
             "No Ascani 2023 Figure 8/9 or tie-line paper-match claim is proven. "
-            "The retained route attempts use source constants and public APIs only."
+            "The retained route attempts use source constants, explicit standard-state conversions, and public APIs only."
         ),
     }
     if summary["status"] not in STRICT_STATUSES:

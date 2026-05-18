@@ -22,6 +22,7 @@ SCRIPT_SEQUENCE = (
     "rezaee_reactive_equilibrium_replay.py",
     "rezaee_reactive_convention_scan.py",
     "rezaee_reactive_epcsaft_option_scan.py",
+    "rezaee_calibrated_native_ipopt_attempt.py",
     "rezaee_paper_basis_reaction_coordinate.py",
     "rezaee_section32_basis_inference.py",
     "rezaee_section32_equilibrium_replication.py",
@@ -76,6 +77,9 @@ def _build_summary(command_results: list[dict[str, Any]]) -> dict[str, Any]:
     replay = _read_json(REACTION_RESULTS_DIR / "rezaee_2026_reactive_equilibrium_replay_summary.json")
     convention = _read_json(REACTION_RESULTS_DIR / "rezaee_2026_reactive_convention_scan_summary.json")
     option_scan = _read_json(REACTION_RESULTS_DIR / "rezaee_2026_reactive_epcsaft_option_scan_summary.json")
+    calibrated_attempt = _read_json(
+        REACTION_RESULTS_DIR / "rezaee_2026_calibrated_native_ipopt_attempt_summary.json"
+    )
     paper_basis = _read_json(REACTION_RESULTS_DIR / "rezaee_2026_paper_basis_reaction_coordinate_summary.json")
     basis = _read_json(REACTION_RESULTS_DIR / "rezaee_2026_section32_basis_inference_summary.json")
     section32 = _read_json(REACTION_RESULTS_DIR / "rezaee_2026_section32_equilibrium_replication_summary.json")
@@ -84,6 +88,8 @@ def _build_summary(command_results: list[dict[str, Any]]) -> dict[str, Any]:
     closure_supported = _direct_closure_supported(section32, convention)
     direct = section32["direct_held2014_table9_pH_stoich"]
     cross_phase = replay["package_phase_tagged_cross_phase"]
+    public_attempt = calibrated_attempt["public_route_attempt"]
+    public_phase_model_attempt_accepted = bool(public_attempt.get("accepted", False))
     source_files = sorted(_rel(path) for path in INPUT_DIR.glob("*") if path.is_file())
     retained_outputs = (
         PROCESSED_DIR / "rezaee_2025_extraction_target_summary.csv",
@@ -91,12 +97,16 @@ def _build_summary(command_results: list[dict[str, Any]]) -> dict[str, Any]:
         PROCESSED_DIR / "rezaee_2026_reactive_equilibrium_replay.csv",
         PROCESSED_DIR / "rezaee_2026_reactive_convention_scan_rows.csv",
         PROCESSED_DIR / "rezaee_2026_reactive_epcsaft_option_scan_rows.csv",
+        PROCESSED_DIR / "rezaee_2026_calibrated_native_ipopt_attempt_rows.csv",
+        PROCESSED_DIR / "rezaee_2026_calibrated_separate_phase_residual_rows.csv",
         PROCESSED_DIR / "rezaee_2026_paper_basis_reaction_coordinate_rows.csv",
         PROCESSED_DIR / "rezaee_2026_section32_basis_inference_rows.csv",
         PROCESSED_DIR / "rezaee_2026_section32_equilibrium_replication_rows.csv",
         REACTION_RESULTS_DIR / "rezaee_2026_reactive_equilibrium_replay_summary.json",
         REACTION_RESULTS_DIR / "rezaee_2026_reactive_convention_scan_summary.json",
         REACTION_RESULTS_DIR / "rezaee_2026_reactive_epcsaft_option_scan_summary.json",
+        REACTION_RESULTS_DIR / "rezaee_2026_calibrated_native_ipopt_attempt_summary.json",
+        REACTION_RESULTS_DIR / "rezaee_2026_calibrated_native_ipopt_attempt.md",
         REACTION_RESULTS_DIR / "rezaee_2026_paper_basis_reaction_coordinate_summary.json",
         REACTION_RESULTS_DIR / "rezaee_2026_section32_basis_inference_summary.json",
         REACTION_RESULTS_DIR / "rezaee_2026_section32_equilibrium_replication_summary.json",
@@ -129,7 +139,11 @@ def _build_summary(command_results: list[dict[str, Any]]) -> dict[str, Any]:
         "required_derivative_backend": "cppad_implicit",
         "required_density_backend": "liquid_pressure_root",
         "hessian_approximation": "limited-memory",
-        "phase_models_supported": "blocked_solver",
+        "phase_models_supported": (
+            "accepted_public_native_ipopt"
+            if public_phase_model_attempt_accepted
+            else "public_api_supported_solver_rejected"
+        ),
         "row_count": int(replay["row_count"]),
         "source_files": source_files,
         "source_text_mismatch": {
@@ -149,6 +163,22 @@ def _build_summary(command_results: list[dict[str, Any]]) -> dict[str, Any]:
         "option_scan": {
             "status": option_scan["status"],
             "best_source_supported_variant": option_scan.get("best_source_supported_variant"),
+        },
+        "phase_model_public_route_attempt": {
+            "status": (
+                "accepted_public_native_ipopt"
+                if public_phase_model_attempt_accepted
+                else "blocked_solver"
+            ),
+            "attempt_source": "calibrated_native_ipopt_attempt",
+            "phase_models": public_attempt.get("phase_models"),
+            "experiment_no": public_attempt.get("experiment_no"),
+            "accepted": public_phase_model_attempt_accepted,
+            "error_type": public_attempt.get("error_type"),
+            "solver_backend": public_attempt.get("solver_backend"),
+            "derivative_backend": public_attempt.get("derivative_backend"),
+            "density_backend": public_attempt.get("density_backend"),
+            "diagnostics": public_attempt.get("diagnostics"),
         },
         "paper_basis": {
             "status": paper_basis["status"],

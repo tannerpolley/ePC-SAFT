@@ -10,7 +10,7 @@
   "required_derivative_backend": "cppad_implicit",
   "required_density_backend": "liquid_pressure_root",
   "hessian_approximation": "limited-memory",
-  "phase_models_supported": "blocked_solver",
+  "phase_models_supported": "public_api_supported_solver_rejected",
   "row_count": 26,
   "source_files": [
     "analyses/paper_validation/application/2026_rezaee/data/input/README.md",
@@ -53,6 +53,145 @@
   "option_scan": {
     "status": "option_scan_complete_no_direct_closure",
     "best_source_supported_variant": null
+  },
+  "phase_model_public_route_attempt": {
+    "status": "blocked_solver",
+    "attempt_source": "calibrated_native_ipopt_attempt",
+    "phase_models": {
+      "aq_species": [
+        "H2O",
+        "Li+",
+        "Na+",
+        "Cl-",
+        "H+",
+        "OH-",
+        "NH4+"
+      ],
+      "org_species": [
+        "DES",
+        "TOPO",
+        "RLi",
+        "RNa"
+      ],
+      "contract": "phase_models={\"aq\": aqueous_mix, \"org\": organic_mix}"
+    },
+    "experiment_no": 1,
+    "accepted": false,
+    "error_type": "SolutionError",
+    "solver_backend": null,
+    "derivative_backend": null,
+    "density_backend": null,
+    "diagnostics": {
+      "accepted": false,
+      "rejection_reason": "charge_balance",
+      "derivative_backend": "cppad_implicit",
+      "density_backend": "liquid_pressure_root",
+      "phase_count": 2,
+      "species_count": 11,
+      "balance_row_count": 8,
+      "reaction_count": 2,
+      "conserved_balance_norm": 1.1435297153639112e-14,
+      "charge_balance_norm": 0.4796437339413225,
+      "pressure_consistency_norm": 0.0,
+      "phase_equilibrium_norm": 0.0,
+      "reaction_stationarity_norm": 185.15270534675156,
+      "phase_distance": 0.9600822411811756,
+      "objective": 28126.470507010275,
+      "standard_mu_rt": [],
+      "constraints": [
+        1.1435297153639112e-14,
+        1.0195837230053684e-15,
+        1.1969591984239969e-15,
+        0.0,
+        9.75781955236954e-19,
+        2.9947908641359856e-18,
+        1.27675647831893e-15,
+        -6.938893903907228e-18,
+        148.22680816467727,
+        185.15270534675156,
+        -0.4796437339413225,
+        6.245373013030353e-14
+      ],
+      "reaction_stationarity_residuals": [
+        148.22680816467727,
+        185.15270534675156
+      ],
+      "phase_equilibrium_residuals": [],
+      "phase_charge_residuals": [
+        -0.4796437339413225,
+        6.245373013030353e-14
+      ],
+      "phase_amount_totals": [
+        0.5099498774871067,
+        0.49999992500029167
+      ],
+      "phase_volumes": [
+        6.40762383930233e-05,
+        0.00012950314825630187
+      ],
+      "phase_densities": [
+        7958.486488536299,
+        3860.9094198291873
+      ],
+      "phase_compositions": [
+        [
+          1.9609764051860798e-14,
+          0.006543089475139049,
+          0.02164367925817333,
+          0.010202933025535453,
+          0.0015274984970027974,
+          0.9600822411811756,
+          5.585629541977556e-07,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.8811999524799697,
+          0.11880004751999035,
+          1.9999996571518496e-14,
+          1.99999965672325e-14
+        ]
+      ],
+      "phase_ln_fugacity_coefficients": [
+        [
+          -103.53511631410706,
+          -180.3612225537372,
+          -181.2581951297914,
+          -184.21107699874224,
+          -170.94272850223172,
+          -169.04982330253858,
+          -143.4961857147545,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -53.793320192238916,
+          -41.91297841941582,
+          -113.06306001938843,
+          -83.80132106126852
+        ]
+      ],
+      "route_status": "postsolve_rejected",
+      "solver_status": "success"
+    }
   },
   "paper_basis": {
     "status": "paper_basis_reaction_coordinate_benchmark_complete",
@@ -167,12 +306,16 @@
     "analyses/paper_validation/application/2026_rezaee/data/processed/rezaee_2026_reactive_equilibrium_replay.csv",
     "analyses/paper_validation/application/2026_rezaee/data/processed/rezaee_2026_reactive_convention_scan_rows.csv",
     "analyses/paper_validation/application/2026_rezaee/data/processed/rezaee_2026_reactive_epcsaft_option_scan_rows.csv",
+    "analyses/paper_validation/application/2026_rezaee/data/processed/rezaee_2026_calibrated_native_ipopt_attempt_rows.csv",
+    "analyses/paper_validation/application/2026_rezaee/data/processed/rezaee_2026_calibrated_separate_phase_residual_rows.csv",
     "analyses/paper_validation/application/2026_rezaee/data/processed/rezaee_2026_paper_basis_reaction_coordinate_rows.csv",
     "analyses/paper_validation/application/2026_rezaee/data/processed/rezaee_2026_section32_basis_inference_rows.csv",
     "analyses/paper_validation/application/2026_rezaee/data/processed/rezaee_2026_section32_equilibrium_replication_rows.csv",
     "analyses/paper_validation/application/2026_rezaee/results/reaction_equilibrium/rezaee_2026_reactive_equilibrium_replay_summary.json",
     "analyses/paper_validation/application/2026_rezaee/results/reaction_equilibrium/rezaee_2026_reactive_convention_scan_summary.json",
     "analyses/paper_validation/application/2026_rezaee/results/reaction_equilibrium/rezaee_2026_reactive_epcsaft_option_scan_summary.json",
+    "analyses/paper_validation/application/2026_rezaee/results/reaction_equilibrium/rezaee_2026_calibrated_native_ipopt_attempt_summary.json",
+    "analyses/paper_validation/application/2026_rezaee/results/reaction_equilibrium/rezaee_2026_calibrated_native_ipopt_attempt.md",
     "analyses/paper_validation/application/2026_rezaee/results/reaction_equilibrium/rezaee_2026_paper_basis_reaction_coordinate_summary.json",
     "analyses/paper_validation/application/2026_rezaee/results/reaction_equilibrium/rezaee_2026_section32_basis_inference_summary.json",
     "analyses/paper_validation/application/2026_rezaee/results/reaction_equilibrium/rezaee_2026_section32_equilibrium_replication_summary.json",
@@ -211,6 +354,10 @@
     },
     {
       "script": "rezaee_reactive_epcsaft_option_scan.py",
+      "returncode": 0
+    },
+    {
+      "script": "rezaee_calibrated_native_ipopt_attempt.py",
       "returncode": 0
     },
     {

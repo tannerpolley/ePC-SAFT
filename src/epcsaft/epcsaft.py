@@ -621,6 +621,7 @@ class ePCSAFTMixture:
         backend=None,
         parent_phase=None,
         trial_phases=None,
+        phase_models=None,
     ):
         """Run a native-backed equilibrium calculation for this mixture."""
         from .equilibrium_core.classify import classify_equilibrium_route
@@ -681,6 +682,7 @@ class ePCSAFTMixture:
                 "salt_molality": salt_molality,
                 "parent_phase": parent_phase,
                 "trial_phases": trial_phases,
+                "phase_models": phase_models,
             }
             return reactive_phase_equilibrium(
                 self,

@@ -71,13 +71,21 @@ def test_ascani_2023_reactive_lane_records_missing_source_targets_without_passin
     assert result.returncode == 1, result.stdout + result.stderr
     summary_path = ASCANI_2023 / "results" / "reactive_phase_equilibrium" / "summary.json"
     payload = json.loads(summary_path.read_text(encoding="utf-8"))
-    assert payload["status"] in {"blocked_solver", "accepted_public_native_ipopt"}
+    assert payload["status"] in {"blocked_solver", "blocked_source_data"}
     assert payload["status"] != "accepted_public_native_ipopt"
     assert payload["stage_d_reactive_foundation"]["status"] in {"blocked_solver", "accepted_public_native_ipopt"}
     assert payload["stage_d_reactive_foundation"]["homogeneous_ce_branch"]["status"] == "accepted_public_native_ipopt"
-    assert payload["stage_d_reactive_foundation"]["hypothetical_reactive_tie_line"]["public_api"] == (
+    stage_d_route = payload["stage_d_reactive_foundation"]["hypothetical_reactive_tie_line"]
+    assert stage_d_route["public_api"] == (
         'mix.equilibrium(kind="reactive_lle")'
     )
+    if payload["stage_d_reactive_foundation"]["status"] == "accepted_public_native_ipopt":
+        route_tolerance = stage_d_route["solver_options"]["tolerance"]
+        assert stage_d_route["phase_distance"] >= 1.0e-3
+        assert stage_d_route["reaction_stationarity_norm"] <= route_tolerance
+        assert stage_d_route["phase_equilibrium_norm"] <= route_tolerance
+        assert stage_d_route["standard_state_conversion"]["source_log_equilibrium_constant"] > 0.0
+        assert stage_d_route["homogeneous_seed"]["status"] == "accepted_public_native_ipopt"
     stage_e = payload["stage_e_ascani_2023"]
     assert stage_e["status"] in {"blocked_solver", "accepted_public_native_ipopt"}
     assert payload["stage_e_ascani_2023"]["system_1_route_gate"]["public_api"] == (
@@ -93,5 +101,8 @@ def test_ascani_2023_reactive_lane_records_missing_source_targets_without_passin
     assert payload["solver_contract"]["density_backend"] == "liquid_pressure_root"
     assert payload["solver_contract"]["phase_volumes_are_nlp_variables"] is False
     assert payload["stage_e_ascani_2023"]["paper_match_status"] == "blocked_source_data"
+    if payload["stage_d_reactive_foundation"]["status"] == "accepted_public_native_ipopt":
+        assert payload["status"] == "blocked_source_data"
+        assert any(item["status"] == "blocked_source_data" for item in payload["blockers"])
     assert "Table 4. Obtained" in payload["source_markers_present"]
     assert "No Ascani 2023 Figure 8/9" in payload["claim_boundary"]

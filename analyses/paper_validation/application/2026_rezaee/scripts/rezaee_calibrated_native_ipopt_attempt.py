@@ -307,15 +307,16 @@ def _summarize_route_result(result: Any) -> dict[str, Any]:
 def _public_route_attempt(
     mixture: epcsaft.ePCSAFTMixture,
     constants: dict[str, float],
+    phase_models: dict[str, epcsaft.ePCSAFTMixture],
 ) -> dict[str, Any]:
     rows = pd.read_csv(replay.EQUILIBRIUM_CSV)
     row = rows.iloc[0]
     basis = _public_attempt_basis(row)
     options = epcsaft.EquilibriumOptions(
-        max_iterations=60,
+        max_iterations=120,
         tolerance=1.0e-8,
         min_composition=1.0e-14,
-        timeout_seconds=20.0,
+        timeout_seconds=45.0,
     )
     payload: dict[str, Any] = {
         "experiment_no": int(row["experiment_no"]),
@@ -323,6 +324,11 @@ def _public_route_attempt(
         "neutralized_charge": basis.neutralized_charge,
         "neutralization_species": basis.neutralization_species,
         "neutralization_delta": basis.neutralization_delta,
+        "phase_models": {
+            "aq_species": list(phase_models["aq"].species),
+            "org_species": list(phase_models["org"].species),
+            "contract": 'phase_models={"aq": aqueous_mix, "org": organic_mix}',
+        },
         "balances": basis.balances,
         "totals": basis.totals,
     }
@@ -335,6 +341,7 @@ def _public_route_attempt(
             balances=basis.balances,
             totals=basis.totals,
             reactions=replay._rezaee_phase_tagged_reactions(constants),
+            phase_models=phase_models,
             options=options,
         )
     except SolutionError as exc:
@@ -403,6 +410,7 @@ def main() -> int:
     calibration = _load_calibration()
     constants = {key: float(value) for key, value in calibration["equilibrium_constants"].items()}
     mixture = _calibrated_combined_mixture(calibration)
+    aqueous_mix, _aqueous_charges = replay._aqueous_mixture()
     calibrated_organic_mix, calibrated_pure_ln_phi = _calibrated_organic_mixture(calibration)
 
     residual_records = _row_residuals(mixture, constants)
@@ -415,7 +423,11 @@ def main() -> int:
     separate_df = pd.DataFrame.from_records(separate_records)
     separate_df.to_csv(SEPARATE_PHASE_ROWS_CSV, index=False)
     separate_abs_values = separate_df[["li_ln_residual", "na_ln_residual"]].abs().to_numpy().ravel()
-    public_attempt = _public_route_attempt(mixture, constants)
+    public_attempt = _public_route_attempt(
+        mixture,
+        constants,
+        {"aq": aqueous_mix, "org": calibrated_organic_mix},
+    )
     summary = {
         "status": "diagnostic_attempt",
         "calibration": {

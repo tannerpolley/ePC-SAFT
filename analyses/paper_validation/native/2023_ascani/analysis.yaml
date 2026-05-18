@@ -1,7 +1,7 @@
 id: ascani_2023_reactive_phase_equilibrium
 title: Ascani 2023 chemical plus phase equilibrium
-status: blocked_solver
-summary: Source-backed Ascani 2023 reactive LLE validation lane for esterification systems.
+status: blocked_source_data
+summary: Public native Ipopt reactive LLE route-gate lane for Ascani 2023, with paper-match validation blocked on machine-readable source targets.
 source_assets:
   - path: docs/papers/md/Ascani - 2023 - Simultaneous Predictions of Chemical and Phase Equilibria in Systems with an Esterif.md
     kind: paper_markdown
@@ -21,7 +21,8 @@ expected:
       temperature_K: 353.6
       pressure_bar: 1.0
       K_a: 22.92
-  accepted: true
+  route_gate_accepted: true
+  paper_match_accepted: false
   solver_backend: ipopt
 tolerances:
   material_balance_abs: 1.0e-8
@@ -32,4 +33,4 @@ outputs:
     kind: source_target_blocker_summary
 blocker:
   kind: missing_source_target_rows
-  note: Paper tables 1, 2, and 4 are locally available, but source-backed feed and reactive LLE target rows are not yet machine-readable in this repo.
+  note: Public route gates can run from source constants and retained standard-state conversions, but Figure 8/9 and reactive tie-line paper-match rows are not yet machine-readable in this repo.

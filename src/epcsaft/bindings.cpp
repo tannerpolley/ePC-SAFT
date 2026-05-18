@@ -2258,6 +2258,66 @@ PYBIND11_MODULE(_core, m) {
             )
         );
     });
+    m.def("_native_reactive_electrolyte_lle_phase_model_eos_route_result", [](
+        const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+        const std::shared_ptr<ePCSAFTMixtureNative>& phase1_mixture,
+        const std::shared_ptr<ePCSAFTMixtureNative>& phase2_mixture,
+        const std::vector<int>& phase1_global_indices,
+        const std::vector<int>& phase2_global_indices,
+        double temperature,
+        double target_pressure,
+        const std::vector<double>& feed_amounts,
+        int balance_rows,
+        const std::vector<double>& balance_matrix_row_major,
+        const std::vector<double>& total_vector,
+        int reaction_rows,
+        const std::vector<double>& reaction_stoichiometry_row_major,
+        const std::vector<double>& log_equilibrium_constants,
+        int max_iterations,
+        double tolerance,
+        double timeout_seconds,
+        double conserved_balance_tolerance,
+        double phase_equilibrium_tolerance,
+        double reaction_stationarity_tolerance,
+        double phase_distance_tolerance,
+        double min_composition,
+        const std::vector<int>& reaction_standard_states,
+        const std::vector<double>& reaction_phase_stoichiometry
+    ) {
+        if (!mixture || !phase1_mixture || !phase2_mixture) {
+            throw ValueError("Reactive electrolyte LLE phase_models route requires global, aqueous, and organic native mixtures.");
+        }
+        const epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
+            ipopt_solve_options_from_scalars(max_iterations, tolerance, timeout_seconds);
+        EquilibriumOptionsNative equilibrium_options;
+        equilibrium_options.min_composition = min_composition;
+        return reactive_two_phase_eos_route_result_to_dict(
+            solve_reactive_phase_liquid_root_phase_model_route_native(
+                mixture,
+                phase1_mixture,
+                phase2_mixture,
+                phase1_global_indices,
+                phase2_global_indices,
+                temperature,
+                target_pressure,
+                feed_amounts,
+                equilibrium_options,
+                balance_matrix_row_major,
+                balance_rows,
+                total_vector,
+                reaction_stoichiometry_row_major,
+                reaction_rows,
+                log_equilibrium_constants,
+                reaction_standard_states,
+                reaction_phase_stoichiometry,
+                options,
+                conserved_balance_tolerance,
+                reaction_stationarity_tolerance,
+                phase_equilibrium_tolerance,
+                phase_distance_tolerance
+            )
+        );
+    });
     m.def("_native_neutral_tp_flash_eos_route_result", [](
         const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
         double temperature,

@@ -1166,6 +1166,7 @@ def _native_reactive_two_phase_flash(
     required_route: str,
     problem_kind: str,
     phase_labels: tuple[str, str],
+    phase_models: Mapping[str, Any] | None = None,
 ) -> EquilibriumResult:
     from . import _core
 
@@ -1183,28 +1184,58 @@ def _native_reactive_two_phase_flash(
         P,
         options,
     )
-    route = getattr(_core, route_binding)(
-        mixture._native,
-        request["T"],
-        request["P"],
-        request["feed_amounts"],
-        request["balance_rows"],
-        request["balance_matrix"],
-        request["total_vector"],
-        request["reaction_rows"],
-        request["reaction_stoichiometry"],
-        request["log_equilibrium_constants"],
-        options.max_iterations,
-        options.tolerance,
-        _native_timeout_seconds(options),
-        material_tolerance,
-        chemical_potential_tolerance,
-        chemical_potential_tolerance,
-        phase_distance_tolerance,
-        options.min_composition,
-        request["reaction_standard_states"],
-        request["reaction_phase_stoichiometry"],
-    )
+    if phase_models is not None:
+        if route_binding != "_native_reactive_electrolyte_lle_eos_route_result":
+            raise InputError("phase_models requires reactive_electrolyte_lle.")
+        route = _core._native_reactive_electrolyte_lle_phase_model_eos_route_result(
+            mixture._native,
+            phase_models["aq"]._native,
+            phase_models["org"]._native,
+            phase_models["aq_indices"],
+            phase_models["org_indices"],
+            request["T"],
+            request["P"],
+            request["feed_amounts"],
+            request["balance_rows"],
+            request["balance_matrix"],
+            request["total_vector"],
+            request["reaction_rows"],
+            request["reaction_stoichiometry"],
+            request["log_equilibrium_constants"],
+            options.max_iterations,
+            options.tolerance,
+            _native_timeout_seconds(options),
+            material_tolerance,
+            chemical_potential_tolerance,
+            chemical_potential_tolerance,
+            phase_distance_tolerance,
+            options.min_composition,
+            request["reaction_standard_states"],
+            request["reaction_phase_stoichiometry"],
+        )
+    else:
+        route = getattr(_core, route_binding)(
+            mixture._native,
+            request["T"],
+            request["P"],
+            request["feed_amounts"],
+            request["balance_rows"],
+            request["balance_matrix"],
+            request["total_vector"],
+            request["reaction_rows"],
+            request["reaction_stoichiometry"],
+            request["log_equilibrium_constants"],
+            options.max_iterations,
+            options.tolerance,
+            _native_timeout_seconds(options),
+            material_tolerance,
+            chemical_potential_tolerance,
+            chemical_potential_tolerance,
+            phase_distance_tolerance,
+            options.min_composition,
+            request["reaction_standard_states"],
+            request["reaction_phase_stoichiometry"],
+        )
     if str(route.get("status", "")) == "ipopt_dependency_required":
         _raise_native_ipopt_reactive_phase_required(required_route)
     return _accepted_native_reactive_two_phase_result(
@@ -1700,6 +1731,7 @@ def reactive_phase_equilibrium(
     options: Any = None,
     phase_options: EquilibriumOptions | Mapping[str, Any] | None = None,
     phase_kwargs: Mapping[str, Any] | None = None,
+    phase_models: Mapping[str, Any] | None = None,
 ) -> EquilibriumResult:
     """Validate a reactive phase-equilibrium request and require the native Ipopt route."""
     from .reactive_speciation import (
@@ -1715,8 +1747,10 @@ def reactive_phase_equilibrium(
     species = [str(label) for label in getattr(mixture, "species", [])]
     if not species:
         raise InputError("reactive phase equilibrium requires mixture species.")
-    route = _normalize_reactive_phase_route(mixture, phase_kind, phase_kwargs)
     extra_phase_kwargs = dict(phase_kwargs or {})
+    if phase_models is not None:
+        extra_phase_kwargs["phase_models"] = phase_models
+    route = _normalize_reactive_phase_route(mixture, phase_kind, extra_phase_kwargs)
     _reject_reactive_phase_kwargs(extra_phase_kwargs, route)
     _, solver_options = _reactive_phase_option_pair(
         options=options,
@@ -1748,6 +1782,11 @@ def reactive_phase_equilibrium(
     reaction_defs = _normalize_reactions(species, reactions)
     reaction_phase_stoichiometry, _ = _reaction_phase_stoichiometry_matrix(species, reaction_defs, route)
     _require_reactive_phase_standard_states(reaction_defs, route)
+    phase_model_payload = _normalize_reactive_phase_models(
+        species,
+        extra_phase_kwargs.get("phase_models"),
+        route,
+    )
     if route == "lle_flash":
         route_binding = "_native_reactive_lle_eos_route_result"
         required_route = "reactive_lle"
@@ -1773,6 +1812,7 @@ def reactive_phase_equilibrium(
         required_route=required_route,
         problem_kind=problem_kind,
         phase_labels=phase_labels,
+        phase_models=phase_model_payload,
     )
 
 
@@ -1793,7 +1833,11 @@ def _normalize_reactive_phase_route(
     token = aliases.get(token, token)
     if token == "auto":
         kwargs = dict(phase_kwargs or {})
-        if kwargs.get("solvent_feed") is not None or kwargs.get("salt_molality") is not None:
+        if (
+            kwargs.get("solvent_feed") is not None
+            or kwargs.get("salt_molality") is not None
+            or kwargs.get("phase_models") is not None
+        ):
             return "electrolyte_lle"
         charges = np.asarray(getattr(mixture, "parameters", {}).get("z", []), dtype=float).flatten()
         if charges.size == int(getattr(mixture, "ncomp", 0)) and np.any(np.abs(charges) > 1.0e-12):
@@ -1808,7 +1852,7 @@ def _normalize_reactive_phase_route(
 
 
 def _reject_reactive_phase_kwargs(phase_kwargs: Mapping[str, Any], route: str) -> None:
-    allowed = {"solvent_feed", "salt_molality"}
+    allowed = {"solvent_feed", "salt_molality", "phase_models"}
     unsupported = sorted(key for key, value in phase_kwargs.items() if value is not None and key not in allowed)
     if unsupported:
         raise InputError(
@@ -1818,6 +1862,49 @@ def _reject_reactive_phase_kwargs(phase_kwargs: Mapping[str, Any], route: str) -
         phase_kwargs.get("solvent_feed") is not None or phase_kwargs.get("salt_molality") is not None
     ):
         raise InputError("solvent_feed and salt_molality require reactive_electrolyte_lle.")
+    if route == "lle_flash" and phase_kwargs.get("phase_models") is not None:
+        raise InputError("phase_models requires reactive_electrolyte_lle.")
+
+
+def _normalize_reactive_phase_models(
+    species: list[str],
+    phase_models: Any,
+    route: str,
+) -> dict[str, Any] | None:
+    if phase_models is None:
+        return None
+    if route != "electrolyte_lle":
+        raise InputError("phase_models requires reactive_electrolyte_lle.")
+    if not isinstance(phase_models, Mapping):
+        raise InputError("phase_models must be a mapping with 'aq' and 'org' mixtures.")
+    try:
+        aq_model = phase_models["aq"]
+        org_model = phase_models["org"]
+    except KeyError as exc:
+        raise InputError("phase_models must provide 'aq' and 'org' mixtures.") from exc
+    species_index = {label: index for index, label in enumerate(species)}
+
+    def indices_for(model: Any, label: str) -> list[int]:
+        model_species = [str(item) for item in getattr(model, "species", [])]
+        if not model_species:
+            raise InputError(f"phase_models['{label}'] must expose species labels.")
+        missing = [item for item in model_species if item not in species_index]
+        if missing:
+            raise InputError(
+                f"phase_models['{label}'] species are not present in the global reactive mixture: {missing}."
+            )
+        if len(set(model_species)) != len(model_species):
+            raise InputError(f"phase_models['{label}'] species labels must be unique.")
+        if not hasattr(model, "_native"):
+            raise InputError(f"phase_models['{label}'] must be an ePCSAFTMixture.")
+        return [species_index[item] for item in model_species]
+
+    return {
+        "aq": aq_model,
+        "org": org_model,
+        "aq_indices": indices_for(aq_model, "aq"),
+        "org_indices": indices_for(org_model, "org"),
+    }
 
 
 def _reactive_phase_option_pair(

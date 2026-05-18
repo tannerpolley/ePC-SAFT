@@ -16,6 +16,7 @@ epcsaft_dependency:
   notes:
     - Uses Rezaee paper-reported DES/TOPO/RLi/RNa PC-SAFT parameters and binary interactions as source truth.
     - Uses epcsaft activity and fugacity coefficient APIs for the validation calculations.
+    - Exercises the public reactive_electrolyte_lle phase_models route with separate aqueous and organic mixtures before retaining the blocked native Ipopt solver status.
     - Keeps generated evidence inside analyses/paper_validation/application/2026_rezaee.
 inputs:
   - path: analyses/paper_validation/application/2026_rezaee/data/input/rezaee_2026_reaction_constants.csv
@@ -41,6 +42,8 @@ outputs:
     kind: generated_pre_surrogate_validation_rows
   - path: analyses/paper_validation/application/2026_rezaee/results/reaction_equilibrium/rezaee_2026_section32_equilibrium_replication_summary.json
     kind: generated_validation_summary
+  - path: analyses/paper_validation/application/2026_rezaee/results/reaction_equilibrium/rezaee_2026_calibrated_native_ipopt_attempt_summary.json
+    kind: generated_public_native_ipopt_phase_models_attempt_summary
   - path: analyses/paper_validation/application/2026_rezaee/results/reaction_equilibrium/summary.json
     kind: generated_lane_gate_summary
   - path: analyses/paper_validation/application/2026_rezaee/results/reaction_equilibrium/rezaee_2026_package_figure_comparison_summary.json
@@ -59,6 +62,7 @@ commands:
 expected:
   row_count: 26
   direct_published_constant_closure_supported: false
+  phase_models_supported: public_api_supported_solver_rejected
   source_text_equilibrium_data_points: 36
   source_backed_si_equilibrium_rows: 26
 tolerances:
@@ -69,6 +73,7 @@ tolerances:
 completion_contract:
   - The lane passes when run_all.py exits 0 and summary.json records the 26 source-backed SI rows.
   - The expected diagnostic outcome is that direct published-constant closure is not supported.
+  - The public phase_models route is supported only as far as native Ipopt execution; this lane remains blocked_solver until at least one accepted Rezaee reactive_electrolyte_lle solve and the required fit/holdout gate are retained.
   - The figure comparison outputs must overlay digitized paper-model points with current in-worktree epcsaft package-model points.
   - The 36-row text statement remains a documented source-text mismatch unless a new source-backed table is added.
   - This lane must not be used to claim direct Rezaee paper-constant closure.

@@ -42,8 +42,11 @@ The strict pre-surrogate evidence bundle is:
 - `data/processed/rezaee_2026_section32_equilibrium_replication_rows.csv`
 - `results/reaction_equilibrium/rezaee_2026_section32_equilibrium_replication_summary.json`
 - `results/reaction_equilibrium/rezaee_2026_section32_equilibrium_replication.md`
+- `data/processed/rezaee_2026_calibrated_native_ipopt_attempt_rows.csv`
+- `data/processed/rezaee_2026_calibrated_separate_phase_residual_rows.csv`
+- `results/reaction_equilibrium/rezaee_2026_calibrated_native_ipopt_attempt_summary.json`
 
-Additional guardrail outputs in `results/reaction_equilibrium/` record replay, convention-scan, ePC-SAFT option-scan, and paper-basis reaction-coordinate diagnostics.
+Additional guardrail outputs in `results/reaction_equilibrium/` record replay, convention-scan, ePC-SAFT option-scan, calibrated public native Ipopt route attempts, and paper-basis reaction-coordinate diagnostics.
 The lane-level gate summary is `results/reaction_equilibrium/summary.json`.
 
 The figure comparison outputs are package-owned overlays, not downstream screenshots:
@@ -61,6 +64,7 @@ The package can run the paper-validation workflow from this copied application f
 
 - The source-supported Eq. 14/15 activity variant has a large combined median absolute log residual.
 - No simple sign, reciprocal constant, activity on/off, water/OH, H+/NH4+, TOPO, Born, or dielectric option scan closes the gap.
+- The public `mix.equilibrium(kind="reactive_electrolyte_lle", phase_models={"aq": aqueous_mix, "org": organic_mix})` route now reaches the native liquid-root Ipopt solver with separate phase models, but the retained Rezaee attempt is still postsolve-rejected on charge balance and reaction stationarity.
 - The 26-row Section 3.2 replication runs and writes the pre-surrogate result table, but the direct source-aligned case predicts essentially zero Li extraction and about 100% Li-extraction AARD against the paper's reported 7.89% post-Table-9 benchmark.
 
-The honest completion state is a reproducible paper-validation result with a documented source/reference-state gap, not a promoted direct reactive-LLE surrogate basis.
+The honest completion state is a reproducible paper-validation result with a documented source/reference-state gap and a blocked native solver route, not a promoted direct reactive-LLE surrogate basis.

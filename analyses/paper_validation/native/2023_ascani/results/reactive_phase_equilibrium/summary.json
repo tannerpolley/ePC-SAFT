@@ -2,8 +2,8 @@
   "schema_version": 1,
   "stage": "D-E",
   "lane_id": "ascani_2023_reactive_phase_equilibrium",
-  "status": "blocked_solver",
-  "status_reason": "source-backed public native Ipopt reactive LLE route attempt remains blocked by solver closure",
+  "status": "blocked_source_data",
+  "status_reason": "public native Ipopt route gates accepted; Figure 8/9 and tie-line paper-match targets remain source-data blocked",
   "source_records": [
     "docs/papers/md/Ascani - 2023 - Simultaneous Predictions of Chemical and Phase Equilibria in Systems with an Esterif.md"
   ],
@@ -14,7 +14,7 @@
     "Table 4. Obtained"
   ],
   "stage_d_reactive_foundation": {
-    "status": "blocked_solver",
+    "status": "accepted_public_native_ipopt",
     "homogeneous_ce_branch": {
       "status": "accepted_public_native_ipopt",
       "public_api": "epcsaft.solve_reactive_speciation",
@@ -28,21 +28,106 @@
       }
     },
     "hypothetical_reactive_tie_line": {
-      "status": "blocked_solver",
+      "status": "accepted_public_native_ipopt",
       "public_api": "mix.equilibrium(kind=\"reactive_lle\")",
-      "exception_type": "SolutionError",
-      "exception_message": "('Native reactive LLE route was rejected.', {'accepted': False, 'rejection_reason': 'reaction_equilibrium', 'derivative_backend': 'cppad_implicit', 'density_backend': 'liquid_pressure_root', 'phase_count': 2, 'species_count': 3, 'balance_row_count': 2, 'reaction_count': 1, 'conserved_balance_norm': 7.875222696185347e-10, 'charge_balance_norm': 0.0, 'pressure_consistency_norm': 0.0, 'phase_equilibrium_norm': 1.9109469080428028, 'reaction_stationarity_norm': 3.7942389205441924, 'phase_distance': 0.7220664911887571, 'objective': 10.863640997514135, 'standard_mu_rt': [], 'constraints': [7.875222696185347e-10, 7.355533959696459e-10, 1.9014333774862675, 3.7942389205441924, 0.16939707358267908, -0.18753843856755648, -1.9109469080428028, 0.0, 0.0], 'reaction_stationarity_residuals': [1.9014333774862675, 3.7942389205441924], 'phase_equilibrium_residuals': [0.16939707358267908, -0.18753843856755648, -1.9109469080428028], 'phase_charge_residuals': [0.0, 0.0], 'phase_amount_totals': [0.6901273963947357, 0.24208044781178115], 'phase_volumes': [1.6926859774450826e-05, 2.2492508173783497e-05], 'phase_densities': [40771.141581523865, 10762.714675544361], 'phase_compositions': [[0.13384797387919692, 0.8656932335114208, 0.0004587926093822837], [0.16455558515810118, 0.1436267423226637, 0.6918176725192351]], 'phase_ln_fugacity_coefficients': [[-1.0459973566401128, -4.368371952643907, 2.829631252464642], [-1.4219382144456758, -2.3845207692396344, -2.577901283814392]], 'route_status': 'postsolve_rejected', 'solver_status': 'success'})",
       "feed": [
-        0.2,
-        0.7,
-        0.1
+        0.5,
+        0.3,
+        0.2
       ],
+      "route_initial_composition": [
+        0.38482649112690154,
+        0.13875717075819122,
+        0.4764163381149073
+      ],
+      "route_initial_source": "public native Ipopt homogeneous CE handoff",
+      "homogeneous_seed": {
+        "public_api": "epcsaft.solve_reactive_speciation",
+        "status": "accepted_public_native_ipopt",
+        "reaction_residual_norm": 3.799082903377382e-06,
+        "composition": {
+          "A": 0.38482649112690154,
+          "B": 0.13875717075819122,
+          "C": 0.4764163381149073
+        }
+      },
+      "standard_state_conversion": {
+        "source_activity_standard_state": "Ascani 2023 Eq. (10) mole-fraction activity coefficient gamma",
+        "native_route_standard_state": "mole_fraction_activity using liquid EOS x*phi_i",
+        "source_log_equilibrium_constant": 0.8109302162163288,
+        "native_log_equilibrium_constant": 4.851407738939201,
+        "native_log_k_adjustment": 4.040477522722872,
+        "pure_liquid_ln_fugacity_coefficients": {
+          "A": -2.4824962846878957,
+          "B": -4.464875036133613,
+          "C": -2.9068937980986362
+        }
+      },
       "solver_options": {
-        "max_iterations": 350,
-        "tolerance": 2e-06,
+        "max_iterations": 1200,
+        "tolerance": 1e-05,
         "min_composition": 1e-12,
-        "timeout_seconds": 20.0
-      }
+        "timeout_seconds": 25.0
+      },
+      "phase_distance": 0.513634645092949,
+      "reaction_stationarity_norm": 5.304084972124201e-06,
+      "phase_equilibrium_norm": 6.701686645183003e-06,
+      "solver_status": "success",
+      "application_status": "solve_succeeded",
+      "phases": [
+        {
+          "label": "liq1",
+          "composition": [
+            0.5444039856894407,
+            0.2101665257407168,
+            0.24542948856984256
+          ],
+          "density": 15327.899988137471,
+          "temperature": 300.0,
+          "pressure": 100000.0,
+          "phase_fraction": 0.5868022592692582,
+          "ln_fugacity_coefficient": [
+            -2.31884953900712,
+            -3.309387995947544,
+            -1.5400074350121642
+          ],
+          "fugacity_coefficient": [
+            0.09838671059169511,
+            0.036538528640000616,
+            0.21437950750680648
+          ],
+          "diagnostics": {
+            "amount_total": 0.4830769879720895,
+            "volume": 3.151618867202625e-05
+          }
+        },
+        {
+          "label": "liq2",
+          "composition": [
+            0.17711446625678443,
+            0.06382140008042408,
+            0.7590641336627916
+          ],
+          "density": 9976.262516886196,
+          "temperature": 300.0,
+          "pressure": 100000.0,
+          "phase_fraction": 0.41319774073074167,
+          "ln_fugacity_coefficient": [
+            -1.1959597719415398,
+            -2.117576614385061,
+            -2.6690907177253367
+          ],
+          "fugacity_coefficient": [
+            0.30241356679544984,
+            0.120322864178962,
+            0.06931522376765094
+          ],
+          "diagnostics": {
+            "amount_total": 0.34015942658034026,
+            "volume": 3.40968800695224e-05
+          }
+        }
+      ]
     },
     "source_basis": "Ascani 2023 Table 3, Figure 3, K_a=2.25"
   },
@@ -162,22 +247,10 @@
   ],
   "blockers": [
     {
-      "status": "blocked_solver",
-      "public_api": "mix.equilibrium(kind=\"reactive_lle\")",
-      "exception_type": "SolutionError",
-      "exception_message": "('Native reactive LLE route was rejected.', {'accepted': False, 'rejection_reason': 'reaction_equilibrium', 'derivative_backend': 'cppad_implicit', 'density_backend': 'liquid_pressure_root', 'phase_count': 2, 'species_count': 3, 'balance_row_count': 2, 'reaction_count': 1, 'conserved_balance_norm': 7.875222696185347e-10, 'charge_balance_norm': 0.0, 'pressure_consistency_norm': 0.0, 'phase_equilibrium_norm': 1.9109469080428028, 'reaction_stationarity_norm': 3.7942389205441924, 'phase_distance': 0.7220664911887571, 'objective': 10.863640997514135, 'standard_mu_rt': [], 'constraints': [7.875222696185347e-10, 7.355533959696459e-10, 1.9014333774862675, 3.7942389205441924, 0.16939707358267908, -0.18753843856755648, -1.9109469080428028, 0.0, 0.0], 'reaction_stationarity_residuals': [1.9014333774862675, 3.7942389205441924], 'phase_equilibrium_residuals': [0.16939707358267908, -0.18753843856755648, -1.9109469080428028], 'phase_charge_residuals': [0.0, 0.0], 'phase_amount_totals': [0.6901273963947357, 0.24208044781178115], 'phase_volumes': [1.6926859774450826e-05, 2.2492508173783497e-05], 'phase_densities': [40771.141581523865, 10762.714675544361], 'phase_compositions': [[0.13384797387919692, 0.8656932335114208, 0.0004587926093822837], [0.16455558515810118, 0.1436267423226637, 0.6918176725192351]], 'phase_ln_fugacity_coefficients': [[-1.0459973566401128, -4.368371952643907, 2.829631252464642], [-1.4219382144456758, -2.3845207692396344, -2.577901283814392]], 'route_status': 'postsolve_rejected', 'solver_status': 'success'})",
-      "feed": [
-        0.2,
-        0.7,
-        0.1
-      ],
-      "solver_options": {
-        "max_iterations": 350,
-        "tolerance": 2e-06,
-        "min_composition": 1e-12,
-        "timeout_seconds": 20.0
-      }
+      "status": "blocked_source_data",
+      "reason": "Ascani 2023 Figure 8/9 and reactive tie-line paper-match target rows are not machine-readable in this worktree.",
+      "paper_match_status": "blocked_source_data"
     }
   ],
-  "claim_boundary": "No Ascani 2023 Figure 8/9 or tie-line paper-match claim is proven. The retained route attempts use source constants and public APIs only."
+  "claim_boundary": "No Ascani 2023 Figure 8/9 or tie-line paper-match claim is proven. The retained route attempts use source constants, explicit standard-state conversions, and public APIs only."
 }

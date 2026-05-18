@@ -210,10 +210,66 @@ std::vector<double> variables_from_initial_phases(
 struct ReactivePhaseState {
     std::vector<double> amounts;
     std::vector<double> composition;
+    std::vector<double> model_composition;
     std::vector<double> ln_phi;
+    std::vector<int> global_indices;
+    std::size_t global_component_count = 0;
     double amount_total = 0.0;
     double density = 0.0;
 };
+
+std::vector<int> full_component_indices(std::size_t ncomp) {
+    std::vector<int> indices(ncomp, 0);
+    for (std::size_t i = 0; i < ncomp; ++i) {
+        indices[i] = static_cast<int>(i);
+    }
+    return indices;
+}
+
+bool contains_index(const std::vector<int>& indices, std::size_t index) {
+    return std::find(indices.begin(), indices.end(), static_cast<int>(index)) != indices.end();
+}
+
+std::vector<double> selected_amounts(
+    const std::vector<double>& amounts,
+    const std::vector<int>& indices,
+    std::size_t global_ncomp
+) {
+    std::vector<double> out;
+    out.reserve(indices.size());
+    for (int index : indices) {
+        if (index < 0 || static_cast<std::size_t>(index) >= global_ncomp) {
+            throw ValueError("phase model component index is outside the global reactive mixture.");
+        }
+        out.push_back(amounts[static_cast<std::size_t>(index)]);
+    }
+    return out;
+}
+
+void validate_phase_model_indices(
+    const std::shared_ptr<ePCSAFTMixtureNative>& phase_mixture,
+    const std::vector<int>& indices,
+    std::size_t global_ncomp,
+    const std::string& label
+) {
+    if (!phase_mixture) {
+        throw ValueError("reactive electrolyte phase_models require native aqueous and organic mixtures.");
+    }
+    if (indices.size() != phase_mixture->ncomp()) {
+        throw ValueError(label + " phase model species count must match its global index map.");
+    }
+    std::vector<int> seen;
+    seen.reserve(indices.size());
+    for (int index : indices) {
+        if (index < 0 || static_cast<std::size_t>(index) >= global_ncomp) {
+            throw ValueError(label + " phase model index is outside the global reactive mixture.");
+        }
+        if (std::find(seen.begin(), seen.end(), index) != seen.end()) {
+            throw ValueError(label + " phase model index map contains duplicates.");
+        }
+        seen.push_back(index);
+    }
+}
 
 ReactivePhaseState evaluate_phase_state(
     const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
@@ -227,6 +283,9 @@ ReactivePhaseState evaluate_phase_state(
     out.amounts = amounts;
     out.amount_total = sum_amounts(amounts);
     out.composition = composition_from_amounts(amounts, out.amount_total, floor);
+    out.model_composition = out.composition;
+    out.global_component_count = out.composition.size();
+    out.global_indices = full_component_indices(out.composition.size());
     out.density = mixture->solve_density_scoped(t, p, out.composition, 0, density_scope);
     std::shared_ptr<ePCSAFTStateNative> state = mixture->state(t, out.composition, 0, false, 0.0, true, out.density);
     out.ln_phi = state->ln_fugacity_coefficient();
@@ -235,6 +294,17 @@ ReactivePhaseState evaluate_phase_state(
     }
     return out;
 }
+
+ReactivePhaseState evaluate_scoped_phase_state(
+    const std::shared_ptr<ePCSAFTMixtureNative>& phase_mixture,
+    double t,
+    double p,
+    const std::vector<double>& amounts,
+    double floor,
+    const std::string& density_scope,
+    const std::vector<int>& global_indices,
+    std::size_t global_ncomp
+);
 
 std::vector<double> ln_activities(const ReactivePhaseState& state, double floor) {
     std::vector<double> out(state.composition.size(), 0.0);
@@ -420,12 +490,22 @@ void append_block(std::vector<double>& target, const std::vector<double>& block)
 }
 
 std::vector<double> phase_log_mole_fraction_log_amount_jacobian(const ReactivePhaseState& state) {
-    const std::size_t ncomp = state.composition.size();
+    const std::size_t ncomp = state.global_component_count > 0
+        ? state.global_component_count
+        : state.composition.size();
+    const std::vector<int> indices = state.global_indices.empty()
+        ? full_component_indices(ncomp)
+        : state.global_indices;
+    const std::vector<double>& composition = state.model_composition.empty()
+        ? state.composition
+        : state.model_composition;
     std::vector<double> jacobian(ncomp * ncomp, 0.0);
-    for (std::size_t species = 0; species < ncomp; ++species) {
-        for (std::size_t variable = 0; variable < ncomp; ++variable) {
-            jacobian[species * ncomp + variable] =
-                (species == variable ? 1.0 : 0.0) - state.composition[variable];
+    for (std::size_t species = 0; species < indices.size(); ++species) {
+        const std::size_t global_species = static_cast<std::size_t>(indices[species]);
+        for (std::size_t variable = 0; variable < indices.size(); ++variable) {
+            const std::size_t global_variable = static_cast<std::size_t>(indices[variable]);
+            jacobian[global_species * ncomp + global_variable] =
+                (species == variable ? 1.0 : 0.0) - composition[variable];
         }
     }
     return jacobian;
@@ -437,23 +517,34 @@ std::vector<double> phase_ln_activity_log_amount_jacobian(
     double p,
     const ReactivePhaseState& state
 ) {
-    const std::size_t ncomp = state.composition.size();
+    const std::size_t ncomp = state.global_component_count > 0
+        ? state.global_component_count
+        : state.composition.size();
+    const std::vector<int> indices = state.global_indices.empty()
+        ? full_component_indices(ncomp)
+        : state.global_indices;
+    const std::vector<double>& composition = state.model_composition.empty()
+        ? state.composition
+        : state.model_composition;
+    const std::size_t local_ncomp = composition.size();
     PhaseStateCompositionSensitivityResult sensitivity =
-        phase_state_ln_fugacity_composition_sensitivity_cpp(t, p, state.composition, 0, mixture->args());
-    if (!sensitivity.supported || sensitivity.jacobian_row_major.size() != ncomp * ncomp) {
+        phase_state_ln_fugacity_composition_sensitivity_cpp(t, p, composition, 0, mixture->args());
+    if (!sensitivity.supported || sensitivity.jacobian_row_major.size() != local_ncomp * local_ncomp) {
         throw ValueError("reactive phase residual Jacobian requires supported phase-state fugacity sensitivities.");
     }
     std::vector<double> jacobian(ncomp * ncomp, 0.0);
-    for (std::size_t species = 0; species < ncomp; ++species) {
-        for (std::size_t variable = 0; variable < ncomp; ++variable) {
-            const double dlogx = (species == variable ? 1.0 : 0.0) - state.composition[variable];
+    for (std::size_t species = 0; species < indices.size(); ++species) {
+        const std::size_t global_species = static_cast<std::size_t>(indices[species]);
+        for (std::size_t variable = 0; variable < indices.size(); ++variable) {
+            const std::size_t global_variable = static_cast<std::size_t>(indices[variable]);
+            const double dlogx = (species == variable ? 1.0 : 0.0) - composition[variable];
             double dlnphi = 0.0;
-            for (std::size_t k = 0; k < ncomp; ++k) {
+            for (std::size_t k = 0; k < local_ncomp; ++k) {
                 const double dxk_dlogn =
-                    state.composition[k] * ((k == variable ? 1.0 : 0.0) - state.composition[variable]);
-                dlnphi += sensitivity.jacobian_row_major[species * ncomp + k] * dxk_dlogn;
+                    composition[k] * ((k == variable ? 1.0 : 0.0) - composition[variable]);
+                dlnphi += sensitivity.jacobian_row_major[species * local_ncomp + k] * dxk_dlogn;
             }
-            jacobian[species * ncomp + variable] = dlogx + dlnphi;
+            jacobian[global_species * ncomp + global_variable] = dlogx + dlnphi;
         }
     }
     return jacobian;
@@ -465,10 +556,19 @@ std::vector<double> phase_log_concentration_log_amount_jacobian(
     double p,
     const ReactivePhaseState& state
 ) {
-    const std::size_t ncomp = state.composition.size();
+    const std::size_t ncomp = state.global_component_count > 0
+        ? state.global_component_count
+        : state.composition.size();
+    const std::vector<int> indices = state.global_indices.empty()
+        ? full_component_indices(ncomp)
+        : state.global_indices;
+    const std::vector<double>& composition = state.model_composition.empty()
+        ? state.composition
+        : state.model_composition;
+    const std::size_t local_ncomp = composition.size();
     PhaseStateCompositionSensitivityResult sensitivity =
-        phase_state_ln_fugacity_composition_sensitivity_cpp(t, p, state.composition, 0, mixture->args());
-    if (!sensitivity.supported || sensitivity.density_composition_derivative.size() != ncomp) {
+        phase_state_ln_fugacity_composition_sensitivity_cpp(t, p, composition, 0, mixture->args());
+    if (!sensitivity.supported || sensitivity.density_composition_derivative.size() != local_ncomp) {
         throw ValueError("concentration reaction residual Jacobian requires supported density composition sensitivities.");
     }
     const double density = sensitivity.density > 0.0 ? sensitivity.density : state.density;
@@ -476,19 +576,21 @@ std::vector<double> phase_log_concentration_log_amount_jacobian(
         throw ValueError("concentration reaction residual Jacobian requires a finite positive molar density.");
     }
     std::vector<double> jacobian = phase_log_mole_fraction_log_amount_jacobian(state);
-    std::vector<double> dlogrho_dlogn(ncomp, 0.0);
-    for (std::size_t variable = 0; variable < ncomp; ++variable) {
+    std::vector<double> dlogrho_dlogn(local_ncomp, 0.0);
+    for (std::size_t variable = 0; variable < local_ncomp; ++variable) {
         double drho_dlogn = 0.0;
-        for (std::size_t k = 0; k < ncomp; ++k) {
+        for (std::size_t k = 0; k < local_ncomp; ++k) {
             const double dxk_dlogn =
-                state.composition[k] * ((k == variable ? 1.0 : 0.0) - state.composition[variable]);
+                composition[k] * ((k == variable ? 1.0 : 0.0) - composition[variable]);
             drho_dlogn += sensitivity.density_composition_derivative[k] * dxk_dlogn;
         }
         dlogrho_dlogn[variable] = drho_dlogn / density;
     }
-    for (std::size_t species = 0; species < ncomp; ++species) {
-        for (std::size_t variable = 0; variable < ncomp; ++variable) {
-            jacobian[species * ncomp + variable] += dlogrho_dlogn[variable];
+    for (std::size_t species = 0; species < indices.size(); ++species) {
+        const std::size_t global_species = static_cast<std::size_t>(indices[species]);
+        for (std::size_t variable = 0; variable < indices.size(); ++variable) {
+            const std::size_t global_variable = static_cast<std::size_t>(indices[variable]);
+            jacobian[global_species * ncomp + global_variable] += dlogrho_dlogn[variable];
         }
     }
     return jacobian;
@@ -514,7 +616,8 @@ std::vector<double> phase_reaction_standard_state_log_amount_jacobian(
 }
 
 std::vector<double> reactive_phase_residual_jacobian_row_major(
-    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    const std::shared_ptr<ePCSAFTMixtureNative>& phase1_mixture,
+    const std::shared_ptr<ePCSAFTMixtureNative>& phase2_mixture,
     double t,
     double p,
     const std::vector<double>& balance_matrix_row_major,
@@ -531,8 +634,8 @@ std::vector<double> reactive_phase_residual_jacobian_row_major(
     const std::size_t ncomp = phase1.composition.size();
     const std::size_t nvars = 2 * ncomp;
     std::vector<double> jacobian(residual_eval.residual.size() * nvars, 0.0);
-    std::vector<double> activity_jac1 = phase_ln_activity_log_amount_jacobian(mixture, t, p, phase1);
-    std::vector<double> activity_jac2 = phase_ln_activity_log_amount_jacobian(mixture, t, p, phase2);
+    std::vector<double> activity_jac1 = phase_ln_activity_log_amount_jacobian(phase1_mixture, t, p, phase1);
+    std::vector<double> activity_jac2 = phase_ln_activity_log_amount_jacobian(phase2_mixture, t, p, phase2);
     validate_reaction_standard_states(reaction_standard_states, reaction_rows);
     const bool phase_tagged_reactions = has_phase_tagged_reaction_stoichiometry(
         reaction_phase_stoichiometry_row_major,
@@ -553,14 +656,14 @@ std::vector<double> reactive_phase_residual_jacobian_row_major(
     if (phase_tagged_reactions) {
         for (int reaction = 0; reaction < reaction_rows; ++reaction) {
             const std::vector<double> reaction_jac1 = phase_reaction_standard_state_log_amount_jacobian(
-                mixture,
+                phase1_mixture,
                 t,
                 p,
                 phase1,
                 reaction_standard_states[static_cast<std::size_t>(reaction)]
             );
             const std::vector<double> reaction_jac2 = phase_reaction_standard_state_log_amount_jacobian(
-                mixture,
+                phase2_mixture,
                 t,
                 p,
                 phase2,
@@ -584,7 +687,7 @@ std::vector<double> reactive_phase_residual_jacobian_row_major(
     } else {
         for (int reaction = 0; reaction < reaction_rows; ++reaction) {
             const std::vector<double> reaction_jac1 = phase_reaction_standard_state_log_amount_jacobian(
-                mixture,
+                phase1_mixture,
                 t,
                 p,
                 phase1,
@@ -603,7 +706,7 @@ std::vector<double> reactive_phase_residual_jacobian_row_major(
 
         for (int reaction = 0; reaction < reaction_rows; ++reaction) {
             const std::vector<double> reaction_jac2 = phase_reaction_standard_state_log_amount_jacobian(
-                mixture,
+                phase2_mixture,
                 t,
                 p,
                 phase2,
@@ -701,9 +804,18 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
     const std::vector<double>& initial_phase1,
     const std::vector<double>& initial_phase2,
     double initial_phase_fraction_phase2,
-    bool has_initial_phases
+    bool has_initial_phases,
+    const std::shared_ptr<ePCSAFTMixtureNative>& phase1_mixture,
+    const std::vector<int>& phase1_global_indices,
+    const std::shared_ptr<ePCSAFTMixtureNative>& phase2_mixture,
+    const std::vector<int>& phase2_global_indices
 ) {
     const std::size_t ncomp = mixture->ncomp();
+    const bool use_phase_models = phase1_mixture || phase2_mixture;
+    if (use_phase_models) {
+        validate_phase_model_indices(phase1_mixture, phase1_global_indices, ncomp, "phase1");
+        validate_phase_model_indices(phase2_mixture, phase2_global_indices, ncomp, "phase2");
+    }
     if (reaction_standard_states.size() != static_cast<std::size_t>(reaction_rows)) {
         throw ValueError("reaction standard state length must match reaction row count.");
     }
@@ -725,22 +837,44 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
         eval_variables = default_variables_from_feed(feed, options.min_composition);
     }
 
-    ReactivePhaseState phase1 = evaluate_phase_state(
-        mixture,
-        t,
-        p,
-        exp_amounts(eval_variables, 0, ncomp),
-        options.min_composition,
-        "reactive_phase_equilibrium_phase1"
-    );
-    ReactivePhaseState phase2 = evaluate_phase_state(
-        mixture,
-        t,
-        p,
-        exp_amounts(eval_variables, ncomp, ncomp),
-        options.min_composition,
-        "reactive_phase_equilibrium_phase2"
-    );
+    ReactivePhaseState phase1 = use_phase_models
+        ? evaluate_scoped_phase_state(
+            phase1_mixture,
+            t,
+            p,
+            exp_amounts(eval_variables, 0, ncomp),
+            options.min_composition,
+            "reactive_phase_equilibrium_phase1",
+            phase1_global_indices,
+            ncomp
+        )
+        : evaluate_phase_state(
+            mixture,
+            t,
+            p,
+            exp_amounts(eval_variables, 0, ncomp),
+            options.min_composition,
+            "reactive_phase_equilibrium_phase1"
+        );
+    ReactivePhaseState phase2 = use_phase_models
+        ? evaluate_scoped_phase_state(
+            phase2_mixture,
+            t,
+            p,
+            exp_amounts(eval_variables, ncomp, ncomp),
+            options.min_composition,
+            "reactive_phase_equilibrium_phase2",
+            phase2_global_indices,
+            ncomp
+        )
+        : evaluate_phase_state(
+            mixture,
+            t,
+            p,
+            exp_amounts(eval_variables, ncomp, ncomp),
+            options.min_composition,
+            "reactive_phase_equilibrium_phase2"
+        );
     std::vector<double> total_amounts(ncomp, 0.0);
     for (std::size_t i = 0; i < ncomp; ++i) {
         total_amounts[i] = phase1.amounts[i] + phase2.amounts[i];
@@ -837,7 +971,8 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
     out.phase_distance = phase_distance(phase1.composition, phase2.composition);
     validate_jacobian_backend(options);
     out.jacobian_row_major = reactive_phase_residual_jacobian_row_major(
-        mixture,
+        use_phase_models ? phase1_mixture : mixture,
+        use_phase_models ? phase2_mixture : mixture,
         t,
         p,
         balance_matrix_row_major,
@@ -865,8 +1000,12 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
         : "element_balance,reaction_equilibrium,neutral_phase_equilibrium,ionic_equilibrium,phase_charge";
     out.diagnostics_string["jacobian_backend"] = "cppad_implicit";
     out.diagnostics_string["derivative_backend"] = "cppad_implicit";
-    out.diagnostics_string["coupling_level"] = "single_native_residual_state";
-    out.diagnostics_string["phase_model"] = "two_liquid_phases";
+    out.diagnostics_string["coupling_level"] = use_phase_models
+        ? "phase_tagged_distinct_native_residual_states"
+        : "single_native_residual_state";
+    out.diagnostics_string["phase_model"] = use_phase_models
+        ? "phase_models_aq_org"
+        : "two_liquid_phases";
     out.diagnostics_string["reaction_residual_basis"] = reaction_standard_state_summary(reaction_standard_states);
     out.diagnostics_string["reaction_phase_scope"] = phase_tagged_reactions
         ? "phase_tagged_cross_phase"
@@ -878,6 +1017,7 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
     out.diagnostics_bool["reaction_residual_standard_state_applied"] = true;
     out.diagnostics_bool["phase_tagged_reaction_stoichiometry"] = phase_tagged_reactions;
     out.diagnostics_bool["cross_phase_reaction_residuals"] = phase_tagged_reactions;
+    out.diagnostics_bool["phase_models_applied"] = use_phase_models;
     out.diagnostics_bool["nonnegative_amounts_enforced_by_transform"] = true;
     out.diagnostics_bool["composition_normalization_enforced_by_transform"] = true;
     out.diagnostics_int["phase_count"] = 2;
@@ -966,6 +1106,62 @@ std::vector<double> build_reactive_liquid_root_initial_variables(
     return out;
 }
 
+ReactivePhaseState evaluate_scoped_phase_state(
+    const std::shared_ptr<ePCSAFTMixtureNative>& phase_mixture,
+    double t,
+    double p,
+    const std::vector<double>& amounts,
+    double floor,
+    const std::string& density_scope,
+    const std::vector<int>& global_indices,
+    std::size_t global_ncomp
+) {
+    validate_phase_model_indices(phase_mixture, global_indices, global_ncomp, density_scope);
+    ReactivePhaseState out;
+    out.amounts = amounts;
+    out.amount_total = sum_amounts(amounts);
+    out.global_component_count = global_ncomp;
+    out.global_indices = global_indices;
+    const std::vector<double> local_amounts = selected_amounts(amounts, global_indices, global_ncomp);
+    const double local_total = sum_amounts(local_amounts);
+    out.model_composition = composition_from_amounts(local_amounts, local_total, floor);
+    out.composition.assign(global_ncomp, 0.0);
+    for (std::size_t local = 0; local < global_indices.size(); ++local) {
+        out.composition[static_cast<std::size_t>(global_indices[local])] = out.model_composition[local];
+    }
+    out.density = phase_mixture->solve_density_scoped(t, p, out.model_composition, 0, density_scope);
+    std::shared_ptr<ePCSAFTStateNative> state =
+        phase_mixture->state(t, out.model_composition, 0, false, 0.0, true, out.density);
+    const std::vector<double> local_ln_phi = state->ln_fugacity_coefficient();
+    if (local_ln_phi.size() != out.model_composition.size()) {
+        throw ValueError("reactive phase model fugacity payload length mismatch.");
+    }
+    out.ln_phi.assign(global_ncomp, 0.0);
+    for (std::size_t local = 0; local < global_indices.size(); ++local) {
+        out.ln_phi[static_cast<std::size_t>(global_indices[local])] = local_ln_phi[local];
+    }
+    return out;
+}
+
+std::vector<double> build_reactive_phase_model_initial_variables(
+    const std::vector<double>& feed,
+    const std::vector<int>& phase1_indices,
+    const std::vector<int>& phase2_indices,
+    double floor
+) {
+    const std::size_t ncomp = feed.size();
+    std::vector<double> out(2 * ncomp, std::log(floor));
+    for (std::size_t species = 0; species < ncomp; ++species) {
+        if (contains_index(phase1_indices, species)) {
+            out[species] = clamped_log_amount(feed[species], floor);
+        }
+        if (contains_index(phase2_indices, species)) {
+            out[ncomp + species] = clamped_log_amount(feed[species], floor);
+        }
+    }
+    return out;
+}
+
 class ReactiveLiquidRootTwoPhaseProblem final : public epcsaft::native::equilibrium_nlp::NlpProblem {
 public:
     ReactiveLiquidRootTwoPhaseProblem(
@@ -982,9 +1178,15 @@ public:
         std::vector<double> log_equilibrium_constants,
         std::vector<int> reaction_standard_states,
         std::vector<double> reaction_phase_stoichiometry_row_major,
-        double phase_distance_tolerance
+        double phase_distance_tolerance,
+        std::shared_ptr<ePCSAFTMixtureNative> phase1_mixture = nullptr,
+        std::vector<int> phase1_global_indices = {},
+        std::shared_ptr<ePCSAFTMixtureNative> phase2_mixture = nullptr,
+        std::vector<int> phase2_global_indices = {}
     )
         : mixture_(std::move(mixture)),
+          phase1_mixture_(std::move(phase1_mixture)),
+          phase2_mixture_(std::move(phase2_mixture)),
           temperature_(temperature),
           target_pressure_(target_pressure),
           options_(std::move(options)),
@@ -1000,10 +1202,25 @@ public:
         if (!mixture_) {
             throw ValueError("Reactive liquid-root LLE NLP requires a native mixture.");
         }
+        if (!phase1_mixture_) {
+            phase1_mixture_ = mixture_;
+        }
+        if (!phase2_mixture_) {
+            phase2_mixture_ = mixture_;
+        }
         if (!std::isfinite(temperature_) || temperature_ <= 0.0 || !std::isfinite(target_pressure_) || target_pressure_ <= 0.0) {
             throw ValueError("Reactive liquid-root LLE NLP received invalid T/P specifications.");
         }
         feed_ = normalize_feed(raw_feed, mixture_->ncomp(), options_.min_composition, "reactive_phase_equilibrium");
+        phase1_global_indices_ = phase1_global_indices.empty()
+            ? full_component_indices(feed_.size())
+            : std::move(phase1_global_indices);
+        phase2_global_indices_ = phase2_global_indices.empty()
+            ? full_component_indices(feed_.size())
+            : std::move(phase2_global_indices);
+        const bool distinct_phase_models = phase1_mixture_ != mixture_ || phase2_mixture_ != mixture_;
+        validate_phase_model_indices(phase1_mixture_, phase1_global_indices_, feed_.size(), "phase1");
+        validate_phase_model_indices(phase2_mixture_, phase2_global_indices_, feed_.size(), "phase2");
         validate_reaction_standard_states(reaction_standard_states_, reaction_rows_);
         const std::size_t ncomp = feed_.size();
         if (balance_rows_ <= 0) {
@@ -1031,11 +1248,18 @@ public:
                 static_cast<int>(ncomp)
             );
         }
-        initial_variables_ = build_reactive_liquid_root_initial_variables(
-            feed_,
-            mixture_->args().z,
-            options_.min_composition
-        );
+        initial_variables_ = distinct_phase_models
+            ? build_reactive_phase_model_initial_variables(
+                feed_,
+                phase1_global_indices_,
+                phase2_global_indices_,
+                options_.min_composition
+            )
+            : build_reactive_liquid_root_initial_variables(
+                feed_,
+                mixture_->args().z,
+                options_.min_composition
+            );
         const std::vector<double> species_upper = species_amount_upper_bounds(
             balance_matrix_row_major_,
             balance_rows_,
@@ -1048,6 +1272,12 @@ public:
             const double upper = std::log(species_upper[species]);
             variable_upper_bounds_[species] = upper;
             variable_upper_bounds_[ncomp + species] = upper;
+            if (distinct_phase_models && !contains_index(phase1_global_indices_, species)) {
+                variable_upper_bounds_[species] = std::log(10.0 * options_.min_composition);
+            }
+            if (distinct_phase_models && !contains_index(phase2_global_indices_, species)) {
+                variable_upper_bounds_[ncomp + species] = std::log(10.0 * options_.min_composition);
+            }
         }
         if (minimum_phase_distance_ > 0.0) {
             const std::vector<double> first_amounts = exp_amounts(initial_variables_, 0, ncomp);
@@ -1218,7 +1448,15 @@ public:
             reaction_standard_states_,
             reaction_phase_stoichiometry_row_major_,
             variables,
-            true
+            true,
+            {},
+            {},
+            0.5,
+            false,
+            phase1_mixture_,
+            phase1_global_indices_,
+            phase2_mixture_,
+            phase2_global_indices_
         );
         cached_variables_ = variables;
         cached_evaluation_valid_ = true;
@@ -1293,6 +1531,8 @@ private:
     }
 
     std::shared_ptr<ePCSAFTMixtureNative> mixture_;
+    std::shared_ptr<ePCSAFTMixtureNative> phase1_mixture_;
+    std::shared_ptr<ePCSAFTMixtureNative> phase2_mixture_;
     double temperature_ = 0.0;
     double target_pressure_ = 0.0;
     EquilibriumOptionsNative options_;
@@ -1305,6 +1545,8 @@ private:
     std::vector<double> log_equilibrium_constants_;
     std::vector<int> reaction_standard_states_;
     std::vector<double> reaction_phase_stoichiometry_row_major_;
+    std::vector<int> phase1_global_indices_;
+    std::vector<int> phase2_global_indices_;
     std::vector<double> initial_variables_;
     std::vector<double> variable_upper_bounds_;
     mutable bool cached_evaluation_valid_ = false;
@@ -1537,6 +1779,102 @@ epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult solve_reactive_
         reaction_standard_states,
         reaction_phase_stoichiometry_row_major,
         phase_distance_tolerance
+    );
+    out.phase_count = 2;
+    out.species_count = static_cast<int>(problem.feed().size());
+    out.balance_row_count = problem.balance_row_count();
+    out.reaction_count = problem.reaction_count();
+    const epcsaft::native::equilibrium_nlp::IpoptSolveResult solve =
+        epcsaft::native::equilibrium_nlp::solve_ipopt_nlp(problem, solve_options);
+    out.ran = solve.solver_ran;
+    out.solver_accepted = solve.accepted;
+    out.accepted = solve.accepted;
+    out.solver_status = solve.solver_status;
+    out.application_status = solve.application_status;
+    out.objective = solve.objective;
+    out.variables = solve.variables;
+    out.constraints = solve.constraints;
+    out.status = solve.accepted ? "accepted" : "solver_rejected";
+    if (!solve.accepted) {
+        return out;
+    }
+
+    const ReactivePhaseResidualEvaluationNative eval = problem.evaluate(solve.variables);
+    out.phase_amounts = phase_amounts_from_reactive_eval(eval);
+    out.postsolve = reactive_liquid_root_postsolve_from_eval(
+        problem,
+        eval,
+        conserved_balance_tolerance,
+        reaction_tolerance,
+        phase_equilibrium_tolerance,
+        phase_distance_tolerance
+    );
+    out.phase_volumes = out.postsolve.phase_volumes;
+    out.accepted = out.postsolve.accepted;
+    out.status = out.accepted ? "accepted" : "postsolve_rejected";
+    return out;
+}
+
+epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult solve_reactive_phase_liquid_root_phase_model_route_native(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    const std::shared_ptr<ePCSAFTMixtureNative>& phase1_mixture,
+    const std::shared_ptr<ePCSAFTMixtureNative>& phase2_mixture,
+    const std::vector<int>& phase1_global_indices,
+    const std::vector<int>& phase2_global_indices,
+    double t,
+    double p,
+    const std::vector<double>& feed,
+    const EquilibriumOptionsNative& equilibrium_options,
+    const std::vector<double>& balance_matrix_row_major,
+    int balance_rows,
+    const std::vector<double>& total_vector,
+    const std::vector<double>& reaction_stoichiometry_row_major,
+    int reaction_rows,
+    const std::vector<double>& log_equilibrium_constants,
+    const std::vector<int>& reaction_standard_states,
+    const std::vector<double>& reaction_phase_stoichiometry_row_major,
+    const epcsaft::native::equilibrium_nlp::IpoptSolveOptions& solve_options,
+    double conserved_balance_tolerance,
+    double reaction_tolerance,
+    double phase_equilibrium_tolerance,
+    double phase_distance_tolerance
+) {
+    const epcsaft::native::equilibrium_nlp::IpoptAdapterInfo adapter =
+        epcsaft::native::equilibrium_nlp::native_ipopt_adapter_info();
+    epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult out;
+    out.compiled = adapter.compiled;
+    out.adapter_available = adapter.adapter_available;
+    out.adapter_kind = adapter.adapter_kind;
+    out.exact_gradient_required = adapter.exact_gradient_required;
+    out.exact_jacobian_required = adapter.exact_jacobian_required;
+    out.problem_name = "reactive_liquid_root_eos";
+    out.derivative_backend = "cppad_implicit";
+    out.postsolve.derivative_backend = "cppad_implicit";
+    out.postsolve.density_backend = "liquid_pressure_root";
+    if (!adapter.compiled) {
+        out.status = "ipopt_dependency_required";
+        return out;
+    }
+
+    const ReactiveLiquidRootTwoPhaseProblem problem(
+        mixture,
+        t,
+        p,
+        feed,
+        equilibrium_options,
+        balance_matrix_row_major,
+        balance_rows,
+        total_vector,
+        reaction_stoichiometry_row_major,
+        reaction_rows,
+        log_equilibrium_constants,
+        reaction_standard_states,
+        reaction_phase_stoichiometry_row_major,
+        phase_distance_tolerance,
+        phase1_mixture,
+        phase1_global_indices,
+        phase2_mixture,
+        phase2_global_indices
     );
     out.phase_count = 2;
     out.species_count = static_cast<int>(problem.feed().size());
