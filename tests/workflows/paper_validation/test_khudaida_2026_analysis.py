@@ -69,3 +69,18 @@ def test_khudaida_supporting_subfigure_workflows_are_declared() -> None:
         scripts = KHUDAIDA / "figures" / figure_id / "scripts"
         assert (scripts / "generate_data.py").is_file()
         assert (scripts / f"plot_{figure_id}.py").is_file()
+
+
+def test_khudaida_figures_2_to_7_live_diagnostic_is_cache_safe() -> None:
+    script = KHUDAIDA / "scripts" / "diagnose_figures_2_7_live_ipopt.py"
+    text = script.read_text(encoding="utf-8")
+
+    assert "figures_2_7_live_ipopt" in text
+    assert "feed_compositions_digitized.csv" in text
+    assert "purpose\": \"diagnostic-only live native Ipopt recompute; does not update figure caches\"" in text
+    assert "import _common" not in text
+    assert "_build_feed_formula_from_salt_free_molefractions" in text
+    assert "_load_model_rows_from_csv" in text
+    assert "_model_cache_path" in text
+    assert "common.write_case_data" not in text
+    assert "common.get_or_build_model_rows" not in text

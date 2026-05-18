@@ -17,3 +17,11 @@ uv run python analyses\paper_validation\application\2026_khudaida\scripts\run_al
 ```
 
 Generated figure assets are written under each `figures/<figure_id>/output/` folder. The retained CSVs snapshot the exact plotted/source data used by each figure workflow.
+
+Figures 2-7 have a separate live-Ipopt diagnostic entry point that reads the figure-owned digitized feed files and writes diagnostics without modifying the retained plot caches:
+
+```powershell
+uv run python analyses\paper_validation\application\2026_khudaida\scripts\diagnose_figures_2_7_live_ipopt.py
+```
+
+Diagnostics are written under `diagnostics/figures_2_7_live_ipopt/`. The script records the exact `figures/figure_N/input/feed_compositions_digitized.csv` row used for each solve and only reads existing `output/data/model_tielines.csv` files for comparison.

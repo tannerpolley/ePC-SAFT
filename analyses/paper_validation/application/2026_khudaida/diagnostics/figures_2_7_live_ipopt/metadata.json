@@ -1,0 +1,43 @@
+{
+  "all_rows": false,
+  "completed_at_utc": "2026-05-18T17:08:42.574228+00:00",
+  "completed_rows": 6,
+  "digitized_feed_sources": {
+    "2": "figures\\figure_2\\input\\feed_compositions_digitized.csv",
+    "3": "figures\\figure_3\\input\\feed_compositions_digitized.csv",
+    "4": "figures\\figure_4\\input\\feed_compositions_digitized.csv",
+    "5": "figures\\figure_5\\input\\feed_compositions_digitized.csv",
+    "6": "figures\\figure_6\\input\\feed_compositions_digitized.csv",
+    "7": "figures\\figure_7\\input\\feed_compositions_digitized.csv"
+  },
+  "figures": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+  ],
+  "last_completed_at_utc": "2026-05-18T17:08:42.573518+00:00",
+  "max_iterations": 180,
+  "max_rows_per_figure": 1,
+  "output_files": [
+    "summary.csv",
+    "route_payloads.jsonl",
+    "active_case.json"
+  ],
+  "purpose": "diagnostic-only live native Ipopt recompute; does not update figure caches",
+  "read_only_model_caches": {
+    "2": "figures\\figure_2\\output\\data\\model_tielines.csv",
+    "3": "figures\\figure_3\\output\\data\\model_tielines.csv",
+    "4": "figures\\figure_4\\output\\data\\model_tielines.csv",
+    "5": "figures\\figure_5\\output\\data\\model_tielines.csv",
+    "6": "figures\\figure_6\\output\\data\\model_tielines.csv",
+    "7": "figures\\figure_7\\output\\data\\model_tielines.csv"
+  },
+  "started_at_utc": "2026-05-18T17:07:45.822519+00:00",
+  "status": "completed",
+  "tie_lines": null,
+  "timeout_seconds": 60.0,
+  "tolerance": 1e-08
+}

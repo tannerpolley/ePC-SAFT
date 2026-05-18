@@ -1,0 +1,34 @@
+{
+  "application_status": "solved_to_acceptable_level",
+  "completed_at_utc": "2026-05-18T17:08:42.569728+00:00",
+  "feed_formula": [
+    0.6642822550082234,
+    0.04155232273749212,
+    0.23468879793314643,
+    0.059476624321138004
+  ],
+  "feed_ion_basis": [
+    0.6269909498322945,
+    0.03921966920612039,
+    0.2215138989815125,
+    0.05613774099003627,
+    0.05613774099003627
+  ],
+  "feed_source_path": "figures\\figure_7\\input\\feed_compositions_digitized.csv",
+  "figure": 7,
+  "raw_digitized_feed_row": {
+    "point_id": "1",
+    "series_label": "feed",
+    "source": "digitized_user_supplied",
+    "x_ethanol_salt_free": "0.04418",
+    "x_isobutanol_salt_free": "0.24953",
+    "x_water_salt_free": "0.70629"
+  },
+  "route_accepted": true,
+  "route_status": "accepted",
+  "solver_status": "acceptable_point",
+  "started_at_utc": "2026-05-18T17:08:30.160546+00:00",
+  "status": "completed",
+  "tie_line": 1,
+  "timeout_seconds": 60.0
+}
