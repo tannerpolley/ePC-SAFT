@@ -402,10 +402,16 @@ LITERATURE_CASES: OrderedDict[str, BenchmarkCase] = OrderedDict(
                 title="Khudaida 2026 salting-out LLE",
                 source="Khudaida 2026 electrolyte salting-out confidence and diagnostics suite",
                 model_setup={
-                    "route": "Khudaida confidence and diagnostics validation",
+                    "route": "public electrolyte_lle API through native Ipopt with Born SSM+DS options",
                     "dataset": "2026_Khudaida",
                 },
                 input_records=(
+                    "analyses/paper_validation/application/2026_khudaida/data/input/table_3_4_experimental_tielines.csv",
+                    "analyses/paper_validation/application/2026_khudaida/data/input/table_5_pure_component_parameters.csv",
+                    "analyses/paper_validation/application/2026_khudaida/data/input/table_6_relative_dielectric_constants.csv",
+                    "analyses/paper_validation/application/2026_khudaida/data/input/table_7_epcsaft_kij.csv",
+                    "analyses/paper_validation/application/2026_khudaida/data/input/born_ssm_ds_options.json",
+                    "analyses/paper_validation/application/2026_khudaida/data/input/figure_manifest.csv",
                     "scripts/validation/equilibrium_core/confidence.py",
                     "scripts/validation/equilibrium_core/thermo_diagnostics.py",
                 ),
@@ -420,11 +426,15 @@ LITERATURE_CASES: OrderedDict[str, BenchmarkCase] = OrderedDict(
                 command="uv run python scripts/validation/validate_electrolyte_lle_confidence.py",
                 status=EXECUTABLE,
                 package_surface=(
+                    "analyses/paper_validation/application/2026_khudaida/scripts/run_all.py",
                     "scripts/validation/equilibrium_core/confidence.py",
                     "scripts/validation/equilibrium_core/thermo_diagnostics.py",
                 ),
-                validation_paths=("scripts/validation/validate_electrolyte_lle_confidence.py",),
-                notes="The current Khudaida path is executable, but it still lives under validation helpers rather than the issue #119 benchmark workflow surface.",
+                validation_paths=(
+                    "analyses/paper_validation/application/2026_khudaida/scripts/run_all.py",
+                    "scripts/validation/validate_electrolyte_lle_confidence.py",
+                ),
+                notes="Khudaida now has analysis-owned paper and SI source tables plus figure-owned workflows for Figures 1-9, Tables 9-10, and SI Figures S2-S3; exact paper-match remains a comparison surface rather than a strict acceptance gate.",
             ),
         ),
         (

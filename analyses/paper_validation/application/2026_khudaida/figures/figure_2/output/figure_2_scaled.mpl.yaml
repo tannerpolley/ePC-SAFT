@@ -1,0 +1,10 @@
+# Matplotlib plot-set style contract.
+# Edit this sidecar, then rerun the owning render script.
+figure:
+  file: "figure_2_scaled.png"
+  format: "png"
+axes:
+  - index: 0
+    title: ""
+    xlabel: ""
+    ylabel: ""

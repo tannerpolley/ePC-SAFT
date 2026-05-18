@@ -1,0 +1,18 @@
+# Matplotlib plot-set style contract.
+# Edit this sidecar, then rerun the owning render script.
+figure:
+  file: "figure_s2.png"
+  format: "png"
+axes:
+  - index: 0
+    title: "(a) 293.15 K"
+    xlabel: ""
+    ylabel: ""
+  - index: 1
+    title: "(b) 303.15 K"
+    xlabel: ""
+    ylabel: ""
+  - index: 2
+    title: "(c) 313.15 K"
+    xlabel: ""
+    ylabel: ""

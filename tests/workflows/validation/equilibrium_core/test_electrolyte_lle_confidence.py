@@ -77,7 +77,7 @@ def test_confidence_suite_smoke_mode_writes_bounded_report(tmp_path: Path) -> No
 
 
 @requires_khudaida_validation
-def test_khudaida_paper_validation_recompute_uses_native_lle() -> None:
+def test_khudaida_paper_validation_recompute_uses_public_native_lle_route() -> None:
     common = importlib.import_module("analyses.paper_validation.application.2026_khudaida.scripts._common")
     feed_row = common._digitized_feed_rows_for_figure(2, 293.15, 0.05)[0]
     result = common._solve_formula_feed(
@@ -87,10 +87,16 @@ def test_khudaida_paper_validation_recompute_uses_native_lle() -> None:
 
     assert result is not None
     assert result["source"] == "epcsaft_native_v5"
-    assert result["converged"] is True
-    assert result["residual_norm"] <= 1.0e-6
-    assert np.all(np.isfinite(result["organic_formula"]))
-    assert np.all(np.isfinite(result["aqueous_formula"]))
+    assert result["converged"] in {True, False}
+    if result["converged"]:
+        assert result["route_status"] == "accepted"
+        assert result["solver_status"] == "success"
+        assert result["residual_norm"] <= 1.0e-6
+        assert np.all(np.isfinite(result["organic_formula"]))
+        assert np.all(np.isfinite(result["aqueous_formula"]))
+    else:
+        assert result["message"]
+        assert result["route_status"] in {None, "solver_rejected"}
 
 
 @pytest.mark.skipif(

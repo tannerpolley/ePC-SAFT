@@ -1,0 +1,17 @@
+tie_line,phase,temperature_K,salt_wtfrac,x_water,x_ethanol,x_isobutanol,x_nacl,source
+1,organic,293.15,0.0,0.518295652173913,0.02208,0.45962434782608697,0.0,digitized_local_paper
+1,aqueous,293.15,0.0,0.9934,0.0046,0.002,0.0,digitized_local_paper
+2,organic,293.15,0.0,0.5252963855421686,0.03036,0.4443436144578314,0.0,digitized_local_paper
+2,aqueous,293.15,0.0,0.9909,0.0069,0.0022,0.0,digitized_local_paper
+3,organic,293.15,0.0,0.5388545454545455,0.040319999999999995,0.4208254545454545,0.0,digitized_local_paper
+3,aqueous,293.15,0.0,0.9879,0.0096,0.0025,0.0,digitized_local_paper
+4,organic,293.15,0.0,0.5752885714285714,0.06068,0.3640314285714286,0.0,digitized_local_paper
+4,aqueous,293.15,0.0,0.9822,0.0148,0.003,0.0,digitized_local_paper
+5,organic,293.15,0.0,0.6447910714285715,0.07585,0.2793589285714285,0.0,digitized_local_paper
+5,aqueous,293.15,0.0,0.9759,0.0205,0.0036,0.0,digitized_local_paper
+6,organic,293.15,0.0,0.7287750000000001,0.08748,0.18374499999999994,0.0,digitized_local_paper
+6,aqueous,293.15,0.0,0.9717,0.0243,0.004,0.0,digitized_local_paper
+7,organic,293.15,0.0,0.7322088888888889,0.0901,0.17769111111111108,0.0,digitized_local_paper
+7,aqueous,293.15,0.0,0.9691000000000001,0.0265,0.0044,0.0,digitized_local_paper
+8,organic,293.15,0.0,0.6878571428571427,0.096,0.21614285714285728,0.0,digitized_local_paper
+8,aqueous,293.15,0.0,0.963,0.032,0.005,0.0,digitized_local_paper

@@ -1,0 +1,10 @@
+# Matplotlib plot-set style contract.
+# Edit this sidecar, then rerun the owning render script.
+figure:
+  file: "table_9.png"
+  format: "png"
+axes:
+  - index: 0
+    title: "Table 9: AAD comparison for 5 wt% NaCl"
+    xlabel: ""
+    ylabel: ""

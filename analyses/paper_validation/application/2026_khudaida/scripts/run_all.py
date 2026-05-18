@@ -20,6 +20,10 @@ def main() -> None:
     table_scripts = ROOT.parent / "figures" / "tables_9_10" / "scripts"
     _run(table_scripts / "generate_data.py")
     _run(table_scripts / "plot_tables_9_10.py")
+    for idx in (2, 3):
+        supporting_scripts = ROOT.parent / "figures" / f"figure_s{idx}" / "scripts"
+        _run(supporting_scripts / "generate_data.py")
+        _run(supporting_scripts / f"plot_figure_s{idx}.py")
     print("[done] 2026 Khudaida analysis complete.")
 
 

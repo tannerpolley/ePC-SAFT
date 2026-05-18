@@ -1,0 +1,17 @@
+figure_id,panel,source_caption,analysis_folder,temperature_K,salt_wtfrac,model_role
+figure_1,,main Figure 1,figures/figure_1,293.15,0 and 0.05 and 0.10,salt-free and salted LLE comparison
+figure_2,,main Figure 2,figures/figure_2,293.15,0.05,non-reactive electrolyte LLE
+figure_3,,main Figure 3,figures/figure_3,303.15,0.05,non-reactive electrolyte LLE
+figure_4,,main Figure 4,figures/figure_4,313.15,0.05,non-reactive electrolyte LLE
+figure_5,,main Figure 5,figures/figure_5,293.15,0.10,non-reactive electrolyte LLE
+figure_6,,main Figure 6,figures/figure_6,303.15,0.10,non-reactive electrolyte LLE
+figure_7,,main Figure 7,figures/figure_7,313.15,0.10,non-reactive electrolyte LLE
+figure_8,,main Figure 8,figures/figure_8,293.15-313.15,0 and 0.05 and 0.10,separation-factor metric
+figure_9,,main Figure 9,figures/figure_9,293.15-313.15,0 and 0.05 and 0.10,distribution-coefficient metric
+figure_s2,a,supporting Figure S2a,figures/figure_s2,293.15,0.05,non-reactive electrolyte LLE panel
+figure_s2,b,supporting Figure S2b,figures/figure_s2,303.15,0.05,non-reactive electrolyte LLE panel
+figure_s2,c,supporting Figure S2c,figures/figure_s2,313.15,0.05,non-reactive electrolyte LLE panel
+figure_s3,a,supporting Figure S3a,figures/figure_s3,293.15,0.10,non-reactive electrolyte LLE panel
+figure_s3,b,supporting Figure S3b,figures/figure_s3,303.15,0.10,non-reactive electrolyte LLE panel
+figure_s3,c,supporting Figure S3c,figures/figure_s3,313.15,0.10,non-reactive electrolyte LLE panel
+tables_9_10,,main Tables 9 and 10,figures/tables_9_10,293.15-313.15,0.05 and 0.10,AAD comparison
