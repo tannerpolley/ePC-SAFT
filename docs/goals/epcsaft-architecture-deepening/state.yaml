@@ -5,7 +5,7 @@ goal:
   slug: "epcsaft-architecture-deepening"
   kind: existing_plan
   tranche: "Implement all five architecture deepening candidates through successive safe verified slices."
-  status: active
+  status: done
   intake:
     original_request: "Lets prep a goal to implement all of these changes."
     interpreted_outcome: "The five architecture deepening candidates from the architecture review are implemented, tested, and locally committed."
@@ -64,7 +64,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T999
+active_task: null
 
 tasks:
   - id: T001
@@ -554,7 +554,7 @@ tasks:
   - id: T999
     type: judge
     assignee: Judge
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Audit whether all five architecture deepening candidates are implemented, tested, and locally committed."
     inputs:
@@ -572,7 +572,26 @@ tasks:
       - "candidate coverage map"
       - "validation evidence"
       - "remaining risks"
-    receipt: null
+    receipt:
+      result: done
+      decision: complete
+      full_outcome_complete: true
+      note: "docs/goals/epcsaft-architecture-deepening/notes/T999-judge.md"
+      candidate_coverage_map:
+        Equilibrium Problem: "Typed problem objects own route diagnostics; explicit non-reactive string requests route through typed problem construction."
+        Production Solver Path: "Native route diagnostics and rejection errors use a shared Python result-gate helper."
+        Target Dataset: "Generic and reactive regression share target-family summary compilation and reactive diagnostics expose residual-family evidence."
+        Parameter Family: "ParameterSet owns canonical-to-runtime payload compilation and dataset construction adapts through that boundary."
+        Capability Contract: "Public capability routes, problem classes, regression keys, and derivative coverage rows derive from registered evidence."
+      validation_evidence:
+        - "uv run python scripts/dev/validate_project.py quick -> doctor passed; quick ladder 40 passed"
+        - "uv run python scripts/dev/check_text_gates.py -> passed"
+        - "git diff --check -> passed"
+        - "cleanup hook -> no matching leftover Codex processes"
+        - "implementation commit -> b0147e68 Deepen ePC-SAFT architecture"
+      remaining_risks:
+        - "Long-running native Ipopt API/electrolyte lane from T020 remains timeout-limited and is not claimed as final proof."
+        - "No unsupported reactive regression optimizer or staged reactive production capability was promoted."
 
 checks:
   dirty_fingerprint: "clean at prep on branch codex/rezaee-reactive-electrolyte-lle"
