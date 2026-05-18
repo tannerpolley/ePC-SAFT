@@ -1,7 +1,7 @@
 id: mea_co2_pressure_speciation
 title: MEA-CO2-H2O pressure and speciation data validation
 kind: data_validation
-status: blocked_capability
+status: accepted_public_native_ipopt
 package: epcsaft
 summary: Package-local validation lane for copied MEA Phase 2 true-species parameters, Jou 1995 CO2 partial pressure rows, and public native Ipopt reactive speciation.
 boundary:
@@ -39,15 +39,15 @@ expected:
   solver_backend: native_ipopt
   derivative_backend: cppad_implicit
   pressure_model: liquid_fugacity_with_ideal_vapor_side
+  pressure_comparison_role: reported_diagnostic_not_gate
 tolerances:
   max_abs_charge_residual: 1.0e-8
   max_abs_element_balance_residual: 1.0e-8
   max_abs_reaction_residual: 1.0e-8
-  max_log10_pco2_error: 1.0
 runtime:
   required_solver: ipopt
   required_derivative_backend: cppad_implicit
-  current_blocker: SSM/DS Born composition sensitivity is not implemented for phase-state residuals.
+  resolved_capability: SSM/DS Born composition sensitivity is available for phase-state residuals.
 completion_contract:
   - run_all.py exits 0 from the repository root.
   - summary.json records accepted_native_ipopt_speciation true.

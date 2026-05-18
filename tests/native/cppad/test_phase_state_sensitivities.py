@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import numpy as np
 
+from epcsaft import ePCSAFTMixture
 from epcsaft import _core
 from epcsaft.epcsaft import create_struct
 from tests.helpers.native_cases import _ionic_state, _neutral_state
 from tests.helpers.numeric import assert_allclose
+from tests.helpers.runtime_cases import _ionic_params
 
 
 def _neutral_pressure_state():
@@ -21,6 +23,25 @@ def _phase_state_sensitivity(mix, temperature, pressure, composition):
         0,
         create_struct(mix.parameters),
     )
+
+
+def _ssmds_ionic_pressure_state():
+    species = ["water", "Na+", "Cl-"]
+    params = _ionic_params()
+    params["elec_model"] = {
+        "rel_perm": {"rule": "empirical", "differential_mode": "auto"},
+        "born_model": {
+            "d_Born_mode": "fitted_param",
+            "solvation_shell_model": True,
+            "dielectric_saturation": True,
+            "mu_born_model": {"differential_mode": "auto", "comp_dep_delta_d": True},
+        },
+    }
+    mix = ePCSAFTMixture.from_params(params, species=species)
+    temperature = 298.15
+    pressure = 1.0e5
+    composition = np.array([0.9998, 1.0e-4, 1.0e-4])
+    return mix, pressure, temperature, composition
 
 
 def test_native_phase_state_sensitivity_uses_implicit_density_chain_rule() -> None:
@@ -116,3 +137,42 @@ def test_phase_state_sensitivity_supports_active_association_implicit_response()
     )
     assert np.all(np.isfinite(total_jacobian))
     assert np.any(np.abs(total_jacobian) > 1.0e-10)
+
+
+def test_phase_state_sensitivity_supports_ssmds_born_composition_response() -> None:
+    mix, pressure, temperature, composition = _ssmds_ionic_pressure_state()
+    raw = _phase_state_sensitivity(mix, temperature, pressure, composition)
+
+    if not _core._native_cppad_smoke()["cppad_compiled"]:
+        assert raw["supported"] is False
+        return
+
+    assert raw["supported"] is True
+    assert raw["backend"] == "cppad_implicit"
+    assert raw["density_backend"] == "implicit_density_root"
+    assert raw["shape"] == (composition.size, composition.size)
+    assert "SSM/DS Born terms" in raw["message"]
+
+    dpdrho = float(raw["pressure_density_derivative"])
+    drhodx = np.asarray(raw["density_composition_derivative"], dtype=float)
+    dpdx_fixed = np.asarray(raw["pressure_composition_fixed_density_derivative"], dtype=float)
+    assert_allclose(dpdx_fixed + dpdrho * drhodx, np.zeros_like(drhodx), rtol=1.0e-12, atol=1.0e-6)
+
+    shape = raw["shape"]
+    fixed_jacobian = np.asarray(raw["fixed_density_jacobian_row_major"], dtype=float).reshape(shape)
+    total_jacobian = np.asarray(raw["jacobian_row_major"], dtype=float).reshape(shape)
+    dlnphi_drho = np.asarray(raw["ln_fugacity_density_derivative"], dtype=float)
+    assert_allclose(
+        total_jacobian,
+        fixed_jacobian + np.outer(dlnphi_drho, drhodx),
+        rtol=1.0e-12,
+        atol=1.0e-12,
+    )
+    assert np.all(np.isfinite(total_jacobian))
+    assert np.any(np.abs(total_jacobian) > 1.0e-10)
+
+    state = mix.state(T=temperature, P=pressure, x=composition, phase="liq")
+    public = state.ln_fugacity_composition_derivative_result()
+    assert public["supported"] is True
+    assert public["backend"] == "cppad_implicit"
+    assert public["density_backend"] == "implicit_density_root"

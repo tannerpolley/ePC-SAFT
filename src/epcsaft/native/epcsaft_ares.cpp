@@ -1638,13 +1638,6 @@ PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_composition_sensi
     out.density = density.rho;
     out.ln_fugacity = fugacity_coefficient_result_cpp(t, density.rho, x, cppargs).lnfugcoef.total;
 
-    if (cppargs.born_model > 1) {
-        out.message =
-            "Born model 2 phase-state composition sensitivity requires a separate SSM/DS derivative proof.";
-        out.density_backend = "selected_density_root";
-        return out;
-    }
-
     using CppADScalar = CppAD::AD<double>;
     const int ncomp = static_cast<int>(x.size());
     const int var_count = ncomp + 1;
@@ -1791,7 +1784,9 @@ PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_composition_sensi
     out.supported = true;
     out.backend = "cppad_implicit";
     out.density_backend = "implicit_density_root";
-    out.message = "CppAD phase-state fugacity composition sensitivities with implicit density-root routing are available.";
+    out.message = (cppargs.born_model == 2)
+        ? "CppAD phase-state fugacity composition sensitivities with implicit density-root routing and SSM/DS Born terms are available."
+        : "CppAD phase-state fugacity composition sensitivities with implicit density-root routing are available.";
     return out;
 }
 

@@ -33,9 +33,9 @@ def test_literature_benchmark_payload_tracks_executable_and_blocked_issue_119_ca
     assert payload["issue"] == 119
     assert payload["title"] == "Executable literature benchmark and downstream gate registry"
     assert payload["selected_cases"][0] == "gross_sadowski_pure_nonassociating"
-    assert payload["status_counts"] == {EXECUTABLE: 8, BLOCKED: 4}
-    assert len(payload["executable_cases"]) == 8
-    assert len(payload["blocked_cases"]) == 4
+    assert payload["status_counts"] == {EXECUTABLE: 9, BLOCKED: 3}
+    assert len(payload["executable_cases"]) == 9
+    assert len(payload["blocked_cases"]) == 3
 
     by_case = {row["id"]: row for row in payload["cases"]}
     assert by_case["gross_sadowski_pure_nonassociating"]["status"] == EXECUTABLE
@@ -57,7 +57,10 @@ def test_literature_benchmark_payload_tracks_executable_and_blocked_issue_119_ca
     assert by_case["rezaee_lithium_extraction_inputs"]["status"] == EXECUTABLE
     assert by_case["rezaee_lithium_extraction_inputs"]["expected"]["direct_published_constant_closure_supported"] is False
     assert by_case["rezaee_lithium_extraction_inputs"]["validation_paths"]
-    assert by_case["mea_co2_pressure_speciation"]["status"] == BLOCKED
+    assert by_case["mea_co2_pressure_speciation"]["status"] == EXECUTABLE
+    assert by_case["mea_co2_pressure_speciation"]["expected"]["status"] == "accepted_public_native_ipopt"
+    assert by_case["mea_co2_pressure_speciation"]["expected"]["derivative_backend"] == "cppad_implicit"
+    assert by_case["mea_co2_pressure_speciation"]["expected"]["pressure_comparison_role"] == "reported_diagnostic_not_gate"
     assert by_case["mea_co2_pressure_speciation"]["input_records"]
     assert "MEA-Thermodynamics" not in " ".join(by_case["mea_co2_pressure_speciation"]["input_records"])
 
@@ -80,12 +83,12 @@ def test_literature_benchmark_payload_executes_only_executable_cases_with_inject
 
     assert payload["run_mode"] == "execute_executable_cases"
     assert payload["execution_summary"] == {
-        "attempted": 8,
-        "passed": 8,
+        "attempted": 9,
+        "passed": 9,
         "failed": 0,
-        "blocked": 4,
+        "blocked": 3,
     }
-    assert len(calls) == 8
+    assert len(calls) == 9
 
     by_case = {row["id"]: row for row in payload["cases"]}
     assert by_case["gross_sadowski_pure_nonassociating"]["status"] == EXECUTABLE
