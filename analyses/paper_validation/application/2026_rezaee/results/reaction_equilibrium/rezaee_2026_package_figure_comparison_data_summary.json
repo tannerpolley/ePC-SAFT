@@ -1,0 +1,47 @@
+{
+  "status": "package_figure_comparison_data_generated",
+  "source_digitized_points": "data\\processed\\rezaee_2026_paper_figure_digitized_points.csv",
+  "source_package_rows": "data\\processed\\rezaee_2026_section32_equilibrium_replication_rows.csv",
+  "figures": [
+    {
+      "figure_id": "fig7",
+      "paper_label": "Fig. 7",
+      "data": "figures\\figure_7\\output\\data\\figure_7_package_vs_paper_points.csv",
+      "package_case_id": "held_2014_s2_no_born_no_kij_pH_stoich",
+      "digitized_paper_points": 34,
+      "package_model_points": 26,
+      "digitized_paper_aard_pct": 15.076734918338135,
+      "current_epcsaft_package_aard_pct": 99.99999999872671
+    },
+    {
+      "figure_id": "fig8",
+      "paper_label": "Fig. 8",
+      "data": "figures\\figure_8\\output\\data\\figure_8_package_vs_paper_points.csv",
+      "package_case_id": "held_2014_s2_no_born_no_kij_pH_stoich",
+      "digitized_paper_points": 32,
+      "package_model_points": 26,
+      "digitized_paper_aard_pct": 17.871733495213796,
+      "current_epcsaft_package_aard_pct": 56.342244595778844
+    },
+    {
+      "figure_id": "fig10",
+      "paper_label": "Fig. 10",
+      "data": "figures\\figure_10\\output\\data\\figure_10_package_vs_paper_points.csv",
+      "package_case_id": "held_2014_s2_no_born_table9_kij_pH_stoich",
+      "digitized_paper_points": 27,
+      "package_model_points": 26,
+      "digitized_paper_aard_pct": 9.204927345864292,
+      "current_epcsaft_package_aard_pct": 99.99999999872658
+    },
+    {
+      "figure_id": "fig11",
+      "paper_label": "Fig. 11",
+      "data": "figures\\figure_11\\output\\data\\figure_11_package_vs_paper_points.csv",
+      "package_case_id": "held_2014_s2_no_born_table9_kij_pH_stoich",
+      "digitized_paper_points": 28,
+      "package_model_points": 26,
+      "digitized_paper_aard_pct": 10.475494176274777,
+      "current_epcsaft_package_aard_pct": 56.35551722412048
+    }
+  ]
+}

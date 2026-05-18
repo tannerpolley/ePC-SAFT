@@ -1,0 +1,15 @@
+figure_id: fig7
+paper_label: Fig. 7
+description: Deviation of calculated extraction percentage from experimental data [17].
+series:
+  - digitized_paper_model
+  - current_epcsaft_package_model
+package_case_id: held_2014_s2_no_born_no_kij_pH_stoich
+quantity: lithium_extraction_pct
+x_label: Experimental Li extraction / %
+y_label: Calculated Li extraction / %
+axis_max: 60.0
+data: figures/figure_7/output/data/figure_7_package_vs_paper_points.csv
+source_images:
+  source: figures/figure_7/input/source_image.jpg
+  digitization_overlay: figures/figure_7/input/digitization_overlay.png

@@ -46,6 +46,15 @@ The strict pre-surrogate evidence bundle is:
 Additional guardrail outputs in `results/reaction_equilibrium/` record replay, convention-scan, ePC-SAFT option-scan, and paper-basis reaction-coordinate diagnostics.
 The lane-level gate summary is `results/reaction_equilibrium/summary.json`.
 
+The figure comparison outputs are package-owned overlays, not downstream screenshots:
+
+- `figures/figure_7/output/figure_7_package_vs_paper.png`
+- `figures/figure_8/output/figure_8_package_vs_paper.png`
+- `figures/figure_10/output/figure_10_package_vs_paper.png`
+- `figures/figure_11/output/figure_11_package_vs_paper.png`
+
+Each plot shows the digitized Rezaee paper-model points and the current in-worktree `epcsaft` package-model results from the Section 3.2 replication rows.
+
 ## Current Result
 
 The package can run the paper-validation workflow from this copied application folder. The validation does not support claiming a direct published-constant Rezaee Section 3.2 closure:

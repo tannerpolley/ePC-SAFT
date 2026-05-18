@@ -75,6 +75,64 @@
       "selectivity": 8.63
     }
   },
+  "figure_comparisons": {
+    "status": "package_figure_comparison_rendered",
+    "figure_count": 4,
+    "figures": [
+      {
+        "figure_id": "fig7",
+        "paper_label": "Fig. 7",
+        "caption": "Deviation of calculated extraction percentage from experimental data [17].",
+        "data": "figures\\figure_7\\output\\data\\figure_7_package_vs_paper_points.csv",
+        "png": "figures\\figure_7\\output\\figure_7_package_vs_paper.png",
+        "svg": "figures\\figure_7\\output\\figure_7_package_vs_paper.svg",
+        "package_case_id": "held_2014_s2_no_born_no_kij_pH_stoich",
+        "digitized_paper_points": 34,
+        "package_model_points": 26,
+        "digitized_paper_aard_pct": 15.076734918338135,
+        "current_epcsaft_package_aard_pct": 99.99999999872671
+      },
+      {
+        "figure_id": "fig8",
+        "paper_label": "Fig. 8",
+        "caption": "Deviation of calculated selectivity from experimental data [17].",
+        "data": "figures\\figure_8\\output\\data\\figure_8_package_vs_paper_points.csv",
+        "png": "figures\\figure_8\\output\\figure_8_package_vs_paper.png",
+        "svg": "figures\\figure_8\\output\\figure_8_package_vs_paper.svg",
+        "package_case_id": "held_2014_s2_no_born_no_kij_pH_stoich",
+        "digitized_paper_points": 32,
+        "package_model_points": 26,
+        "digitized_paper_aard_pct": 17.871733495213796,
+        "current_epcsaft_package_aard_pct": 56.342244595778844
+      },
+      {
+        "figure_id": "fig10",
+        "paper_label": "Fig. 10",
+        "caption": "Deviation of calculated lithium extraction percentage from experimental data [17] using k_ij.",
+        "data": "figures\\figure_10\\output\\data\\figure_10_package_vs_paper_points.csv",
+        "png": "figures\\figure_10\\output\\figure_10_package_vs_paper.png",
+        "svg": "figures\\figure_10\\output\\figure_10_package_vs_paper.svg",
+        "package_case_id": "held_2014_s2_no_born_table9_kij_pH_stoich",
+        "digitized_paper_points": 27,
+        "package_model_points": 26,
+        "digitized_paper_aard_pct": 9.204927345864292,
+        "current_epcsaft_package_aard_pct": 99.99999999872658
+      },
+      {
+        "figure_id": "fig11",
+        "paper_label": "Fig. 11",
+        "caption": "Deviation of calculated selectivity from experimental data [17] using k_ij.",
+        "data": "figures\\figure_11\\output\\data\\figure_11_package_vs_paper_points.csv",
+        "png": "figures\\figure_11\\output\\figure_11_package_vs_paper.png",
+        "svg": "figures\\figure_11\\output\\figure_11_package_vs_paper.svg",
+        "package_case_id": "held_2014_s2_no_born_table9_kij_pH_stoich",
+        "digitized_paper_points": 28,
+        "package_model_points": 26,
+        "digitized_paper_aard_pct": 10.475494176274777,
+        "current_epcsaft_package_aard_pct": 56.35551722412048
+      }
+    ]
+  },
   "residual_metrics": {
     "max_abs_charge_residual": 8.000012776017418e-07,
     "max_phase_charge_balance_norm": 4.0000063880282245e-07,
@@ -95,7 +153,22 @@
     "analyses/paper_validation/application/2026_rezaee/results/reaction_equilibrium/rezaee_2026_reactive_epcsaft_option_scan_summary.json",
     "analyses/paper_validation/application/2026_rezaee/results/reaction_equilibrium/rezaee_2026_paper_basis_reaction_coordinate_summary.json",
     "analyses/paper_validation/application/2026_rezaee/results/reaction_equilibrium/rezaee_2026_section32_basis_inference_summary.json",
-    "analyses/paper_validation/application/2026_rezaee/results/reaction_equilibrium/rezaee_2026_section32_equilibrium_replication_summary.json"
+    "analyses/paper_validation/application/2026_rezaee/results/reaction_equilibrium/rezaee_2026_section32_equilibrium_replication_summary.json",
+    "analyses/paper_validation/application/2026_rezaee/results/reaction_equilibrium/rezaee_2026_package_figure_comparison_data_summary.json",
+    "analyses/paper_validation/application/2026_rezaee/results/reaction_equilibrium/rezaee_2026_package_figure_comparison_summary.json",
+    "analyses/paper_validation/application/2026_rezaee/results/reaction_equilibrium/rezaee_2026_package_figure_comparison.md",
+    "analyses/paper_validation/application/2026_rezaee/figures/figure_7/output/figure_7_package_vs_paper.png",
+    "analyses/paper_validation/application/2026_rezaee/figures/figure_8/output/figure_8_package_vs_paper.png",
+    "analyses/paper_validation/application/2026_rezaee/figures/figure_10/output/figure_10_package_vs_paper.png",
+    "analyses/paper_validation/application/2026_rezaee/figures/figure_11/output/figure_11_package_vs_paper.png",
+    "analyses/paper_validation/application/2026_rezaee/figures/figure_7/output/figure_7_package_vs_paper.svg",
+    "analyses/paper_validation/application/2026_rezaee/figures/figure_8/output/figure_8_package_vs_paper.svg",
+    "analyses/paper_validation/application/2026_rezaee/figures/figure_10/output/figure_10_package_vs_paper.svg",
+    "analyses/paper_validation/application/2026_rezaee/figures/figure_11/output/figure_11_package_vs_paper.svg",
+    "analyses/paper_validation/application/2026_rezaee/figures/figure_7/output/data/figure_7_package_vs_paper_points.csv",
+    "analyses/paper_validation/application/2026_rezaee/figures/figure_8/output/data/figure_8_package_vs_paper_points.csv",
+    "analyses/paper_validation/application/2026_rezaee/figures/figure_10/output/data/figure_10_package_vs_paper_points.csv",
+    "analyses/paper_validation/application/2026_rezaee/figures/figure_11/output/data/figure_11_package_vs_paper_points.csv"
   ],
   "commands": [
     {
@@ -128,6 +201,14 @@
     },
     {
       "script": "rezaee_section32_equilibrium_replication.py",
+      "returncode": 0
+    },
+    {
+      "script": "generate_rezaee_2026_figure_comparison_data.py",
+      "returncode": 0
+    },
+    {
+      "script": "render_rezaee_2026_figure_comparisons.py",
       "returncode": 0
     }
   ],

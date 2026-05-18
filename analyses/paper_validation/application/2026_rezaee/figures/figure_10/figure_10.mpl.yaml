@@ -1,0 +1,15 @@
+figure_id: fig10
+paper_label: Fig. 10
+description: Deviation of calculated lithium extraction percentage from experimental data [17] using k_ij.
+series:
+  - digitized_paper_model
+  - current_epcsaft_package_model
+package_case_id: held_2014_s2_no_born_table9_kij_pH_stoich
+quantity: lithium_extraction_pct_table9_kij
+x_label: Experimental Li extraction / %
+y_label: Calculated Li extraction / %
+axis_max: 60.0
+data: figures/figure_10/output/data/figure_10_package_vs_paper_points.csv
+source_images:
+  source: figures/figure_10/input/source_image.jpg
+  digitization_overlay: figures/figure_10/input/digitization_overlay.png

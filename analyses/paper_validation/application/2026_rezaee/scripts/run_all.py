@@ -25,6 +25,8 @@ SCRIPT_SEQUENCE = (
     "rezaee_paper_basis_reaction_coordinate.py",
     "rezaee_section32_basis_inference.py",
     "rezaee_section32_equilibrium_replication.py",
+    "generate_rezaee_2026_figure_comparison_data.py",
+    "render_rezaee_2026_figure_comparisons.py",
 )
 
 apply_to_current_process()
@@ -77,6 +79,7 @@ def _build_summary(command_results: list[dict[str, Any]]) -> dict[str, Any]:
     paper_basis = _read_json(REACTION_RESULTS_DIR / "rezaee_2026_paper_basis_reaction_coordinate_summary.json")
     basis = _read_json(REACTION_RESULTS_DIR / "rezaee_2026_section32_basis_inference_summary.json")
     section32 = _read_json(REACTION_RESULTS_DIR / "rezaee_2026_section32_equilibrium_replication_summary.json")
+    figure_comparison = _read_json(REACTION_RESULTS_DIR / "rezaee_2026_package_figure_comparison_summary.json")
 
     closure_supported = _direct_closure_supported(section32, convention)
     direct = section32["direct_held2014_table9_pH_stoich"]
@@ -97,7 +100,20 @@ def _build_summary(command_results: list[dict[str, Any]]) -> dict[str, Any]:
         REACTION_RESULTS_DIR / "rezaee_2026_paper_basis_reaction_coordinate_summary.json",
         REACTION_RESULTS_DIR / "rezaee_2026_section32_basis_inference_summary.json",
         REACTION_RESULTS_DIR / "rezaee_2026_section32_equilibrium_replication_summary.json",
+        REACTION_RESULTS_DIR / "rezaee_2026_package_figure_comparison_data_summary.json",
+        REACTION_RESULTS_DIR / "rezaee_2026_package_figure_comparison_summary.json",
+        REACTION_RESULTS_DIR / "rezaee_2026_package_figure_comparison.md",
     )
+    figure_outputs = [
+        ANALYSIS_DIR / entry["png"]
+        for entry in figure_comparison["figures"]
+    ] + [
+        ANALYSIS_DIR / entry["svg"]
+        for entry in figure_comparison["figures"]
+    ] + [
+        ANALYSIS_DIR / entry["data"]
+        for entry in figure_comparison["figures"]
+    ]
     return {
         "status": "source_backed_diagnostic_complete",
         "validation_lane": "rezaee_2026_application_diagnostic",
@@ -139,6 +155,11 @@ def _build_summary(command_results: list[dict[str, Any]]) -> dict[str, Any]:
             "selectivity_aard_pct": float(direct["selectivity_AARD_pct"]),
             "paper_reference_aard_pct": section32["paper_reference_AARD_pct"]["after_table9_kij"],
         },
+        "figure_comparisons": {
+            "status": figure_comparison["status"],
+            "figure_count": int(figure_comparison["figure_count"]),
+            "figures": figure_comparison["figures"],
+        },
         "residual_metrics": {
             "max_abs_charge_residual": float(replay["max_abs_charge_residual"]),
             "max_phase_charge_balance_norm": float(cross_phase["max_phase_charge_balance_norm"]),
@@ -147,7 +168,7 @@ def _build_summary(command_results: list[dict[str, Any]]) -> dict[str, Any]:
                 convention["source_supported_variant"]["combined_median_abs_ln_residual"]
             ),
         },
-        "retained_outputs": [_rel(path) for path in retained_outputs],
+        "retained_outputs": [_rel(path) for path in retained_outputs + tuple(figure_outputs)],
         "commands": command_results,
         "conclusion": (
             "Direct published-constant closure is not supported by the current source-backed inputs; "

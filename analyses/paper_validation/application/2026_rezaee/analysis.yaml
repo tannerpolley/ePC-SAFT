@@ -30,6 +30,8 @@ inputs:
     kind: source_transcription
   - path: analyses/paper_validation/application/2026_rezaee/data/input/rezaee_2025_extraction_equilibrium_mole_fractions.csv
     kind: source_transcription
+  - path: analyses/paper_validation/application/2026_rezaee/data/processed/rezaee_2026_paper_figure_digitized_points.csv
+    kind: source_backed_digitized_paper_figure_points
 outputs:
   - path: analyses/paper_validation/application/2026_rezaee/data/processed/rezaee_2025_extraction_target_summary.csv
     kind: generated_target_summary
@@ -41,6 +43,16 @@ outputs:
     kind: generated_validation_summary
   - path: analyses/paper_validation/application/2026_rezaee/results/reaction_equilibrium/summary.json
     kind: generated_lane_gate_summary
+  - path: analyses/paper_validation/application/2026_rezaee/results/reaction_equilibrium/rezaee_2026_package_figure_comparison_summary.json
+    kind: generated_package_vs_digitized_figure_summary
+  - path: analyses/paper_validation/application/2026_rezaee/figures/figure_7/output/figure_7_package_vs_paper.png
+    kind: generated_package_vs_digitized_figure
+  - path: analyses/paper_validation/application/2026_rezaee/figures/figure_8/output/figure_8_package_vs_paper.png
+    kind: generated_package_vs_digitized_figure
+  - path: analyses/paper_validation/application/2026_rezaee/figures/figure_10/output/figure_10_package_vs_paper.png
+    kind: generated_package_vs_digitized_figure
+  - path: analyses/paper_validation/application/2026_rezaee/figures/figure_11/output/figure_11_package_vs_paper.png
+    kind: generated_package_vs_digitized_figure
 commands:
   paper_validation:
     - uv run python analyses\paper_validation\application\2026_rezaee\scripts\run_all.py
@@ -57,6 +69,7 @@ tolerances:
 completion_contract:
   - The lane passes when run_all.py exits 0 and summary.json records the 26 source-backed SI rows.
   - The expected diagnostic outcome is that direct published-constant closure is not supported.
+  - The figure comparison outputs must overlay digitized paper-model points with current in-worktree epcsaft package-model points.
   - The 36-row text statement remains a documented source-text mismatch unless a new source-backed table is added.
   - This lane must not be used to claim direct Rezaee paper-constant closure.
 runtime:

@@ -7,21 +7,28 @@
         "charge_balance_norm": 0.0,
         "chemical_potential_consistency_norm": 0.0,
         "constraints": [],
-        "derivative_backend": "",
+        "density_backend": "",
+        "derivative_backend": "cppad_implicit",
         "fixed_composition_norm": 0.0,
+        "gibbs_delta": 0.0,
+        "gibbs_feed": 0.0,
+        "gibbs_split": 0.0,
         "ln_fugacity_consistency_norm": 0.0,
         "material_balance_norm": 0.0,
+        "minimum_phase_fraction": 0.0,
         "objective": 0.0,
         "phase_amount_total_norm": 0.0,
         "phase_amount_totals": [],
         "phase_compositions": [],
         "phase_count": 0,
+        "phase_densities": [],
         "phase_distance": 0.0,
+        "phase_ln_fugacity_coefficients": [],
         "phase_volumes": [],
         "pressure_consistency_norm": 0.0,
         "rejection_reason": "",
         "route_status": "solver_rejected",
-        "solver_status": "ipopt_status_16",
+        "solver_status": "local_infeasibility",
         "species_count": 0
       }
     ],
@@ -30,21 +37,28 @@
       "charge_balance_norm": 0.0,
       "chemical_potential_consistency_norm": 0.0,
       "constraints": [],
-      "derivative_backend": "",
+      "density_backend": "",
+      "derivative_backend": "cppad_implicit",
       "fixed_composition_norm": 0.0,
+      "gibbs_delta": 0.0,
+      "gibbs_feed": 0.0,
+      "gibbs_split": 0.0,
       "ln_fugacity_consistency_norm": 0.0,
       "material_balance_norm": 0.0,
+      "minimum_phase_fraction": 0.0,
       "objective": 0.0,
       "phase_amount_total_norm": 0.0,
       "phase_amount_totals": [],
       "phase_compositions": [],
       "phase_count": 0,
+      "phase_densities": [],
       "phase_distance": 0.0,
+      "phase_ln_fugacity_coefficients": [],
       "phase_volumes": [],
       "pressure_consistency_norm": 0.0,
       "rejection_reason": "",
       "route_status": "solver_rejected",
-      "solver_status": "ipopt_status_16",
+      "solver_status": "local_infeasibility",
       "species_count": 0
     },
     "error_type": "SolutionError",
@@ -58,25 +72,25 @@
       "    )",
       "  File \"C:\\Users\\Tanner\\Documents\\git\\ePC-SAFT-ipopt-profile\\src\\epcsaft\\equilibrium.py\", line 694, in _accepted_native_neutral_two_phase_result",
       "    raise SolutionError(f\"Native {route_family} {route_label} route was rejected.\", diagnostics)",
-      "epcsaft._types.SolutionError: ('Native electrolyte LLE route was rejected.', {'accepted': False, 'rejection_reason': '', 'derivative_backend': '', 'phase_count': 0, 'species_count': 0, 'material_balance_norm': 0.0, 'pressure_consistency_norm': 0.0, 'chemical_potential_consistency_norm': 0.0, 'ln_fugacity_consistency_norm': 0.0, 'charge_balance_norm': 0.0, 'fixed_composition_norm': 0.0, 'phase_amount_total_norm': 0.0, 'phase_distance': 0.0, 'objective': 0.0, 'constraints': [], 'phase_amount_totals': [], 'phase_volumes': [], 'phase_compositions': [], 'route_status': 'solver_rejected', 'solver_status': 'ipopt_status_16'})"
+      "epcsaft._types.SolutionError: ('Native electrolyte LLE route was rejected.', {'accepted': False, 'rejection_reason': '', 'derivative_backend': 'cppad_implicit', 'phase_count': 0, 'species_count': 0, 'material_balance_norm': 0.0, 'pressure_consistency_norm': 0.0, 'chemical_potential_consistency_norm': 0.0, 'ln_fugacity_consistency_norm': 0.0, 'charge_balance_norm': 0.0, 'fixed_composition_norm': 0.0, 'phase_amount_total_norm': 0.0, 'phase_distance': 0.0, 'objective': 0.0, 'gibbs_feed': 0.0, 'gibbs_split': 0.0, 'gibbs_delta': 0.0, 'minimum_phase_fraction': 0.0, 'density_backend': '', 'constraints': [], 'phase_amount_totals': [], 'phase_volumes': [], 'phase_densities': [], 'phase_compositions': [], 'phase_ln_fugacity_coefficients': [], 'route_status': 'solver_rejected', 'solver_status': 'local_infeasibility'})"
     ]
   },
   "electrolyte_stability": {
     "args": [
       "Native electrolyte stability route was rejected.",
       {
-        "application_status": "ipopt_application_status_-101",
+        "application_status": "ipopt_application_status_-3",
         "parent_phase": "liq",
         "route_status": "solver_rejected",
-        "solver_status": "ipopt_status_16",
+        "solver_status": "error_in_step_computation",
         "trial_phase": "liq"
       }
     ],
     "diagnostics_summary": {
-      "application_status": "ipopt_application_status_-101",
+      "application_status": "ipopt_application_status_-3",
       "parent_phase": "liq",
       "route_status": "solver_rejected",
-      "solver_status": "ipopt_status_16",
+      "solver_status": "error_in_step_computation",
       "trial_phase": "liq"
     },
     "error_type": "SolutionError",
@@ -88,9 +102,9 @@
       "    ...<4 lines>...",
       "        options=opts,",
       "    )",
-      "  File \"C:\\Users\\Tanner\\Documents\\git\\ePC-SAFT-ipopt-profile\\src\\epcsaft\\equilibrium.py\", line 1163, in _native_electrolyte_stability",
+      "  File \"C:\\Users\\Tanner\\Documents\\git\\ePC-SAFT-ipopt-profile\\src\\epcsaft\\equilibrium.py\", line 1295, in _native_electrolyte_stability",
       "    raise SolutionError(\"Native electrolyte stability route was rejected.\", diagnostics)",
-      "epcsaft._types.SolutionError: ('Native electrolyte stability route was rejected.', {'route_status': 'solver_rejected', 'solver_status': 'ipopt_status_16', 'application_status': 'ipopt_application_status_-101', 'parent_phase': 'liq', 'trial_phase': 'liq'})"
+      "epcsaft._types.SolutionError: ('Native electrolyte stability route was rejected.', {'route_status': 'solver_rejected', 'solver_status': 'error_in_step_computation', 'application_status': 'ipopt_application_status_-3', 'parent_phase': 'liq', 'trial_phase': 'liq'})"
     ]
   },
   "feed_composition": [

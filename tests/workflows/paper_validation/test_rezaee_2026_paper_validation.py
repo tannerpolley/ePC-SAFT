@@ -31,10 +31,12 @@ def test_rezaee_source_backed_paper_validation_generates_pre_surrogate_rows() ->
     section32_summary = (
         ANALYSIS / "results" / "reaction_equilibrium" / "rezaee_2026_section32_equilibrium_replication_summary.json"
     )
+    figure_summary = ANALYSIS / "results" / "reaction_equilibrium" / "rezaee_2026_package_figure_comparison_summary.json"
     lane_summary = ANALYSIS / "results" / "reaction_equilibrium" / "summary.json"
 
     assert target_summary.exists()
     assert section32_rows.exists()
+    assert figure_summary.exists()
     assert lane_summary.exists()
 
     replay_payload = json.loads(replay_summary.read_text(encoding="utf-8"))
@@ -54,6 +56,21 @@ def test_rezaee_source_backed_paper_validation_generates_pre_surrogate_rows() ->
     assert section32_payload["status"] == "section32_equation_replication_ran"
     assert section32_payload["direct_held2014_table9_pH_stoich"]["converged_rows"] == 26
 
+    figure_payload = json.loads(figure_summary.read_text(encoding="utf-8"))
+    assert figure_payload["status"] == "package_figure_comparison_rendered"
+    assert figure_payload["figure_count"] == 4
+    by_figure = {entry["figure_id"]: entry for entry in figure_payload["figures"]}
+    assert set(by_figure) == {"fig7", "fig8", "fig10", "fig11"}
+    for entry in by_figure.values():
+        assert entry["digitized_paper_points"] > 0
+        assert entry["package_model_points"] == 26
+        assert entry["current_epcsaft_package_aard_pct"] >= 0.0
+        assert (ANALYSIS / entry["data"]).exists()
+        assert (ANALYSIS / entry["png"]).exists()
+        assert (ANALYSIS / entry["svg"]).exists()
+    assert by_figure["fig7"]["package_case_id"] == "held_2014_s2_no_born_no_kij_pH_stoich"
+    assert by_figure["fig10"]["package_case_id"] == "held_2014_s2_no_born_table9_kij_pH_stoich"
+
     lane_payload = json.loads(lane_summary.read_text(encoding="utf-8"))
     assert lane_payload["status"] == "source_backed_diagnostic_complete"
     assert lane_payload["row_count"] == 26
@@ -66,6 +83,7 @@ def test_rezaee_source_backed_paper_validation_generates_pre_surrogate_rows() ->
         ),
     }
     assert lane_payload["direct_closure"]["supported"] is False
+    assert lane_payload["figure_comparisons"]["figure_count"] == 4
     assert lane_payload["direct_closure"]["converged_rows"] == 26
     assert lane_payload["direct_closure"]["li_extraction_aard_pct"] >= 90.0
     assert lane_payload["residual_metrics"]["max_abs_charge_residual"] <= 1.0e-6

@@ -1,0 +1,15 @@
+figure_id: fig11
+paper_label: Fig. 11
+description: Deviation of calculated selectivity from experimental data [17] using k_ij.
+series:
+  - digitized_paper_model
+  - current_epcsaft_package_model
+package_case_id: held_2014_s2_no_born_table9_kij_pH_stoich
+quantity: li_na_selectivity_table9_kij
+x_label: Experimental Li/Na selectivity / -
+y_label: Calculated Li/Na selectivity / -
+axis_max: 6.0
+data: figures/figure_11/output/data/figure_11_package_vs_paper_points.csv
+source_images:
+  source: figures/figure_11/input/source_image.jpg
+  digitization_overlay: figures/figure_11/input/digitization_overlay.png

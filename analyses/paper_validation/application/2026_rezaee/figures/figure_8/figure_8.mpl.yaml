@@ -1,0 +1,15 @@
+figure_id: fig8
+paper_label: Fig. 8
+description: Deviation of calculated selectivity from experimental data [17].
+series:
+  - digitized_paper_model
+  - current_epcsaft_package_model
+package_case_id: held_2014_s2_no_born_no_kij_pH_stoich
+quantity: li_na_selectivity
+x_label: Experimental Li/Na selectivity / -
+y_label: Calculated Li/Na selectivity / -
+axis_max: 6.0
+data: figures/figure_8/output/data/figure_8_package_vs_paper_points.csv
+source_images:
+  source: figures/figure_8/input/source_image.jpg
+  digitization_overlay: figures/figure_8/input/digitization_overlay.png
