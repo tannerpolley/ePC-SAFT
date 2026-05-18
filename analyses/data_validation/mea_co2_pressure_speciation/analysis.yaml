@@ -1,0 +1,56 @@
+id: mea_co2_pressure_speciation
+title: MEA-CO2-H2O pressure and speciation data validation
+kind: data_validation
+status: blocked
+package: epcsaft
+summary: Package-local validation lane for copied MEA Phase 2 true-species parameters, Jou 1995 CO2 partial pressure rows, and public native Ipopt reactive speciation.
+boundary:
+  objective: Validate the public epcsaft reactive speciation route and CO2 liquid fugacity pressure estimate against copied source-backed MEA Phase 2 artifacts.
+  not_objectives:
+    - Run MEA-Thermodynamics commands as validation.
+    - Refit MEA parameters.
+    - Claim vapor-side nonideality unless a source-backed vapor correction is added.
+inputs:
+  - path: analyses/data_validation/mea_co2_pressure_speciation/data/input/MEA_CO2_H2O_phase2
+    kind: copied_parameter_bundle
+  - path: analyses/data_validation/mea_co2_pressure_speciation/data/input/Jou_1995_VLE.csv
+    kind: copied_pressure_targets
+  - path: analyses/data_validation/mea_co2_pressure_speciation/data/input/phase2_activity_speciation_problem.json
+    kind: copied_problem_definition
+  - path: analyses/data_validation/mea_co2_pressure_speciation/data/input/phase2_activity_constant_candidates.csv
+    kind: copied_reaction_constant_candidates
+  - path: analyses/data_validation/mea_co2_pressure_speciation/data/input/phase2_reaction_constant_basis.csv
+    kind: copied_reaction_basis_manifest
+  - path: analyses/data_validation/mea_co2_pressure_speciation/data/input/phase2_reaction_constant_source_verification.csv
+    kind: copied_source_verification
+outputs:
+  - path: analyses/data_validation/mea_co2_pressure_speciation/data/processed/selected_jou_row.json
+    kind: generated_run_input
+  - path: analyses/data_validation/mea_co2_pressure_speciation/data/processed/normalized_user_options.json
+    kind: generated_runtime_options
+  - path: analyses/data_validation/mea_co2_pressure_speciation/data/processed/reaction_constants.json
+    kind: generated_reaction_inputs
+  - path: analyses/data_validation/mea_co2_pressure_speciation/results/pressure_speciation/summary.json
+    kind: generated_gate_summary
+commands:
+  validate: uv run python analyses\data_validation\mea_co2_pressure_speciation\scripts\run_all.py
+expected:
+  accepted_native_ipopt_speciation: true
+  solver_backend: native_ipopt
+  derivative_backend: cppad_implicit
+  pressure_model: liquid_fugacity_with_ideal_vapor_side
+tolerances:
+  max_abs_charge_residual: 1.0e-8
+  max_abs_element_balance_residual: 1.0e-8
+  max_abs_reaction_residual: 1.0e-8
+  max_log10_pco2_error: 1.0
+runtime:
+  required_solver: ipopt
+  required_derivative_backend: cppad_implicit
+  current_blocker: SSM/DS Born composition sensitivity is not implemented for phase-state residuals.
+completion_contract:
+  - run_all.py exits 0 from the repository root.
+  - summary.json records accepted_native_ipopt_speciation true.
+  - The public solve uses epcsaft.solve_reactive_speciation with solver_backend ipopt.
+  - The retained pressure comparison computes CO2 partial pressure from liquid CO2 fugacity and records the vapor-side ideal-fugacity assumption.
+  - Any blocked status must name the package capability gap instead of writing synthetic pressure/speciation results.

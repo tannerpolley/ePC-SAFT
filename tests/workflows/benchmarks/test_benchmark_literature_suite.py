@@ -21,7 +21,7 @@ def test_literature_benchmark_module_exposes_issue_119_case_order():
         "ascani_2023_reactive_phase_equilibrium",
         "khudaida_2026_salting_out_lle",
         "rezaee_lithium_extraction_inputs",
-        "mea_true_species_pressure_speciation",
+        "mea_co2_pressure_speciation",
     )
 
 
@@ -55,6 +55,9 @@ def test_literature_benchmark_payload_tracks_executable_and_blocked_issue_119_ca
     assert by_case["rezaee_lithium_extraction_inputs"]["status"] == EXECUTABLE
     assert by_case["rezaee_lithium_extraction_inputs"]["expected"]["direct_published_constant_closure_supported"] is False
     assert by_case["rezaee_lithium_extraction_inputs"]["validation_paths"]
+    assert by_case["mea_co2_pressure_speciation"]["status"] == BLOCKED
+    assert by_case["mea_co2_pressure_speciation"]["input_records"]
+    assert "MEA-Thermodynamics" not in " ".join(by_case["mea_co2_pressure_speciation"]["input_records"])
 
 
 def test_literature_benchmark_payload_executes_only_executable_cases_with_injected_runner():

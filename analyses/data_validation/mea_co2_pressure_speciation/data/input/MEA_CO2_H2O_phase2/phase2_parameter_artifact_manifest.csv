@@ -1,0 +1,7 @@
+path,source_path,role,policy
+pure/any_solvent.csv,data/reference/epcsaft_datasets/MEA_CO2_H2O_ionic_fit/pure/any_solvent.csv,true_species_pure_parameters,"Single Phase 2 pure-parameter table; do not overwrite from failed candidates."
+mixed/binary_interaction/k_ij.csv,data/reference/epcsaft_datasets/MEA_CO2_H2O_ionic_fit/mixed/binary_interaction/k_ij.csv,binary_interaction_parameters,"Single Phase 2 k_ij table; carbonate movement requires coupled evidence."
+mixed/binary_interaction/k_hb_ij.csv,data/reference/epcsaft_datasets/MEA_CO2_H2O_ionic_fit/mixed/binary_interaction/k_hb_ij.csv,binary_association_parameters,"Retained for package dataset completeness."
+mixed/binary_interaction/l_ij.csv,data/reference/epcsaft_datasets/MEA_CO2_H2O_ionic_fit/mixed/binary_interaction/l_ij.csv,binary_interaction_parameters,"Retained for package dataset completeness."
+mixed/rel_perm/parameters.csv,data/reference/epcsaft_datasets/MEA_CO2_H2O_ionic_fit/mixed/rel_perm/parameters.csv,relative_permittivity_parameters,"MEA f_solv remains fixed or sensitivity-only until direct evidence exists."
+user_options.json,data/reference/epcsaft_datasets/MEA_CO2_H2O_ionic_fit/user_options.json,born_and_dielectric_options,"Advanced Born SSM+DS option set used for Phase 2 diagnostics."

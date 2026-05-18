@@ -117,7 +117,7 @@ def test_reactive_speciation_auto_validates_conventions_before_native_ipopt_rout
     else:
         result = epcsaft.solve_reactive_speciation(**kwargs)
         assert result.success is True
-        assert result.diagnostics["problem_class"] == "homogeneous_nonideal_gibbs_speciation"
+        assert result.diagnostics["problem_class"] == "homogeneous_nonideal_residual_speciation"
         assert result.diagnostics["derivative_backend"] == "cppad_implicit"
 
     assert reaction.metadata["constant_convention"]["standard_state"] == "mole_fraction_activity"

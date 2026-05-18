@@ -1,6 +1,8 @@
 #include "epcsaft_equilibrium.h"
 
 #include "equilibrium_helpers.h"
+#include "../equilibrium_nlp/ipopt_adapter.h"
+#include "../equilibrium_nlp/nlp_problem.h"
 
 #include <algorithm>
 #include <cmath>
@@ -578,41 +580,43 @@ std::vector<double> reactive_phase_residual_jacobian_row_major(
         }
     }
 
-    for (std::size_t species = 0; species < ncomp; ++species) {
-        if (std::abs(charges[species]) > 1.0e-12) {
-            continue;
-        }
-        for (std::size_t variable = 0; variable < ncomp; ++variable) {
-            jacobian[row * nvars + variable] = activity_jac1[species * ncomp + variable];
-            jacobian[row * nvars + ncomp + variable] = -activity_jac2[species * ncomp + variable];
-        }
-        ++row;
-    }
-
-    std::vector<int> cations;
-    std::vector<int> anions;
-    for (std::size_t species = 0; species < ncomp; ++species) {
-        if (charges[species] > 1.0e-12) {
-            cations.push_back(static_cast<int>(species));
-        } else if (charges[species] < -1.0e-12) {
-            anions.push_back(static_cast<int>(species));
-        }
-    }
-    for (int cation : cations) {
-        for (int anion : anions) {
-            const std::size_t c = static_cast<std::size_t>(cation);
-            const std::size_t a = static_cast<std::size_t>(anion);
-            const double cation_weight = std::abs(charges[a]);
-            const double anion_weight = std::abs(charges[c]);
+    if (!phase_tagged_reactions) {
+        for (std::size_t species = 0; species < ncomp; ++species) {
+            if (std::abs(charges[species]) > 1.0e-12) {
+                continue;
+            }
             for (std::size_t variable = 0; variable < ncomp; ++variable) {
-                jacobian[row * nvars + variable] =
-                    cation_weight * activity_jac1[c * ncomp + variable]
-                    + anion_weight * activity_jac1[a * ncomp + variable];
-                jacobian[row * nvars + ncomp + variable] =
-                    -cation_weight * activity_jac2[c * ncomp + variable]
-                    - anion_weight * activity_jac2[a * ncomp + variable];
+                jacobian[row * nvars + variable] = activity_jac1[species * ncomp + variable];
+                jacobian[row * nvars + ncomp + variable] = -activity_jac2[species * ncomp + variable];
             }
             ++row;
+        }
+
+        std::vector<int> cations;
+        std::vector<int> anions;
+        for (std::size_t species = 0; species < ncomp; ++species) {
+            if (charges[species] > 1.0e-12) {
+                cations.push_back(static_cast<int>(species));
+            } else if (charges[species] < -1.0e-12) {
+                anions.push_back(static_cast<int>(species));
+            }
+        }
+        for (int cation : cations) {
+            for (int anion : anions) {
+                const std::size_t c = static_cast<std::size_t>(cation);
+                const std::size_t a = static_cast<std::size_t>(anion);
+                const double cation_weight = std::abs(charges[a]);
+                const double anion_weight = std::abs(charges[c]);
+                for (std::size_t variable = 0; variable < ncomp; ++variable) {
+                    jacobian[row * nvars + variable] =
+                        cation_weight * activity_jac1[c * ncomp + variable]
+                        + anion_weight * activity_jac1[a * ncomp + variable];
+                    jacobian[row * nvars + ncomp + variable] =
+                        -cation_weight * activity_jac2[c * ncomp + variable]
+                        - anion_weight * activity_jac2[a * ncomp + variable];
+                }
+                ++row;
+            }
         }
     }
 
@@ -762,13 +766,18 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
             options.min_composition
         );
     }
-    const std::vector<double>& charges = mixture->args().z;
+    std::vector<double> charges = mixture->args().z;
+    if (charges.size() != ncomp) {
+        charges.assign(ncomp, 0.0);
+    }
     out.phase_charge_residuals = {
         composition_charge(phase1.amounts, charges),
         composition_charge(phase2.amounts, charges),
     };
-    out.neutral_phase_equilibrium_residuals = neutral_phase_residuals(charges, ln_activity1, ln_activity2);
-    out.ionic_equilibrium_residuals = ionic_phase_residuals(charges, ln_activity1, ln_activity2);
+    if (!phase_tagged_reactions) {
+        out.neutral_phase_equilibrium_residuals = neutral_phase_residuals(charges, ln_activity1, ln_activity2);
+        out.ionic_equilibrium_residuals = ionic_phase_residuals(charges, ln_activity1, ln_activity2);
+    }
     append_block(out.residual, out.element_balance_residuals);
     if (phase_tagged_reactions) {
         append_block(out.residual, out.reaction_residuals_cross_phase);
@@ -871,5 +880,504 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
         reaction_standard_states.end()
     );
     out.diagnostics_vector["reaction_standard_state_codes"] = out.diagnostics_vector["reaction_standard_states"];
+    return out;
+}
+
+namespace {
+
+double clamped_log_amount(double amount, double floor) {
+    return std::log(std::max(amount, floor));
+}
+
+std::vector<double> build_reactive_liquid_root_initial_variables(
+    const std::vector<double>& feed,
+    const std::vector<double>& charges,
+    double floor
+) {
+    const std::size_t ncomp = feed.size();
+    std::vector<double> phase1 = feed;
+    std::vector<double> phase2 = feed;
+    std::vector<std::size_t> neutral_indices;
+    for (std::size_t i = 0; i < ncomp; ++i) {
+        if (charges.size() == ncomp && std::abs(charges[i]) > 1.0e-12) {
+            continue;
+        }
+        neutral_indices.push_back(i);
+    }
+    if (neutral_indices.size() >= 2) {
+        const std::size_t first = neutral_indices.front();
+        const std::size_t second = neutral_indices.back();
+        const double shift = 0.20 * std::min(feed[first], feed[second]);
+        if (shift > floor && feed[first] > shift + floor && feed[second] > shift + floor) {
+            phase1[first] += shift;
+            phase1[second] -= shift;
+            phase2[first] -= shift;
+            phase2[second] += shift;
+        }
+    }
+
+    const double beta2 = 0.5;
+    std::vector<double> out(2 * ncomp, 0.0);
+    for (std::size_t i = 0; i < ncomp; ++i) {
+        out[i] = clamped_log_amount((1.0 - beta2) * phase1[i], floor);
+        out[ncomp + i] = clamped_log_amount(beta2 * phase2[i], floor);
+    }
+    return out;
+}
+
+class ReactiveLiquidRootTwoPhaseProblem final : public epcsaft::native::equilibrium_nlp::NlpProblem {
+public:
+    ReactiveLiquidRootTwoPhaseProblem(
+        std::shared_ptr<ePCSAFTMixtureNative> mixture,
+        double temperature,
+        double target_pressure,
+        std::vector<double> raw_feed,
+        EquilibriumOptionsNative options,
+        std::vector<double> balance_matrix_row_major,
+        int balance_rows,
+        std::vector<double> total_vector,
+        std::vector<double> reaction_stoichiometry_row_major,
+        int reaction_rows,
+        std::vector<double> log_equilibrium_constants,
+        std::vector<int> reaction_standard_states,
+        std::vector<double> reaction_phase_stoichiometry_row_major,
+        double phase_distance_tolerance
+    )
+        : mixture_(std::move(mixture)),
+          temperature_(temperature),
+          target_pressure_(target_pressure),
+          options_(std::move(options)),
+          balance_matrix_row_major_(std::move(balance_matrix_row_major)),
+          balance_rows_(balance_rows),
+          total_vector_(std::move(total_vector)),
+          reaction_stoichiometry_row_major_(std::move(reaction_stoichiometry_row_major)),
+          reaction_rows_(reaction_rows),
+          log_equilibrium_constants_(std::move(log_equilibrium_constants)),
+          reaction_standard_states_(std::move(reaction_standard_states)),
+          reaction_phase_stoichiometry_row_major_(std::move(reaction_phase_stoichiometry_row_major)),
+          minimum_phase_distance_(std::max(phase_distance_tolerance, 1.0e-8)) {
+        if (!mixture_) {
+            throw ValueError("Reactive liquid-root LLE NLP requires a native mixture.");
+        }
+        if (!std::isfinite(temperature_) || temperature_ <= 0.0 || !std::isfinite(target_pressure_) || target_pressure_ <= 0.0) {
+            throw ValueError("Reactive liquid-root LLE NLP received invalid T/P specifications.");
+        }
+        feed_ = normalize_feed(raw_feed, mixture_->ncomp(), options_.min_composition, "reactive_phase_equilibrium");
+        validate_reaction_standard_states(reaction_standard_states_, reaction_rows_);
+        const std::size_t ncomp = feed_.size();
+        if (balance_rows_ <= 0) {
+            throw ValueError("Reactive liquid-root LLE NLP requires at least one balance row.");
+        }
+        if (reaction_rows_ <= 0) {
+            throw ValueError("Reactive liquid-root LLE NLP requires at least one reaction row.");
+        }
+        if (balance_matrix_row_major_.size() != static_cast<std::size_t>(balance_rows_) * ncomp) {
+            throw ValueError("Reactive liquid-root LLE balance matrix has an invalid row-major size.");
+        }
+        if (total_vector_.size() != static_cast<std::size_t>(balance_rows_)) {
+            throw ValueError("Reactive liquid-root LLE total vector length must match balance rows.");
+        }
+        if (reaction_stoichiometry_row_major_.size() != static_cast<std::size_t>(reaction_rows_) * ncomp) {
+            throw ValueError("Reactive liquid-root LLE reaction matrix has an invalid row-major size.");
+        }
+        if (log_equilibrium_constants_.size() != static_cast<std::size_t>(reaction_rows_)) {
+            throw ValueError("Reactive liquid-root LLE log equilibrium constants length must match reaction rows.");
+        }
+        if (!reaction_phase_stoichiometry_row_major_.empty()) {
+            has_phase_tagged_reaction_stoichiometry(
+                reaction_phase_stoichiometry_row_major_,
+                reaction_rows_,
+                static_cast<int>(ncomp)
+            );
+        }
+        initial_variables_ = build_reactive_liquid_root_initial_variables(
+            feed_,
+            mixture_->args().z,
+            options_.min_composition
+        );
+    }
+
+    std::string name() const override {
+        return "reactive_liquid_root_eos";
+    }
+
+    int variable_count() const override {
+        return static_cast<int>(initial_variables_.size());
+    }
+
+    int constraint_count() const override {
+        return 0;
+    }
+
+    int jacobian_nonzero_count() const override {
+        return 0;
+    }
+
+    epcsaft::native::equilibrium_nlp::NlpBounds bounds() const override {
+        epcsaft::native::equilibrium_nlp::NlpBounds out;
+        out.variable_lower.assign(initial_variables_.size(), std::log(options_.min_composition));
+        out.variable_upper.assign(initial_variables_.size(), 50.0);
+        out.constraint_lower = {};
+        out.constraint_upper = {};
+        return out;
+    }
+
+    std::vector<double> initial_point() const override {
+        return initial_variables_;
+    }
+
+    double objective(const std::vector<double>& variables) const override {
+        try {
+            return evaluate(variables).objective;
+        } catch (const std::exception&) {
+            return 1.0e100;
+        }
+    }
+
+    std::vector<double> objective_gradient(const std::vector<double>& variables) const override {
+        try {
+            return evaluate(variables).gradient;
+        } catch (const std::exception&) {
+            return std::vector<double>(variables.size(), 0.0);
+        }
+    }
+
+    std::vector<double> constraints(const std::vector<double>& variables) const override {
+        (void)variables;
+        return {};
+    }
+
+    epcsaft::native::equilibrium_nlp::NlpJacobianStructure jacobian_structure() const override {
+        return {};
+    }
+
+    std::vector<double> jacobian_values(const std::vector<double>& variables) const override {
+        (void)variables;
+        return {};
+    }
+
+    epcsaft::native::equilibrium_nlp::NlpScaling scaling() const override {
+        epcsaft::native::equilibrium_nlp::NlpScaling out;
+        out.objective = 1.0;
+        out.variables.assign(initial_variables_.size(), 1.0);
+        out.constraints = {};
+        return out;
+    }
+
+    std::map<std::string, std::string> diagnostics() const override {
+        return {
+            {"derivative_backend", "cppad_implicit"},
+            {"density_backend", "liquid_pressure_root"},
+            {"variable_model", "log_phase_species_amounts"},
+        };
+    }
+
+    ReactivePhaseResidualEvaluationNative evaluate(const std::vector<double>& variables) const {
+        return evaluate_reactive_phase_equilibrium_residual_native(
+            mixture_,
+            temperature_,
+            target_pressure_,
+            feed_,
+            options_,
+            balance_matrix_row_major_,
+            balance_rows_,
+            total_vector_,
+            reaction_stoichiometry_row_major_,
+            reaction_rows_,
+            log_equilibrium_constants_,
+            reaction_standard_states_,
+            reaction_phase_stoichiometry_row_major_,
+            variables,
+            true
+        );
+    }
+
+    const std::vector<double>& feed() const {
+        return feed_;
+    }
+
+    int balance_row_count() const {
+        return balance_rows_;
+    }
+
+    int reaction_count() const {
+        return reaction_rows_;
+    }
+
+    double minimum_phase_distance() const {
+        return minimum_phase_distance_;
+    }
+
+private:
+    std::shared_ptr<ePCSAFTMixtureNative> mixture_;
+    double temperature_ = 0.0;
+    double target_pressure_ = 0.0;
+    EquilibriumOptionsNative options_;
+    std::vector<double> feed_;
+    std::vector<double> balance_matrix_row_major_;
+    int balance_rows_ = 0;
+    std::vector<double> total_vector_;
+    std::vector<double> reaction_stoichiometry_row_major_;
+    int reaction_rows_ = 0;
+    std::vector<double> log_equilibrium_constants_;
+    std::vector<int> reaction_standard_states_;
+    std::vector<double> reaction_phase_stoichiometry_row_major_;
+    std::vector<double> initial_variables_;
+    double minimum_phase_distance_ = 1.0e-8;
+};
+
+epcsaft::native::equilibrium_nlp::NeutralTwoPhaseEosNlpContract reactive_liquid_root_contract_from_problem(
+    const ReactiveLiquidRootTwoPhaseProblem& problem
+) {
+    epcsaft::native::equilibrium_nlp::validate_nlp_problem_shape(problem);
+    const std::vector<double> initial = problem.initial_point();
+    const epcsaft::native::equilibrium_nlp::NlpBounds bounds = problem.bounds();
+    const epcsaft::native::equilibrium_nlp::NlpJacobianStructure structure = problem.jacobian_structure();
+    const ReactivePhaseResidualEvaluationNative eval = problem.evaluate(initial);
+
+    epcsaft::native::equilibrium_nlp::NeutralTwoPhaseEosNlpContract out;
+    out.problem_name = problem.name();
+    out.derivative_backend = "cppad_implicit";
+    out.variable_model = "log_phase_species_amounts";
+    out.density_backend = "liquid_pressure_root";
+    out.phase_count = 2;
+    out.species_count = static_cast<int>(problem.feed().size());
+    out.balance_row_count = problem.balance_row_count();
+    out.reaction_count = problem.reaction_count();
+    out.variable_count = problem.variable_count();
+    out.constraint_count = problem.constraint_count();
+    out.jacobian_nonzero_count = problem.jacobian_nonzero_count();
+    out.initial_point = initial;
+    out.variable_lower_bounds = bounds.variable_lower;
+    out.variable_upper_bounds = bounds.variable_upper;
+    out.constraint_lower_bounds = bounds.constraint_lower;
+    out.constraint_upper_bounds = bounds.constraint_upper;
+    out.objective_at_initial = eval.objective;
+    out.gradient_at_initial = eval.gradient;
+    out.constraints_at_initial = {};
+    out.jacobian_rows = structure.rows;
+    out.jacobian_cols = structure.cols;
+    out.jacobian_values_at_initial = {};
+    return out;
+}
+
+std::vector<std::vector<double>> phase_amounts_from_reactive_eval(
+    const ReactivePhaseResidualEvaluationNative& eval
+) {
+    return {eval.phase1_amounts, eval.phase2_amounts};
+}
+
+epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosPostsolve reactive_liquid_root_postsolve_from_eval(
+    const ReactiveLiquidRootTwoPhaseProblem& problem,
+    const ReactivePhaseResidualEvaluationNative& eval,
+    double conserved_balance_tolerance,
+    double reaction_tolerance,
+    double phase_equilibrium_tolerance,
+    double phase_distance_tolerance
+) {
+    epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosPostsolve out;
+    out.derivative_backend = "cppad_implicit";
+    out.density_backend = "liquid_pressure_root";
+    out.phase_count = 2;
+    out.species_count = static_cast<int>(problem.feed().size());
+    out.balance_row_count = problem.balance_row_count();
+    out.reaction_count = problem.reaction_count();
+    out.objective = eval.objective;
+    out.constraints = eval.residual;
+    out.reaction_stationarity_residuals = eval.reaction_residuals_cross_phase.empty()
+        ? eval.reaction_residuals_phase1
+        : eval.reaction_residuals_cross_phase;
+    if (eval.reaction_residuals_cross_phase.empty()) {
+        out.reaction_stationarity_residuals.insert(
+            out.reaction_stationarity_residuals.end(),
+            eval.reaction_residuals_phase2.begin(),
+            eval.reaction_residuals_phase2.end()
+        );
+    }
+    out.phase_equilibrium_residuals = eval.neutral_phase_equilibrium_residuals;
+    out.phase_equilibrium_residuals.insert(
+        out.phase_equilibrium_residuals.end(),
+        eval.ionic_equilibrium_residuals.begin(),
+        eval.ionic_equilibrium_residuals.end()
+    );
+    out.phase_charge_residuals = eval.phase_charge_residuals;
+    out.phase_amount_totals = {
+        std::accumulate(eval.phase1_amounts.begin(), eval.phase1_amounts.end(), 0.0),
+        std::accumulate(eval.phase2_amounts.begin(), eval.phase2_amounts.end(), 0.0),
+    };
+    out.phase_densities = {eval.phase1_density, eval.phase2_density};
+    out.phase_volumes = {
+        out.phase_amount_totals[0] / eval.phase1_density,
+        out.phase_amount_totals[1] / eval.phase2_density,
+    };
+    out.phase_compositions = {eval.phase1_composition, eval.phase2_composition};
+    out.phase_ln_fugacity_coefficients = {
+        eval.phase1_ln_fugacity_coefficient,
+        eval.phase2_ln_fugacity_coefficient,
+    };
+    out.conserved_balance_norm = max_abs(eval.element_balance_residuals);
+    out.charge_balance_norm = max_abs(eval.phase_charge_residuals);
+    out.phase_equilibrium_norm = max_abs(out.phase_equilibrium_residuals);
+    out.pressure_consistency_norm = 0.0;
+    out.reaction_stationarity_norm = reaction_residual_norm(eval);
+    out.phase_distance = eval.phase_distance;
+    const double effective_phase_distance = std::max(
+        phase_distance_tolerance,
+        problem.minimum_phase_distance()
+    );
+    const bool finite_liquid_densities = std::isfinite(eval.phase1_density)
+        && std::isfinite(eval.phase2_density)
+        && eval.phase1_density > 0.0
+        && eval.phase2_density > 0.0;
+    const bool retained_phase_split = out.phase_amount_totals[0] > 0.0 && out.phase_amount_totals[1] > 0.0;
+    out.accepted = out.conserved_balance_norm <= conserved_balance_tolerance
+        && out.charge_balance_norm <= conserved_balance_tolerance
+        && out.reaction_stationarity_norm <= reaction_tolerance
+        && out.phase_equilibrium_norm <= phase_equilibrium_tolerance
+        && out.phase_distance >= effective_phase_distance
+        && finite_liquid_densities
+        && retained_phase_split;
+    if (out.accepted) {
+        out.rejection_reason = "accepted";
+    } else if (out.conserved_balance_norm > conserved_balance_tolerance) {
+        out.rejection_reason = "conserved_balance";
+    } else if (out.charge_balance_norm > conserved_balance_tolerance) {
+        out.rejection_reason = "charge_balance";
+    } else if (out.reaction_stationarity_norm > reaction_tolerance) {
+        out.rejection_reason = "reaction_equilibrium";
+    } else if (out.phase_equilibrium_norm > phase_equilibrium_tolerance) {
+        out.rejection_reason = "phase_equilibrium";
+    } else if (!finite_liquid_densities) {
+        out.rejection_reason = "liquid_density";
+    } else if (!retained_phase_split) {
+        out.rejection_reason = "phase_fraction";
+    } else {
+        out.rejection_reason = "phase_distance";
+    }
+    return out;
+}
+
+}  // namespace
+
+epcsaft::native::equilibrium_nlp::NeutralTwoPhaseEosNlpContract evaluate_reactive_phase_liquid_root_nlp_contract_native(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    double p,
+    const std::vector<double>& feed,
+    const EquilibriumOptionsNative& options,
+    const std::vector<double>& balance_matrix_row_major,
+    int balance_rows,
+    const std::vector<double>& total_vector,
+    const std::vector<double>& reaction_stoichiometry_row_major,
+    int reaction_rows,
+    const std::vector<double>& log_equilibrium_constants,
+    const std::vector<int>& reaction_standard_states,
+    const std::vector<double>& reaction_phase_stoichiometry_row_major,
+    double phase_distance_tolerance
+) {
+    const ReactiveLiquidRootTwoPhaseProblem problem(
+        mixture,
+        t,
+        p,
+        feed,
+        options,
+        balance_matrix_row_major,
+        balance_rows,
+        total_vector,
+        reaction_stoichiometry_row_major,
+        reaction_rows,
+        log_equilibrium_constants,
+        reaction_standard_states,
+        reaction_phase_stoichiometry_row_major,
+        phase_distance_tolerance
+    );
+    return reactive_liquid_root_contract_from_problem(problem);
+}
+
+epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult solve_reactive_phase_liquid_root_route_native(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    double p,
+    const std::vector<double>& feed,
+    const EquilibriumOptionsNative& equilibrium_options,
+    const std::vector<double>& balance_matrix_row_major,
+    int balance_rows,
+    const std::vector<double>& total_vector,
+    const std::vector<double>& reaction_stoichiometry_row_major,
+    int reaction_rows,
+    const std::vector<double>& log_equilibrium_constants,
+    const std::vector<int>& reaction_standard_states,
+    const std::vector<double>& reaction_phase_stoichiometry_row_major,
+    const epcsaft::native::equilibrium_nlp::IpoptSolveOptions& solve_options,
+    double conserved_balance_tolerance,
+    double reaction_tolerance,
+    double phase_equilibrium_tolerance,
+    double phase_distance_tolerance
+) {
+    const epcsaft::native::equilibrium_nlp::IpoptAdapterInfo adapter =
+        epcsaft::native::equilibrium_nlp::native_ipopt_adapter_info();
+    epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult out;
+    out.compiled = adapter.compiled;
+    out.adapter_available = adapter.adapter_available;
+    out.adapter_kind = adapter.adapter_kind;
+    out.exact_gradient_required = adapter.exact_gradient_required;
+    out.exact_jacobian_required = adapter.exact_jacobian_required;
+    out.problem_name = "reactive_liquid_root_eos";
+    out.derivative_backend = "cppad_implicit";
+    out.postsolve.derivative_backend = "cppad_implicit";
+    out.postsolve.density_backend = "liquid_pressure_root";
+    if (!adapter.compiled) {
+        out.status = "ipopt_dependency_required";
+        return out;
+    }
+
+    const ReactiveLiquidRootTwoPhaseProblem problem(
+        mixture,
+        t,
+        p,
+        feed,
+        equilibrium_options,
+        balance_matrix_row_major,
+        balance_rows,
+        total_vector,
+        reaction_stoichiometry_row_major,
+        reaction_rows,
+        log_equilibrium_constants,
+        reaction_standard_states,
+        reaction_phase_stoichiometry_row_major,
+        phase_distance_tolerance
+    );
+    out.phase_count = 2;
+    out.species_count = static_cast<int>(problem.feed().size());
+    out.balance_row_count = problem.balance_row_count();
+    out.reaction_count = problem.reaction_count();
+    const epcsaft::native::equilibrium_nlp::IpoptSolveResult solve =
+        epcsaft::native::equilibrium_nlp::solve_ipopt_nlp(problem, solve_options);
+    out.ran = solve.solver_ran;
+    out.solver_accepted = solve.accepted;
+    out.accepted = solve.accepted;
+    out.solver_status = solve.solver_status;
+    out.application_status = solve.application_status;
+    out.objective = solve.objective;
+    out.variables = solve.variables;
+    out.constraints = solve.constraints;
+    out.status = solve.accepted ? "accepted" : "solver_rejected";
+    if (!solve.accepted) {
+        return out;
+    }
+
+    const ReactivePhaseResidualEvaluationNative eval = problem.evaluate(solve.variables);
+    out.phase_amounts = phase_amounts_from_reactive_eval(eval);
+    out.postsolve = reactive_liquid_root_postsolve_from_eval(
+        problem,
+        eval,
+        conserved_balance_tolerance,
+        reaction_tolerance,
+        phase_equilibrium_tolerance,
+        phase_distance_tolerance
+    );
+    out.phase_volumes = out.postsolve.phase_volumes;
+    out.accepted = out.postsolve.accepted;
+    out.status = out.accepted ? "accepted" : "postsolve_rejected";
     return out;
 }

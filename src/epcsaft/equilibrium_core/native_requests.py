@@ -25,6 +25,7 @@ def build_reactive_two_phase_eos_native_request(
     total_vector: Any,
     species: Sequence[str],
     reactions: Sequence[Any],
+    reaction_phase_stoichiometry: Any = None,
 ) -> dict[str, Any]:
     labels = [str(label) for label in species]
     balance_values = np.asarray(balance_matrix, dtype=float)
@@ -32,6 +33,9 @@ def build_reactive_two_phase_eos_native_request(
         [[float(reaction.stoichiometry.get(label, 0.0)) for label in labels] for reaction in reactions],
         dtype=float,
     )
+    phase_stoichiometry_values: list[float] = []
+    if reaction_phase_stoichiometry is not None:
+        phase_stoichiometry_values = np.asarray(reaction_phase_stoichiometry, dtype=float).reshape(-1).tolist()
     return {
         "T": float(T),
         "P": float(P),
@@ -42,6 +46,8 @@ def build_reactive_two_phase_eos_native_request(
         "reaction_stoichiometry": reaction_matrix.reshape(-1).tolist(),
         "reaction_rows": int(reaction_matrix.shape[0]),
         "log_equilibrium_constants": [float(reaction.log_equilibrium_constant) for reaction in reactions],
+        "reaction_standard_states": [reaction.convention.native_standard_state_code for reaction in reactions],
+        "reaction_phase_stoichiometry": phase_stoichiometry_values,
     }
 
 

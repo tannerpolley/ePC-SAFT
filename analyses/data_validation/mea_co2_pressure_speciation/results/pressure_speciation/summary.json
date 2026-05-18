@@ -1,0 +1,46 @@
+{
+  "lane": "mea_co2_pressure_speciation",
+  "status": "blocked",
+  "source_paths": [
+    "analyses/data_validation/mea_co2_pressure_speciation/data/input/MEA_CO2_H2O_phase2/pure/any_solvent.csv",
+    "analyses/data_validation/mea_co2_pressure_speciation/data/input/MEA_CO2_H2O_phase2/mixed/binary_interaction/k_ij.csv",
+    "analyses/data_validation/mea_co2_pressure_speciation/data/input/MEA_CO2_H2O_phase2/mixed/binary_interaction/k_hb_ij.csv",
+    "analyses/data_validation/mea_co2_pressure_speciation/data/input/MEA_CO2_H2O_phase2/mixed/binary_interaction/l_ij.csv",
+    "analyses/data_validation/mea_co2_pressure_speciation/data/input/MEA_CO2_H2O_phase2/mixed/rel_perm/parameters.csv",
+    "analyses/data_validation/mea_co2_pressure_speciation/data/input/MEA_CO2_H2O_phase2/user_options.json",
+    "analyses/data_validation/mea_co2_pressure_speciation/data/input/Jou_1995_VLE.csv",
+    "analyses/data_validation/mea_co2_pressure_speciation/data/input/phase2_activity_speciation_problem.json",
+    "analyses/data_validation/mea_co2_pressure_speciation/data/input/phase2_activity_constant_candidates.csv",
+    "analyses/data_validation/mea_co2_pressure_speciation/data/input/phase2_reaction_constant_basis.csv",
+    "analyses/data_validation/mea_co2_pressure_speciation/data/input/phase2_reaction_constant_source_verification.csv",
+    "analyses/data_validation/mea_co2_pressure_speciation/data/input/phase2_parameter_artifact_manifest.csv"
+  ],
+  "selected_source_row": {
+    "MEA_weight_fraction": "0.3",
+    "temperature": "25",
+    "pressure_MEA_raoult": "2.8",
+    "total_pressure": "200",
+    "CO2_pressure": "0.00213",
+    "CO2_loading": "0.211"
+  },
+  "public_api": "epcsaft.solve_reactive_speciation",
+  "required_solver_backend": "ipopt",
+  "required_derivative_backend": "cppad_implicit",
+  "accepted_native_ipopt_speciation": false,
+  "retained_outputs": [
+    "analyses/data_validation/mea_co2_pressure_speciation/data/processed/selected_jou_row.json",
+    "analyses/data_validation/mea_co2_pressure_speciation/data/processed/normalized_user_options.json",
+    "analyses/data_validation/mea_co2_pressure_speciation/data/processed/reaction_constants.json",
+    "analyses/data_validation/mea_co2_pressure_speciation/results/pressure_speciation/summary.json"
+  ],
+  "solve": null,
+  "diagnostic": {
+    "diagnostic_entrypoint": "_evaluate_chemical_equilibrium_residual_native",
+    "exception_type": "NativeValueError",
+    "exception_message": "chemical residual Born model 2 phase-state composition sensitivity requires a separate SSM/DS derivative proof."
+  },
+  "vapor_side_assumption": "ideal_fugacity",
+  "blocker": "SSM/DS Born composition sensitivity is not implemented for phase-state residuals.",
+  "exception_type": "SolutionError",
+  "exception_message": "Ipopt did not accept the nonideal reactive speciation NLP solution."
+}

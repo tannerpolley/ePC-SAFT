@@ -175,14 +175,14 @@ def test_native_chemical_equilibrium_solve_routes_nonideal_speciation_to_ipopt()
     assert payload["success"] is True
     assert payload["composition"][1] / payload["composition"][0] == pytest.approx(3.0, rel=1.0e-7)
     diagnostics = payload["diagnostics"]
-    assert diagnostics["problem_class"] == "homogeneous_nonideal_gibbs_speciation"
+    assert diagnostics["problem_class"] == "homogeneous_nonideal_residual_speciation"
     assert diagnostics["derivative_backend"] == "cppad_implicit"
     assert diagnostics["jacobian_backend"] == "cppad_implicit"
     assert diagnostics["implicit_sensitivity_backend"] == "cppad_implicit"
     assert diagnostics["selected_solver_backend"] == "native_ipopt"
 
 
-def test_native_chemical_equilibrium_solve_rejects_mixed_nonideal_standard_states() -> None:
+def test_native_chemical_equilibrium_solve_accepts_mixed_nonideal_standard_states() -> None:
     mix = _toy_mixture()
     request = {
         "T": 298.15,
@@ -198,8 +198,17 @@ def test_native_chemical_equilibrium_solve_rejects_mixed_nonideal_standard_state
         "options": {"solver_backend": "ipopt", "jacobian_backend": "cppad"},
     }
 
-    with pytest.raises(_core.NativeValueError, match="one shared standard-state basis"):
-        _core._solve_chemical_equilibrium_native(mix._native, request)
+    if not _core._native_ipopt_smoke()["compiled"]:
+        with pytest.raises(_core.NativeSolutionError, match=r"EPCSAFT_ENABLE_IPOPT=ON"):
+            _core._solve_chemical_equilibrium_native(mix._native, request)
+        return
+
+    payload = _core._solve_chemical_equilibrium_native(mix._native, request)
+
+    assert payload["success"] is True
+    diagnostics = payload["diagnostics"]
+    assert diagnostics["problem_class"] == "homogeneous_nonideal_residual_speciation"
+    assert diagnostics["activity_basis"] == "mixed_standard_state"
 
 
 def test_mixture_equilibrium_rejects_non_native_chemical_equilibrium_backend() -> None:

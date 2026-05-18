@@ -137,3 +137,41 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
     double initial_phase_fraction_phase2 = 0.5,
     bool has_initial_phases = false
 );
+
+epcsaft::native::equilibrium_nlp::NeutralTwoPhaseEosNlpContract evaluate_reactive_phase_liquid_root_nlp_contract_native(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    double p,
+    const std::vector<double>& feed,
+    const EquilibriumOptionsNative& options,
+    const std::vector<double>& balance_matrix_row_major,
+    int balance_rows,
+    const std::vector<double>& total_vector,
+    const std::vector<double>& reaction_stoichiometry_row_major,
+    int reaction_rows,
+    const std::vector<double>& log_equilibrium_constants,
+    const std::vector<int>& reaction_standard_states,
+    const std::vector<double>& reaction_phase_stoichiometry_row_major,
+    double phase_distance_tolerance
+);
+
+epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult solve_reactive_phase_liquid_root_route_native(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    double p,
+    const std::vector<double>& feed,
+    const EquilibriumOptionsNative& equilibrium_options,
+    const std::vector<double>& balance_matrix_row_major,
+    int balance_rows,
+    const std::vector<double>& total_vector,
+    const std::vector<double>& reaction_stoichiometry_row_major,
+    int reaction_rows,
+    const std::vector<double>& log_equilibrium_constants,
+    const std::vector<int>& reaction_standard_states,
+    const std::vector<double>& reaction_phase_stoichiometry_row_major,
+    const epcsaft::native::equilibrium_nlp::IpoptSolveOptions& solve_options,
+    double conserved_balance_tolerance,
+    double reaction_tolerance,
+    double phase_equilibrium_tolerance,
+    double phase_distance_tolerance
+);

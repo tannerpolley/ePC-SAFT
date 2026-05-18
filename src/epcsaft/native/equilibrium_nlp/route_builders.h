@@ -91,6 +91,7 @@ struct ReactiveTwoPhaseEosPostsolve {
     bool accepted = false;
     std::string rejection_reason;
     std::string derivative_backend = "analytic_cppad";
+    std::string density_backend;
     int phase_count = 0;
     int species_count = 0;
     int balance_row_count = 0;
@@ -98,15 +99,20 @@ struct ReactiveTwoPhaseEosPostsolve {
     double conserved_balance_norm = 0.0;
     double charge_balance_norm = 0.0;
     double pressure_consistency_norm = 0.0;
+    double phase_equilibrium_norm = 0.0;
     double reaction_stationarity_norm = 0.0;
     double phase_distance = 0.0;
     double objective = 0.0;
     std::vector<double> standard_mu_rt;
     std::vector<double> constraints;
     std::vector<double> reaction_stationarity_residuals;
+    std::vector<double> phase_equilibrium_residuals;
+    std::vector<double> phase_charge_residuals;
     std::vector<double> phase_amount_totals;
     std::vector<double> phase_volumes;
+    std::vector<double> phase_densities;
     std::vector<std::vector<double>> phase_compositions;
+    std::vector<std::vector<double>> phase_ln_fugacity_coefficients;
 };
 
 struct ReactiveTwoPhaseEosRouteResult {

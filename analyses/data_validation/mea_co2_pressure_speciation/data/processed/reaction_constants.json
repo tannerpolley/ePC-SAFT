@@ -1,0 +1,131 @@
+{
+  "temperature_K": 298.15,
+  "standard_state": "mole_fraction_activity",
+  "reactions": [
+    {
+      "reaction_id": "R1",
+      "log_equilibrium_constant": -40.26536023393261,
+      "stoichiometry": {
+        "H2O": -2.0,
+        "H3O+": 1.0,
+        "OH-": 1.0
+      },
+      "source_row": {
+        "reaction_id": "R1",
+        "phase2_status": "source_verified_native_solver_input",
+        "candidate_source": "Nasrifar2010_Table1_via_Austgen1991",
+        "source_basis": "mole_fraction_equilibrium_constant_h3o_reaction_family",
+        "expression": "ln K = A + B/T + C ln(T) + D T",
+        "c1": "132.899",
+        "c2": "-13445.9",
+        "c3": "-22.4773",
+        "c4": "0",
+        "source_files": "docs/papers/md/Nasrifar and Tafazzol - 2010 - Vapor-liquid equilibria of acid gas-aqueous ethanolamine solutions us.md:114-127",
+        "validation_role": "fixed_input_residual_gated",
+        "next_action": "Use phase2_residual_acceptance_audit.csv to decide claim permissions; validation outcomes do not revise model-run status.",
+        "notes": "Source value is verified against repo-local Nasrifar 2010 Table 1; original Austgen 1991 source is not required as an outside-repo path in this manifest."
+      }
+    },
+    {
+      "reaction_id": "R2",
+      "log_equilibrium_constant": -18.66782548317738,
+      "stoichiometry": {
+        "CO2": -1.0,
+        "H2O": -2.0,
+        "HCO3-": 1.0,
+        "H3O+": 1.0
+      },
+      "source_row": {
+        "reaction_id": "R2",
+        "phase2_status": "source_verified_native_solver_input",
+        "candidate_source": "Nasrifar2010_Table1_via_Austgen1991",
+        "source_basis": "mole_fraction_equilibrium_constant_h3o_reaction_family",
+        "expression": "ln K = A + B/T + C ln(T) + D T",
+        "c1": "231.456",
+        "c2": "-12092.1",
+        "c3": "-36.7816",
+        "c4": "0",
+        "source_files": "docs/papers/md/Nasrifar and Tafazzol - 2010 - Vapor-liquid equilibria of acid gas-aqueous ethanolamine solutions us.md:114-127",
+        "validation_role": "fixed_input_residual_gated",
+        "next_action": "Use phase2_residual_acceptance_audit.csv to decide claim permissions; validation outcomes do not revise model-run status.",
+        "notes": "Source value uses the repo-local Nasrifar Table 1 value of A=231.456 rather than the earlier placeholder typo."
+      }
+    },
+    {
+      "reaction_id": "R3",
+      "log_equilibrium_constant": -27.80868301316974,
+      "stoichiometry": {
+        "HCO3-": -1.0,
+        "H2O": -1.0,
+        "CO3^2-": 1.0,
+        "H3O+": 1.0
+      },
+      "source_row": {
+        "reaction_id": "R3",
+        "phase2_status": "source_verified_native_solver_input",
+        "candidate_source": "Nasrifar2010_Table1_via_Austgen1991",
+        "source_basis": "mole_fraction_equilibrium_constant_h3o_reaction_family",
+        "expression": "ln K = A + B/T + C ln(T) + D T",
+        "c1": "216.049",
+        "c2": "-12431.7",
+        "c3": "-35.4819",
+        "c4": "0",
+        "source_files": "docs/papers/md/Nasrifar and Tafazzol - 2010 - Vapor-liquid equilibria of acid gas-aqueous ethanolamine solutions us.md:114-127",
+        "validation_role": "fixed_input_residual_gated",
+        "next_action": "Use phase2_residual_acceptance_audit.csv to decide claim permissions; validation outcomes do not revise model-run status.",
+        "notes": "Source value is verified against repo-local Nasrifar 2010 Table 1; carbonate residual claims remain gated by residual audit rows."
+      }
+    },
+    {
+      "reaction_id": "R4",
+      "log_equilibrium_constant": -9.30235160154285,
+      "stoichiometry": {
+        "MEACOO-": -1.0,
+        "H2O": -1.0,
+        "HCO3-": 1.0,
+        "MEA": 1.0
+      },
+      "source_row": {
+        "reaction_id": "R4",
+        "phase2_status": "source_verified_native_solver_input",
+        "candidate_source": "Nasrifar2010_Table1_via_Austgen1991",
+        "source_basis": "mole_fraction_equilibrium_constant_h3o_reaction_family",
+        "expression": "ln K = A + B/T + C ln(T) + D T",
+        "c1": "2.8898",
+        "c2": "-3635.09",
+        "c3": "0",
+        "c4": "0",
+        "source_files": "docs/papers/md/Nasrifar and Tafazzol - 2010 - Vapor-liquid equilibria of acid gas-aqueous ethanolamine solutions us.md:114-127",
+        "validation_role": "fixed_input_residual_gated",
+        "next_action": "Use phase2_residual_acceptance_audit.csv to decide claim permissions; validation outcomes do not revise model-run status.",
+        "notes": "Source value maps to Nasrifar Table 1 k9^x for MEACOO- + H2O <-> HCO3- + MEA."
+      }
+    },
+    {
+      "reaction_id": "R5",
+      "log_equilibrium_constant": -27.577569709844038,
+      "stoichiometry": {
+        "MEAH+": -1.0,
+        "H2O": -1.0,
+        "MEA": 1.0,
+        "H3O+": 1.0
+      },
+      "source_row": {
+        "reaction_id": "R5",
+        "phase2_status": "source_verified_native_solver_input",
+        "candidate_source": "Nasrifar2010_Table1_via_Austgen1991",
+        "source_basis": "mole_fraction_equilibrium_constant_h3o_reaction_family",
+        "expression": "ln K = A + B/T + C ln(T) + D T",
+        "c1": "2.1211",
+        "c2": "-8189.38",
+        "c3": "0",
+        "c4": "-0.007484",
+        "source_files": "docs/papers/md/Nasrifar and Tafazzol - 2010 - Vapor-liquid equilibria of acid gas-aqueous ethanolamine solutions us.md:114-127",
+        "validation_role": "fixed_input_residual_gated",
+        "next_action": "Use phase2_residual_acceptance_audit.csv to decide claim permissions; validation outcomes do not revise model-run status.",
+        "notes": "Source value maps to Nasrifar Table 1 k7^x for MEAH+ dissociation."
+      }
+    }
+  ],
+  "source_path": "analyses/data_validation/mea_co2_pressure_speciation/data/input/phase2_activity_constant_candidates.csv"
+}

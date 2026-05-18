@@ -1,0 +1,153 @@
+{
+  "analysis": "phase2_activity_epcsaft",
+  "status": "problem_definition_generated",
+  "species": [
+    "CO2",
+    "MEA",
+    "H2O",
+    "MEAH+",
+    "MEACOO-",
+    "HCO3-",
+    "CO3^2-",
+    "H3O+",
+    "OH-"
+  ],
+  "charges": {
+    "CO2": 0,
+    "MEA": 0,
+    "H2O": 0,
+    "MEAH+": 1,
+    "MEACOO-": -1,
+    "HCO3-": -1,
+    "CO3^2-": -2,
+    "H3O+": 1,
+    "OH-": -1
+  },
+  "volatile_species": [
+    "CO2",
+    "H2O",
+    "MEA"
+  ],
+  "nonvolatile_species": [
+    "MEAH+",
+    "MEACOO-",
+    "HCO3-",
+    "CO3^2-",
+    "H3O+",
+    "OH-"
+  ],
+  "material_balances": {
+    "total_amine": {
+      "MEA": 1.0,
+      "MEAH+": 1.0,
+      "MEACOO-": 1.0
+    },
+    "total_carbon": {
+      "CO2": 1.0,
+      "MEACOO-": 1.0,
+      "HCO3-": 1.0,
+      "CO3^2-": 1.0
+    }
+  },
+  "constraints": {
+    "electroneutrality": {
+      "MEAH+": 1.0,
+      "H3O+": 1.0,
+      "MEACOO-": -1.0,
+      "HCO3-": -1.0,
+      "CO3^2-": -2.0,
+      "OH-": -1.0
+    }
+  },
+  "activity_convention": {
+    "needed_basis": "mole_fraction_activity",
+    "current_manifest_conversion_status": [
+      "source_verified"
+    ],
+    "candidate_manifest": "data/reference/MEA/manifests/phase2_activity_constant_candidates.csv",
+    "candidate_status_counts": {
+      "source_verified_native_solver_input": 5
+    },
+    "solve_policy": "run_only_with_pinned_epcsaft_native_activity_solver_and_generated_residual_gates",
+    "standard_state_used": "mole_fraction_activity"
+  },
+  "epcsaft_dependency": {
+    "commit_id": "9f51afd0f9c11a6497ddca05c8b2dd0ea0ffa785",
+    "direct_url": {
+      "url": "https://github.com/tannerpolley/ePC-SAFT.git",
+      "vcs_info": {
+        "vcs": "git",
+        "commit_id": "9f51afd0f9c11a6497ddca05c8b2dd0ea0ffa785",
+        "requested_revision": "9f51afd0f9c11a6497ddca05c8b2dd0ea0ffa785"
+      }
+    }
+  },
+  "parameter_artifact": "data/reference/epcsaft_datasets/MEA_CO2_H2O_phase2",
+  "dielectric_option": "sensitivity_only_unless_direct_MEA_H2O_dielectric_evidence_supports_fit",
+  "born_option": "advanced_Born_SSM_DS_with_promoted_regularized_carbonate_pair",
+  "solver_route": [
+    "Build true-species problem definition from this JSON and the reaction manifest.",
+    "Use the pinned epcsaft native reactive speciation route for liquid activity-equilibrium rows.",
+    "Use the pinned epcsaft reactive electrolyte bubble route for volatile-species pressure rows.",
+    "Record solver failures and residual gates explicitly instead of treating generated rows as completion."
+  ],
+  "validation_policy": {
+    "direct_positive_species_metric": "median_abs_log10_error",
+    "direct_positive_threshold": 0.5,
+    "reported_zero_species_metric": "max_model_mole_fraction",
+    "reported_zero_threshold": 0.002,
+    "balance_inferred_rows": "context_only_not_log_residual_targets"
+  },
+  "reactions": [
+    {
+      "reaction_id": "R1",
+      "source": "Nasrifar2010_Table1_via_Austgen1991",
+      "basis_in_source": "mole_fraction_equilibrium_constant_h3o_reaction_family",
+      "activity_basis_needed": "thermodynamic_activity",
+      "conversion_status": "source_verified",
+      "used_in_phase2": "used_in_native_solver_residual_gated",
+      "regularization_role_in_phase3": "fixed_input_candidate_for_phase3_regularization",
+      "notes": "Repo-local Nasrifar 2010 Table 1 reports k1^x values traced to Austgen 1991; the value is used in the pinned native ePC-SAFT activity solve, while manuscript claims remain residual-gated."
+    },
+    {
+      "reaction_id": "R2",
+      "source": "Nasrifar2010_Table1_via_Austgen1991",
+      "basis_in_source": "mole_fraction_equilibrium_constant_h3o_reaction_family",
+      "activity_basis_needed": "thermodynamic_activity",
+      "conversion_status": "source_verified",
+      "used_in_phase2": "used_in_native_solver_residual_gated",
+      "regularization_role_in_phase3": "fixed_input_candidate_for_phase3_regularization",
+      "notes": "Repo-local Nasrifar 2010 Table 1 reports k2^x values traced to Austgen 1991; the value is used in the pinned native ePC-SAFT activity solve, while manuscript claims remain residual-gated."
+    },
+    {
+      "reaction_id": "R3",
+      "source": "Nasrifar2010_Table1_via_Austgen1991",
+      "basis_in_source": "mole_fraction_equilibrium_constant_h3o_reaction_family",
+      "activity_basis_needed": "thermodynamic_activity",
+      "conversion_status": "source_verified",
+      "used_in_phase2": "used_in_native_solver_residual_gated",
+      "regularization_role_in_phase3": "fixed_input_candidate_for_phase3_regularization",
+      "notes": "Repo-local Nasrifar 2010 Table 1 reports k3^x values traced to Austgen 1991; carbonate activity behavior remains residual-gated and a Phase 2/3 sensitivity risk."
+    },
+    {
+      "reaction_id": "R4",
+      "source": "Nasrifar2010_Table1_via_Austgen1991",
+      "basis_in_source": "mole_fraction_equilibrium_constant_h3o_reaction_family",
+      "activity_basis_needed": "thermodynamic_activity",
+      "conversion_status": "source_verified",
+      "used_in_phase2": "used_in_native_solver_residual_gated",
+      "regularization_role_in_phase3": "fixed_input_candidate_for_phase3_regularization",
+      "notes": "Repo-local Nasrifar 2010 Table 1 reports k9^x for MEACOO- + H2O <-> HCO3- + MEA; the value is used in the pinned native ePC-SAFT activity solve, while manuscript claims remain residual-gated."
+    },
+    {
+      "reaction_id": "R5",
+      "source": "Nasrifar2010_Table1_via_Austgen1991",
+      "basis_in_source": "mole_fraction_equilibrium_constant_h3o_reaction_family",
+      "activity_basis_needed": "thermodynamic_activity",
+      "conversion_status": "source_verified",
+      "used_in_phase2": "used_in_native_solver_residual_gated",
+      "regularization_role_in_phase3": "fixed_input_candidate_for_phase3_regularization",
+      "notes": "Repo-local Nasrifar 2010 Table 1 reports k7^x for MEAH+ dissociation; the value is used in the pinned native ePC-SAFT activity solve, while manuscript claims remain residual-gated."
+    }
+  ]
+}

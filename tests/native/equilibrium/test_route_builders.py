@@ -1160,15 +1160,19 @@ def test_reactive_lle_eos_route_builder_owns_canonical_initial_point() -> None:
         [float(np.log(3.0))],
     )
     initial = np.asarray(contract["initial_point"], dtype=float)
-    first = initial[:2] / np.sum(initial[:2])
-    second = initial[3:5] / np.sum(initial[3:5])
+    first_amounts = np.exp(initial[:2])
+    second_amounts = np.exp(initial[2:4])
+    first = first_amounts / np.sum(first_amounts)
+    second = second_amounts / np.sum(second_amounts)
 
-    assert contract["problem_name"] == "reactive_two_phase_eos"
-    assert contract["derivative_backend"] == "analytic_cppad"
-    assert contract["constraint_count"] == 3
+    assert contract["problem_name"] == "reactive_liquid_root_eos"
+    assert contract["derivative_backend"] == "cppad_implicit"
+    assert contract["density_backend"] == "liquid_pressure_root"
+    assert contract["variable_model"] == "log_phase_species_amounts"
+    assert contract["variable_count"] == 2 * contract["species_count"]
+    assert contract["constraint_count"] == 0
     assert contract["balance_row_count"] == 1
     assert contract["reaction_count"] == 1
-    assert contract["constraints_at_initial"][0] == pytest.approx(0.0, abs=1.0e-12)
     assert np.max(np.abs(first - second)) > 1.0e-3
 
     payload = _core._native_reactive_lle_eos_route_result(
@@ -1189,11 +1193,14 @@ def test_reactive_lle_eos_route_builder_owns_canonical_initial_point() -> None:
         1.0e-3,
         1.0e-8,
         1.0e-3,
+        1.0e-12,
+        [0],
+        [],
     )
 
     assert payload["backend"] == "ipopt"
-    assert payload["problem_name"] == "reactive_two_phase_eos"
-    assert payload["derivative_backend"] == "analytic_cppad"
+    assert payload["problem_name"] == "reactive_liquid_root_eos"
+    assert payload["derivative_backend"] == "cppad_implicit"
     assert payload["exact_gradient_required"] is True
     assert payload["exact_jacobian_required"] is True
     assert payload["phase_count"] == 2
@@ -1208,9 +1215,11 @@ def test_reactive_lle_eos_route_builder_owns_canonical_initial_point() -> None:
 
     assert payload["ran"] is True
     assert payload["status"] in {"accepted", "solver_rejected", "postsolve_rejected"}
+    if payload["status"] != "solver_rejected":
+        assert payload["postsolve"]["density_backend"] == "liquid_pressure_root"
 
 
-def test_reactive_electrolyte_lle_eos_route_builder_adds_phase_charge_rows() -> None:
+def test_reactive_electrolyte_lle_eos_route_builder_uses_liquid_root_residual_route() -> None:
     species = ["A", "B", "C+", "D-"]
     feed = np.asarray([0.535, 0.25, 0.1075, 0.1075], dtype=float)
     mix = epcsaft.ePCSAFTMixture.from_params(
@@ -1256,22 +1265,19 @@ def test_reactive_electrolyte_lle_eos_route_builder_adds_phase_charge_rows() -> 
         [float(np.log(0.2))],
     )
     initial = np.asarray(contract["initial_point"], dtype=float)
-    first = initial[:4]
-    second = initial[5:9]
-    jacobian = np.asarray(contract["jacobian_values_at_initial"], dtype=float).reshape(
-        contract["constraint_count"],
-        contract["variable_count"],
-    )
+    first = np.exp(initial[:4])
+    second = np.exp(initial[4:8])
 
-    assert contract["problem_name"] == "reactive_two_phase_eos"
-    assert contract["derivative_backend"] == "analytic_cppad"
-    assert contract["constraint_count"] == 7
+    assert contract["problem_name"] == "reactive_liquid_root_eos"
+    assert contract["derivative_backend"] == "cppad_implicit"
+    assert contract["density_backend"] == "liquid_pressure_root"
+    assert contract["variable_model"] == "log_phase_species_amounts"
+    assert contract["variable_count"] == 2 * contract["species_count"]
+    assert contract["constraint_count"] == 0
     assert contract["balance_row_count"] == 3
     assert contract["reaction_count"] == 1
     assert np.dot(first, charges) == pytest.approx(0.0, abs=1.0e-14)
     assert np.dot(second, charges) == pytest.approx(0.0, abs=1.0e-14)
-    assert jacobian[5, :4] == pytest.approx(charges)
-    assert jacobian[6, 5:9] == pytest.approx(charges)
 
     payload = _core._native_reactive_electrolyte_lle_eos_route_result(
         mix._native,
@@ -1291,11 +1297,14 @@ def test_reactive_electrolyte_lle_eos_route_builder_adds_phase_charge_rows() -> 
         1.0e-3,
         1.0e-8,
         1.0e-3,
+        1.0e-12,
+        [0],
+        [],
     )
 
     assert payload["backend"] == "ipopt"
-    assert payload["problem_name"] == "reactive_two_phase_eos"
-    assert payload["derivative_backend"] == "analytic_cppad"
+    assert payload["problem_name"] == "reactive_liquid_root_eos"
+    assert payload["derivative_backend"] == "cppad_implicit"
     assert payload["balance_row_count"] == 3
     assert payload["reaction_count"] == 1
     if not payload["compiled"]:
@@ -1306,3 +1315,5 @@ def test_reactive_electrolyte_lle_eos_route_builder_adds_phase_charge_rows() -> 
 
     assert payload["ran"] is True
     assert payload["status"] in {"accepted", "solver_rejected", "postsolve_rejected"}
+    if payload["status"] != "solver_rejected":
+        assert payload["postsolve"]["density_backend"] == "liquid_pressure_root"

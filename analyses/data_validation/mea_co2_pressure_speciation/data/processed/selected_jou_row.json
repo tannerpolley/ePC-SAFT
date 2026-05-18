@@ -1,0 +1,12 @@
+{
+  "selection_policy": "First 30 wt% MEA, 25 C, 200 kPa Jou 1995 row in the copied table.",
+  "row": {
+    "MEA_weight_fraction": "0.3",
+    "temperature": "25",
+    "pressure_MEA_raoult": "2.8",
+    "total_pressure": "200",
+    "CO2_pressure": "0.00213",
+    "CO2_loading": "0.211"
+  },
+  "source_path": "analyses/data_validation/mea_co2_pressure_speciation/data/input/Jou_1995_VLE.csv"
+}

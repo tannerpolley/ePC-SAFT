@@ -806,6 +806,62 @@ def _accepted_native_reactive_two_phase_result(
         raise SolutionError(f"Native reactive {route_label} route was rejected.", diagnostics)
 
     material_tolerance, pressure_tolerance, chemical_potential_tolerance, phase_distance_tolerance = tolerances
+    postsolve = route.get("postsolve", {})
+    if isinstance(postsolve, Mapping) and str(postsolve.get("density_backend", "")) == "liquid_pressure_root":
+        phase_compositions = np.asarray(postsolve.get("phase_compositions", ()), dtype=float)
+        phase_amount_totals = np.asarray(postsolve.get("phase_amount_totals", ()), dtype=float).reshape(-1)
+        phase_volumes = np.asarray(postsolve.get("phase_volumes", ()), dtype=float).reshape(-1)
+        phase_ln_phi_payload = postsolve.get("phase_ln_fugacity_coefficients", ())
+        phase_ln_phi = np.asarray(phase_ln_phi_payload, dtype=float) if phase_ln_phi_payload else np.asarray(())
+        if (
+            phase_compositions.ndim != 2
+            or phase_compositions.shape[0] != 2
+            or phase_compositions.shape[1] != int(mixture.ncomp)
+            or phase_amount_totals.size != 2
+            or phase_volumes.size != 2
+            or not np.all(np.isfinite(phase_compositions))
+            or not np.all(np.isfinite(phase_amount_totals))
+            or not np.all(np.isfinite(phase_volumes))
+            or np.any(phase_amount_totals <= 0.0)
+            or np.any(phase_volumes <= 0.0)
+        ):
+            raise SolutionError(f"Native reactive {route_label} route accepted without a valid liquid-root phase split.")
+        total_amount = float(np.sum(phase_amount_totals))
+        phases = []
+        for index, label in enumerate(phase_labels):
+            ln_phi = None
+            if phase_ln_phi.ndim == 2 and phase_ln_phi.shape == phase_compositions.shape:
+                ln_phi = phase_ln_phi[index]
+            phases.append(
+                EquilibriumPhase(
+                    label,
+                    composition=phase_compositions[index],
+                    density=float(phase_amount_totals[index] / phase_volumes[index]),
+                    temperature=T,
+                    pressure=P,
+                    phase_fraction=float(phase_amount_totals[index] / total_amount),
+                    ln_fugacity_coefficient=ln_phi,
+                    diagnostics={
+                        "amount_total": float(phase_amount_totals[index]),
+                        "volume": float(phase_volumes[index]),
+                    },
+                )
+            )
+        diagnostics = dict(postsolve)
+        diagnostics["reactive_route_status"] = str(route.get("status", ""))
+        diagnostics["solver_status"] = str(route.get("solver_status", ""))
+        diagnostics["application_status"] = str(route.get("application_status", ""))
+        diagnostics["solver_backend"] = str(route.get("backend", "ipopt"))
+        diagnostics["problem_name"] = str(route.get("problem_name", "reactive_liquid_root_eos"))
+        return EquilibriumResult(
+            backend="native_equilibrium_nlp",
+            problem_kind=problem_kind,
+            phases=tuple(phases),
+            stable=False,
+            split_detected=float(postsolve.get("phase_distance", 0.0)) >= phase_distance_tolerance,
+            diagnostics=diagnostics,
+        )
+
     phase_amounts = np.asarray(route["phase_amounts"], dtype=float)
     if phase_amounts.ndim != 2 or phase_amounts.shape[1] != int(mixture.ncomp):
         raise SolutionError(f"Native reactive {route_label} route phase amounts had an invalid shape.")
@@ -1025,6 +1081,7 @@ def _native_reactive_two_phase_flash(
     total_vector: np.ndarray,
     species: list[str],
     reactions: list[Any],
+    reaction_phase_stoichiometry: np.ndarray | None,
     options: EquilibriumOptions,
     route_binding: str,
     required_route: str,
@@ -1041,6 +1098,7 @@ def _native_reactive_two_phase_flash(
         total_vector=total_vector,
         species=species,
         reactions=reactions,
+        reaction_phase_stoichiometry=reaction_phase_stoichiometry,
     )
     material_tolerance, pressure_tolerance, _, phase_distance_tolerance = neutral_two_phase_eos_tolerances(P, options)
     route = getattr(_core, route_binding)(
@@ -1061,6 +1119,9 @@ def _native_reactive_two_phase_flash(
         pressure_tolerance,
         options.tolerance,
         phase_distance_tolerance,
+        options.min_composition,
+        request["reaction_standard_states"],
+        request["reaction_phase_stoichiometry"],
     )
     if str(route.get("status", "")) == "ipopt_dependency_required":
         _raise_native_ipopt_reactive_phase_required(required_route)
@@ -1327,10 +1388,8 @@ def reactive_phase_equilibrium(
 
     balance_matrix, total_vector, _ = _normalize_reactive_balances(species, balances, totals)
     reaction_defs = _normalize_reactions(species, reactions)
-    _, reaction_scope = _reaction_phase_stoichiometry_matrix(species, reaction_defs, route)
+    reaction_phase_stoichiometry, _ = _reaction_phase_stoichiometry_matrix(species, reaction_defs, route)
     _require_reactive_phase_standard_states(reaction_defs, route)
-    if reaction_scope != "per_phase_same_stoichiometry":
-        raise InputError(f"{route} requires per-phase identical reaction stoichiometry in the native Ipopt route.")
     if route == "lle_flash":
         route_binding = "_native_reactive_lle_eos_route_result"
         required_route = "reactive_lle"
@@ -1350,6 +1409,7 @@ def reactive_phase_equilibrium(
         total_vector=total_vector,
         species=species,
         reactions=reaction_defs,
+        reaction_phase_stoichiometry=reaction_phase_stoichiometry,
         options=solver_options,
         route_binding=route_binding,
         required_route=required_route,

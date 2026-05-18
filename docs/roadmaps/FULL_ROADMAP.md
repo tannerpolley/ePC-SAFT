@@ -373,7 +373,8 @@ Required benchmark families:
 - Ascani 2023 reactive phase equilibrium
 - Khudaida 2026 electrolyte salting-out LLE
 - Rezaee lithium extraction thermodynamic modeling
-- downstream MEA/lithium/column smoke workflows
+- MEA-CO2 pressure/speciation data validation with copied fitted parameters
+- downstream-facing lithium/column contract workflows with in-worktree inputs
 
 ---
 
