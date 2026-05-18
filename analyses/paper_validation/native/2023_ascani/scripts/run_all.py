@@ -60,6 +60,15 @@ def _json_like(value: Any) -> Any:
     return value
 
 
+def _phase_options_summary(options: epcsaft.EquilibriumOptions) -> dict[str, Any]:
+    return {
+        "max_iterations": int(options.max_iterations),
+        "tolerance": float(options.tolerance),
+        "min_composition": float(options.min_composition),
+        "timeout_seconds": float(options.timeout_seconds),
+    }
+
+
 def _status_from_public_route(result: epcsaft.EquilibriumResult) -> str:
     diagnostics = result.diagnostics
     if (
@@ -148,9 +157,15 @@ def _run_hypothetical_homogeneous_ce() -> dict[str, Any]:
 
 def _run_hypothetical_reactive_lle() -> dict[str, Any]:
     mix = _hypothetical_mixture()
-    feed = np.asarray([0.45, 0.45, 0.10], dtype=float)
+    feed = np.asarray([0.20, 0.70, 0.10], dtype=float)
     balances = {"A_total": {"A": 1.0, "C": 1.0}, "B_total": {"B": 1.0, "C": 1.0}}
     totals = {"A_total": float(feed[0] + feed[2]), "B_total": float(feed[1] + feed[2])}
+    phase_options = epcsaft.EquilibriumOptions(
+        max_iterations=350,
+        tolerance=2.0e-6,
+        min_composition=1.0e-12,
+        timeout_seconds=20.0,
+    )
     try:
         result = mix.equilibrium(
             kind="reactive_lle",
@@ -160,12 +175,7 @@ def _run_hypothetical_reactive_lle() -> dict[str, Any]:
             balances=balances,
             totals=totals,
             reactions=[_hypothetical_reaction()],
-            phase_options=epcsaft.EquilibriumOptions(
-                max_iterations=80,
-                tolerance=1.0e-6,
-                min_composition=1.0e-12,
-                timeout_seconds=5.0,
-            ),
+            phase_options=phase_options,
         )
     except Exception as exc:
         return {
@@ -174,11 +184,13 @@ def _run_hypothetical_reactive_lle() -> dict[str, Any]:
             "exception_type": type(exc).__name__,
             "exception_message": str(exc),
             "feed": feed.tolist(),
+            "solver_options": _phase_options_summary(phase_options),
         }
     return {
         "status": _status_from_public_route(result),
         "public_api": 'mix.equilibrium(kind="reactive_lle")',
         "feed": feed.tolist(),
+        "solver_options": _phase_options_summary(phase_options),
         "phase_distance": result.diagnostics.get("phase_distance"),
         "reaction_stationarity_norm": result.diagnostics.get("reaction_stationarity_norm"),
         "phase_equilibrium_norm": result.diagnostics.get("phase_equilibrium_norm"),
@@ -238,6 +250,12 @@ def _run_system1_reactive_lle() -> dict[str, Any]:
         source="Ascani 2023 Table 4",
     )
     try:
+        phase_options = epcsaft.EquilibriumOptions(
+            max_iterations=500,
+            tolerance=3.0e-6,
+            min_composition=1.0e-12,
+            timeout_seconds=30.0,
+        )
         result = mix.equilibrium(
             kind="reactive_lle",
             T=318.15,
@@ -246,12 +264,7 @@ def _run_system1_reactive_lle() -> dict[str, Any]:
             balances=balances,
             totals=totals,
             reactions=[reaction],
-            phase_options=epcsaft.EquilibriumOptions(
-                max_iterations=60,
-                tolerance=1.0e-7,
-                min_composition=1.0e-12,
-                timeout_seconds=5.0,
-            ),
+            phase_options=phase_options,
         )
     except Exception as exc:
         return {
@@ -260,12 +273,14 @@ def _run_system1_reactive_lle() -> dict[str, Any]:
             "exception_type": type(exc).__name__,
             "exception_message": str(exc),
             "feed": feed.tolist(),
+            "solver_options": _phase_options_summary(phase_options),
             "paper_match_status": "blocked_source_data",
         }
     return {
         "status": _status_from_public_route(result),
         "public_api": 'mix.equilibrium(kind="reactive_lle")',
         "feed": feed.tolist(),
+        "solver_options": _phase_options_summary(phase_options),
         "phase_distance": result.diagnostics.get("phase_distance"),
         "reaction_stationarity_norm": result.diagnostics.get("reaction_stationarity_norm"),
         "phase_equilibrium_norm": result.diagnostics.get("phase_equilibrium_norm"),

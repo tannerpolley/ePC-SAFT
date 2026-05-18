@@ -1179,7 +1179,10 @@ def _native_reactive_two_phase_flash(
         reactions=reactions,
         reaction_phase_stoichiometry=reaction_phase_stoichiometry,
     )
-    material_tolerance, pressure_tolerance, _, phase_distance_tolerance = neutral_two_phase_eos_tolerances(P, options)
+    material_tolerance, _, chemical_potential_tolerance, phase_distance_tolerance = neutral_two_phase_eos_tolerances(
+        P,
+        options,
+    )
     route = getattr(_core, route_binding)(
         mixture._native,
         request["T"],
@@ -1195,8 +1198,8 @@ def _native_reactive_two_phase_flash(
         options.tolerance,
         _native_timeout_seconds(options),
         material_tolerance,
-        pressure_tolerance,
-        options.tolerance,
+        chemical_potential_tolerance,
+        chemical_potential_tolerance,
         phase_distance_tolerance,
         options.min_composition,
         request["reaction_standard_states"],

@@ -1170,15 +1170,21 @@ def test_reactive_lle_eos_route_builder_owns_canonical_initial_point() -> None:
     assert contract["density_backend"] == "liquid_pressure_root"
     assert contract["variable_model"] == "log_phase_species_amounts"
     assert contract["variable_count"] == 2 * contract["species_count"]
-    assert contract["constraint_count"] == 1
-    assert contract["jacobian_nonzero_count"] == contract["variable_count"]
+    assert contract["constraint_count"] == 2
+    assert contract["jacobian_nonzero_count"] == contract["variable_count"] * contract["constraint_count"]
     assert contract["balance_row_count"] == 1
     assert contract["reaction_count"] == 1
     assert np.max(np.abs(first - second)) > 1.0e-3
-    assert contract["constraint_lower_bounds"][0] == pytest.approx(1.0e-8)
-    assert contract["constraint_upper_bounds"][0] > 1.0e6
-    assert contract["constraints_at_initial"][0] >= contract["constraint_lower_bounds"][0]
-    assert np.asarray(contract["jacobian_values_at_initial"], dtype=float).shape == (contract["variable_count"],)
+    assert contract["constraint_lower_bounds"][0] == pytest.approx(0.0)
+    assert contract["constraint_upper_bounds"][0] == pytest.approx(0.0)
+    assert contract["constraint_lower_bounds"][-1] == pytest.approx(1.0e-8)
+    assert contract["constraint_upper_bounds"][-1] > 1.0e6
+    assert contract["constraints_at_initial"][0] == pytest.approx(0.0)
+    assert contract["constraints_at_initial"][-1] >= contract["constraint_lower_bounds"][-1]
+    assert np.all(np.asarray(contract["variable_upper_bounds"], dtype=float) < 50.0)
+    assert np.asarray(contract["jacobian_values_at_initial"], dtype=float).shape == (
+        contract["jacobian_nonzero_count"],
+    )
     assert np.count_nonzero(np.asarray(contract["jacobian_values_at_initial"], dtype=float)) > 0
 
     payload = _core._native_reactive_lle_eos_route_result(
@@ -1279,14 +1285,20 @@ def test_reactive_electrolyte_lle_eos_route_builder_uses_liquid_root_residual_ro
     assert contract["density_backend"] == "liquid_pressure_root"
     assert contract["variable_model"] == "log_phase_species_amounts"
     assert contract["variable_count"] == 2 * contract["species_count"]
-    assert contract["constraint_count"] == 1
-    assert contract["jacobian_nonzero_count"] == contract["variable_count"]
+    assert contract["constraint_count"] == 4
+    assert contract["jacobian_nonzero_count"] == contract["variable_count"] * contract["constraint_count"]
     assert contract["balance_row_count"] == 3
     assert contract["reaction_count"] == 1
-    assert contract["constraint_lower_bounds"][0] == pytest.approx(1.0e-8)
-    assert contract["constraint_upper_bounds"][0] > 1.0e6
-    assert contract["constraints_at_initial"][0] >= contract["constraint_lower_bounds"][0]
-    assert np.asarray(contract["jacobian_values_at_initial"], dtype=float).shape == (contract["variable_count"],)
+    assert contract["constraint_lower_bounds"][:3] == pytest.approx([0.0, 0.0, 0.0])
+    assert contract["constraint_upper_bounds"][:3] == pytest.approx([0.0, 0.0, 0.0])
+    assert contract["constraint_lower_bounds"][-1] == pytest.approx(1.0e-8)
+    assert contract["constraint_upper_bounds"][-1] > 1.0e6
+    assert contract["constraints_at_initial"][:3] == pytest.approx([0.0, 0.0, 0.0])
+    assert contract["constraints_at_initial"][-1] >= contract["constraint_lower_bounds"][-1]
+    assert np.all(np.asarray(contract["variable_upper_bounds"], dtype=float) < 50.0)
+    assert np.asarray(contract["jacobian_values_at_initial"], dtype=float).shape == (
+        contract["jacobian_nonzero_count"],
+    )
     assert np.count_nonzero(np.asarray(contract["jacobian_values_at_initial"], dtype=float)) > 0
     assert np.dot(first, charges) == pytest.approx(0.0, abs=1.0e-14)
     assert np.dot(second, charges) == pytest.approx(0.0, abs=1.0e-14)

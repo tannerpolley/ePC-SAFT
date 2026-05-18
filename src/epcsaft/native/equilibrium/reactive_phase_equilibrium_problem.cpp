@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <numeric>
 #include <sstream>
 
@@ -141,6 +142,46 @@ std::vector<double> default_variables_from_feed(const std::vector<double>& feed,
         out[feed.size() + i] = std::log(amount);
     }
     return out;
+}
+
+std::vector<double> species_amount_upper_bounds(
+    const std::vector<double>& balance_matrix_row_major,
+    int balance_rows,
+    const std::vector<double>& total_vector,
+    std::size_t ncomp,
+    double floor
+) {
+    if (balance_matrix_row_major.size() != static_cast<std::size_t>(balance_rows) * ncomp) {
+        throw ValueError("reactive phase upper-bound builder received an invalid balance matrix.");
+    }
+    if (total_vector.size() != static_cast<std::size_t>(balance_rows)) {
+        throw ValueError("reactive phase upper-bound builder received an invalid total vector.");
+    }
+
+    double default_upper = 0.0;
+    for (double total : total_vector) {
+        if (std::isfinite(total) && total > 0.0) {
+            default_upper += total;
+        }
+    }
+    default_upper = std::max(default_upper, 1.0);
+
+    std::vector<double> upper(ncomp, default_upper);
+    for (std::size_t species = 0; species < ncomp; ++species) {
+        double limit = std::numeric_limits<double>::infinity();
+        for (int row = 0; row < balance_rows; ++row) {
+            const double coefficient = balance_matrix_row_major[static_cast<std::size_t>(row) * ncomp + species];
+            const double total = total_vector[static_cast<std::size_t>(row)];
+            if (std::isfinite(coefficient) && coefficient > 0.0 && std::isfinite(total) && total >= 0.0) {
+                limit = std::min(limit, total / coefficient);
+            }
+        }
+        if (std::isfinite(limit)) {
+            upper[species] = std::min(upper[species], limit);
+        }
+        upper[species] = std::max(upper[species], 10.0 * floor);
+    }
+    return upper;
 }
 
 std::vector<double> variables_from_initial_phases(
@@ -995,6 +1036,19 @@ public:
             mixture_->args().z,
             options_.min_composition
         );
+        const std::vector<double> species_upper = species_amount_upper_bounds(
+            balance_matrix_row_major_,
+            balance_rows_,
+            total_vector_,
+            ncomp,
+            options_.min_composition
+        );
+        variable_upper_bounds_.assign(2 * ncomp, std::log(1.0));
+        for (std::size_t species = 0; species < ncomp; ++species) {
+            const double upper = std::log(species_upper[species]);
+            variable_upper_bounds_[species] = upper;
+            variable_upper_bounds_[ncomp + species] = upper;
+        }
         if (minimum_phase_distance_ > 0.0) {
             const std::vector<double> first_amounts = exp_amounts(initial_variables_, 0, ncomp);
             const std::vector<double> second_amounts = exp_amounts(initial_variables_, ncomp, ncomp);
@@ -1032,7 +1086,7 @@ public:
     }
 
     int constraint_count() const override {
-        return separation_constraint_count();
+        return balance_rows_ + separation_constraint_count();
     }
 
     int jacobian_nonzero_count() const override {
@@ -1042,10 +1096,12 @@ public:
     epcsaft::native::equilibrium_nlp::NlpBounds bounds() const override {
         epcsaft::native::equilibrium_nlp::NlpBounds out;
         out.variable_lower.assign(initial_variables_.size(), std::log(options_.min_composition));
-        out.variable_upper.assign(initial_variables_.size(), 50.0);
+        out.variable_upper = variable_upper_bounds_;
+        out.constraint_lower.assign(static_cast<std::size_t>(balance_rows_), 0.0);
+        out.constraint_upper.assign(static_cast<std::size_t>(balance_rows_), 0.0);
         if (separation_constraint_count() > 0) {
-            out.constraint_lower = {minimum_phase_distance_};
-            out.constraint_upper = {1.0e12};
+            out.constraint_lower.push_back(minimum_phase_distance_);
+            out.constraint_upper.push_back(1.0e12);
         }
         return out;
     }
@@ -1056,7 +1112,7 @@ public:
 
     double objective(const std::vector<double>& variables) const override {
         try {
-            return evaluate(variables).objective;
+            return evaluate_cached(variables).objective;
         } catch (const std::exception&) {
             return 1.0e100;
         }
@@ -1064,35 +1120,63 @@ public:
 
     std::vector<double> objective_gradient(const std::vector<double>& variables) const override {
         try {
-            return evaluate(variables).gradient;
+            return evaluate_cached(variables).gradient;
         } catch (const std::exception&) {
             return std::vector<double>(variables.size(), 0.0);
         }
     }
 
     std::vector<double> constraints(const std::vector<double>& variables) const override {
-        if (separation_constraint_count() == 0) {
-            return {};
+        const ReactivePhaseResidualEvaluationNative& eval = evaluate_cached(variables);
+        std::vector<double> out = eval.element_balance_residuals;
+        if (separation_constraint_count() > 0) {
+            out.push_back(phase_separation(variables));
         }
-        return {phase_separation(variables)};
+        return out;
     }
 
     epcsaft::native::equilibrium_nlp::NlpJacobianStructure jacobian_structure() const override {
         epcsaft::native::equilibrium_nlp::NlpJacobianStructure out;
         out.rows.reserve(static_cast<std::size_t>(jacobian_nonzero_count()));
         out.cols.reserve(static_cast<std::size_t>(jacobian_nonzero_count()));
-        for (int col = 0; col < variable_count(); ++col) {
-            out.rows.push_back(0);
-            out.cols.push_back(col);
+        for (int row = 0; row < balance_rows_; ++row) {
+            for (int col = 0; col < variable_count(); ++col) {
+                out.rows.push_back(row);
+                out.cols.push_back(col);
+            }
+        }
+        if (separation_constraint_count() > 0) {
+            const int row = balance_rows_;
+            for (int col = 0; col < variable_count(); ++col) {
+                out.rows.push_back(row);
+                out.cols.push_back(col);
+            }
         }
         return out;
     }
 
     std::vector<double> jacobian_values(const std::vector<double>& variables) const override {
-        if (separation_constraint_count() == 0) {
-            return {};
+        const std::size_t ncomp = feed_.size();
+        const ReactivePhaseResidualEvaluationNative& eval = evaluate_cached(variables);
+        std::vector<double> values;
+        values.reserve(static_cast<std::size_t>(jacobian_nonzero_count()));
+        for (int row = 0; row < balance_rows_; ++row) {
+            for (std::size_t species = 0; species < ncomp; ++species) {
+                const double coefficient =
+                    balance_matrix_row_major_[static_cast<std::size_t>(row) * ncomp + species];
+                values.push_back(coefficient * eval.phase1_amounts[species]);
+            }
+            for (std::size_t species = 0; species < ncomp; ++species) {
+                const double coefficient =
+                    balance_matrix_row_major_[static_cast<std::size_t>(row) * ncomp + species];
+                values.push_back(coefficient * eval.phase2_amounts[species]);
+            }
         }
-        return phase_separation_jacobian(variables);
+        if (separation_constraint_count() > 0) {
+            const std::vector<double> separation_jacobian = phase_separation_jacobian(variables);
+            values.insert(values.end(), separation_jacobian.begin(), separation_jacobian.end());
+        }
+        return values;
     }
 
     epcsaft::native::equilibrium_nlp::NlpScaling scaling() const override {
@@ -1112,7 +1196,14 @@ public:
     }
 
     ReactivePhaseResidualEvaluationNative evaluate(const std::vector<double>& variables) const {
-        return evaluate_reactive_phase_equilibrium_residual_native(
+        return evaluate_cached(variables);
+    }
+
+    const ReactivePhaseResidualEvaluationNative& evaluate_cached(const std::vector<double>& variables) const {
+        if (cached_evaluation_valid_ && cached_variables_ == variables) {
+            return cached_evaluation_;
+        }
+        cached_evaluation_ = evaluate_reactive_phase_equilibrium_residual_native(
             mixture_,
             temperature_,
             target_pressure_,
@@ -1129,6 +1220,9 @@ public:
             variables,
             true
         );
+        cached_variables_ = variables;
+        cached_evaluation_valid_ = true;
+        return cached_evaluation_;
     }
 
     const std::vector<double>& feed() const {
@@ -1212,6 +1306,10 @@ private:
     std::vector<int> reaction_standard_states_;
     std::vector<double> reaction_phase_stoichiometry_row_major_;
     std::vector<double> initial_variables_;
+    std::vector<double> variable_upper_bounds_;
+    mutable bool cached_evaluation_valid_ = false;
+    mutable std::vector<double> cached_variables_;
+    mutable ReactivePhaseResidualEvaluationNative cached_evaluation_;
     double minimum_phase_distance_ = 1.0e-8;
     int separation_species_index_ = 0;
     double separation_sign_ = 1.0;

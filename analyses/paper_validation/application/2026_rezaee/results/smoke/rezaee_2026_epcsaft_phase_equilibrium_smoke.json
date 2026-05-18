@@ -102,7 +102,7 @@
       "    ...<4 lines>...",
       "        options=opts,",
       "    )",
-      "  File \"C:\\Users\\Tanner\\Documents\\git\\ePC-SAFT-ipopt-profile\\src\\epcsaft\\equilibrium.py\", line 1374, in _native_electrolyte_stability",
+      "  File \"C:\\Users\\Tanner\\Documents\\git\\ePC-SAFT-ipopt-profile\\src\\epcsaft\\equilibrium.py\", line 1377, in _native_electrolyte_stability",
       "    raise SolutionError(\"Native electrolyte stability route was rejected.\", diagnostics)",
       "epcsaft._types.SolutionError: ('Native electrolyte stability route was rejected.', {'route_status': 'solver_rejected', 'solver_status': 'error_in_step_computation', 'application_status': 'ipopt_application_status_-3', 'parent_phase': 'liq', 'trial_phase': 'liq'})"
     ]

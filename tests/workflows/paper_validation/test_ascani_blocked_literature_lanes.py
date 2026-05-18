@@ -78,10 +78,17 @@ def test_ascani_2023_reactive_lane_records_missing_source_targets_without_passin
     assert payload["stage_d_reactive_foundation"]["hypothetical_reactive_tie_line"]["public_api"] == (
         'mix.equilibrium(kind="reactive_lle")'
     )
-    assert payload["stage_e_ascani_2023"]["status"] == "blocked_solver"
+    stage_e = payload["stage_e_ascani_2023"]
+    assert stage_e["status"] in {"blocked_solver", "accepted_public_native_ipopt"}
     assert payload["stage_e_ascani_2023"]["system_1_route_gate"]["public_api"] == (
         'mix.equilibrium(kind="reactive_lle")'
     )
+    if stage_e["status"] == "accepted_public_native_ipopt":
+        route_gate = stage_e["system_1_route_gate"]
+        route_tolerance = route_gate["solver_options"]["tolerance"]
+        assert route_gate["phase_distance"] >= 1.0e-8
+        assert route_gate["reaction_stationarity_norm"] <= route_tolerance
+        assert route_gate["phase_equilibrium_norm"] <= route_tolerance
     assert payload["solver_contract"]["derivative_backend"] == "cppad_implicit"
     assert payload["solver_contract"]["density_backend"] == "liquid_pressure_root"
     assert payload["solver_contract"]["phase_volumes_are_nlp_variables"] is False

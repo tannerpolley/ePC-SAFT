@@ -2169,7 +2169,7 @@ PYBIND11_MODULE(_core, m) {
         double tolerance,
         double timeout_seconds,
         double conserved_balance_tolerance,
-        double pressure_tolerance,
+        double phase_equilibrium_tolerance,
         double reaction_stationarity_tolerance,
         double phase_distance_tolerance,
         double min_composition,
@@ -2201,7 +2201,7 @@ PYBIND11_MODULE(_core, m) {
                 options,
                 conserved_balance_tolerance,
                 reaction_stationarity_tolerance,
-                pressure_tolerance,
+                phase_equilibrium_tolerance,
                 phase_distance_tolerance
             )
         );
@@ -2221,7 +2221,7 @@ PYBIND11_MODULE(_core, m) {
         double tolerance,
         double timeout_seconds,
         double conserved_balance_tolerance,
-        double pressure_tolerance,
+        double phase_equilibrium_tolerance,
         double reaction_stationarity_tolerance,
         double phase_distance_tolerance,
         double min_composition,
@@ -2253,7 +2253,7 @@ PYBIND11_MODULE(_core, m) {
                 options,
                 conserved_balance_tolerance,
                 reaction_stationarity_tolerance,
-                pressure_tolerance,
+                phase_equilibrium_tolerance,
                 phase_distance_tolerance
             )
         );
