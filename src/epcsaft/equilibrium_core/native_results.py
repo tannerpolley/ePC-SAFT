@@ -10,11 +10,63 @@ import numpy as np
 from .._types import SolutionError
 
 
+_ROUTE_STRING_DIAGNOSTIC_KEYS = (
+    "solver_status",
+    "application_status",
+    "last_callback_exception",
+    "problem_name",
+    "adapter_kind",
+    "gradient_approximation",
+    "jacobian_approximation",
+    "hessian_approximation",
+)
+
+_ROUTE_BOOL_DIAGNOSTIC_KEYS = (
+    "exact_gradient_required",
+    "exact_jacobian_required",
+)
+
+
 def _diagnostics(payload: Mapping[str, Any]) -> dict[str, Any]:
     diagnostics = payload.get("diagnostics", {})
     if isinstance(diagnostics, Mapping):
         return dict(diagnostics)
     return {}
+
+
+def native_route_diagnostics(
+    route: Mapping[str, Any],
+    *,
+    route_status_key: str = "route_status",
+    defaults: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Return diagnostics for a native route acceptance gate."""
+    postsolve = route.get("postsolve", {})
+    diagnostics = dict(postsolve) if isinstance(postsolve, Mapping) else {}
+    default_values = dict(defaults or {})
+    diagnostics[route_status_key] = str(route.get("status", default_values.get("status", "")))
+    diagnostics["solver_backend"] = str(route.get("backend", default_values.get("solver_backend", "")))
+    for key in _ROUTE_STRING_DIAGNOSTIC_KEYS:
+        if key in route or key in default_values:
+            diagnostics[key] = str(route.get(key, default_values.get(key, "")))
+    for key in _ROUTE_BOOL_DIAGNOSTIC_KEYS:
+        if key in route or key in default_values:
+            diagnostics[key] = bool(route.get(key, default_values.get(key, False)))
+    return diagnostics
+
+
+def raise_native_route_rejected(
+    route: Mapping[str, Any],
+    message: str,
+    *,
+    route_status_key: str = "route_status",
+    defaults: Mapping[str, Any] | None = None,
+) -> None:
+    """Raise a SolutionError with the shared native route diagnostics shape."""
+    raise SolutionError(
+        message,
+        native_route_diagnostics(route, route_status_key=route_status_key, defaults=defaults),
+    )
 
 
 def _phase_payload_to_public(phase: Mapping[str, Any], *, label: str | None = None):

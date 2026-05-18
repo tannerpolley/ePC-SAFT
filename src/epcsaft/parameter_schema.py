@@ -12,6 +12,36 @@ import numpy as np
 
 from ._types import InputError
 
+_PURE_PARAMETER_KEYS = {
+    "MW",
+    "molar_mass",
+    "m",
+    "s",
+    "sigma",
+    "e",
+    "epsilon_k",
+    "z",
+    "charge",
+    "e_assoc",
+    "epsilon_k_ab",
+    "vol_a",
+    "kappa_ab",
+    "assoc_scheme",
+    "association_scheme",
+    "dielc",
+    "relative_permittivity",
+    "d_born",
+    "born_diameter",
+    "f_solv",
+    "solvation_factor",
+}
+_BINARY_PARAMETER_KEYS = {"k_ij", "l_ij", "k_hb", "k_hb_ij"}
+_GENERATED_PARAMETER_KEYS = {"assoc_num", "assoc_matrix"}
+_STRUCTURAL_KEYS = {"components", "pure_records", "binary_records", "metadata"}
+_PARAMETER_PAYLOAD_KEYS = (
+    _PURE_PARAMETER_KEYS | _BINARY_PARAMETER_KEYS | _GENERATED_PARAMETER_KEYS | _STRUCTURAL_KEYS
+)
+
 
 @dataclass(frozen=True, slots=True)
 class ComponentIdentifier:
@@ -126,17 +156,17 @@ class PureRecord:
     def from_legacy(cls, component: str, payload: Mapping[str, Any]) -> PureRecord:
         return cls(
             component=component,
-            molar_mass=float(payload.get("MW", payload.get("molar_mass", 0.0))),
-            m=float(payload.get("m", 1.0)),
-            sigma=float(payload.get("s", payload.get("sigma", 0.0))),
-            epsilon_k=float(payload.get("e", payload.get("epsilon_k", 0.0))),
-            charge=float(payload.get("z", payload.get("charge", 0.0))),
-            epsilon_k_ab=float(payload.get("e_assoc", payload.get("epsilon_k_ab", 0.0))),
-            kappa_ab=float(payload.get("vol_a", payload.get("kappa_ab", 0.0))),
+            molar_mass=_legacy_float(payload, "MW", "molar_mass", default=0.0),
+            m=_legacy_float(payload, "m", default=1.0),
+            sigma=_legacy_float(payload, "s", "sigma", default=0.0),
+            epsilon_k=_legacy_float(payload, "e", "epsilon_k", default=0.0),
+            charge=_legacy_float(payload, "z", "charge", default=0.0),
+            epsilon_k_ab=_legacy_float(payload, "e_assoc", "epsilon_k_ab", default=0.0),
+            kappa_ab=_legacy_float(payload, "vol_a", "kappa_ab", default=0.0),
             association_scheme=payload.get("assoc_scheme", payload.get("association_scheme")),
-            relative_permittivity=float(payload.get("dielc", payload.get("relative_permittivity", 1.0))),
-            born_diameter=float(payload.get("d_born", payload.get("born_diameter", 0.0))),
-            solvation_factor=float(payload.get("f_solv", payload.get("solvation_factor", 1.0))),
+            relative_permittivity=_legacy_float(payload, "dielc", "relative_permittivity", default=1.0),
+            born_diameter=_legacy_float(payload, "d_born", "born_diameter", default=0.0),
+            solvation_factor=_legacy_float(payload, "f_solv", "solvation_factor", default=1.0),
         )
 
 
@@ -178,6 +208,7 @@ class ParameterSet:
     pure_records: tuple[PureRecord, ...]
     binary_records: tuple[BinaryRecord, ...] = ()
     metadata: Mapping[str, Any] = field(default_factory=dict)
+    runtime_options: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         components = tuple(str(component) for component in self.components)
@@ -185,6 +216,7 @@ class ParameterSet:
         object.__setattr__(self, "pure_records", tuple(self.pure_records))
         object.__setattr__(self, "binary_records", tuple(self.binary_records))
         object.__setattr__(self, "metadata", dict(self.metadata))
+        object.__setattr__(self, "runtime_options", _copy_payload_mapping(self.runtime_options))
         self.validate()
 
     @classmethod
@@ -194,6 +226,7 @@ class ParameterSet:
         binary_records: Sequence[BinaryRecord] | None = None,
         *,
         metadata: Mapping[str, Any] | None = None,
+        runtime_options: Mapping[str, Any] | None = None,
     ) -> ParameterSet:
         pure = tuple(pure_records)
         return cls(
@@ -201,6 +234,7 @@ class ParameterSet:
             pure_records=pure,
             binary_records=tuple(binary_records or ()),
             metadata=dict(metadata or {}),
+            runtime_options=_copy_payload_mapping(runtime_options),
         )
 
     @classmethod
@@ -255,12 +289,17 @@ class ParameterSet:
                 )
             )
         binary_records = _binary_records_from_legacy(labels, arrays)
-        return cls.from_records(pure_records, binary_records, metadata=metadata)
+        return cls.from_records(
+            pure_records,
+            binary_records,
+            metadata=metadata,
+            runtime_options=_runtime_options_from_payload(arrays),
+        )
 
     @classmethod
     def from_dataset(
         cls,
-        dataset_name: str,
+        dataset_name: str | Path,
         species: Sequence[str],
         x: Sequence[float] | None = None,
         T: float = 298.15,
@@ -294,13 +333,22 @@ class ParameterSet:
             for label in record.components:
                 if label not in known:
                     errors.append(f"BinaryRecord references unknown component {label}.")
+        reserved = sorted(set(self.runtime_options) & _PARAMETER_PAYLOAD_KEYS)
+        if reserved:
+            errors.append(f"runtime_options cannot override parameter payload keys: {', '.join(reserved)}.")
         if errors:
             raise InputError("; ".join(errors))
-        return {"valid": True, "component_count": len(self.components), "binary_count": len(self.binary_records)}
+        return {
+            "valid": True,
+            "component_count": len(self.components),
+            "binary_count": len(self.binary_records),
+            "runtime_option_count": len(self.runtime_options),
+        }
 
-    def to_legacy_dict(self) -> dict[str, Any]:
+    def to_runtime_dict(self) -> dict[str, Any]:
         records = {str(record.component): record for record in self.pure_records}
         ordered = [records[label] for label in self.components]
+        charge_vector = np.asarray([record.charge for record in ordered], dtype=float)
         payload: dict[str, Any] = {
             "MW": np.asarray([record.molar_mass for record in ordered], dtype=float),
             "m": np.asarray([record.m for record in ordered], dtype=float),
@@ -312,7 +360,7 @@ class ParameterSet:
                 None if record.association_scheme in (None, "") else str(record.association_scheme)
                 for record in ordered
             ],
-            "z": np.asarray([record.charge for record in ordered], dtype=float),
+            "z": charge_vector if np.any(np.abs(charge_vector) > 1.0e-12) else np.asarray([], dtype=float),
             "dielc": np.asarray([record.relative_permittivity for record in ordered], dtype=float),
             "d_born": np.asarray([record.born_diameter for record in ordered], dtype=float),
             "f_solv": np.asarray([record.solvation_factor for record in ordered], dtype=float),
@@ -321,28 +369,79 @@ class ParameterSet:
         matrices = {
             "k_ij": np.zeros((ncomp, ncomp), dtype=float),
             "l_ij": np.zeros((ncomp, ncomp), dtype=float),
-            "k_hb_ij": np.zeros((ncomp, ncomp), dtype=float),
+            "k_hb": np.zeros((ncomp, ncomp), dtype=float),
         }
         index = {label: idx for idx, label in enumerate(self.components)}
         for record in self.binary_records:
             i, j = index[record.components[0]], index[record.components[1]]
             matrices["k_ij"][i, j] = matrices["k_ij"][j, i] = record.k_ij
             matrices["l_ij"][i, j] = matrices["l_ij"][j, i] = record.l_ij
-            matrices["k_hb_ij"][i, j] = matrices["k_hb_ij"][j, i] = record.k_hb_ij
+            matrices["k_hb"][i, j] = matrices["k_hb"][j, i] = record.k_hb_ij
         payload.update(matrices)
+        payload.update(_copy_payload_mapping(self.runtime_options))
         return payload
+
+    def to_legacy_dict(self) -> dict[str, Any]:
+        return self.to_runtime_dict()
 
     def to_json(self, path: str | Path | None = None) -> str:
         payload = {
             "components": list(self.components),
             "pure_records": [asdict(record) for record in self.pure_records],
             "binary_records": [asdict(record) for record in self.binary_records],
-            "metadata": dict(self.metadata),
+            "metadata": _json_ready(self.metadata),
+            "runtime_options": _json_ready(self.runtime_options),
         }
         text = json.dumps(payload, indent=2, sort_keys=True)
         if path is not None:
             Path(path).write_text(text + "\n", encoding="utf-8")
         return text
+
+
+def _legacy_float(payload: Mapping[str, Any], *keys: str, default: float) -> float:
+    for key in keys:
+        value = payload.get(key)
+        if value not in (None, ""):
+            return float(value)
+    return float(default)
+
+
+def _copy_payload_value(value: Any) -> Any:
+    if isinstance(value, np.ndarray):
+        return np.asarray(value).copy()
+    if isinstance(value, Mapping):
+        return {str(key): _copy_payload_value(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_copy_payload_value(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(_copy_payload_value(item) for item in value)
+    return value
+
+
+def _copy_payload_mapping(payload: Mapping[str, Any] | None) -> dict[str, Any]:
+    if payload is None:
+        return {}
+    return {str(key): _copy_payload_value(value) for key, value in payload.items()}
+
+
+def _runtime_options_from_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        str(key): _copy_payload_value(value)
+        for key, value in payload.items()
+        if str(key) not in _PARAMETER_PAYLOAD_KEYS
+    }
+
+
+def _json_ready(value: Any) -> Any:
+    if isinstance(value, np.ndarray):
+        return _json_ready(value.tolist())
+    if isinstance(value, Mapping):
+        return {str(key): _json_ready(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_ready(item) for item in value]
+    if isinstance(value, (np.floating, np.integer)):
+        return value.item()
+    return value
 
 
 def _array_value(value: Any, idx: int, *, default: Any) -> Any:

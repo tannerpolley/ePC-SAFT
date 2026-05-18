@@ -7,6 +7,7 @@ import pytest
 
 import epcsaft
 from epcsaft import ePCSAFTMixture
+from epcsaft.parameters import get_prop_dict
 
 
 def test_parameter_set_round_trips_to_legacy_payload_and_mixture() -> None:
@@ -57,6 +58,40 @@ def test_parameter_set_from_legacy_dict_preserves_binary_records() -> None:
     assert params.to_legacy_dict()["MW"].tolist() == pytest.approx([18.01528e-3, 46.07e-3])
     assert params.binary_records == (epcsaft.BinaryRecord(("water", "ethanol"), k_ij=0.12),)
     json.loads(params.to_json())
+
+
+def test_parameter_set_compiles_runtime_payload_with_binary_hb_and_options() -> None:
+    params = epcsaft.ParameterSet.from_records(
+        [
+            epcsaft.PureRecord("A", molar_mass=10.0e-3, m=1.0, sigma=3.0, epsilon_k=200.0),
+            epcsaft.PureRecord("B", molar_mass=20.0e-3, m=1.5, sigma=3.5, epsilon_k=250.0),
+        ],
+        [epcsaft.BinaryRecord(("A", "B"), k_ij=0.1, l_ij=0.02, k_hb_ij=0.3)],
+        runtime_options={"elec_model": {"include_born_model": False}, "source_tag": "unit-test"},
+    )
+
+    runtime = params.to_runtime_dict()
+
+    assert "k_hb_ij" not in runtime
+    assert runtime["k_hb"][0, 1] == pytest.approx(0.3)
+    assert runtime["l_ij"][0, 1] == pytest.approx(0.02)
+    assert runtime["elec_model"] == {"include_born_model": False}
+    assert params.validate()["runtime_option_count"] == 2
+
+
+def test_parameter_set_from_dataset_preserves_runtime_options_for_mixture() -> None:
+    species = ["H2O", "Na+", "Cl-"]
+    x = np.asarray([0.98, 0.01, 0.01], dtype=float)
+    direct = get_prop_dict("2022_Ascani", species, x, 298.15)
+
+    params = epcsaft.ParameterSet.from_dataset("2022_Ascani", species, x, 298.15)
+    runtime = params.to_runtime_dict()
+    mix = ePCSAFTMixture.from_params(params)
+
+    assert runtime["elec_model_dataset"] == direct["elec_model_dataset"]
+    assert runtime["ion_dispersion_mixing_rule"] == direct["ion_dispersion_mixing_rule"]
+    assert mix.species == species
+    assert mix.parameters["elec_model_dataset"] == "2022_Ascani"
 
 
 def test_pure_record_from_g_per_mol_converts_to_kg_per_mol() -> None:

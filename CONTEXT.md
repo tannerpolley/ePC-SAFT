@@ -72,7 +72,7 @@ _Avoid_: diagnostic route, staged-only route, Python-owned optimizer loop
 
 **Derivative Path**:
 The validated analytic, CppAD, analytic-implicit, or CppAD-implicit derivative route used by a solver or regression workflow.
-_Avoid_: numerical derivative fallback, unspecified derivative support
+_Avoid_: approximate derivative substitute, unspecified derivative support
 
 ### Evidence And Completion
 

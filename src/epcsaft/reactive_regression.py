@@ -19,6 +19,7 @@ from . import reactive_speciation as reactive_speciation_module
 from ._types import InputError
 from .epcsaft import ePCSAFTMixture
 from .reactive_electrolyte import ReactiveElectrolyteBubbleOptions, ReactiveElectrolyteBubbleResult
+from .regression import _compile_target_family_summaries
 from .reactive_speciation import ReactionDefinition, ReactiveSpeciationOptions, ReactiveSpeciationResult
 
 _PRESSURE_FAMILY_ALIASES = {
@@ -538,6 +539,10 @@ class ReactiveElectrolyteRegressionContext:
                 charge_vector = np.zeros(len(species_labels), dtype=float)
         reaction_names = _reaction_names(batch.reactions)
         residual_template = _compile_residual_name_template(batch.rows, reaction_names)
+        target_family_schema = _compile_target_family_summaries(
+            Counter(_residual_family_from_name(name) for name in residual_template),
+            count_label="residual_count",
+        )
         row_static = [
             {
                 "row_id": row.row_id,
@@ -575,6 +580,7 @@ class ReactiveElectrolyteRegressionContext:
                 "balance_names": [str(name) for name in batch.balances],
                 "row_count": len(batch.rows),
                 "target_schema_size": len(residual_template),
+                "target_family_schema": target_family_schema,
             },
         )
 
@@ -591,6 +597,7 @@ class ReactiveElectrolyteRegressionContext:
         success_count = 0
         failure_count = 0
         target_counter: Counter[str] = Counter()
+        residual_values_by_family: dict[str, list[float]] = {}
         solve_counter: Counter[str] = Counter()
         local_stats: Counter[str] = Counter()
 
@@ -663,10 +670,13 @@ class ReactiveElectrolyteRegressionContext:
                 penalty=self.batch.options.penalty_value,
             )
             for name, value in zip(packed_names, packed_values):
+                family = _residual_family_from_name(name)
                 residual_names.append(name)
                 residual_row_map.append(row.row_id)
-                residuals.append(value)
-                target_counter[_residual_family_from_name(name)] += 1
+                residual_value = float(value)
+                residuals.append(residual_value)
+                target_counter[family] += 1
+                residual_values_by_family.setdefault(family, []).append(residual_value)
             local_stats["row_evaluations"] += 1
 
         self._stats["context_evaluations"] += 1
@@ -680,10 +690,19 @@ class ReactiveElectrolyteRegressionContext:
             "context_evaluations": int(self._stats["context_evaluations"]),
             "row_evaluations": int(self._stats["row_evaluations"]),
         }
+        target_family_summaries = _compile_target_family_summaries(
+            target_counter,
+            {
+                family: float(np.linalg.norm(np.asarray(values, dtype=float)))
+                for family, values in residual_values_by_family.items()
+            },
+            count_label="residual_count",
+        )
         diagnostics = {
             "parameter_map_keys": sorted(parameter_map),
             "reaction_names": list(self.reaction_names),
             "target_family_counts": dict(target_counter),
+            "target_family_summaries": target_family_summaries,
             "solve_counts": dict(solve_counter),
             "context": _json_like(self.context_diagnostics),
         }

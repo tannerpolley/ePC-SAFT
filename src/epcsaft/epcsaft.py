@@ -250,6 +250,16 @@ def _relative_permittivity_backend(params):
     return "analytic"
 
 
+def _canonical_runtime_parameter_payload(params, species=None):
+    from .parameter_schema import ParameterSet
+
+    if isinstance(params, ParameterSet):
+        if species is None:
+            species = list(params.components)
+        params = params.to_runtime_dict()
+    return params, species
+
+
 class ePCSAFTMixture:
     """Native-backed ePC-SAFT parameter model and state factory."""
 
@@ -264,26 +274,20 @@ class ePCSAFTMixture:
     @classmethod
     def from_params(cls, params, species=None):
         """Construct a mixture from an already-resolved parameter dict."""
-        if hasattr(params, "to_legacy_dict"):
-            if species is None and hasattr(params, "components"):
-                species = list(params.components)
-            params = params.to_legacy_dict()
+        params, species = _canonical_runtime_parameter_payload(params, species)
         return cls(params=params, species=species)
 
     @classmethod
     def from_dataset(cls, dataset_name, species, x, T, user_options=None):
         """Construct a mixture by resolving packaged dataset parameters."""
-        from .parameters import get_prop_dict
+        from .parameter_schema import ParameterSet
 
-        params = get_prop_dict(dataset_name, species, x, T, user_options=user_options)
-        return cls(params=params, species=species)
+        params = ParameterSet.from_dataset(dataset_name, species, x, T, user_options=user_options)
+        return cls.from_params(params)
 
     def _init_from_params(self, params, species=None):
         """Initialize the native mixture from a normalized parameter payload."""
-        if hasattr(params, "to_legacy_dict"):
-            if species is None and hasattr(params, "components"):
-                species = list(params.components)
-            params = params.to_legacy_dict()
+        params, species = _canonical_runtime_parameter_payload(params, species)
         params = check_association(params)
         cppargs = create_struct(params)
         self._native = _core.NativeMixture(cppargs)
@@ -624,6 +628,7 @@ class ePCSAFTMixture:
         phase_models=None,
     ):
         """Run a native-backed equilibrium calculation for this mixture."""
+        from .equilibrium import equilibrium_problem_from_request
         from .equilibrium_core.classify import classify_equilibrium_route
         from .reactive_speciation import ReactiveSpeciationOptions
 
@@ -830,150 +835,32 @@ class ePCSAFTMixture:
             "neutral_dew_p",
             "dew_t",
             "neutral_dew_t",
+            "electrolyte_bubble_pressure",
+            "electrolyte_bubble",
+            "bubble_pressure",
+            "tp_flash",
+            "lle_flash",
+            "electrolyte_lle",
+            "electrolyte_lle_flash",
+            "electrolyte_stability",
+            "stability",
         }:
-            route = classify_equilibrium_route(self, kind)
-            if route["route"] != "neutral_vle":
-                raise InputError(f"kind='{kind}' is not a neutral vapor-liquid route.")
-            if solvent_feed is not None or salt_molality is not None:
-                raise InputError("solvent_feed and salt_molality are only supported for kind='electrolyte_lle'.")
-            if volatile_species is not None or vapor_species is not None or nonvolatile_species is not None:
-                raise InputError("vapor species controls are only supported for kind='electrolyte_bubble_pressure'.")
-            if parent_phase is not None or trial_phases is not None:
-                raise InputError("parent_phase and trial_phases are only supported for kind='stability'.")
-            if kind in {"bubble_p", "neutral_bubble_p"}:
-                if P is not None:
-                    raise InputError("P is solved by kind='bubble_p'.")
-                composition = x_liq if x_liq is not None else z
-                if composition is None:
-                    raise InputError("kind='bubble_p' requires x_liq or z as the liquid composition.")
-                return _result_with_route_diagnostics(self.bubble_p(T=T, x=composition, options=options), route)
-            if kind in {"bubble_t", "neutral_bubble_t"}:
-                if T is not None:
-                    raise InputError("T is solved by kind='bubble_t'.")
-                composition = x_liq if x_liq is not None else z
-                if composition is None:
-                    raise InputError("kind='bubble_t' requires x_liq or z as the liquid composition.")
-                return _result_with_route_diagnostics(self.bubble_t(P=P, x=composition, options=options), route)
-            if x_liq is not None:
-                raise InputError("x_liq is only supported for bubble-point routes.")
-            if z is None:
-                raise InputError(f"kind='{kind}' requires z as the vapor composition.")
-            if kind in {"dew_p", "neutral_dew_p"}:
-                if P is not None:
-                    raise InputError("P is solved by kind='dew_p'.")
-                return _result_with_route_diagnostics(self.dew_p(T=T, y=z, options=options), route)
-            if T is not None:
-                raise InputError("T is solved by kind='dew_t'.")
-            return _result_with_route_diagnostics(self.dew_t(P=P, y=z, options=options), route)
-        if kind in {"electrolyte_bubble_pressure", "electrolyte_bubble", "bubble_pressure"}:
-            if P is not None:
-                raise InputError("P is solved by kind='electrolyte_bubble_pressure'.")
-            if solvent_feed is not None or salt_molality is not None:
-                raise InputError(
-                    "solvent_feed and salt_molality are not supported for kind='electrolyte_bubble_pressure'."
-                )
-            if parent_phase is not None or trial_phases is not None:
-                raise InputError("parent_phase and trial_phases are only supported for kind='stability'.")
-            return self.electrolyte_bubble_p(
+            problem = equilibrium_problem_from_request(
+                kind=kind,
                 T=T,
-                x_liq=x_liq,
+                P=P,
                 z=z,
+                x_liq=x_liq,
                 volatile_species=volatile_species,
                 vapor_species=vapor_species,
                 nonvolatile_species=nonvolatile_species,
-                options=options,
-            )
-        if kind == "tp_flash":
-            if solvent_feed is not None or salt_molality is not None:
-                raise InputError("solvent_feed and salt_molality are only supported for kind='electrolyte_lle'.")
-            if (
-                x_liq is not None
-                or volatile_species is not None
-                or vapor_species is not None
-                or nonvolatile_species is not None
-            ):
-                raise InputError(
-                    "x_liq and vapor species controls are only supported for kind='electrolyte_bubble_pressure'."
-                )
-            if parent_phase is not None or trial_phases is not None:
-                raise InputError("parent_phase and trial_phases are only supported for kind='stability'.")
-            route = classify_equilibrium_route(self, kind)
-            return _result_with_route_diagnostics(self.flash_tp(T=T, P=P, z=z, options=options), route)
-        if kind == "lle_flash":
-            if solvent_feed is not None or salt_molality is not None:
-                raise InputError("solvent_feed and salt_molality are only supported for kind='electrolyte_lle'.")
-            if (
-                x_liq is not None
-                or volatile_species is not None
-                or vapor_species is not None
-                or nonvolatile_species is not None
-            ):
-                raise InputError(
-                    "x_liq and vapor species controls are only supported for kind='electrolyte_bubble_pressure'."
-                )
-            if parent_phase is not None or trial_phases is not None:
-                raise InputError("parent_phase and trial_phases are only supported for kind='stability'.")
-            return self.lle_tp(T=T, P=P, z=z, options=options)
-        if kind in {"electrolyte_lle", "electrolyte_lle_flash"}:
-            if (
-                x_liq is not None
-                or volatile_species is not None
-                or vapor_species is not None
-                or nonvolatile_species is not None
-            ):
-                raise InputError(
-                    "x_liq and vapor species controls are only supported for kind='electrolyte_bubble_pressure'."
-                )
-            if parent_phase is not None or trial_phases is not None:
-                raise InputError("parent_phase and trial_phases are only supported for kind='stability'.")
-            return self.electrolyte_lle_tp(
-                T=T,
-                P=P,
-                z=z,
                 solvent_feed=solvent_feed,
                 salt_molality=salt_molality,
-                options=options,
-            )
-        if kind == "electrolyte_stability":
-            if (
-                x_liq is not None
-                or volatile_species is not None
-                or vapor_species is not None
-                or nonvolatile_species is not None
-            ):
-                raise InputError(
-                    "x_liq and vapor species controls are only supported for kind='electrolyte_bubble_pressure'."
-                )
-            if parent_phase is not None or trial_phases is not None:
-                raise InputError("parent_phase and trial_phases are not supported for kind='electrolyte_stability'.")
-            return self.electrolyte_stability_tp(
-                T=T,
-                P=P,
-                z=z,
-                solvent_feed=solvent_feed,
-                salt_molality=salt_molality,
-                options=options,
-            )
-        if kind == "stability":
-            if solvent_feed is not None or salt_molality is not None:
-                raise InputError("solvent_feed and salt_molality are only supported for kind='electrolyte_lle'.")
-            if (
-                x_liq is not None
-                or volatile_species is not None
-                or vapor_species is not None
-                or nonvolatile_species is not None
-            ):
-                raise InputError(
-                    "x_liq and vapor species controls are only supported for kind='electrolyte_bubble_pressure'."
-                )
-            return self.stability_tp(
-                T=T,
-                P=P,
-                z=z,
                 options=options,
                 parent_phase=parent_phase,
                 trial_phases=trial_phases,
             )
+            return self.solve_equilibrium(problem)
         raise InputError(
             "Only kind='tp_flash', kind='auto', kind='bubble_p', kind='bubble_t', kind='dew_p', kind='dew_t', kind='lle_flash', kind='electrolyte_lle', kind='electrolyte_bubble_pressure', kind='electrolyte_stability', kind='stability', kind='chemical_equilibrium', kind='reactive_staged_equilibrium', kind='reactive_lle', kind='reactive_electrolyte_lle', kind='reactive_stability', or kind='reactive_electrolyte_bubble_pressure' is supported by equilibrium."
         )

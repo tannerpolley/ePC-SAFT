@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 import epcsaft
 
@@ -65,3 +66,17 @@ def test_evaluate_reactive_regression_objective_accepts_speciation_rows(monkeypa
     assert result.batch_result.success_count == 1
     assert "validation" in summary["by_source"]
     assert "holdout" in summary["train_validation"]
+    by_name = dict(zip(result.residual_names, result.residuals))
+    target_family_summaries = result.batch_result.diagnostics["target_family_summaries"]
+    assert target_family_summaries["speciation"]["residual_count"] == 1
+    assert target_family_summaries["speciation"]["residual_block_norm"] == pytest.approx(
+        abs(by_name["row1.x.A"])
+    )
+    assert target_family_summaries["activity"]["residual_count"] == 1
+    assert target_family_summaries["activity"]["residual_block_norm"] == pytest.approx(
+        abs(by_name["row1.activity.A"])
+    )
+    assert result.batch_result.diagnostics["context"]["target_family_schema"] == {
+        "activity": {"residual_count": 1},
+        "speciation": {"residual_count": 1},
+    }

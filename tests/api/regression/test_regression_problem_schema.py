@@ -192,6 +192,8 @@ def test_target_dataset_accepts_generic_row_families_and_round_trips_records():
     assert dataset.rows[5].row_family == "mean_ionic_activity"
     assert dataset.to_records()[0]["row_id"] == "rho-1"
     assert dataset.to_records()[0]["rho_kg_m3"] == 997.0
+    assert dataset.target_family_counts()["binary_vle"] == 1
+    assert dataset.target_family_summaries()["regularization"] == {"record_count": 1}
 
 
 def test_target_row_schema_rejects_unknown_family_missing_targets_and_bad_weights():

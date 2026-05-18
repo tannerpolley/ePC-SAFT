@@ -7,10 +7,12 @@ import pytest
 
 import epcsaft
 from epcsaft.equilibrium_core.native_results import (
+    native_route_diagnostics,
     native_route_solved_pressure,
     native_route_solved_temperature,
     native_route_summed_phase_amounts,
     neutral_two_phase_payload_to_result,
+    raise_native_route_rejected,
 )
 
 
@@ -89,6 +91,54 @@ def test_neutral_native_payload_rejection_raises_solution_error() -> None:
         neutral_two_phase_payload_to_result(payload)
 
     assert exc_info.value.diagnostics["rejection_reason"] == "phase_distance"
+
+
+def test_native_route_diagnostics_merges_postsolve_and_solver_metadata() -> None:
+    route = {
+        "accepted": False,
+        "status": "postsolve_rejected",
+        "solver_status": "Solve_Succeeded",
+        "application_status": "solve_succeeded",
+        "backend": "ipopt",
+        "problem_name": "electrolyte_lle_eos",
+        "adapter_kind": "native_tnlp_adapter",
+        "exact_gradient_required": True,
+        "exact_jacobian_required": True,
+        "postsolve": {
+            "accepted": False,
+            "rejection_reason": "phase_distance",
+            "phase_distance": 0.0,
+        },
+    }
+
+    diagnostics = native_route_diagnostics(route)
+
+    assert diagnostics["accepted"] is False
+    assert diagnostics["rejection_reason"] == "phase_distance"
+    assert diagnostics["route_status"] == "postsolve_rejected"
+    assert diagnostics["solver_status"] == "Solve_Succeeded"
+    assert diagnostics["application_status"] == "solve_succeeded"
+    assert diagnostics["solver_backend"] == "ipopt"
+    assert diagnostics["problem_name"] == "electrolyte_lle_eos"
+    assert diagnostics["adapter_kind"] == "native_tnlp_adapter"
+    assert diagnostics["exact_gradient_required"] is True
+    assert diagnostics["exact_jacobian_required"] is True
+
+
+def test_raise_native_route_rejected_uses_shared_diagnostics() -> None:
+    route = {
+        "accepted": False,
+        "status": "solver_rejected",
+        "solver_status": "Maximum_Iterations_Exceeded",
+        "postsolve": {"accepted": False, "rejection_reason": "solver_rejected"},
+    }
+
+    with pytest.raises(epcsaft.SolutionError, match="Native route rejected") as exc_info:
+        raise_native_route_rejected(route, "Native route rejected.")
+
+    assert exc_info.value.diagnostics["route_status"] == "solver_rejected"
+    assert exc_info.value.diagnostics["solver_status"] == "Maximum_Iterations_Exceeded"
+    assert exc_info.value.diagnostics["rejection_reason"] == "solver_rejected"
 
 
 def test_native_route_result_helpers_validate_fixed_temperature_payloads() -> None:

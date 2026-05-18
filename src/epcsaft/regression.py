@@ -643,6 +643,15 @@ class TargetDataset:
     def families(self) -> tuple[str, ...]:
         return tuple(dict.fromkeys(row.row_family for row in self.rows))
 
+    def target_family_counts(self) -> dict[str, int]:
+        counts: dict[str, int] = {}
+        for row in self.rows:
+            counts[row.row_family] = counts.get(row.row_family, 0) + 1
+        return counts
+
+    def target_family_summaries(self) -> dict[str, dict[str, float | int]]:
+        return _compile_target_family_summaries(self.target_family_counts())
+
     def rows_for(self, row_family: str) -> tuple[TargetRow, ...]:
         normalized = _normalize_target_row_family(row_family)
         return tuple(row for row in self.rows if row.row_family == normalized)
@@ -823,6 +832,25 @@ def _row_diagnostics_from_metrics(metrics_by_term: Mapping[str, Any]) -> list[di
     return [{"row_family": str(name), "metric": float(value)} for name, value in metrics_by_term.items()]
 
 
+def _compile_target_family_summaries(
+    family_counts: Mapping[str, int],
+    metrics_by_family: Mapping[str, Any] | None = None,
+    *,
+    count_label: str = "record_count",
+) -> dict[str, dict[str, float | int]]:
+    if count_label not in {"record_count", "residual_count"}:
+        raise InputError("target family summaries require count_label='record_count' or 'residual_count'.")
+    metric_map = None if metrics_by_family is None else {str(name): value for name, value in metrics_by_family.items()}
+    summaries: dict[str, dict[str, float | int]] = {}
+    for raw_family, raw_count in family_counts.items():
+        family = str(raw_family)
+        payload: dict[str, float | int] = {count_label: int(raw_count)}
+        if metric_map is not None:
+            payload["residual_block_norm"] = float(metric_map.get(family, float("nan")))
+        summaries[family] = payload
+    return summaries
+
+
 def _target_family_summaries_from_terms(
     terms: Sequence[FitTerm],
     metrics_by_term: Mapping[str, Any],
@@ -830,13 +858,7 @@ def _target_family_summaries_from_terms(
     counts: dict[str, int] = {}
     for term in terms:
         counts[term.term_type] = counts.get(term.term_type, 0) + len(term.records)
-    return {
-        family: {
-            "record_count": int(count),
-            "residual_block_norm": float(metrics_by_term.get(family, float("nan"))),
-        }
-        for family, count in counts.items()
-    }
+    return _compile_target_family_summaries(counts, metrics_by_term)
 
 
 def _active_bounds_from_arrays(

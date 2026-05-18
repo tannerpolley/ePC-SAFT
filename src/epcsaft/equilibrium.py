@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from numbers import Integral, Real
 from typing import Any, Literal
 
@@ -23,7 +23,9 @@ from .equilibrium_core.native_results import (
     native_route_solved_pressure,
     native_route_solved_temperature,
     native_route_summed_phase_amounts,
+    native_route_diagnostics,
     neutral_two_phase_payload_to_result,
+    raise_native_route_rejected,
 )
 
 _ASCANI_2022_REFERENCE = {
@@ -69,6 +71,215 @@ class EquilibriumOptions:
     timeout_seconds: float | None = None
 
 
+def _classify_problem_route(mixture: Any, kind: str) -> dict[str, str]:
+    from .equilibrium_core.classify import classify_equilibrium_route
+
+    return classify_equilibrium_route(mixture, kind)
+
+
+def _with_route_diagnostics(result: Any, route: Mapping[str, str]) -> Any:
+    diagnostics = dict(result.diagnostics)
+    diagnostics["equilibrium_route"] = route["route"]
+    diagnostics["route_reason"] = route["reason"]
+    return replace(result, diagnostics=diagnostics)
+
+
+def _raise_with_route_diagnostics(exc: SolutionError, route: Mapping[str, str]) -> None:
+    diagnostics = dict(getattr(exc, "diagnostics", None) or {})
+    diagnostics["equilibrium_route"] = route["route"]
+    diagnostics["route_reason"] = route["reason"]
+    raise SolutionError(exc.message, diagnostics) from exc
+
+
+def _solve_problem_route(mixture: Any, kind: str, solve) -> Any:
+    route = _classify_problem_route(mixture, kind)
+    try:
+        result = solve()
+    except SolutionError as exc:
+        _raise_with_route_diagnostics(exc, route)
+    return _with_route_diagnostics(result, route)
+
+
+def _reject_phase_controls_for_kind(
+    kind: str,
+    *,
+    x_liq: Any = None,
+    volatile_species: Any = None,
+    vapor_species: Any = None,
+    nonvolatile_species: Any = None,
+) -> None:
+    if x_liq is not None or volatile_species is not None or vapor_species is not None or nonvolatile_species is not None:
+        raise InputError("x_liq and vapor species controls are only supported for kind='electrolyte_bubble_pressure'.")
+
+
+def _reject_parent_controls_for_phase_equilibrium(parent_phase: Any, trial_phases: Any) -> None:
+    if parent_phase is not None or trial_phases is not None:
+        raise InputError("parent_phase and trial_phases are only supported for kind='stability'.")
+
+
+def equilibrium_problem_from_request(
+    *,
+    kind: str,
+    T: Any = None,
+    P: Any = None,
+    z: Any = None,
+    x_liq: Any = None,
+    volatile_species: Any = None,
+    vapor_species: Any = None,
+    nonvolatile_species: Any = None,
+    solvent_feed: Any = None,
+    salt_molality: Any = None,
+    options: Any = None,
+    parent_phase: Any = None,
+    trial_phases: Any = None,
+) -> EquilibriumProblem:
+    """Convert a public string equilibrium request into a typed problem object."""
+    token = str(kind).strip().lower()
+    if token in {
+        "bubble_p",
+        "neutral_bubble_p",
+        "bubble_t",
+        "neutral_bubble_t",
+        "dew_p",
+        "neutral_dew_p",
+        "dew_t",
+        "neutral_dew_t",
+    }:
+        if solvent_feed is not None or salt_molality is not None:
+            raise InputError("solvent_feed and salt_molality are only supported for kind='electrolyte_lle'.")
+        if volatile_species is not None or vapor_species is not None or nonvolatile_species is not None:
+            raise InputError("vapor species controls are only supported for kind='electrolyte_bubble_pressure'.")
+        _reject_parent_controls_for_phase_equilibrium(parent_phase, trial_phases)
+        if token in {"bubble_p", "neutral_bubble_p"}:
+            if P is not None:
+                raise InputError("P is solved by kind='bubble_p'.")
+            composition = x_liq if x_liq is not None else z
+            if composition is None:
+                raise InputError("kind='bubble_p' requires x_liq or z as the liquid composition.")
+            return BubblePoint(T=T, x=composition, options=options)
+        if token in {"bubble_t", "neutral_bubble_t"}:
+            if T is not None:
+                raise InputError("T is solved by kind='bubble_t'.")
+            composition = x_liq if x_liq is not None else z
+            if composition is None:
+                raise InputError("kind='bubble_t' requires x_liq or z as the liquid composition.")
+            return BubblePoint(T=None, P=P, x=composition, options=options)
+        if x_liq is not None:
+            raise InputError("x_liq is only supported for bubble-point routes.")
+        if z is None:
+            raise InputError(f"kind='{kind}' requires z as the vapor composition.")
+        if token in {"dew_p", "neutral_dew_p"}:
+            if P is not None:
+                raise InputError("P is solved by kind='dew_p'.")
+            return DewPoint(T=T, y=z, options=options)
+        if T is not None:
+            raise InputError("T is solved by kind='dew_t'.")
+        return DewPoint(P=P, y=z, options=options)
+
+    if token in {"electrolyte_bubble_pressure", "electrolyte_bubble", "bubble_pressure"}:
+        if P is not None:
+            raise InputError("P is solved by kind='electrolyte_bubble_pressure'.")
+        if solvent_feed is not None or salt_molality is not None:
+            raise InputError("solvent_feed and salt_molality are not supported for kind='electrolyte_bubble_pressure'.")
+        _reject_parent_controls_for_phase_equilibrium(parent_phase, trial_phases)
+        return ElectrolyteBubblePoint(
+            T=T,
+            x_liq=x_liq,
+            z=z,
+            vapor_species=vapor_species,
+            volatile_species=volatile_species,
+            nonvolatile_species=nonvolatile_species,
+            options=options,
+        )
+
+    if token == "tp_flash":
+        if solvent_feed is not None or salt_molality is not None:
+            raise InputError("solvent_feed and salt_molality are only supported for kind='electrolyte_lle'.")
+        _reject_phase_controls_for_kind(
+            token,
+            x_liq=x_liq,
+            volatile_species=volatile_species,
+            vapor_species=vapor_species,
+            nonvolatile_species=nonvolatile_species,
+        )
+        _reject_parent_controls_for_phase_equilibrium(parent_phase, trial_phases)
+        return TPFlash(T=T, P=P, z=z, options=options)
+
+    if token == "lle_flash":
+        if solvent_feed is not None or salt_molality is not None:
+            raise InputError("solvent_feed and salt_molality are only supported for kind='electrolyte_lle'.")
+        _reject_phase_controls_for_kind(
+            token,
+            x_liq=x_liq,
+            volatile_species=volatile_species,
+            vapor_species=vapor_species,
+            nonvolatile_species=nonvolatile_species,
+        )
+        _reject_parent_controls_for_phase_equilibrium(parent_phase, trial_phases)
+        return LLEProblem(T=T, P=P, z=z, options=options)
+
+    if token in {"electrolyte_lle", "electrolyte_lle_flash"}:
+        _reject_phase_controls_for_kind(
+            token,
+            x_liq=x_liq,
+            volatile_species=volatile_species,
+            vapor_species=vapor_species,
+            nonvolatile_species=nonvolatile_species,
+        )
+        _reject_parent_controls_for_phase_equilibrium(parent_phase, trial_phases)
+        return ElectrolyteLLEProblem(
+            T=T,
+            P=P,
+            z=z,
+            solvent_feed=solvent_feed,
+            salt_molality=salt_molality,
+            options=options,
+        )
+
+    if token == "electrolyte_stability":
+        _reject_phase_controls_for_kind(
+            token,
+            x_liq=x_liq,
+            volatile_species=volatile_species,
+            vapor_species=vapor_species,
+            nonvolatile_species=nonvolatile_species,
+        )
+        if parent_phase is not None or trial_phases is not None:
+            raise InputError("parent_phase and trial_phases are not supported for kind='electrolyte_stability'.")
+        return StabilityAnalysis(
+            T=T,
+            P=P,
+            z=z,
+            options=options,
+            solvent_feed=solvent_feed,
+            salt_molality=salt_molality,
+            electrolyte=True,
+        )
+
+    if token == "stability":
+        if solvent_feed is not None or salt_molality is not None:
+            raise InputError("solvent_feed and salt_molality are only supported for kind='electrolyte_lle'.")
+        _reject_phase_controls_for_kind(
+            token,
+            x_liq=x_liq,
+            volatile_species=volatile_species,
+            vapor_species=vapor_species,
+            nonvolatile_species=nonvolatile_species,
+        )
+        return StabilityAnalysis(
+            T=T,
+            P=P,
+            z=z,
+            options=options,
+            parent_phase=parent_phase,
+            trial_phases=trial_phases,
+        )
+
+    raise InputError(
+        "Only kind='tp_flash', kind='auto', kind='bubble_p', kind='bubble_t', kind='dew_p', kind='dew_t', kind='lle_flash', kind='electrolyte_lle', kind='electrolyte_bubble_pressure', kind='electrolyte_stability', kind='stability', kind='chemical_equilibrium', kind='reactive_staged_equilibrium', kind='reactive_lle', kind='reactive_electrolyte_lle', kind='reactive_stability', or kind='reactive_electrolyte_bubble_pressure' is supported by equilibrium."
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class EquilibriumProblem:
     """Base class for typed equilibrium problem objects."""
@@ -88,7 +299,11 @@ class TPFlash(EquilibriumProblem):
     options: EquilibriumOptions | None = None
 
     def solve(self, mixture):
-        return mixture.flash_tp(T=self.T, P=self.P, z=self.z, options=self.options)
+        return _solve_problem_route(
+            mixture,
+            "tp_flash",
+            lambda: mixture.flash_tp(T=self.T, P=self.P, z=self.z, options=self.options),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -107,21 +322,29 @@ class StabilityAnalysis(EquilibriumProblem):
 
     def solve(self, mixture):
         if self.electrolyte or self.solvent_feed is not None or self.salt_molality is not None:
-            return mixture.electrolyte_stability_tp(
+            return _solve_problem_route(
+                mixture,
+                "electrolyte_stability",
+                lambda: mixture.electrolyte_stability_tp(
+                    T=self.T,
+                    P=self.P,
+                    z=self.z,
+                    solvent_feed=self.solvent_feed,
+                    salt_molality=self.salt_molality,
+                    options=self.options,
+                ),
+            )
+        return _solve_problem_route(
+            mixture,
+            "stability",
+            lambda: mixture.stability_tp(
                 T=self.T,
                 P=self.P,
                 z=self.z,
-                solvent_feed=self.solvent_feed,
-                salt_molality=self.salt_molality,
                 options=self.options,
-            )
-        return mixture.stability_tp(
-            T=self.T,
-            P=self.P,
-            z=self.z,
-            options=self.options,
-            parent_phase=self.parent_phase,
-            trial_phases=self.trial_phases,
+                parent_phase=self.parent_phase,
+                trial_phases=self.trial_phases,
+            ),
         )
 
 
@@ -129,12 +352,25 @@ class StabilityAnalysis(EquilibriumProblem):
 class BubblePoint(EquilibriumProblem):
     """Neutral bubble-point problem."""
 
-    T: float
+    T: float | None
     x: Any
+    P: float | None = None
     options: EquilibriumOptions | None = None
 
     def solve(self, mixture):
-        return mixture.bubble_p(T=self.T, x=self.x, options=self.options)
+        if (self.T is None) == (self.P is None):
+            raise InputError("BubblePoint requires exactly one of T or P.")
+        if self.T is not None:
+            return _solve_problem_route(
+                mixture,
+                "bubble_p",
+                lambda: mixture.bubble_p(T=self.T, x=self.x, options=self.options),
+            )
+        return _solve_problem_route(
+            mixture,
+            "bubble_t",
+            lambda: mixture.bubble_t(P=self.P, x=self.x, options=self.options),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -150,8 +386,16 @@ class DewPoint(EquilibriumProblem):
         if (self.T is None) == (self.P is None):
             raise InputError("DewPoint requires exactly one of T or P.")
         if self.T is not None:
-            return mixture.dew_p(T=self.T, y=self.y, options=self.options)
-        return mixture.dew_t(P=self.P, y=self.y, options=self.options)
+            return _solve_problem_route(
+                mixture,
+                "dew_p",
+                lambda: mixture.dew_p(T=self.T, y=self.y, options=self.options),
+            )
+        return _solve_problem_route(
+            mixture,
+            "dew_t",
+            lambda: mixture.dew_t(P=self.P, y=self.y, options=self.options),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -164,11 +408,15 @@ class LLEProblem(EquilibriumProblem):
     options: EquilibriumOptions | None = None
 
     def solve(self, mixture):
-        return mixture.lle_tp(
-            T=self.T,
-            P=self.P,
-            z=self.z,
-            options=self.options,
+        return _solve_problem_route(
+            mixture,
+            "lle_flash",
+            lambda: mixture.lle_tp(
+                T=self.T,
+                P=self.P,
+                z=self.z,
+                options=self.options,
+            ),
         )
 
 
@@ -184,13 +432,17 @@ class ElectrolyteLLEProblem(EquilibriumProblem):
     options: EquilibriumOptions | None = None
 
     def solve(self, mixture):
-        return mixture.electrolyte_lle_tp(
-            T=self.T,
-            P=self.P,
-            z=self.z,
-            solvent_feed=self.solvent_feed,
-            salt_molality=self.salt_molality,
-            options=self.options,
+        return _solve_problem_route(
+            mixture,
+            "electrolyte_lle",
+            lambda: mixture.electrolyte_lle_tp(
+                T=self.T,
+                P=self.P,
+                z=self.z,
+                solvent_feed=self.solvent_feed,
+                salt_molality=self.salt_molality,
+                options=self.options,
+            ),
         )
 
 
@@ -207,14 +459,18 @@ class ElectrolyteBubblePoint(EquilibriumProblem):
     options: Any | None = None
 
     def solve(self, mixture):
-        return mixture.electrolyte_bubble_p(
-            T=self.T,
-            x_liq=self.x_liq,
-            z=self.z,
-            vapor_species=self.vapor_species,
-            volatile_species=self.volatile_species,
-            nonvolatile_species=self.nonvolatile_species,
-            options=self.options,
+        return _solve_problem_route(
+            mixture,
+            "electrolyte_bubble_pressure",
+            lambda: mixture.electrolyte_bubble_p(
+                T=self.T,
+                x_liq=self.x_liq,
+                z=self.z,
+                vapor_species=self.vapor_species,
+                volatile_species=self.volatile_species,
+                nonvolatile_species=self.nonvolatile_species,
+                options=self.options,
+            ),
         )
 
 
@@ -691,21 +947,12 @@ def _accepted_native_neutral_two_phase_result(
 
     material_tolerance, pressure_tolerance, chemical_potential_tolerance, phase_distance_tolerance = tolerances
     if not bool(route.get("accepted", False)):
-        postsolve = route.get("postsolve", {})
-        diagnostics = dict(postsolve) if isinstance(postsolve, Mapping) else {}
-        if route_status := route.get("status"):
-            diagnostics["route_status"] = route_status
-        if solver_status := route.get("solver_status"):
-            diagnostics["solver_status"] = solver_status
-        raise SolutionError(f"Native {route_family} {route_label} route was rejected.", diagnostics)
+        raise_native_route_rejected(route, f"Native {route_family} {route_label} route was rejected.")
 
     if route_family == "electrolyte":
         postsolve = route.get("postsolve", {})
         if not isinstance(postsolve, Mapping) or not bool(postsolve.get("accepted", False)):
-            diagnostics = dict(postsolve) if isinstance(postsolve, Mapping) else {}
-            diagnostics["route_status"] = str(route.get("status", ""))
-            diagnostics["solver_status"] = str(route.get("solver_status", ""))
-            raise SolutionError(f"Native electrolyte {route_label} postsolve was rejected.", diagnostics)
+            raise_native_route_rejected(route, f"Native electrolyte {route_label} postsolve was rejected.")
         phase_compositions = np.asarray(postsolve.get("phase_compositions", ()), dtype=float)
         phase_amount_totals = np.asarray(postsolve.get("phase_amount_totals", ()), dtype=float).reshape(-1)
         phase_volumes = np.asarray(postsolve.get("phase_volumes", ()), dtype=float).reshape(-1)
@@ -782,19 +1029,19 @@ def _accepted_native_neutral_two_phase_result(
                 "Native electrolyte LLE route did not lower the retained Gibbs objective.",
                 {"gibbs_delta": float(postsolve.get("gibbs_delta", 0.0))},
             )
-        diagnostics = dict(postsolve)
-        diagnostics["route_status"] = str(route.get("status", ""))
-        diagnostics["solver_status"] = str(route.get("solver_status", ""))
-        diagnostics["application_status"] = str(route.get("application_status", ""))
-        diagnostics["last_callback_exception"] = str(route.get("last_callback_exception", ""))
-        diagnostics["solver_backend"] = str(route.get("backend", "ipopt"))
-        diagnostics["problem_name"] = str(route.get("problem_name", "electrolyte_lle_eos"))
-        diagnostics["adapter_kind"] = str(route.get("adapter_kind", "native_tnlp_adapter"))
-        diagnostics["exact_gradient_required"] = bool(route.get("exact_gradient_required", True))
-        diagnostics["exact_jacobian_required"] = bool(route.get("exact_jacobian_required", True))
-        diagnostics["gradient_approximation"] = str(route.get("gradient_approximation", "exact"))
-        diagnostics["jacobian_approximation"] = str(route.get("jacobian_approximation", "exact"))
-        diagnostics["hessian_approximation"] = str(route.get("hessian_approximation", "limited-memory"))
+        diagnostics = native_route_diagnostics(
+            route,
+            defaults={
+                "solver_backend": "ipopt",
+                "problem_name": "electrolyte_lle_eos",
+                "adapter_kind": "native_tnlp_adapter",
+                "exact_gradient_required": True,
+                "exact_jacobian_required": True,
+                "gradient_approximation": "exact",
+                "jacobian_approximation": "exact",
+                "hessian_approximation": "limited-memory",
+            },
+        )
         diagnostics["feed_basis"] = _json_like(feed_diagnostics or {})
         basis_payload = dict(electrolyte_basis_diagnostics or {})
         diagnostics["electrolyte_basis"] = _json_like(basis_payload)
@@ -876,13 +1123,7 @@ def _accepted_native_reactive_two_phase_result(
     from . import _core
 
     if not bool(route.get("accepted", False)):
-        postsolve = route.get("postsolve", {})
-        diagnostics = dict(postsolve) if isinstance(postsolve, Mapping) else {}
-        if route_status := route.get("status"):
-            diagnostics["route_status"] = route_status
-        if solver_status := route.get("solver_status"):
-            diagnostics["solver_status"] = solver_status
-        raise SolutionError(f"Native reactive {route_label} route was rejected.", diagnostics)
+        raise_native_route_rejected(route, f"Native reactive {route_label} route was rejected.")
 
     material_tolerance, pressure_tolerance, chemical_potential_tolerance, phase_distance_tolerance = tolerances
     postsolve = route.get("postsolve", {})
@@ -926,12 +1167,14 @@ def _accepted_native_reactive_two_phase_result(
                     },
                 )
             )
-        diagnostics = dict(postsolve)
-        diagnostics["reactive_route_status"] = str(route.get("status", ""))
-        diagnostics["solver_status"] = str(route.get("solver_status", ""))
-        diagnostics["application_status"] = str(route.get("application_status", ""))
-        diagnostics["solver_backend"] = str(route.get("backend", "ipopt"))
-        diagnostics["problem_name"] = str(route.get("problem_name", "reactive_liquid_root_eos"))
+        diagnostics = native_route_diagnostics(
+            route,
+            route_status_key="reactive_route_status",
+            defaults={
+                "solver_backend": "ipopt",
+                "problem_name": "reactive_liquid_root_eos",
+            },
+        )
         return EquilibriumResult(
             backend="native_equilibrium_nlp",
             problem_kind=problem_kind,
@@ -1398,13 +1641,9 @@ def _native_electrolyte_stability(
     if str(route.get("status", "")) == "ipopt_dependency_required":
         _raise_native_ipopt_stability_required("electrolyte_stability")
     if not bool(route.get("accepted", False)):
-        diagnostics = {
-            "route_status": str(route.get("status", "")),
-            "solver_status": str(route.get("solver_status", "")),
-            "application_status": str(route.get("application_status", "")),
-            "parent_phase": str(route.get("parent_phase", "")),
-            "trial_phase": str(route.get("trial_phase", "")),
-        }
+        diagnostics = native_route_diagnostics(route)
+        diagnostics["parent_phase"] = str(route.get("parent_phase", ""))
+        diagnostics["trial_phase"] = str(route.get("trial_phase", ""))
         raise SolutionError("Native electrolyte stability route was rejected.", diagnostics)
 
     trial = _native_stability_trial_from_route(route, options.tolerance)

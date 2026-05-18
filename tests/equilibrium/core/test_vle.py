@@ -188,5 +188,49 @@ def test_tp_flash_converts_accepted_native_route_payload(monkeypatch: pytest.Mon
     assert result.backend == "native_equilibrium_nlp"
     assert result.problem_kind == "neutral_tp_flash"
     assert result.split_detected is True
+    assert result.diagnostics["equilibrium_route"] == "neutral_vle"
+    assert result.diagnostics["route_reason"] == "requested vapor-liquid path"
     assert [phase.label for phase in result.phases] == ["phase_0", "phase_1"]
     assert result.phases[0].fugacity_coefficient == pytest.approx(np.exp(result.phases[0].ln_fugacity_coefficient))
+
+    problem_result = mix.solve_equilibrium(epcsaft.TPFlash(T=220.0, P=1.0e5, z=feed))
+
+    assert problem_result.problem_kind == "neutral_tp_flash"
+    assert problem_result.diagnostics["equilibrium_route"] == "neutral_vle"
+    assert problem_result.diagnostics["route_reason"] == "requested vapor-liquid path"
+
+
+def test_tp_flash_rejected_native_route_uses_common_route_diagnostics(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    mix = _hydrocarbon_basis_mixture()
+    feed = np.asarray([0.1, 0.3, 0.6])
+
+    def fake_route(_native, *route_args):
+        return {
+            "backend": "ipopt",
+            "compiled": True,
+            "ran": True,
+            "accepted": False,
+            "status": "solver_rejected",
+            "solver_status": "Maximum_Iterations_Exceeded",
+            "application_status": "solve_failed",
+            "problem_name": "neutral_tp_flash_eos",
+            "postsolve": {
+                "accepted": False,
+                "rejection_reason": "solver_rejected",
+            },
+        }
+
+    monkeypatch.setattr(_core, "_native_neutral_tp_flash_eos_route_result", fake_route)
+
+    with pytest.raises(epcsaft.SolutionError, match="Native neutral TP flash route was rejected") as exc_info:
+        mix.equilibrium(kind="tp_flash", T=220.0, P=1.0e5, z=feed)
+
+    diagnostics = exc_info.value.diagnostics
+    assert diagnostics["route_status"] == "solver_rejected"
+    assert diagnostics["solver_status"] == "Maximum_Iterations_Exceeded"
+    assert diagnostics["application_status"] == "solve_failed"
+    assert diagnostics["solver_backend"] == "ipopt"
+    assert diagnostics["problem_name"] == "neutral_tp_flash_eos"
+    assert diagnostics["rejection_reason"] == "solver_rejected"

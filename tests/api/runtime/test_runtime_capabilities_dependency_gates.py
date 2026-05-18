@@ -68,3 +68,15 @@ def test_reactive_batch_context_never_claims_ceres_native_hot_loop_in_default_bu
     assert mixed["ceres"]["production"] is False
     assert mixed["python_role"] == "row orchestration and diagnostics"
     assert "numerical" + "_derivative" not in json.dumps(batch).lower()
+
+
+def test_capability_contract_is_derived_from_registered_evidence() -> None:
+    capabilities = epcsaft.capabilities()
+    evidence = capabilities["capability_evidence"]
+
+    assert evidence["source"] == "registered_capability_evidence"
+    assert evidence["ipopt_public_routes"] == capabilities["optimizers"]["ipopt"]["public_routes"]
+    assert set(evidence["equilibrium_keys"]).issubset(capabilities["equilibrium"])
+    assert evidence["problem_object_classes"] == capabilities["equilibrium"]["problem_objects"]["classes"]
+    assert set(evidence["regression_keys"]).issubset(capabilities["regression"])
+    assert evidence["derivative_row_count"] == len(capabilities["derivatives"]["coverage_matrix"]["rows"])

@@ -75,13 +75,22 @@ def test_equilibrium_route_classification_preserves_stability_gates() -> None:
         ("dew_t", {"P": 1.0e5, "z": [0.1, 0.3, 0.6]}, "dew_t"),
     ],
 )
-def test_equilibrium_dispatch_rejects_temperature_bubble_dew_until_native_ipopt_route(
+def test_equilibrium_dispatch_temperature_bubble_dew_uses_native_route_gate(
     kind: str, kwargs: dict[str, object], route: str
 ) -> None:
     mix = _hydrocarbon_mixture()
 
-    with pytest.raises(epcsaft.InputError, match=rf"{route} requires a native Ipopt equilibrium NLP route"):
+    try:
         mix.equilibrium(kind=kind, **kwargs)
+    except epcsaft.InputError as exc:
+        assert f"{route} requires a native Ipopt equilibrium NLP route" in str(exc)
+    except epcsaft.SolutionError as exc:
+        diagnostics = exc.diagnostics
+        assert diagnostics["route_status"] == "solver_rejected"
+        assert diagnostics["solver_backend"] == "ipopt"
+        assert diagnostics["problem_name"] == f"neutral_{route}_eos"
+    else:
+        pytest.fail(f"{route} must either require Ipopt or return a native route rejection.")
 
 
 def test_solve_equilibrium_delegates_to_problem_solve() -> None:
@@ -92,6 +101,54 @@ def test_solve_equilibrium_delegates_to_problem_solve() -> None:
             return mixture
 
     assert mix.solve_equilibrium(Problem()) is mix
+
+
+@pytest.mark.parametrize(
+    ("kind", "kwargs", "problem_type"),
+    [
+        ("bubble_p", {"T": 220.0, "z": [0.2, 0.3, 0.5]}, epcsaft.BubblePoint),
+        ("bubble_t", {"P": 1.0e5, "z": [0.2, 0.3, 0.5]}, epcsaft.BubblePoint),
+        ("dew_p", {"T": 240.0, "z": [0.1, 0.3, 0.6]}, epcsaft.DewPoint),
+        ("dew_t", {"P": 1.0e5, "z": [0.1, 0.3, 0.6]}, epcsaft.DewPoint),
+        ("tp_flash", {"T": 220.0, "P": 1.0e5, "z": [0.1, 0.3, 0.6]}, epcsaft.TPFlash),
+        ("lle_flash", {"T": 298.15, "P": 1.0e5, "z": [0.4, 0.4, 0.2]}, epcsaft.LLEProblem),
+        (
+            "electrolyte_lle",
+            {"T": 298.15, "P": 1.0e5, "z": [0.55, 0.40, 0.025, 0.025]},
+            epcsaft.ElectrolyteLLEProblem,
+        ),
+        (
+            "electrolyte_bubble_pressure",
+            {"T": 298.15, "z": [0.55, 0.40, 0.025, 0.025]},
+            epcsaft.ElectrolyteBubblePoint,
+        ),
+        ("stability", {"T": 298.15, "P": 1.0e5, "z": [0.1, 0.3, 0.6]}, epcsaft.StabilityAnalysis),
+        (
+            "electrolyte_stability",
+            {"T": 298.15, "P": 1.0e5, "z": [0.55, 0.40, 0.025, 0.025]},
+            epcsaft.StabilityAnalysis,
+        ),
+    ],
+)
+def test_explicit_equilibrium_requests_dispatch_through_typed_problem_objects(
+    monkeypatch: pytest.MonkeyPatch,
+    kind: str,
+    kwargs: dict[str, object],
+    problem_type: type,
+) -> None:
+    mix = _ionic_mixture() if kind.startswith("electrolyte") else _hydrocarbon_mixture()
+    seen: list[object] = []
+
+    def fake_solve_equilibrium(self, problem):
+        seen.append(problem)
+        return problem
+
+    monkeypatch.setattr(epcsaft.ePCSAFTMixture, "solve_equilibrium", fake_solve_equilibrium)
+
+    result = mix.equilibrium(kind=kind, **kwargs)
+
+    assert isinstance(result, problem_type)
+    assert seen == [result]
 
 
 def test_equilibrium_phase_exposes_ln_and_coefficient_fugacity_fields() -> None:
