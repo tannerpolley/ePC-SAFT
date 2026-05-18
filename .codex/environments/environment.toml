@@ -9,13 +9,7 @@ Set-StrictMode -Version Latest
 $repoRoot = (git rev-parse --show-toplevel).Trim()
 Set-Location $repoRoot
 
-if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
-    throw "uv is required for this repo workflow. Install uv, then rerun setup."
-}
-
-uv sync --no-install-project
-uv run python scripts/dev/build_epcsaft.py
-uv run python scripts/dev/doctor.py
+pwsh.exe -NoProfile -ExecutionPolicy Bypass -File ".codex/environments/setup.ps1"
 '''
 
 [[actions]]
@@ -27,13 +21,13 @@ platform = "win32"
 [[actions]]
 name = "Doctor"
 icon = "inspect"
-command = "uv run python scripts/dev/doctor.py"
+command = "pwsh.exe -NoProfile -ExecutionPolicy Bypass -File .codex/environments/setup.ps1 -Step Doctor"
 platform = "win32"
 
 [[actions]]
 name = "Build Native Extension"
 icon = "run"
-command = "uv run python scripts/dev/build_epcsaft.py"
+command = "pwsh.exe -NoProfile -ExecutionPolicy Bypass -File .codex/environments/setup.ps1 -Step Build"
 platform = "win32"
 
 [[actions]]

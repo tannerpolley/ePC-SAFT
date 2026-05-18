@@ -117,7 +117,7 @@ For normal ePC-SAFT source development, keep using the explicit in-place dev bui
    uv run python scripts\dev\build_epcsaft.py
    uv run python scripts\dev\build_epcsaft.py --build-only --parallel 10
 
-The default dev-script build is the required native dependency profile: Ceres ON, CppAD ON, and Ipopt OFF. Editable, wheel, and downstream path installs follow the same Ceres/CppAD requirement. New dev build configurations prefer Ninja when available. Existing ``build/dev`` trees keep their configured generator until you run the coordinated repair command ``uv run python scripts\dev\build_epcsaft.py --clean --generator ninja``.
+The default dev-script build is the required native dependency profile: Ceres ON, CppAD ON, and system Ipopt ON when ``EPCSAFT_IPOPT_ROOT``, ``EPCSAFT_PEP517_IPOPT_ROOT``, ``--ipopt-dir``, or platform discovery provides a native Ipopt install. Editable, wheel, and downstream path installs follow the same Ceres/CppAD requirement; Ipopt-enabled native equilibrium routes require an Ipopt-enabled build. New dev build configurations prefer Ninja when available. Existing ``build/dev`` trees keep their configured generator until you run the coordinated repair command ``uv run python scripts\dev\build_epcsaft.py --clean --generator ninja``.
 
 Windows ``_core`` lock failures
 -------------------------------
