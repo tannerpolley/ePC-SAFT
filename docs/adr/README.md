@@ -11,4 +11,6 @@ Use sequential filenames:
 
 Keep each ADR short. A single paragraph is acceptable when it states the context, the decision, and why the decision was made.
 
-No accepted ADRs are recorded yet.
+Accepted ADRs:
+
+- `0001-architecture-deepening-public-api-boundaries.md`: records the current public API boundaries for typed equilibrium problems, canonical parameter sets, shared regression target-family summaries, and evidence-backed capability claims.

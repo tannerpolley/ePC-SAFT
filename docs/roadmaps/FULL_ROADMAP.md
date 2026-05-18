@@ -54,21 +54,37 @@ calculate_selectivity(...)
 Allowed package API concepts:
 
 ```python
-ParameterSet(...)
+ParameterSet.from_records(...)
+ParameterSet.from_dataset(...)
+ParameterSet.to_runtime_dict()
 State(...)
-EquilibriumProblem(...)
-ReactiveEquilibriumProblem(...)
+TPFlash(...)
+LLEProblem(...)
 ElectrolyteLLEProblem(...)
-ReactiveLLEProblem(...)
-RegressionProblem(...)
+ReactiveSpeciationProblem(...)
+ReactivePhaseEquilibriumProblem(...)
 TargetRow(...)
 TargetDataset(...)
-model.equilibrium(problem)
-epcsaft.equilibrium(model, problem)
-epcsaft.regress_parameters(problem)
+TargetDataset.target_family_summaries()
+mixture.solve_equilibrium(problem)
+mixture.equilibrium(kind="tp_flash", ...)
+fit_pure_parameters(...)
+fit_binary_parameters(...)
+fit_liquid_electrolyte_parameters(...)
+build_reactive_regression_objective(...)
+evaluate_reactive_regression_objective(...)
+epcsaft.capabilities()
 ```
 
 Downstream projects compute application metrics from generic outputs.
+
+Current API orientation for agents:
+
+- Prefer typed equilibrium problems plus `mixture.solve_equilibrium(problem)` for non-reactive route ownership and result contracts.
+- Treat `mixture.equilibrium(kind=...)` as the convenience facade that adapts explicit non-reactive string requests and owns reactive-specialized entrypoints.
+- Treat `ParameterSet` as the canonical parameter-family boundary; runtime payload emission belongs to `ParameterSet.to_runtime_dict()`.
+- Treat `TargetDataset.target_family_summaries()` as the shared target-family summary shape across generic and reactive regression evidence.
+- Treat `epcsaft.capabilities()` and `capability_evidence` as the authoritative public capability contract.
 
 ---
 
@@ -337,6 +353,10 @@ Required regression result fields:
 - target-family summaries
 - residual block norms
 - convergence status
+
+Current claim boundary:
+
+- Reactive regression is currently exposed as structured residual evaluation through `build_reactive_regression_objective(...)` and `evaluate_reactive_regression_objective(...)`. Do not describe that surface as a production optimizer until native optimizer ownership and capability evidence say so.
 
 ## Equilibrium
 

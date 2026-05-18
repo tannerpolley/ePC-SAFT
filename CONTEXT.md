@@ -19,7 +19,7 @@ A reusable package workflow exposed through public package interfaces and valid 
 _Avoid_: custom script, repo-specific workaround, synthetic demonstration
 
 **Capability Contract**:
-The package's current, validated statement of what workflows are supported, including the production path and evidence behind each claim.
+The package's current, validated statement of what workflows are supported, including the production path and evidence behind each claim. The authoritative public report is `epcsaft.capabilities()`, including its `capability_evidence` payload.
 _Avoid_: aspiration, roadmap item, dependency presence
 
 ### Thermodynamic Model
@@ -37,7 +37,7 @@ A named thermodynamic term family in the residual Helmholtz model with traceable
 _Avoid_: miscellaneous correction, helper formula
 
 **Parameter Family**:
-A supported class of fitted or supplied model parameters, such as pure-component parameters, binary interaction parameters, association parameters, ionic parameters, or Born-related parameters.
+A supported class of fitted or supplied model parameters, such as pure-component parameters, binary interaction parameters, association parameters, ionic parameters, or Born-related parameters. The canonical package boundary for supplying them is `ParameterSet`.
 _Avoid_: optional vocabulary, ad hoc coefficient
 
 **State**:
@@ -47,7 +47,7 @@ _Avoid_: input row, loose condition dictionary
 ### Equilibrium And Regression
 
 **Equilibrium Problem**:
-A generic package problem that asks the solver to satisfy phase, chemical, reactive, or electrolyte equilibrium conditions for a declared model system.
+A generic package problem that asks the solver to satisfy phase, chemical, reactive, or electrolyte equilibrium conditions for a declared model system. Non-reactive public requests are normalized into typed `EquilibriumProblem` objects and solved through `mixture.solve_equilibrium(problem)`.
 _Avoid_: process calculation, downstream metric
 
 **Electrolyte LLE Problem**:
@@ -63,11 +63,11 @@ A generic package problem that fits supported parameter families to target datas
 _Avoid_: curve-fit script, downstream calibration notebook
 
 **Target Dataset**:
-A structured set of target rows with source context, quantities, units, uncertainty or tolerance expectations, and target-family classification.
+A structured set of target rows with source context, quantities, units, uncertainty or tolerance expectations, and target-family classification. `TargetDataset.target_family_summaries()` is the shared package summary shape used by generic and reactive regression diagnostics.
 _Avoid_: loose CSV, anonymous fixture
 
 **Production Solver Path**:
-The validated native implementation route that owns residual packing, solver iteration, diagnostics, and result contracts for a required workflow.
+The validated native implementation route that owns residual packing, solver iteration, diagnostics, and result contracts for a required workflow. Compatibility adapters may normalize public inputs into typed problems, but they do not create separate capability claims.
 _Avoid_: diagnostic route, staged-only route, Python-owned optimizer loop
 
 **Derivative Path**:
@@ -98,6 +98,14 @@ _Avoid_: documented limitation, honest incompleteness, dependency-only proof
 - An **Electrolyte LLE Problem** and a **Reactive LLE Problem** are specialized **Equilibrium Problems**.
 - A **Regression Problem** fits **Parameter Families** to a **Target Dataset** using a **Production Solver Path** and a **Derivative Path**.
 - A **Literature Benchmark** is a high-confidence **Validation Lane** for package behavior.
+
+## Current API Signals
+
+- Use `ParameterSet.from_dataset(...)`, `ParameterSet.from_records(...)`, and `ParameterSet.to_runtime_dict()` as the canonical parameter-family bridge between source records and runtime payloads.
+- Use typed equilibrium problems plus `mixture.solve_equilibrium(problem)` as the authoritative non-reactive equilibrium entrypoint.
+- Treat `mixture.equilibrium(kind=...)` as a convenience facade: it adapts explicit non-reactive string requests into typed problems and owns the reactive-specialized entrypoints.
+- Use `TargetDataset.target_family_summaries()` when agent output needs the shared target-family summary shape that generic and reactive regression diagnostics both expose.
+- Treat `epcsaft.capabilities()` and `capability_evidence` as the authoritative package capability surface. Capability text elsewhere must agree with that payload.
 
 ## Example Dialogue
 
