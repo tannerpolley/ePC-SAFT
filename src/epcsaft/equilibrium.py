@@ -289,6 +289,7 @@ class EquilibriumProblem:
         raise InputError("EquilibriumProblem is abstract; instantiate a concrete equilibrium problem class.")
 
 
+# AlgID: neutral_tp_flash_ipopt
 @dataclass(frozen=True, slots=True)
 class TPFlash(EquilibriumProblem):
     """Neutral TP flash problem."""
@@ -306,6 +307,7 @@ class TPFlash(EquilibriumProblem):
         )
 
 
+# AlgID: stability_tpd_ipopt
 @dataclass(frozen=True, slots=True)
 class StabilityAnalysis(EquilibriumProblem):
     """Neutral or electrolyte tangent-plane-distance stability problem."""
@@ -348,6 +350,7 @@ class StabilityAnalysis(EquilibriumProblem):
         )
 
 
+# AlgID: bubble_dew_ipopt
 @dataclass(frozen=True, slots=True)
 class BubblePoint(EquilibriumProblem):
     """Neutral bubble-point problem."""
@@ -373,6 +376,7 @@ class BubblePoint(EquilibriumProblem):
         )
 
 
+# AlgID: bubble_dew_ipopt
 @dataclass(frozen=True, slots=True)
 class DewPoint(EquilibriumProblem):
     """Neutral dew-point problem."""
@@ -398,6 +402,7 @@ class DewPoint(EquilibriumProblem):
         )
 
 
+# AlgID: neutral_lle_ipopt
 @dataclass(frozen=True, slots=True)
 class LLEProblem(EquilibriumProblem):
     """Neutral liquid-liquid equilibrium problem."""
@@ -420,6 +425,7 @@ class LLEProblem(EquilibriumProblem):
         )
 
 
+# AlgID: electrolyte_lle_ipopt
 @dataclass(frozen=True, slots=True)
 class ElectrolyteLLEProblem(EquilibriumProblem):
     """Charge-constrained electrolyte LLE problem."""
@@ -474,6 +480,8 @@ class ElectrolyteBubblePoint(EquilibriumProblem):
         )
 
 
+# AlgID: ideal_speciation_ipopt
+# AlgID: nonideal_speciation_ipopt
 @dataclass(frozen=True, slots=True)
 class ReactiveSpeciationProblem(EquilibriumProblem):
     """Homogeneous reactive speciation problem."""
@@ -524,6 +532,8 @@ class ReactiveElectrolyteBubbleProblem(ReactiveSpeciationProblem):
         )
 
 
+# AlgID: reactive_lle_liquid_root_ipopt
+# AlgID: reactive_electrolyte_lle_liquid_root_ipopt
 @dataclass(frozen=True, slots=True)
 class ReactivePhaseEquilibriumProblem(ReactiveSpeciationProblem):
     """Coupled native reactive phase-equilibrium problem."""

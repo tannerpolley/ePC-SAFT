@@ -745,6 +745,7 @@ class ReactiveElectrolyteRegressionContext:
         _ = parameter_map, parameters
         raise InputError("reactive-regression sensitivities require native Ceres derivative coverage.")
 
+# AlgID: reactive_electrolyte_batch_residual_context
 def build_reactive_regression_objective(
     batch: ReactiveElectrolyteBatch,
     *,
@@ -775,6 +776,7 @@ def build_reactive_regression_objective(
     )
 
 
+# AlgID: reactive_electrolyte_batch_residual_context
 def evaluate_reactive_regression_objective(
     batch_or_context: ReactiveElectrolyteBatch | ReactiveElectrolyteRegressionContext,
     *,

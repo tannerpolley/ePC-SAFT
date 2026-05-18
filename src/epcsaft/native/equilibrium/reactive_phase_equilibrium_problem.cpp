@@ -1809,6 +1809,8 @@ epcsaft::native::equilibrium_nlp::NeutralTwoPhaseEosNlpContract evaluate_reactiv
     return reactive_liquid_root_contract_from_problem(problem);
 }
 
+// AlgID: reactive_lle_liquid_root_ipopt
+// AlgID: reactive_electrolyte_lle_liquid_root_ipopt
 epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult solve_reactive_phase_liquid_root_route_native(
     const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
     double t,
@@ -1873,6 +1875,7 @@ epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult solve_reactive_
     out.accepted = solve.accepted;
     out.solver_status = solve.solver_status;
     out.application_status = solve.application_status;
+    epcsaft::native::equilibrium_nlp::apply_ipopt_solve_metadata(out, solve);
     out.objective = solve.objective;
     out.variables = solve.variables;
     out.constraints = solve.constraints;
@@ -1969,6 +1972,7 @@ epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult solve_reactive_
     out.accepted = solve.accepted;
     out.solver_status = solve.solver_status;
     out.application_status = solve.application_status;
+    epcsaft::native::equilibrium_nlp::apply_ipopt_solve_metadata(out, solve);
     out.objective = solve.objective;
     out.variables = solve.variables;
     out.constraints = solve.constraints;

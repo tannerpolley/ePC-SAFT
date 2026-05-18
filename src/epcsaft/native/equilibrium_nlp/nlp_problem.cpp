@@ -47,6 +47,7 @@ void validate_nlp_problem_shape(const NlpProblem& problem) {
     const int variables = problem.variable_count();
     const int constraints = problem.constraint_count();
     const int jacobian_nonzeros = problem.jacobian_nonzero_count();
+    const int hessian_nonzeros = problem.hessian_nonzero_count();
     if (variables <= 0) {
         throw ValueError("NLP problem must expose at least one variable.");
     }
@@ -55,6 +56,9 @@ void validate_nlp_problem_shape(const NlpProblem& problem) {
     }
     if (jacobian_nonzeros < 0) {
         throw ValueError("NLP problem Jacobian nonzero count cannot be negative.");
+    }
+    if (hessian_nonzeros < 0) {
+        throw ValueError("NLP problem Hessian nonzero count cannot be negative.");
     }
 
     const NlpBounds problem_bounds = problem.bounds();
@@ -76,6 +80,26 @@ void validate_nlp_problem_shape(const NlpProblem& problem) {
         if (structure.cols[index] < 0 || structure.cols[index] >= variables) {
             throw ValueError("NLP Jacobian column index is out of range.");
         }
+    }
+    if (problem.has_exact_hessian()) {
+        if (hessian_nonzeros <= 0) {
+            throw ValueError("NLP exact Hessian support requires positive hessian_nonzero_count.");
+        }
+        const NlpHessianStructure hessian = problem.hessian_structure();
+        if (hessian.rows.size() != static_cast<std::size_t>(hessian_nonzeros)
+            || hessian.cols.size() != static_cast<std::size_t>(hessian_nonzeros)) {
+            throw ValueError("NLP Hessian structure must match hessian_nonzero_count.");
+        }
+        for (std::size_t index = 0; index < hessian.rows.size(); ++index) {
+            if (hessian.rows[index] < 0 || hessian.rows[index] >= variables) {
+                throw ValueError("NLP Hessian row index is out of range.");
+            }
+            if (hessian.cols[index] < 0 || hessian.cols[index] >= variables) {
+                throw ValueError("NLP Hessian column index is out of range.");
+            }
+        }
+    } else if (hessian_nonzeros != 0) {
+        throw ValueError("NLP Hessian nonzero count requires exact Hessian support.");
     }
 
     const NlpScaling scaling = problem.scaling();

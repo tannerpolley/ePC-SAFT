@@ -463,6 +463,8 @@ def _options_with_solver_backend(
     )
 
 
+# AlgID: ideal_speciation_ipopt
+# AlgID: nonideal_speciation_ipopt
 def _solve_reactive_speciation_native(
     *,
     species: list[str],

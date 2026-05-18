@@ -164,6 +164,11 @@ def test_generated_markdown_explains_documentation_only_cpp_owner_absence() -> N
 
     markdown = sync_equation_registry.render_markdown(entries)
 
+    assert "**LaTeX source**" in markdown
+    assert "```tex" in markdown
+    assert "a=b" in markdown
+    assert "**Rendered formula**" in markdown
+    assert "$$\na=b\n$$" in markdown
     assert "Documentation-only: no direct native owner expected" in markdown
     assert "No `EqID` owner comment has been attached yet" not in markdown
 

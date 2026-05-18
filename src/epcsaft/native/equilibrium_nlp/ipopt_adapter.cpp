@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cmath>
 #include <exception>
+#include <limits>
 #include <sstream>
 
 #ifdef EPCSAFT_HAS_IPOPT
@@ -77,6 +78,32 @@ public:
         return {1.0, 1.0};
     }
 
+    bool has_exact_hessian() const override {
+        return true;
+    }
+
+    int hessian_nonzero_count() const override {
+        return 3;
+    }
+
+    NlpHessianStructure hessian_structure() const override {
+        return {{0, 1, 1}, {0, 0, 1}};
+    }
+
+    std::vector<double> hessian_values(
+        const std::vector<double>& variables,
+        double objective_factor,
+        const std::vector<double>& constraint_multipliers
+    ) const override {
+        (void)variables;
+        (void)constraint_multipliers;
+        return {2.0 * objective_factor, 0.0, 2.0 * objective_factor};
+    }
+
+    std::string hessian_backend() const override {
+        return "analytic";
+    }
+
     NlpScaling scaling() const override {
         return {1.0, {1.0, 1.0}, {1.0}};
     }
@@ -90,6 +117,15 @@ public:
     }
 };
 
+std::string normalize_hessian_mode(const IpoptSolveOptions& options) {
+    std::string mode = options.hessian_mode.empty() ? "limited-memory" : options.hessian_mode;
+    std::replace(mode.begin(), mode.end(), '_', '-');
+    if (mode == "limited-memory" || mode == "exact" || mode == "auto") {
+        return mode;
+    }
+    throw ValueError("Native Ipopt adapter hessian_mode must be 'auto', 'exact', or 'limited-memory'.");
+}
+
 #ifdef EPCSAFT_HAS_IPOPT
 bool all_finite(const std::vector<double>& values) {
     return std::all_of(values.begin(), values.end(), [](double value) {
@@ -99,6 +135,33 @@ bool all_finite(const std::vector<double>& values) {
 
 std::vector<double> vector_from_raw(const Ipopt::Number* values, Ipopt::Index count) {
     return std::vector<double>(values, values + count);
+}
+
+void require_vector_size(
+    const std::vector<double>& values,
+    std::size_t expected,
+    const std::string& label
+) {
+    if (values.empty() || values.size() == expected) {
+        return;
+    }
+    std::ostringstream msg;
+    msg << label << " has size " << values.size() << " but expected " << expected << ".";
+    throw ValueError(msg.str());
+}
+
+double vector_min_or_zero(const std::vector<double>& values) {
+    if (values.empty()) {
+        return 0.0;
+    }
+    return *std::min_element(values.begin(), values.end());
+}
+
+double vector_max_or_zero(const std::vector<double>& values) {
+    if (values.empty()) {
+        return 0.0;
+    }
+    return *std::max_element(values.begin(), values.end());
 }
 
 std::string solver_status_name(Ipopt::SolverReturn status) {
@@ -187,17 +250,54 @@ std::string application_status_name(Ipopt::ApplicationReturnStatus status) {
     }
 }
 
+// AlgID: ipopt_tnlp_adapter
 class IpoptTnlpAdapter final : public Ipopt::TNLP {
 public:
     explicit IpoptTnlpAdapter(const NlpProblem& problem, const IpoptSolveOptions& options)
         : problem_(problem),
           options_(options),
+          selected_hessian_mode_(select_hessian_mode(problem_, options_)),
           bounds_(problem_.bounds()),
-          initial_(problem_.initial_point()),
+          initial_(options_.initial_variables.empty() ? problem_.initial_point() : options_.initial_variables),
           jacobian_structure_(problem_.jacobian_structure()),
+          hessian_structure_(selected_hessian_mode_ == "exact" ? problem_.hessian_structure() : NlpHessianStructure{}),
           scaling_(problem_.scaling()) {
+        const auto variable_count = static_cast<std::size_t>(problem_.variable_count());
+        const auto constraint_count = static_cast<std::size_t>(problem_.constraint_count());
+        require_vector_size(options_.initial_variables, variable_count, "continuation_state.variables");
+        require_vector_size(
+            options_.initial_bound_lower_multipliers,
+            variable_count,
+            "continuation_state.bound_lower_multipliers"
+        );
+        require_vector_size(
+            options_.initial_bound_upper_multipliers,
+            variable_count,
+            "continuation_state.bound_upper_multipliers"
+        );
+        require_vector_size(
+            options_.initial_constraint_multipliers,
+            constraint_count,
+            "continuation_state.constraint_multipliers"
+        );
         result_.variables = initial_;
         result_.diagnostics_string["problem_name"] = problem_.name();
+        result_.diagnostics_string["gradient_approximation"] = "exact";
+        result_.diagnostics_string["jacobian_approximation"] = "exact";
+        result_.diagnostics_string["hessian_approximation"] = selected_hessian_mode_;
+        result_.diagnostics_string["hessian_backend"] =
+            selected_hessian_mode_ == "exact" ? problem_.hessian_backend() : "limited-memory";
+        result_.diagnostics_string["scaling_method"] = "user-scaling";
+        result_.diagnostics_int["iteration_history_limit"] = std::max(0, options_.iteration_history_limit);
+        result_.diagnostics_int["variable_scaling_count"] = static_cast<int>(scaling_.variables.size());
+        result_.diagnostics_int["constraint_scaling_count"] = static_cast<int>(scaling_.constraints.size());
+        result_.diagnostics_double["objective_scaling"] = scaling_.objective;
+        result_.diagnostics_double["variable_scaling_min"] = vector_min_or_zero(scaling_.variables);
+        result_.diagnostics_double["variable_scaling_max"] = vector_max_or_zero(scaling_.variables);
+        result_.diagnostics_double["constraint_scaling_min"] = vector_min_or_zero(scaling_.constraints);
+        result_.diagnostics_double["constraint_scaling_max"] = vector_max_or_zero(scaling_.constraints);
+        result_.diagnostics_bool["exact_hessian_available"] = problem_.has_exact_hessian();
+        result_.diagnostics_bool["warm_start_requested"] = has_warm_start();
         for (const auto& item : problem_.diagnostics()) {
             result_.diagnostics_string[item.first] = item.second;
         }
@@ -213,7 +313,7 @@ public:
         n = problem_.variable_count();
         m = problem_.constraint_count();
         nnz_jac_g = problem_.jacobian_nonzero_count();
-        nnz_h_lag = 0;
+        nnz_h_lag = selected_hessian_mode_ == "exact" ? problem_.hessian_nonzero_count() : 0;
         index_style = TNLP::C_STYLE;
         return true;
     }
@@ -248,14 +348,34 @@ public:
         bool init_lambda,
         Ipopt::Number* lambda
     ) override {
-        (void)z_L;
-        (void)z_U;
-        (void)m;
-        (void)lambda;
-        if (!init_x || init_z || init_lambda || n != problem_.variable_count()) {
+        if (!init_x || n != problem_.variable_count() || m != problem_.constraint_count()) {
             return false;
         }
         std::copy(initial_.begin(), initial_.end(), x);
+        if (init_z) {
+            if (
+                options_.initial_bound_lower_multipliers.size() != initial_.size()
+                || options_.initial_bound_upper_multipliers.size() != initial_.size()
+            ) {
+                return false;
+            }
+            std::copy(options_.initial_bound_lower_multipliers.begin(), options_.initial_bound_lower_multipliers.end(), z_L);
+            std::copy(options_.initial_bound_upper_multipliers.begin(), options_.initial_bound_upper_multipliers.end(), z_U);
+        }
+        if (init_lambda) {
+            if (
+                options_.initial_constraint_multipliers.size()
+                != static_cast<std::size_t>(problem_.constraint_count())
+            ) {
+                return false;
+            }
+            std::copy(
+                options_.initial_constraint_multipliers.begin(),
+                options_.initial_constraint_multipliers.end(),
+                lambda
+            );
+        }
+        result_.diagnostics_bool["warm_start_used"] = init_z || init_lambda;
         return all_finite(initial_);
     }
 
@@ -413,18 +533,78 @@ public:
         Ipopt::Index* jCol,
         Ipopt::Number* values
     ) override {
-        (void)n;
-        (void)x;
         (void)new_x;
-        (void)obj_factor;
-        (void)m;
-        (void)lambda;
         (void)new_lambda;
-        (void)nele_hess;
-        (void)iRow;
-        (void)jCol;
-        (void)values;
-        return false;
+        if (selected_hessian_mode_ != "exact" || n != problem_.variable_count() || m != problem_.constraint_count()
+            || nele_hess != problem_.hessian_nonzero_count()) {
+            return false;
+        }
+        if (values == nullptr) {
+            for (std::size_t index = 0; index < hessian_structure_.rows.size(); ++index) {
+                iRow[index] = hessian_structure_.rows[index];
+                jCol[index] = hessian_structure_.cols[index];
+            }
+            return true;
+        }
+        try {
+            const std::vector<double> hessian = problem_.hessian_values(
+                vector_from_raw(x, n),
+                obj_factor,
+                vector_from_raw(lambda, m)
+            );
+            if (hessian.size() != static_cast<std::size_t>(nele_hess) || !all_finite(hessian)) {
+                return false;
+            }
+            std::copy(hessian.begin(), hessian.end(), values);
+            result_.diagnostics_int["eval_h_calls"] += 1;
+            return true;
+        } catch (const std::exception& exc) {
+            record_callback_exception("eval_h", exc.what());
+            return false;
+        } catch (...) {
+            record_callback_exception("eval_h", "unknown exception");
+            return false;
+        }
+    }
+
+    bool intermediate_callback(
+        Ipopt::AlgorithmMode mode,
+        Ipopt::Index iter,
+        Ipopt::Number obj_value,
+        Ipopt::Number inf_pr,
+        Ipopt::Number inf_du,
+        Ipopt::Number mu,
+        Ipopt::Number d_norm,
+        Ipopt::Number regularization_size,
+        Ipopt::Number alpha_du,
+        Ipopt::Number alpha_pr,
+        Ipopt::Index ls_trials,
+        const Ipopt::IpoptData* ip_data,
+        Ipopt::IpoptCalculatedQuantities* ip_cq
+    ) override {
+        (void)d_norm;
+        (void)ip_data;
+        (void)ip_cq;
+        result_.diagnostics_int["iteration_count"] = static_cast<int>(iter);
+        const int limit = std::max(0, options_.iteration_history_limit);
+        if (limit > 0) {
+            IpoptIterationRecord record;
+            record.iteration = static_cast<int>(iter);
+            record.objective = obj_value;
+            record.primal_infeasibility = inf_pr;
+            record.dual_infeasibility = inf_du;
+            record.barrier_parameter = mu;
+            record.step_size_dual = alpha_du;
+            record.step_size_primal = alpha_pr;
+            record.regularization_size = regularization_size;
+            record.line_search_trials = static_cast<int>(ls_trials);
+            record.restoration_phase = mode == Ipopt::RestorationPhaseMode;
+            result_.iteration_history.push_back(record);
+            while (result_.iteration_history.size() > static_cast<std::size_t>(limit)) {
+                result_.iteration_history.erase(result_.iteration_history.begin());
+            }
+        }
+        return true;
     }
 
     void finalize_solution(
@@ -440,9 +620,6 @@ public:
         const Ipopt::IpoptData* ip_data,
         Ipopt::IpoptCalculatedQuantities* ip_cq
     ) override {
-        (void)z_L;
-        (void)z_U;
-        (void)lambda;
         (void)ip_data;
         (void)ip_cq;
         result_.solver_ran = true;
@@ -453,9 +630,13 @@ public:
         result_.objective = obj_value;
         result_.variables = vector_from_raw(x, n);
         result_.constraints = vector_from_raw(g, m);
+        result_.bound_lower_multipliers = vector_from_raw(z_L, n);
+        result_.bound_upper_multipliers = vector_from_raw(z_U, n);
+        result_.constraint_multipliers = vector_from_raw(lambda, m);
         result_.diagnostics_int["solver_status_code"] = static_cast<int>(status);
         result_.diagnostics_int["variables"] = static_cast<int>(n);
         result_.diagnostics_int["constraints"] = static_cast<int>(m);
+        result_.diagnostics_int["iteration_history_size"] = static_cast<int>(result_.iteration_history.size());
         result_.diagnostics_bool["exact_gradient_required"] = true;
         result_.diagnostics_bool["exact_jacobian_required"] = true;
     }
@@ -469,11 +650,31 @@ private:
         result_.diagnostics_string["last_callback_exception"] = callback + ": " + message;
     }
 
+    bool has_warm_start() const {
+        return !options_.initial_variables.empty()
+            || !options_.initial_bound_lower_multipliers.empty()
+            || !options_.initial_bound_upper_multipliers.empty()
+            || !options_.initial_constraint_multipliers.empty();
+    }
+
+    static std::string select_hessian_mode(const NlpProblem& problem, const IpoptSolveOptions& options) {
+        const std::string mode = normalize_hessian_mode(options);
+        if (mode == "auto") {
+            return problem.has_exact_hessian() ? "exact" : "limited-memory";
+        }
+        if (mode == "exact" && !problem.has_exact_hessian()) {
+            throw ValueError("Native Ipopt exact Hessian mode requires an NLP Hessian provider.");
+        }
+        return mode;
+    }
+
     const NlpProblem& problem_;
     IpoptSolveOptions options_;
+    std::string selected_hessian_mode_;
     NlpBounds bounds_;
     std::vector<double> initial_;
     NlpJacobianStructure jacobian_structure_;
+    NlpHessianStructure hessian_structure_;
     NlpScaling scaling_;
     IpoptSolveResult result_;
 };
@@ -500,8 +701,11 @@ IpoptSolveResult solve_ipopt_nlp(
     const IpoptSolveOptions& options
 ) {
     validate_nlp_problem_shape(problem);
-    if (!options.limited_memory_hessian) {
-        throw ValueError("Native Ipopt adapter currently supports only Ipopt limited-memory Hessian mode.");
+    const std::string selected_hessian_mode = normalize_hessian_mode(options) == "auto" && problem.has_exact_hessian()
+        ? "exact"
+        : (normalize_hessian_mode(options) == "auto" ? "limited-memory" : normalize_hessian_mode(options));
+    if (selected_hessian_mode == "exact" && !problem.has_exact_hessian()) {
+        throw ValueError("Native Ipopt exact Hessian mode requires an NLP Hessian provider.");
     }
     if (!std::isfinite(options.max_wall_time_seconds) || options.max_wall_time_seconds < 0.0) {
         throw ValueError("Native Ipopt adapter requires a non-negative wall-clock timeout.");
@@ -518,8 +722,17 @@ IpoptSolveResult solve_ipopt_nlp(
     app->Options()->SetNumericValue("acceptable_tol", options.acceptable_tolerance);
     app->Options()->SetStringValue("jacobian_approximation", "exact");
     app->Options()->SetStringValue("gradient_approximation", "exact");
-    app->Options()->SetStringValue("hessian_approximation", "limited-memory");
+    if (selected_hessian_mode == "limited-memory") {
+        app->Options()->SetStringValue("hessian_approximation", "limited-memory");
+    }
     app->Options()->SetStringValue("nlp_scaling_method", "user-scaling");
+    if (
+        !options.initial_bound_lower_multipliers.empty()
+        || !options.initial_bound_upper_multipliers.empty()
+        || !options.initial_constraint_multipliers.empty()
+    ) {
+        app->Options()->SetStringValue("warm_start_init_point", "yes");
+    }
     if (options.max_wall_time_seconds > 0.0) {
         app->Options()->SetNumericValue("max_wall_time", options.max_wall_time_seconds);
     }
@@ -547,6 +760,11 @@ IpoptSolveResult solve_ipopt_quadratic_smoke() {
     options.max_iterations = 50;
     options.tolerance = 1.0e-10;
     options.acceptable_tolerance = 1.0e-8;
+    return solve_ipopt_nlp(problem, options);
+}
+
+IpoptSolveResult solve_ipopt_quadratic_smoke(const IpoptSolveOptions& options) {
+    QuadraticSmokeProblem problem;
     return solve_ipopt_nlp(problem, options);
 }
 

@@ -5,13 +5,18 @@ from collections import defaultdict
 import difflib
 import json
 import re
+import shutil
 import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
 TEX_PATH = REPO_ROOT / "docs" / "latex" / "equations.tex"
 MARKDOWN_PATH = REPO_ROOT / "docs" / "equations.md"
 REGISTRY_PATH = REPO_ROOT / "docs" / "equations_registry.yaml"
+LEGACY_RENDER_DIR = REPO_ROOT / "docs" / "rendered_math" / "equations"
 NATIVE_ROOT = REPO_ROOT / "src" / "epcsaft" / "native"
 
 SECTION_RE = re.compile(r"\\section\{(.+?)\}")
@@ -356,12 +361,30 @@ def render_markdown(entries: list[dict]) -> str:
         else:
             out.append("- C++: No `EqID` owner comment has been attached yet.")
         out.append("")
+        out.append("**LaTeX source**")
+        out.append("")
         out.append("```tex")
         out.extend(str(entry.get("latex", "")).splitlines() or [""])
         out.append("```")
         out.append("")
+        out.append("**Rendered formula**")
+        out.append("")
+        out.append("$$")
+        out.extend(str(entry.get("latex", "")).splitlines() or [""])
+        out.append("$$")
+        out.append("")
 
     return "\n".join(out)
+
+
+def sync_legacy_render_dir(*, check: bool) -> None:
+    if not LEGACY_RENDER_DIR.exists():
+        return
+    if check:
+        raise SystemExit(
+            f"{LEGACY_RENDER_DIR} still contains legacy rendered equation images."
+        )
+    shutil.rmtree(LEGACY_RENDER_DIR)
 
 
 def write_if_changed(path: Path, content: str) -> bool:
@@ -409,13 +432,13 @@ def main() -> None:
     validate_links(entries, code_refs)
     attach_code_refs(entries, code_refs)
     traceability_report = render_traceability_report(missing_cpp_ref_entries(entries))
-
     yaml_text = render_yaml(entries)
     markdown_text = render_markdown(entries)
 
     if args.check:
         check_matches(REGISTRY_PATH, yaml_text)
         check_matches(MARKDOWN_PATH, markdown_text)
+        sync_legacy_render_dir(check=True)
         print("Equation registry outputs are up to date.")
         print(traceability_report)
         if args.docs_only_audit:
@@ -429,6 +452,7 @@ def main() -> None:
     if args.docs_only_audit:
         print(render_docs_only_audit(entries))
 
+    sync_legacy_render_dir(check=False)
     changed_yaml = write_if_changed(REGISTRY_PATH, yaml_text)
     changed_md = write_if_changed(MARKDOWN_PATH, markdown_text)
     if changed_yaml or changed_md:

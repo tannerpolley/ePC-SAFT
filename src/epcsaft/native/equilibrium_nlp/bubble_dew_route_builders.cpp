@@ -960,6 +960,7 @@ NeutralTwoPhaseEosPostsolve fixed_temperature_pressure_postsolve(
     return out;
 }
 
+// AlgID: bubble_dew_ipopt
 NeutralTwoPhaseEosRouteResult solve_pressure_route(
     const add_args& args,
     double temperature,
@@ -1000,6 +1001,7 @@ NeutralTwoPhaseEosRouteResult solve_pressure_route(
     out.solver_accepted = solve.accepted;
     out.solver_status = solve.solver_status;
     out.application_status = solve.application_status;
+    apply_ipopt_solve_metadata(out, solve);
     out.objective = solve.objective;
     out.variables = solve.variables;
     out.constraints = solve.constraints;
@@ -1031,6 +1033,7 @@ NeutralTwoPhaseEosRouteResult solve_pressure_route(
     return out;
 }
 
+// AlgID: bubble_dew_ipopt
 NeutralTwoPhaseEosRouteResult solve_temperature_route(
     const add_args& args,
     double target_pressure,
@@ -1068,6 +1071,7 @@ NeutralTwoPhaseEosRouteResult solve_temperature_route(
     out.solver_accepted = solve.accepted;
     out.solver_status = solve.solver_status;
     out.application_status = solve.application_status;
+    apply_ipopt_solve_metadata(out, solve);
     out.objective = solve.objective;
     out.variables = solve.variables;
     out.constraints = solve.constraints;

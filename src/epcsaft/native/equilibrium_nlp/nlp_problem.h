@@ -18,12 +18,18 @@ struct NlpJacobianStructure {
     std::vector<int> cols;
 };
 
+struct NlpHessianStructure {
+    std::vector<int> rows;
+    std::vector<int> cols;
+};
+
 struct NlpScaling {
     double objective = 1.0;
     std::vector<double> variables;
     std::vector<double> constraints;
 };
 
+// AlgID: native_nlp_problem_contract
 class NlpProblem {
 public:
     virtual ~NlpProblem() = default;
@@ -40,6 +46,33 @@ public:
     virtual std::vector<double> constraints(const std::vector<double>& variables) const = 0;
     virtual NlpJacobianStructure jacobian_structure() const = 0;
     virtual std::vector<double> jacobian_values(const std::vector<double>& variables) const = 0;
+
+    virtual bool has_exact_hessian() const {
+        return false;
+    }
+
+    virtual int hessian_nonzero_count() const {
+        return 0;
+    }
+
+    virtual NlpHessianStructure hessian_structure() const {
+        return {};
+    }
+
+    virtual std::vector<double> hessian_values(
+        const std::vector<double>& variables,
+        double objective_factor,
+        const std::vector<double>& constraint_multipliers
+    ) const {
+        (void)variables;
+        (void)objective_factor;
+        (void)constraint_multipliers;
+        return {};
+    }
+
+    virtual std::string hessian_backend() const {
+        return "";
+    }
 
     virtual NlpScaling scaling() const {
         return {};

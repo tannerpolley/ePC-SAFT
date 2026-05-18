@@ -1336,6 +1336,7 @@ Eigen::VectorXd vector_from_values(const std::vector<double>& values) {
     return out;
 }
 
+// AlgID: nonideal_speciation_ipopt
 ChemicalEquilibriumResultNative solve_nonideal_speciation_chemical_equilibrium_ipopt(
     const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
     double t,

@@ -603,6 +603,7 @@ void add_ideal_implicit_sensitivity_diagnostics(
 
 }  // namespace
 
+// AlgID: ideal_speciation_ipopt
 IdealSpeciationIpoptResult solve_ideal_speciation_ipopt(
     const IdealSpeciationRequest& request,
     const IpoptSolveOptions& options,
@@ -635,6 +636,7 @@ IdealSpeciationIpoptResult solve_ideal_speciation_ipopt(
     return out;
 }
 
+// AlgID: ideal_speciation_ipopt
 ChemicalEquilibriumResultNative solve_ideal_speciation_chemical_equilibrium_ipopt(
     const IdealSpeciationRequest& request,
     const ChemicalEquilibriumOptionsNative& options

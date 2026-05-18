@@ -452,6 +452,90 @@ py::dict native_diagnostics_to_dict(
     return out;
 }
 
+std::string diagnostic_string_or(
+    const epcsaft::native::equilibrium_nlp::IpoptSolveResult& result,
+    const std::string& key,
+    const std::string& fallback
+) {
+    const auto item = result.diagnostics_string.find(key);
+    return item == result.diagnostics_string.end() ? fallback : item->second;
+}
+
+int diagnostic_int_or(
+    const epcsaft::native::equilibrium_nlp::IpoptSolveResult& result,
+    const std::string& key,
+    int fallback
+) {
+    const auto item = result.diagnostics_int.find(key);
+    return item == result.diagnostics_int.end() ? fallback : item->second;
+}
+
+bool diagnostic_bool_or(
+    const epcsaft::native::equilibrium_nlp::IpoptSolveResult& result,
+    const std::string& key,
+    bool fallback
+) {
+    const auto item = result.diagnostics_bool.find(key);
+    return item == result.diagnostics_bool.end() ? fallback : item->second;
+}
+
+py::list ipopt_iteration_history_to_list(
+    const std::vector<epcsaft::native::equilibrium_nlp::IpoptIterationRecord>& history
+) {
+    py::list out;
+    for (const auto& record : history) {
+        py::dict row;
+        row["iteration"] = record.iteration;
+        row["objective"] = record.objective;
+        row["primal_infeasibility"] = record.primal_infeasibility;
+        row["dual_infeasibility"] = record.dual_infeasibility;
+        row["barrier_parameter"] = record.barrier_parameter;
+        row["step_size_primal"] = record.step_size_primal;
+        row["step_size_dual"] = record.step_size_dual;
+        row["regularization_size"] = record.regularization_size;
+        row["line_search_trials"] = record.line_search_trials;
+        row["restoration_phase"] = record.restoration_phase;
+        out.append(row);
+    }
+    return out;
+}
+
+py::dict ipopt_continuation_state_to_dict(
+    const epcsaft::native::equilibrium_nlp::IpoptSolveResult& result
+) {
+    py::dict out;
+    out["variables"] = result.variables;
+    out["bound_lower_multipliers"] = result.bound_lower_multipliers;
+    out["bound_upper_multipliers"] = result.bound_upper_multipliers;
+    out["constraint_multipliers"] = result.constraint_multipliers;
+    return out;
+}
+
+void apply_ipopt_continuation_state(
+    epcsaft::native::equilibrium_nlp::IpoptSolveOptions& options,
+    const py::object& continuation_state
+) {
+    if (continuation_state.is_none()) {
+        return;
+    }
+    const py::dict state = continuation_state.cast<py::dict>();
+    if (state.contains("variables")) {
+        options.initial_variables = state["variables"].cast<std::vector<double>>();
+    }
+    if (state.contains("bound_lower_multipliers")) {
+        options.initial_bound_lower_multipliers =
+            state["bound_lower_multipliers"].cast<std::vector<double>>();
+    }
+    if (state.contains("bound_upper_multipliers")) {
+        options.initial_bound_upper_multipliers =
+            state["bound_upper_multipliers"].cast<std::vector<double>>();
+    }
+    if (state.contains("constraint_multipliers")) {
+        options.initial_constraint_multipliers =
+            state["constraint_multipliers"].cast<std::vector<double>>();
+    }
+}
+
 double json_safe_native_double(double value) {
     return std::isfinite(value) ? value : 1.0e300;
 }
@@ -694,9 +778,20 @@ py::dict neutral_two_phase_eos_route_result_to_dict(
     out["accepted"] = result.accepted;
     out["exact_gradient_required"] = result.exact_gradient_required;
     out["exact_jacobian_required"] = result.exact_jacobian_required;
-    out["gradient_approximation"] = "exact";
-    out["jacobian_approximation"] = "exact";
-    out["hessian_approximation"] = "limited-memory";
+    out["gradient_approximation"] = result.gradient_approximation;
+    out["jacobian_approximation"] = result.jacobian_approximation;
+    out["hessian_approximation"] = result.hessian_approximation;
+    out["hessian_backend"] = result.hessian_backend;
+    out["scaling_method"] = result.scaling_method;
+    out["iteration_count"] = result.iteration_count;
+    out["iteration_history_limit"] = result.iteration_history_limit;
+    out["iteration_history_size"] = result.iteration_history_size;
+    out["variable_scaling_count"] = result.variable_scaling_count;
+    out["constraint_scaling_count"] = result.constraint_scaling_count;
+    out["eval_h_calls"] = result.eval_h_calls;
+    out["exact_hessian_available"] = result.exact_hessian_available;
+    out["warm_start_requested"] = result.warm_start_requested;
+    out["warm_start_used"] = result.warm_start_used;
     out["status"] = result.status;
     out["solver_status"] = result.solver_status;
     out["application_status"] = result.application_status;
@@ -757,9 +852,20 @@ py::dict reactive_two_phase_eos_route_result_to_dict(
     out["accepted"] = result.accepted;
     out["exact_gradient_required"] = result.exact_gradient_required;
     out["exact_jacobian_required"] = result.exact_jacobian_required;
-    out["gradient_approximation"] = "exact";
-    out["jacobian_approximation"] = "exact";
-    out["hessian_approximation"] = "limited-memory";
+    out["gradient_approximation"] = result.gradient_approximation;
+    out["jacobian_approximation"] = result.jacobian_approximation;
+    out["hessian_approximation"] = result.hessian_approximation;
+    out["hessian_backend"] = result.hessian_backend;
+    out["scaling_method"] = result.scaling_method;
+    out["iteration_count"] = result.iteration_count;
+    out["iteration_history_limit"] = result.iteration_history_limit;
+    out["iteration_history_size"] = result.iteration_history_size;
+    out["variable_scaling_count"] = result.variable_scaling_count;
+    out["constraint_scaling_count"] = result.constraint_scaling_count;
+    out["eval_h_calls"] = result.eval_h_calls;
+    out["exact_hessian_available"] = result.exact_hessian_available;
+    out["warm_start_requested"] = result.warm_start_requested;
+    out["warm_start_used"] = result.warm_start_used;
     out["status"] = result.status;
     out["solver_status"] = result.solver_status;
     out["application_status"] = result.application_status;
@@ -831,9 +937,20 @@ py::dict stability_route_result_to_dict(
     out["stable"] = result.stable;
     out["exact_gradient_required"] = result.exact_gradient_required;
     out["exact_jacobian_required"] = result.exact_jacobian_required;
-    out["gradient_approximation"] = "exact";
-    out["jacobian_approximation"] = "exact";
-    out["hessian_approximation"] = "limited-memory";
+    out["gradient_approximation"] = result.gradient_approximation;
+    out["jacobian_approximation"] = result.jacobian_approximation;
+    out["hessian_approximation"] = result.hessian_approximation;
+    out["hessian_backend"] = result.hessian_backend;
+    out["scaling_method"] = result.scaling_method;
+    out["iteration_count"] = result.iteration_count;
+    out["iteration_history_limit"] = result.iteration_history_limit;
+    out["iteration_history_size"] = result.iteration_history_size;
+    out["variable_scaling_count"] = result.variable_scaling_count;
+    out["constraint_scaling_count"] = result.constraint_scaling_count;
+    out["eval_h_calls"] = result.eval_h_calls;
+    out["exact_hessian_available"] = result.exact_hessian_available;
+    out["warm_start_requested"] = result.warm_start_requested;
+    out["warm_start_used"] = result.warm_start_used;
     out["status"] = result.status;
     out["solver_status"] = result.solver_status;
     out["application_status"] = result.application_status;
@@ -1526,7 +1643,11 @@ PYBIND11_MODULE(_core, m) {
 #endif
         return out;
     });
-    m.def("_native_ipopt_quadratic_smoke", []() {
+    m.def("_native_ipopt_quadratic_smoke", [](
+        const std::string& hessian_mode,
+        int iteration_history_limit,
+        const py::object& continuation_state
+    ) {
         py::dict out;
         const auto adapter = epcsaft::native::equilibrium_nlp::native_ipopt_adapter_info();
         out["backend"] = "ipopt";
@@ -1540,7 +1661,15 @@ PYBIND11_MODULE(_core, m) {
             out["status"] = "ipopt_dependency_required";
             return out;
         }
-        const auto result = epcsaft::native::equilibrium_nlp::solve_ipopt_quadratic_smoke();
+        epcsaft::native::equilibrium_nlp::IpoptSolveOptions options;
+        options.max_iterations = 50;
+        options.tolerance = 1.0e-10;
+        options.acceptable_tolerance = 1.0e-8;
+        options.hessian_mode = hessian_mode;
+        options.limited_memory_hessian = hessian_mode != "exact";
+        options.iteration_history_limit = iteration_history_limit;
+        apply_ipopt_continuation_state(options, continuation_state);
+        const auto result = epcsaft::native::equilibrium_nlp::solve_ipopt_quadratic_smoke(options);
         out["ran"] = result.solver_ran;
         out["accepted"] = result.accepted;
         out["status"] = result.solver_status;
@@ -1548,10 +1677,27 @@ PYBIND11_MODULE(_core, m) {
         out["objective"] = result.objective;
         out["variables"] = result.variables;
         out["constraints"] = result.constraints;
+        out["continuation_state"] = ipopt_continuation_state_to_dict(result);
+        out["iteration_history"] = ipopt_iteration_history_to_list(result.iteration_history);
+        out["iteration_count"] = diagnostic_int_or(result, "iteration_count", 0);
+        out["iteration_history_limit"] = diagnostic_int_or(result, "iteration_history_limit", 0);
+        out["hessian_approximation"] = diagnostic_string_or(result, "hessian_approximation", "");
+        out["hessian_backend"] = diagnostic_string_or(result, "hessian_backend", "");
+        out["eval_h_calls"] = diagnostic_int_or(result, "eval_h_calls", 0);
+        out["scaling_method"] = diagnostic_string_or(result, "scaling_method", "");
+        out["variable_scaling_count"] = diagnostic_int_or(result, "variable_scaling_count", 0);
+        out["constraint_scaling_count"] = diagnostic_int_or(result, "constraint_scaling_count", 0);
+        out["warm_start_requested"] = diagnostic_bool_or(result, "warm_start_requested", false);
+        out["warm_start_used"] = diagnostic_bool_or(result, "warm_start_used", false);
+        out["exact_hessian_available"] = diagnostic_bool_or(result, "exact_hessian_available", false);
         out["exact_gradient_required"] = adapter.exact_gradient_required;
         out["exact_jacobian_required"] = adapter.exact_jacobian_required;
         return out;
-    });
+    },
+        py::arg("hessian_mode") = "limited-memory",
+        py::arg("iteration_history_limit") = 20,
+        py::arg("continuation_state") = py::none()
+    );
     m.def("_native_ideal_reaction_smoke", []() {
         const double log_k = std::log(3.0);
         const std::vector<double> stoichiometry = {-1.0, 1.0};
@@ -1708,6 +1854,7 @@ PYBIND11_MODULE(_core, m) {
             )
         );
     });
+    // AlgID: neutral_tp_flash_ipopt
     m.def("_native_neutral_tp_flash_eos_nlp_contract", [](
         const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
         double temperature,
@@ -1726,6 +1873,7 @@ PYBIND11_MODULE(_core, m) {
             )
         );
     });
+    // AlgID: neutral_lle_ipopt
     m.def("_native_neutral_lle_eos_nlp_contract", [](
         const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
         double temperature,
@@ -1744,6 +1892,7 @@ PYBIND11_MODULE(_core, m) {
             )
         );
     });
+    // AlgID: electrolyte_lle_ipopt
     m.def("_native_electrolyte_lle_eos_nlp_contract", [](
         const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
         double temperature,
@@ -1798,6 +1947,7 @@ PYBIND11_MODULE(_core, m) {
             )
         );
     });
+    // AlgID: reactive_lle_liquid_root_ipopt
     m.def("_native_reactive_lle_eos_nlp_contract", [](
         const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
         double temperature,
@@ -1834,6 +1984,7 @@ PYBIND11_MODULE(_core, m) {
             )
         );
     });
+    // AlgID: reactive_electrolyte_lle_liquid_root_ipopt
     m.def("_native_reactive_electrolyte_lle_eos_nlp_contract", [](
         const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
         double temperature,
@@ -1952,6 +2103,7 @@ PYBIND11_MODULE(_core, m) {
             )
         );
     });
+    // AlgID: bubble_dew_ipopt
     m.def("_native_neutral_bubble_p_eos_nlp_contract", [](
         const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
         double temperature,
@@ -2032,6 +2184,7 @@ PYBIND11_MODULE(_core, m) {
             )
         );
     });
+    // AlgID: stability_tpd_ipopt
     m.def("_native_neutral_stability_tpd_nlp_contract", [](
         const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
         double temperature,
@@ -2318,6 +2471,7 @@ PYBIND11_MODULE(_core, m) {
             )
         );
     });
+    // AlgID: neutral_tp_flash_ipopt
     m.def("_native_neutral_tp_flash_eos_route_result", [](
         const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
         double temperature,
@@ -2350,6 +2504,7 @@ PYBIND11_MODULE(_core, m) {
             )
         );
     });
+    // AlgID: neutral_lle_ipopt
     m.def("_native_neutral_lle_eos_route_result", [](
         const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
         double temperature,
@@ -2382,6 +2537,7 @@ PYBIND11_MODULE(_core, m) {
             )
         );
     });
+    // AlgID: electrolyte_lle_ipopt
     m.def("_native_electrolyte_lle_eos_route_result", [](
         const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
         double temperature,
@@ -2419,6 +2575,7 @@ PYBIND11_MODULE(_core, m) {
             )
         );
     });
+    // AlgID: bubble_dew_ipopt
     m.def("_native_neutral_bubble_p_eos_route_result", [](
         const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
         double temperature,
@@ -2570,6 +2727,7 @@ PYBIND11_MODULE(_core, m) {
             )
         );
     });
+    // AlgID: stability_tpd_ipopt
     m.def("_native_neutral_stability_tpd_route_result", [](
         const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
         double temperature,
@@ -2910,12 +3068,18 @@ PYBIND11_MODULE(_core, m) {
             py::arg("solvent_override_index") = -1
         );
 
+    // AlgID: pure_neutral_ceres_regression
     m.def("_fit_pure_neutral_native_ceres", &fit_pure_neutral_native_ceres_binding);
     m.def("_fit_pure_neutral_native_debug", &evaluate_pure_neutral_objective_debug_binding);
+    // AlgID: native_ceres_regression_adapter
+    // AlgID: pure_ion_ceres_regression
+    // AlgID: binary_kij_ceres_regression
     m.def("_fit_generic_native_ceres", &fit_generic_native_ceres_binding);
     m.def("_evaluate_generic_native_debug", &evaluate_generic_native_debug_binding);
     m.def("_evaluate_electrolyte_lle_residual_native", &evaluate_electrolyte_lle_residual_native_binding);
     m.def("_evaluate_reactive_phase_equilibrium_residual_native", &evaluate_reactive_phase_equilibrium_residual_native_binding);
+    // AlgID: ideal_speciation_ipopt
+    // AlgID: nonideal_speciation_ipopt
     m.def("_solve_chemical_equilibrium_native", &solve_chemical_equilibrium_native_binding);
     m.def("_evaluate_chemical_equilibrium_residual_native", &evaluate_chemical_equilibrium_residual_native_binding);
 }
