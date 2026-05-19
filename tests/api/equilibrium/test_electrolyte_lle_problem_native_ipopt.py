@@ -31,3 +31,7 @@ def test_electrolyte_lle_problem_executes_native_ipopt_route() -> None:
     assert result.diagnostics["route_status"] == "accepted"
     assert result.diagnostics["solver_status"] == "success"
     assert result.diagnostics["solver_backend"] == "ipopt"
+    assert result.diagnostics["hessian_approximation"] == "exact"
+    assert result.diagnostics["exact_hessian_available"] is True
+    assert result.diagnostics["hessian_backend"] != "limited-memory"
+    assert result.diagnostics["eval_h_calls"] > 0

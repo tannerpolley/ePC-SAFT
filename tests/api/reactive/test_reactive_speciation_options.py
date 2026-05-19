@@ -394,6 +394,10 @@ def test_reactive_speciation_auto_routes_ideal_speciation_to_native_ipopt_when_c
     assert result.diagnostics["requested_solver_backend"] == "auto"
     assert result.diagnostics["selected_solver_backend"] == "native_ipopt"
     assert result.diagnostics["solver_selection_reason"] == "auto_selected_native_ipopt"
+    assert result.diagnostics["hessian_approximation"] == "exact"
+    assert result.diagnostics["hessian_backend"] == "analytic"
+    assert result.diagnostics["exact_hessian_available"] is True
+    assert result.diagnostics["eval_h_calls"] > 0
 
 
 def test_reactive_speciation_requested_ipopt_routes_nonideal_speciation_when_compiled() -> None:

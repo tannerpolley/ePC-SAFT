@@ -327,13 +327,138 @@ std::vector<double> electrolyte_residual_vector(
     return residuals;
 }
 
-struct ElectrolyteTransformJacobianNative {
+struct ElectrolyteTransformDerivativesNative {
+    std::vector<double> aq_formula_dvar;
+    std::vector<double> org_formula_dvar;
+    std::vector<double> aq_formula_hessian_row_major;
+    std::vector<double> org_formula_hessian_row_major;
     std::vector<double> aq_comp_dvar;
     std::vector<double> org_comp_dvar;
+    std::vector<double> aq_comp_hessian_row_major;
+    std::vector<double> org_comp_hessian_row_major;
     std::vector<double> beta_org_dvar;
+    std::vector<double> beta_org_hessian_row_major;
     int ncomp = 0;
+    int nformula = 0;
     int nvar = 0;
 };
+
+struct ScalarRouteDerivativeState {
+    double value = 0.0;
+    std::vector<double> gradient;
+    std::vector<double> hessian_row_major;
+};
+
+ScalarRouteDerivativeState make_constant_scalar_state(double value, std::size_t nvar) {
+    ScalarRouteDerivativeState out;
+    out.value = value;
+    out.gradient.assign(nvar, 0.0);
+    out.hessian_row_major.assign(nvar * nvar, 0.0);
+    return out;
+}
+
+ScalarRouteDerivativeState add_scalar_states(
+    const ScalarRouteDerivativeState& left,
+    const ScalarRouteDerivativeState& right
+) {
+    ScalarRouteDerivativeState out = left;
+    for (std::size_t i = 0; i < out.gradient.size(); ++i) {
+        out.gradient[i] += right.gradient[i];
+    }
+    for (std::size_t i = 0; i < out.hessian_row_major.size(); ++i) {
+        out.hessian_row_major[i] += right.hessian_row_major[i];
+    }
+    out.value += right.value;
+    return out;
+}
+
+ScalarRouteDerivativeState subtract_scalar_states(
+    const ScalarRouteDerivativeState& left,
+    const ScalarRouteDerivativeState& right
+) {
+    ScalarRouteDerivativeState out = left;
+    for (std::size_t i = 0; i < out.gradient.size(); ++i) {
+        out.gradient[i] -= right.gradient[i];
+    }
+    for (std::size_t i = 0; i < out.hessian_row_major.size(); ++i) {
+        out.hessian_row_major[i] -= right.hessian_row_major[i];
+    }
+    out.value -= right.value;
+    return out;
+}
+
+ScalarRouteDerivativeState scale_scalar_state(
+    const ScalarRouteDerivativeState& state,
+    double factor
+) {
+    ScalarRouteDerivativeState out = state;
+    out.value *= factor;
+    for (double& value : out.gradient) {
+        value *= factor;
+    }
+    for (double& value : out.hessian_row_major) {
+        value *= factor;
+    }
+    return out;
+}
+
+ScalarRouteDerivativeState multiply_scalar_states(
+    const ScalarRouteDerivativeState& left,
+    const ScalarRouteDerivativeState& right
+) {
+    const std::size_t nvar = left.gradient.size();
+    ScalarRouteDerivativeState out;
+    out.value = left.value * right.value;
+    out.gradient.assign(nvar, 0.0);
+    out.hessian_row_major.assign(nvar * nvar, 0.0);
+    for (std::size_t i = 0; i < nvar; ++i) {
+        out.gradient[i] = left.gradient[i] * right.value + left.value * right.gradient[i];
+        for (std::size_t j = 0; j < nvar; ++j) {
+            out.hessian_row_major[i * nvar + j] =
+                left.hessian_row_major[i * nvar + j] * right.value
+                + left.gradient[i] * right.gradient[j]
+                + left.gradient[j] * right.gradient[i]
+                + left.value * right.hessian_row_major[i * nvar + j];
+        }
+    }
+    return out;
+}
+
+ScalarRouteDerivativeState divide_scalar_states(
+    const ScalarRouteDerivativeState& numerator,
+    const ScalarRouteDerivativeState& denominator
+) {
+    const std::size_t nvar = numerator.gradient.size();
+    if (!(std::isfinite(denominator.value) && std::abs(denominator.value) > 0.0)) {
+        throw SolutionError("Electrolyte transformed-variable derivative received an invalid denominator.");
+    }
+    ScalarRouteDerivativeState out;
+    out.value = numerator.value / denominator.value;
+    out.gradient.assign(nvar, 0.0);
+    out.hessian_row_major.assign(nvar * nvar, 0.0);
+    const double inv_den = 1.0 / denominator.value;
+    const double inv_den2 = inv_den * inv_den;
+    const double inv_den3 = inv_den2 * inv_den;
+    for (std::size_t i = 0; i < nvar; ++i) {
+        out.gradient[i] =
+            numerator.gradient[i] * inv_den
+            - numerator.value * denominator.gradient[i] * inv_den2;
+        for (std::size_t j = 0; j < nvar; ++j) {
+            out.hessian_row_major[i * nvar + j] =
+                numerator.hessian_row_major[i * nvar + j] * inv_den
+                - (
+                    numerator.gradient[i] * denominator.gradient[j]
+                    + numerator.gradient[j] * denominator.gradient[i]
+                    + numerator.value * denominator.hessian_row_major[i * nvar + j]
+                ) * inv_den2
+                + 2.0 * numerator.value
+                    * denominator.gradient[i]
+                    * denominator.gradient[j]
+                    * inv_den3;
+        }
+    }
+    return out;
+}
 
 std::vector<double> formula_expansion_matrix_row_major(const ElectrolyteBasisNative& basis, std::size_t ncomp) {
     const std::size_t nformula = basis.formula_feed.size();
@@ -393,7 +518,7 @@ std::vector<double> formula_to_explicit_jacobian_row_major(
     return jacobian;
 }
 
-ElectrolyteTransformJacobianNative electrolyte_transform_jacobian(
+ElectrolyteTransformDerivativesNative electrolyte_transform_derivatives(
     const std::vector<double>& feed,
     const ElectrolyteBasisNative& basis,
     const ElectrolyteCandidateNative& candidate
@@ -401,74 +526,144 @@ ElectrolyteTransformJacobianNative electrolyte_transform_jacobian(
     const std::size_t ncomp = feed.size();
     const std::size_t nformula = basis.formula_feed.size();
     const std::size_t nvar = nformula;
-    ElectrolyteTransformJacobianNative out;
+    ElectrolyteTransformDerivativesNative out;
     out.ncomp = static_cast<int>(ncomp);
+    out.nformula = static_cast<int>(nformula);
     out.nvar = static_cast<int>(nvar);
+    out.aq_formula_dvar.assign(nformula * nvar, 0.0);
+    out.org_formula_dvar.assign(nformula * nvar, 0.0);
+    out.aq_formula_hessian_row_major.assign(nformula * nvar * nvar, 0.0);
+    out.org_formula_hessian_row_major.assign(nformula * nvar * nvar, 0.0);
     out.aq_comp_dvar.assign(ncomp * nvar, 0.0);
     out.org_comp_dvar.assign(ncomp * nvar, 0.0);
+    out.aq_comp_hessian_row_major.assign(ncomp * nvar * nvar, 0.0);
+    out.org_comp_hessian_row_major.assign(ncomp * nvar * nvar, 0.0);
     out.beta_org_dvar.assign(nvar, 0.0);
+    std::vector<double> column_sums = formula_expansion_column_sums(basis, ncomp);
+    std::vector<double> matrix = formula_expansion_matrix_row_major(basis, ncomp);
+    out.beta_org_hessian_row_major.assign(nvar * nvar, 0.0);
 
-    std::vector<double> dbeta_formula_dvar(nvar, 0.0);
-    dbeta_formula_dvar[0] = candidate.beta_formula * (1.0 - candidate.beta_formula);
+    ScalarRouteDerivativeState beta_formula = make_constant_scalar_state(candidate.beta_formula, nvar);
+    beta_formula.gradient[0] = candidate.beta_formula * (1.0 - candidate.beta_formula);
+    beta_formula.hessian_row_major[0] = beta_formula.gradient[0] * (1.0 - 2.0 * candidate.beta_formula);
 
-    std::vector<double> dorg_formula_dvar(nformula * nvar, 0.0);
-    for (std::size_t var = 1; var < nvar; ++var) {
-        const std::size_t logit_index = var - 1;
-        for (std::size_t k = 0; k < nformula; ++k) {
-            double delta = (k == logit_index) ? 1.0 : 0.0;
-            dorg_formula_dvar[k * nvar + var] = candidate.org_formula[k] * (delta - candidate.org_formula[logit_index]);
-        }
-    }
-
-    std::vector<double> daq_formula_dvar(nformula * nvar, 0.0);
-    const double denom = 1.0 - candidate.beta_formula;
-    for (std::size_t k = 0; k < nformula; ++k) {
-        daq_formula_dvar[k * nvar] =
-            dbeta_formula_dvar[0] * (basis.formula_feed[k] - candidate.org_formula[k]) / (denom * denom);
+    std::vector<ScalarRouteDerivativeState> org_formula_states;
+    org_formula_states.reserve(nformula);
+    for (std::size_t component = 0; component < nformula; ++component) {
+        ScalarRouteDerivativeState state = make_constant_scalar_state(candidate.org_formula[component], nvar);
         for (std::size_t var = 1; var < nvar; ++var) {
-            daq_formula_dvar[k * nvar + var] =
-                -candidate.beta_formula / denom * dorg_formula_dvar[k * nvar + var];
+            const std::size_t alpha = var - 1;
+            const double delta_component_alpha = component == alpha ? 1.0 : 0.0;
+            state.gradient[var] =
+                candidate.org_formula[component] * (delta_component_alpha - candidate.org_formula[alpha]);
         }
+        for (std::size_t var_i = 1; var_i < nvar; ++var_i) {
+            const std::size_t alpha = var_i - 1;
+            const double delta_component_alpha = component == alpha ? 1.0 : 0.0;
+            for (std::size_t var_j = 1; var_j < nvar; ++var_j) {
+                const std::size_t beta = var_j - 1;
+                const double delta_component_beta = component == beta ? 1.0 : 0.0;
+                const double delta_alpha_beta = alpha == beta ? 1.0 : 0.0;
+                state.hessian_row_major[var_i * nvar + var_j] =
+                    candidate.org_formula[component] * (
+                        (delta_component_beta - candidate.org_formula[beta])
+                        * (delta_component_alpha - candidate.org_formula[alpha])
+                        - candidate.org_formula[alpha] * (delta_alpha_beta - candidate.org_formula[beta])
+                    );
+            }
+        }
+        org_formula_states.push_back(std::move(state));
     }
 
-    std::vector<double> aq_formula_to_explicit = formula_to_explicit_jacobian_row_major(candidate.aq_formula, basis, ncomp);
-    std::vector<double> org_formula_to_explicit = formula_to_explicit_jacobian_row_major(candidate.org_formula, basis, ncomp);
-    for (std::size_t i = 0; i < ncomp; ++i) {
+    ScalarRouteDerivativeState one_minus_beta =
+        subtract_scalar_states(make_constant_scalar_state(1.0, nvar), beta_formula);
+    std::vector<ScalarRouteDerivativeState> aq_formula_states;
+    aq_formula_states.reserve(nformula);
+    for (std::size_t component = 0; component < nformula; ++component) {
+        ScalarRouteDerivativeState numerator = subtract_scalar_states(
+            make_constant_scalar_state(basis.formula_feed[component], nvar),
+            multiply_scalar_states(beta_formula, org_formula_states[component])
+        );
+        aq_formula_states.push_back(divide_scalar_states(numerator, one_minus_beta));
+    }
+
+    auto linear_combination = [&](const std::vector<ScalarRouteDerivativeState>& states, const std::vector<double>& weights) {
+        ScalarRouteDerivativeState out_state = make_constant_scalar_state(0.0, nvar);
+        for (std::size_t k = 0; k < states.size(); ++k) {
+            out_state = add_scalar_states(out_state, scale_scalar_state(states[k], weights[k]));
+        }
+        return out_state;
+    };
+
+    auto fill_formula_outputs = [&](const std::vector<ScalarRouteDerivativeState>& states,
+                                    std::vector<double>& grad_out,
+                                    std::vector<double>& hess_out) {
+        for (std::size_t component = 0; component < states.size(); ++component) {
+            for (std::size_t var = 0; var < nvar; ++var) {
+                grad_out[component * nvar + var] = states[component].gradient[var];
+                for (std::size_t other = 0; other < nvar; ++other) {
+                    hess_out[component * nvar * nvar + var * nvar + other] =
+                        states[component].hessian_row_major[var * nvar + other];
+                }
+            }
+        }
+    };
+
+    fill_formula_outputs(org_formula_states, out.org_formula_dvar, out.org_formula_hessian_row_major);
+    fill_formula_outputs(aq_formula_states, out.aq_formula_dvar, out.aq_formula_hessian_row_major);
+
+    auto explicit_states_from_formula = [&](const std::vector<ScalarRouteDerivativeState>& formula_states) {
+        std::vector<ScalarRouteDerivativeState> amount_states;
+        amount_states.reserve(ncomp);
+        for (std::size_t species = 0; species < ncomp; ++species) {
+            ScalarRouteDerivativeState amount = make_constant_scalar_state(0.0, nvar);
+            for (std::size_t component = 0; component < nformula; ++component) {
+                amount = add_scalar_states(
+                    amount,
+                    scale_scalar_state(
+                        formula_states[component],
+                        matrix[species * nformula + component]
+                    )
+                );
+            }
+            amount_states.push_back(std::move(amount));
+        }
+        ScalarRouteDerivativeState scale = linear_combination(formula_states, column_sums);
+        if (!(scale.value > 0.0) || !std::isfinite(scale.value)) {
+            throw SolutionError("Electrolyte transformed-variable derivative produced an invalid expansion scale.");
+        }
+        std::vector<ScalarRouteDerivativeState> composition_states;
+        composition_states.reserve(ncomp);
+        for (std::size_t species = 0; species < ncomp; ++species) {
+            composition_states.push_back(divide_scalar_states(amount_states[species], scale));
+        }
+        return std::make_pair(std::move(composition_states), std::move(scale));
+    };
+
+    auto [aq_comp_states, aq_scale] = explicit_states_from_formula(aq_formula_states);
+    auto [org_comp_states, org_scale] = explicit_states_from_formula(org_formula_states);
+
+    for (std::size_t species = 0; species < ncomp; ++species) {
         for (std::size_t var = 0; var < nvar; ++var) {
-            for (std::size_t k = 0; k < nformula; ++k) {
-                out.aq_comp_dvar[i * nvar + var] += aq_formula_to_explicit[i * nformula + k] * daq_formula_dvar[k * nvar + var];
-                out.org_comp_dvar[i * nvar + var] += org_formula_to_explicit[i * nformula + k] * dorg_formula_dvar[k * nvar + var];
+            out.aq_comp_dvar[species * nvar + var] = aq_comp_states[species].gradient[var];
+            out.org_comp_dvar[species * nvar + var] = org_comp_states[species].gradient[var];
+            for (std::size_t other = 0; other < nvar; ++other) {
+                out.aq_comp_hessian_row_major[species * nvar * nvar + var * nvar + other] =
+                    aq_comp_states[species].hessian_row_major[var * nvar + other];
+                out.org_comp_hessian_row_major[species * nvar * nvar + var * nvar + other] =
+                    org_comp_states[species].hessian_row_major[var * nvar + other];
             }
         }
     }
 
-    std::vector<double> column_sums = formula_expansion_column_sums(basis, ncomp);
-    double aq_scale = 0.0;
-    double org_scale = 0.0;
-    for (std::size_t k = 0; k < nformula; ++k) {
-        aq_scale += column_sums[k] * candidate.aq_formula[k];
-        org_scale += column_sums[k] * candidate.org_formula[k];
-    }
-    double beta_denominator = (1.0 - candidate.beta_formula) * aq_scale + candidate.beta_formula * org_scale;
-    if (!(beta_denominator > 0.0) || !std::isfinite(beta_denominator)) {
-        throw SolutionError("Electrolyte transformed-variable Jacobian produced an invalid phase-fraction denominator.");
-    }
-    double beta_numerator = candidate.beta_formula * org_scale;
-    for (std::size_t var = 0; var < nvar; ++var) {
-        double d_aq_scale = 0.0;
-        double d_org_scale = 0.0;
-        for (std::size_t k = 0; k < nformula; ++k) {
-            d_aq_scale += column_sums[k] * daq_formula_dvar[k * nvar + var];
-            d_org_scale += column_sums[k] * dorg_formula_dvar[k * nvar + var];
-        }
-        double d_beta_formula = dbeta_formula_dvar[var];
-        double d_num = d_beta_formula * org_scale + candidate.beta_formula * d_org_scale;
-        double d_den = d_beta_formula * (org_scale - aq_scale)
-            + (1.0 - candidate.beta_formula) * d_aq_scale
-            + candidate.beta_formula * d_org_scale;
-        out.beta_org_dvar[var] = (d_num * beta_denominator - beta_numerator * d_den)
-            / (beta_denominator * beta_denominator);
-    }
+    ScalarRouteDerivativeState beta_numerator = multiply_scalar_states(beta_formula, org_scale);
+    ScalarRouteDerivativeState beta_denominator = add_scalar_states(
+        multiply_scalar_states(one_minus_beta, aq_scale),
+        multiply_scalar_states(beta_formula, org_scale)
+    );
+    ScalarRouteDerivativeState beta_org = divide_scalar_states(beta_numerator, beta_denominator);
+    out.beta_org_dvar = beta_org.gradient;
+    out.beta_org_hessian_row_major = beta_org.hessian_row_major;
     return out;
 }
 
@@ -488,6 +683,45 @@ double phase_log_fugacity_derivative_for_species(
     return value;
 }
 
+double phase_log_fugacity_second_derivative_for_species(
+    const std::vector<double>& composition,
+    const std::vector<double>& dcomp_dvar,
+    const std::vector<double>& d2comp_dvar2,
+    const std::vector<double>& lnphi_jacobian,
+    const std::vector<double>& lnphi_hessian_tensor,
+    std::size_t species_index,
+    std::size_t first_var,
+    std::size_t second_var,
+    std::size_t ncomp,
+    std::size_t nvar
+) {
+    const double comp = composition[species_index];
+    const double dcomp_first = dcomp_dvar[species_index * nvar + first_var];
+    const double dcomp_second = dcomp_dvar[species_index * nvar + second_var];
+    double value =
+        d2comp_dvar2[species_index * nvar * nvar + first_var * nvar + second_var] / comp
+        - dcomp_first * dcomp_second / (comp * comp);
+    for (std::size_t j = 0; j < ncomp; ++j) {
+        value += lnphi_jacobian[species_index * ncomp + j]
+            * d2comp_dvar2[j * nvar * nvar + first_var * nvar + second_var];
+        for (std::size_t k = 0; k < ncomp; ++k) {
+            value += lnphi_hessian_tensor[species_index * ncomp * ncomp + j * ncomp + k]
+                * dcomp_dvar[j * nvar + first_var]
+                * dcomp_dvar[k * nvar + second_var];
+        }
+    }
+    return value;
+}
+
+struct ElectrolyteResidualSecondOrderNative {
+    std::vector<double> jacobian_row_major;
+    std::vector<double> residual_hessian_tensor_row_major;
+    std::vector<double> phase_separation_hessian_row_major;
+    std::vector<double> aqueous_formula_hessian_tensor_row_major;
+    std::size_t residual_rows = 0;
+    std::size_t nvar = 0;
+};
+
 std::vector<double> electrolyte_residual_jacobian_row_major(
     const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
     double t,
@@ -498,7 +732,7 @@ std::vector<double> electrolyte_residual_jacobian_row_major(
 ) {
     const std::size_t ncomp = feed.size();
     const std::size_t nvar = basis.formula_feed.size();
-    ElectrolyteTransformJacobianNative transform = electrolyte_transform_jacobian(feed, basis, candidate);
+    ElectrolyteTransformDerivativesNative transform = electrolyte_transform_derivatives(feed, basis, candidate);
     PhaseStateCompositionSensitivityResult aq_sensitivity =
         phase_state_ln_fugacity_composition_sensitivity_cpp(t, p, candidate.aq_comp, phase_token_to_int("liq"), mixture->args());
     PhaseStateCompositionSensitivityResult org_sensitivity =
@@ -552,6 +786,125 @@ std::vector<double> electrolyte_residual_jacobian_row_major(
         ++row;
     }
     return jacobian;
+}
+
+ElectrolyteResidualSecondOrderNative electrolyte_residual_second_order_native(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    double p,
+    const std::vector<double>& feed,
+    const ElectrolyteBasisNative& basis,
+    const ElectrolyteCandidateNative& candidate,
+    int separation_formula_index,
+    double separation_sign
+) {
+    const std::size_t ncomp = feed.size();
+    const std::size_t nvar = basis.formula_feed.size();
+    ElectrolyteTransformDerivativesNative transform = electrolyte_transform_derivatives(feed, basis, candidate);
+    PhaseStateCompositionSensitivityResult aq_sensitivity =
+        phase_state_ln_fugacity_composition_sensitivity_cpp(t, p, candidate.aq_comp, phase_token_to_int("liq"), mixture->args());
+    PhaseStateCompositionSensitivityResult org_sensitivity =
+        phase_state_ln_fugacity_composition_sensitivity_cpp(t, p, candidate.org_comp, phase_token_to_int("liq"), mixture->args());
+    if (!aq_sensitivity.supported || !org_sensitivity.supported) {
+        throw SolutionError("Electrolyte residual Hessian requires supported second-order phase-state sensitivities.");
+    }
+    const std::size_t phase_rows = basis.neutral_indices.size() + basis.salt_pairs.size();
+    const std::size_t residual_rows = phase_rows + ncomp;
+    ElectrolyteResidualSecondOrderNative out;
+    out.residual_rows = residual_rows;
+    out.nvar = nvar;
+    out.jacobian_row_major = electrolyte_residual_jacobian_row_major(mixture, t, p, feed, basis, candidate);
+    out.residual_hessian_tensor_row_major.assign(residual_rows * nvar * nvar, 0.0);
+    out.phase_separation_hessian_row_major.assign(nvar * nvar, 0.0);
+    out.aqueous_formula_hessian_tensor_row_major.assign(basis.formula_feed.size() * nvar * nvar, 0.0);
+
+    auto add_species_contribution = [&](std::size_t output_row, std::size_t species_index, double coefficient) {
+        for (std::size_t first = 0; first < nvar; ++first) {
+            for (std::size_t second = 0; second < nvar; ++second) {
+                const double org_value = phase_log_fugacity_second_derivative_for_species(
+                    candidate.org_comp,
+                    transform.org_comp_dvar,
+                    transform.org_comp_hessian_row_major,
+                    org_sensitivity.jacobian_row_major,
+                    org_sensitivity.hessian_tensor_row_major,
+                    species_index,
+                    first,
+                    second,
+                    ncomp,
+                    nvar
+                );
+                const double aq_value = phase_log_fugacity_second_derivative_for_species(
+                    candidate.aq_comp,
+                    transform.aq_comp_dvar,
+                    transform.aq_comp_hessian_row_major,
+                    aq_sensitivity.jacobian_row_major,
+                    aq_sensitivity.hessian_tensor_row_major,
+                    species_index,
+                    first,
+                    second,
+                    ncomp,
+                    nvar
+                );
+                out.residual_hessian_tensor_row_major[
+                    output_row * nvar * nvar + first * nvar + second
+                ] += coefficient * (org_value - aq_value);
+            }
+        }
+    };
+
+    std::size_t row = 0;
+    for (int index : basis.neutral_indices) {
+        add_species_contribution(row, static_cast<std::size_t>(index), 1.0);
+        ++row;
+    }
+    for (const auto& pair : basis.salt_pairs) {
+        add_species_contribution(row, static_cast<std::size_t>(pair.cation), static_cast<double>(pair.cation_stoich));
+        add_species_contribution(row, static_cast<std::size_t>(pair.anion), static_cast<double>(pair.anion_stoich));
+        ++row;
+    }
+    for (std::size_t species = 0; species < ncomp; ++species) {
+        for (std::size_t first = 0; first < nvar; ++first) {
+            for (std::size_t second = 0; second < nvar; ++second) {
+                double value =
+                    -transform.beta_org_hessian_row_major[first * nvar + second] * candidate.aq_comp[species]
+                    - transform.beta_org_dvar[first] * transform.aq_comp_dvar[species * nvar + second]
+                    - transform.beta_org_dvar[second] * transform.aq_comp_dvar[species * nvar + first]
+                    + (1.0 - candidate.beta_org)
+                        * transform.aq_comp_hessian_row_major[species * nvar * nvar + first * nvar + second]
+                    + transform.beta_org_hessian_row_major[first * nvar + second] * candidate.org_comp[species]
+                    + transform.beta_org_dvar[first] * transform.org_comp_dvar[species * nvar + second]
+                    + transform.beta_org_dvar[second] * transform.org_comp_dvar[species * nvar + first]
+                    + candidate.beta_org
+                        * transform.org_comp_hessian_row_major[species * nvar * nvar + first * nvar + second];
+                out.residual_hessian_tensor_row_major[
+                    row * nvar * nvar + first * nvar + second
+                ] = value;
+            }
+        }
+        ++row;
+    }
+
+    const std::size_t formula = static_cast<std::size_t>(separation_formula_index);
+    for (std::size_t first = 0; first < nvar; ++first) {
+        for (std::size_t second = 0; second < nvar; ++second) {
+            out.phase_separation_hessian_row_major[first * nvar + second] = separation_sign * (
+                transform.org_formula_hessian_row_major[formula * nvar * nvar + first * nvar + second]
+                - transform.aq_formula_hessian_row_major[formula * nvar * nvar + first * nvar + second]
+            );
+        }
+    }
+    for (std::size_t formula_row = 0; formula_row < basis.formula_feed.size(); ++formula_row) {
+        for (std::size_t first = 0; first < nvar; ++first) {
+            for (std::size_t second = 0; second < nvar; ++second) {
+                out.aqueous_formula_hessian_tensor_row_major[
+                    formula_row * nvar * nvar + first * nvar + second
+                ] = transform.aq_formula_hessian_row_major[
+                    formula_row * nvar * nvar + first * nvar + second
+                ];
+            }
+        }
+    }
+    return out;
 }
 
 std::vector<double> composition_to_logits(const std::vector<double>& composition) {
@@ -1130,6 +1483,174 @@ public:
         return out;
     }
 
+    bool has_exact_hessian() const override {
+        return true;
+    }
+
+    int hessian_nonzero_count() const override {
+        const int n = variable_count();
+        return n * (n + 1) / 2;
+    }
+
+    equilibrium_nlp::NlpHessianStructure hessian_structure() const override {
+        equilibrium_nlp::NlpHessianStructure out;
+        out.rows.reserve(static_cast<std::size_t>(hessian_nonzero_count()));
+        out.cols.reserve(static_cast<std::size_t>(hessian_nonzero_count()));
+        for (int row = 0; row < variable_count(); ++row) {
+            for (int col = 0; col <= row; ++col) {
+                out.rows.push_back(row);
+                out.cols.push_back(col);
+            }
+        }
+        return out;
+    }
+
+    std::vector<double> hessian_values(
+        const std::vector<double>& variables,
+        double objective_factor,
+        const std::vector<double>& constraint_multipliers
+    ) const override {
+        const std::size_t nvar = static_cast<std::size_t>(variable_count());
+        if (constraint_multipliers.size() != static_cast<std::size_t>(constraint_count())) {
+            throw ValueError("Electrolyte LLE liquid-root NLP Hessian received an unexpected multiplier vector size.");
+        }
+        std::vector<double> lagrangian_hessian(nvar * nvar, 0.0);
+        try {
+            const ElectrolyteCandidateNative current = candidate(variables);
+            const ElectrolyteResidualSecondOrderNative second_order = electrolyte_residual_second_order_native(
+                mixture_,
+                temperature_,
+                target_pressure_,
+                feed_,
+                basis_,
+                current,
+                separation_formula_index_,
+                separation_sign_
+            );
+            const std::vector<double> residual = electrolyte_lle_residual_vector_from_candidate(current);
+            if (second_order.residual_rows != residual.size() || second_order.nvar != nvar) {
+                throw ValueError("Electrolyte LLE liquid-root Hessian helper returned an unexpected shape.");
+            }
+            if (objective_factor != 0.0) {
+                for (std::size_t first = 0; first < nvar; ++first) {
+                    for (std::size_t second = 0; second < nvar; ++second) {
+                        double value = 0.0;
+                        for (std::size_t row = 0; row < residual.size(); ++row) {
+                            value += second_order.jacobian_row_major[row * nvar + first]
+                                * second_order.jacobian_row_major[row * nvar + second];
+                            value += residual[row]
+                                * second_order.residual_hessian_tensor_row_major[
+                                    row * nvar * nvar + first * nvar + second
+                                ];
+                        }
+                        lagrangian_hessian[first * nvar + second] += objective_factor * value;
+                    }
+                }
+            }
+            for (std::size_t row = 0; row < residual.size(); ++row) {
+                const double multiplier = constraint_multipliers[row];
+                if (multiplier == 0.0) {
+                    continue;
+                }
+                for (std::size_t first = 0; first < nvar; ++first) {
+                    for (std::size_t second = 0; second < nvar; ++second) {
+                        lagrangian_hessian[first * nvar + second] += multiplier
+                            * second_order.residual_hessian_tensor_row_major[
+                                row * nvar * nvar + first * nvar + second
+                            ];
+                    }
+                }
+            }
+            const std::size_t phase_distance_row = residual_constraint_count_;
+            const double phase_multiplier = constraint_multipliers[phase_distance_row];
+            if (phase_multiplier != 0.0) {
+                for (std::size_t first = 0; first < nvar; ++first) {
+                    for (std::size_t second = 0; second < nvar; ++second) {
+                        lagrangian_hessian[first * nvar + second] += phase_multiplier
+                            * second_order.phase_separation_hessian_row_major[first * nvar + second];
+                    }
+                }
+            }
+            for (std::size_t formula_row = 0; formula_row < basis_.formula_feed.size(); ++formula_row) {
+                const double multiplier = constraint_multipliers[phase_distance_row + 1 + formula_row];
+                if (multiplier == 0.0) {
+                    continue;
+                }
+                for (std::size_t first = 0; first < nvar; ++first) {
+                    for (std::size_t second = 0; second < nvar; ++second) {
+                        lagrangian_hessian[first * nvar + second] += multiplier
+                            * second_order.aqueous_formula_hessian_tensor_row_major[
+                                formula_row * nvar * nvar + first * nvar + second
+                            ];
+                    }
+                }
+            }
+        } catch (const std::exception&) {
+            const ElectrolyteTransformDerivativesNative transform = infeasible_formula_transform_derivatives(variables);
+            const std::vector<double> aq_formula = aqueous_formula_feasibility_values(variables, basis_);
+            const double scale = 1.0e8;
+            if (objective_factor != 0.0) {
+                for (std::size_t formula_row = 0; formula_row < aq_formula.size(); ++formula_row) {
+                    const double violation = std::max(0.0, options_.min_composition - aq_formula[formula_row]);
+                    if (violation <= 0.0) {
+                        continue;
+                    }
+                    for (std::size_t first = 0; first < nvar; ++first) {
+                        for (std::size_t second = 0; second < nvar; ++second) {
+                            lagrangian_hessian[first * nvar + second] += objective_factor * scale * (
+                                transform.aq_formula_dvar[formula_row * nvar + first]
+                                * transform.aq_formula_dvar[formula_row * nvar + second]
+                                - violation * transform.aq_formula_hessian_row_major[
+                                    formula_row * nvar * nvar + first * nvar + second
+                                ]
+                            );
+                        }
+                    }
+                }
+            }
+            const std::size_t phase_distance_row = residual_constraint_count_;
+            const double phase_multiplier = constraint_multipliers[phase_distance_row];
+            if (phase_multiplier != 0.0) {
+                const std::size_t formula = static_cast<std::size_t>(separation_formula_index_);
+                for (std::size_t first = 0; first < nvar; ++first) {
+                    for (std::size_t second = 0; second < nvar; ++second) {
+                        lagrangian_hessian[first * nvar + second] += phase_multiplier * separation_sign_ * (
+                            transform.org_formula_hessian_row_major[formula * nvar * nvar + first * nvar + second]
+                            - transform.aq_formula_hessian_row_major[formula * nvar * nvar + first * nvar + second]
+                        );
+                    }
+                }
+            }
+            for (std::size_t formula_row = 0; formula_row < basis_.formula_feed.size(); ++formula_row) {
+                const double multiplier = constraint_multipliers[phase_distance_row + 1 + formula_row];
+                if (multiplier == 0.0) {
+                    continue;
+                }
+                for (std::size_t first = 0; first < nvar; ++first) {
+                    for (std::size_t second = 0; second < nvar; ++second) {
+                        lagrangian_hessian[first * nvar + second] += multiplier
+                            * transform.aq_formula_hessian_row_major[
+                                formula_row * nvar * nvar + first * nvar + second
+                            ];
+                    }
+                }
+            }
+        }
+
+        std::vector<double> out;
+        out.reserve(static_cast<std::size_t>(hessian_nonzero_count()));
+        for (std::size_t row = 0; row < nvar; ++row) {
+            for (std::size_t col = 0; col <= row; ++col) {
+                out.push_back(lagrangian_hessian[row * nvar + col]);
+            }
+        }
+        return out;
+    }
+
+    std::string hessian_backend() const override {
+        return "cppad_implicit_chain_rule";
+    }
+
     equilibrium_nlp::NlpScaling scaling() const override {
         equilibrium_nlp::NlpScaling out;
         out.objective = 1.0;
@@ -1217,6 +1738,86 @@ private:
             }
         }
         return gradient;
+    }
+
+    ElectrolyteTransformDerivativesNative infeasible_formula_transform_derivatives(
+        const std::vector<double>& variables
+    ) const {
+        double beta_formula = 0.5;
+        std::vector<double> org_formula;
+        unpack_predictive_electrolyte_variables(variables, basis_.formula_feed.size(), beta_formula, org_formula);
+        const std::size_t ncomp = feed_.size();
+        const std::size_t nformula = basis_.formula_feed.size();
+        const std::size_t nvar = nformula;
+        ElectrolyteTransformDerivativesNative out;
+        out.ncomp = static_cast<int>(ncomp);
+        out.nformula = static_cast<int>(nformula);
+        out.nvar = static_cast<int>(nvar);
+        out.aq_formula_dvar.assign(nformula * nvar, 0.0);
+        out.org_formula_dvar.assign(nformula * nvar, 0.0);
+        out.aq_formula_hessian_row_major.assign(nformula * nvar * nvar, 0.0);
+        out.org_formula_hessian_row_major.assign(nformula * nvar * nvar, 0.0);
+
+        ScalarRouteDerivativeState beta_formula_state = make_constant_scalar_state(beta_formula, nvar);
+        beta_formula_state.gradient[0] = beta_formula * (1.0 - beta_formula);
+        beta_formula_state.hessian_row_major[0] =
+            beta_formula_state.gradient[0] * (1.0 - 2.0 * beta_formula);
+
+        std::vector<ScalarRouteDerivativeState> org_formula_states;
+        org_formula_states.reserve(nformula);
+        for (std::size_t component = 0; component < nformula; ++component) {
+            ScalarRouteDerivativeState state = make_constant_scalar_state(org_formula[component], nvar);
+            for (std::size_t var = 1; var < nvar; ++var) {
+                const std::size_t alpha = var - 1;
+                const double delta_component_alpha = component == alpha ? 1.0 : 0.0;
+                state.gradient[var] =
+                    org_formula[component] * (delta_component_alpha - org_formula[alpha]);
+            }
+            for (std::size_t var_i = 1; var_i < nvar; ++var_i) {
+                const std::size_t alpha = var_i - 1;
+                const double delta_component_alpha = component == alpha ? 1.0 : 0.0;
+                for (std::size_t var_j = 1; var_j < nvar; ++var_j) {
+                    const std::size_t beta = var_j - 1;
+                    const double delta_component_beta = component == beta ? 1.0 : 0.0;
+                    const double delta_alpha_beta = alpha == beta ? 1.0 : 0.0;
+                    state.hessian_row_major[var_i * nvar + var_j] =
+                        org_formula[component] * (
+                            (delta_component_beta - org_formula[beta])
+                            * (delta_component_alpha - org_formula[alpha])
+                            - org_formula[alpha] * (delta_alpha_beta - org_formula[beta])
+                        );
+                }
+            }
+            org_formula_states.push_back(std::move(state));
+        }
+
+        ScalarRouteDerivativeState one_minus_beta = subtract_scalar_states(
+            make_constant_scalar_state(1.0, nvar),
+            beta_formula_state
+        );
+        std::vector<ScalarRouteDerivativeState> aq_formula_states;
+        aq_formula_states.reserve(nformula);
+        for (std::size_t component = 0; component < nformula; ++component) {
+            ScalarRouteDerivativeState numerator = subtract_scalar_states(
+                make_constant_scalar_state(basis_.formula_feed[component], nvar),
+                multiply_scalar_states(beta_formula_state, org_formula_states[component])
+            );
+            aq_formula_states.push_back(divide_scalar_states(numerator, one_minus_beta));
+        }
+
+        for (std::size_t component = 0; component < nformula; ++component) {
+            for (std::size_t first = 0; first < nvar; ++first) {
+                out.org_formula_dvar[component * nvar + first] = org_formula_states[component].gradient[first];
+                out.aq_formula_dvar[component * nvar + first] = aq_formula_states[component].gradient[first];
+                for (std::size_t second = 0; second < nvar; ++second) {
+                    out.org_formula_hessian_row_major[component * nvar * nvar + first * nvar + second] =
+                        org_formula_states[component].hessian_row_major[first * nvar + second];
+                    out.aq_formula_hessian_row_major[component * nvar * nvar + first * nvar + second] =
+                        aq_formula_states[component].hessian_row_major[first * nvar + second];
+                }
+            }
+        }
+        return out;
     }
 
     void select_separation_component(const ElectrolyteCandidateNative& initial) {

@@ -81,14 +81,21 @@ py::dict phase_state_sensitivity_to_dict(const PhaseStateCompositionSensitivityR
     out["pressure"] = result.pressure;
     out["density"] = result.density;
     out["pressure_density_derivative"] = result.pressure_density_derivative;
+    out["pressure_density_second_derivative"] = result.pressure_density_second_derivative;
     out["shape"] = py::make_tuple(result.rows, result.cols);
     out["composition"] = result.composition;
     out["ln_fugacity"] = result.ln_fugacity;
     out["density_composition_derivative"] = result.density_composition_derivative;
+    out["density_composition_hessian_row_major"] = result.density_composition_hessian_row_major;
     out["pressure_composition_fixed_density_derivative"] = result.pressure_composition_fixed_density_derivative;
+    out["pressure_density_composition_cross_derivative"] = result.pressure_density_composition_cross_derivative;
+    out["pressure_composition_fixed_density_hessian_row_major"] =
+        result.pressure_composition_fixed_density_hessian_row_major;
     out["ln_fugacity_density_derivative"] = result.ln_fugacity_density_derivative;
     out["fixed_density_jacobian_row_major"] = result.fixed_density_jacobian_row_major;
+    out["fixed_density_hessian_tensor_row_major"] = result.fixed_density_hessian_tensor_row_major;
     out["jacobian_row_major"] = result.jacobian_row_major;
+    out["hessian_tensor_row_major"] = result.hessian_tensor_row_major;
     return out;
 }
 
@@ -1384,7 +1391,7 @@ epcsaft::native::equilibrium_nlp::IpoptSolveOptions ipopt_solve_options_from_sca
     int max_iterations,
     double tolerance,
     double timeout_seconds,
-    const std::string& hessian_mode = "limited-memory",
+    const std::string& hessian_mode = "auto",
     int iteration_history_limit = 20,
     const std::string& linear_solver = "auto",
     double acceptable_tolerance = 0.0,
@@ -1908,7 +1915,7 @@ PYBIND11_MODULE(_core, m) {
         out["exact_jacobian_required"] = adapter.exact_jacobian_required;
         return out;
     },
-        py::arg("hessian_mode") = "limited-memory",
+        py::arg("hessian_mode") = "auto",
         py::arg("iteration_history_limit") = 20,
         py::arg("linear_solver") = "auto",
         py::arg("acceptable_tolerance") = 1.0e-8,

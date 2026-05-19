@@ -28,7 +28,7 @@ struct IpoptSolveOptions {
     double complementarity_tolerance = 0.0;
     double max_wall_time_seconds = 0.0;
     bool limited_memory_hessian = true;
-    std::string hessian_mode = "limited-memory";
+    std::string hessian_mode = "auto";
     int iteration_history_limit = 20;
     std::string linear_solver = "auto";
     std::vector<double> initial_variables;

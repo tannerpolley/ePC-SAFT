@@ -48,6 +48,10 @@ def test_stability_uses_native_ipopt_route_after_validation() -> None:
     assert result.backend == "native_equilibrium_nlp"
     assert result.problem_kind == "neutral_stability"
     assert result.diagnostics["derivative_backend"] == "cppad_implicit"
+    assert result.diagnostics["hessian_approximation"] == "exact"
+    assert result.diagnostics["exact_hessian_available"] is True
+    assert result.diagnostics["hessian_backend"] != "limited-memory"
+    assert result.diagnostics["eval_h_calls"] > 0
 
 
 def test_stability_builds_one_native_route_request_before_ipopt_gate(monkeypatch: pytest.MonkeyPatch) -> None:

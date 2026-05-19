@@ -391,6 +391,53 @@ public:
         return out;
     }
 
+    bool has_exact_hessian() const override {
+        return true;
+    }
+
+    int hessian_nonzero_count() const override {
+        const int n = request_.species_count;
+        return n * (n + 1) / 2;
+    }
+
+    NlpHessianStructure hessian_structure() const override {
+        NlpHessianStructure out;
+        out.rows.reserve(static_cast<std::size_t>(hessian_nonzero_count()));
+        out.cols.reserve(static_cast<std::size_t>(hessian_nonzero_count()));
+        for (int row = 0; row < request_.species_count; ++row) {
+            for (int col = 0; col <= row; ++col) {
+                out.rows.push_back(row);
+                out.cols.push_back(col);
+            }
+        }
+        return out;
+    }
+
+    std::vector<double> hessian_values(
+        const std::vector<double>& variables,
+        double objective_factor,
+        const std::vector<double>& constraint_multipliers
+    ) const override {
+        (void)constraint_multipliers;
+        const IdealReducedGibbsResult gibbs = evaluate_ideal_reduced_gibbs(variables, standard_mu_rt_, true);
+        const std::size_t n = static_cast<std::size_t>(request_.species_count);
+        if (gibbs.hessian_row_major.size() != n * n) {
+            throw ValueError("Ideal Ipopt speciation Hessian shape did not match the species count.");
+        }
+        std::vector<double> out;
+        out.reserve(static_cast<std::size_t>(hessian_nonzero_count()));
+        for (std::size_t row = 0; row < n; ++row) {
+            for (std::size_t col = 0; col <= row; ++col) {
+                out.push_back(objective_factor * gibbs.hessian_row_major[row * n + col]);
+            }
+        }
+        return out;
+    }
+
+    std::string hessian_backend() const override {
+        return "analytic";
+    }
+
     NlpScaling scaling() const override {
         NlpScaling out;
         out.objective = 1.0 / std::max(1.0, total_scale_);
@@ -651,6 +698,9 @@ IdealSpeciationIpoptResult solve_ideal_speciation_ipopt(
 ) {
     validate_request(request);
     IdealSpeciationProblem problem(request, derivative_backend);
+    if (options.hessian_mode == "exact" && !problem.has_exact_hessian()) {
+        throw ValueError("Ideal Ipopt speciation exact Hessian provider is unavailable.");
+    }
     IpoptSolveResult ipopt = solve_ipopt_nlp(problem, options);
     if (!ipopt.accepted) {
         throw SolutionError("Ipopt did not accept the ideal reactive speciation NLP solution.");

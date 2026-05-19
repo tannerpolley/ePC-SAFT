@@ -92,7 +92,50 @@ struct AssociationPhaseStateResponse {
     vector<double> mu;
     vector<double> dzraw_dvar;
     vector<double> dmu_dvar_row_major;
+    vector<double> d2zraw_dvar2_row_major;
+    vector<double> d2mu_dvar2_tensor_row_major;
 };
+
+std::vector<double> vector_output_component_hessian_cppad(
+    CppAD::ADFun<double>& function,
+    const std::vector<double>& point,
+    std::size_t output_index
+) {
+    return function.Hessian(point, output_index);
+}
+
+std::vector<double> scalar_function_third_derivative_tensor_cppad(
+    const CppAD::ADFun<double>& function,
+    const std::vector<double>& point
+) {
+    using ADScalar = CppAD::AD<double>;
+    const std::size_t nvar = point.size();
+    std::vector<ADScalar> ax(nvar);
+    for (std::size_t i = 0; i < nvar; ++i) {
+        ax[i] = point[i];
+    }
+    CppAD::Independent(ax);
+    CppAD::ADFun<ADScalar, double> af(function.base2ad());
+    std::vector<ADScalar> ay = af.Forward(0, ax);
+    if (ay.size() != 1) {
+        throw ValueError("Third-derivative tensor helper requires a scalar recorded function.");
+    }
+    std::vector<ADScalar> aw(1);
+    aw[0] = ADScalar(1.0);
+    std::vector<ADScalar> agrad = af.Reverse(1, aw);
+    CppAD::ADFun<double> grad_fun(ax, agrad);
+    std::vector<double> tensor(nvar * nvar * nvar, 0.0);
+    for (std::size_t component = 0; component < nvar; ++component) {
+        const std::vector<double> hessian = grad_fun.Hessian(point, component);
+        for (std::size_t row = 0; row < nvar; ++row) {
+            for (std::size_t col = 0; col < nvar; ++col) {
+                tensor[component * nvar * nvar + row * nvar + col] =
+                    hessian[row * nvar + col];
+            }
+        }
+    }
+    return tensor;
+}
 
 template <typename Scalar>
 static Scalar scalar_component_parameter_cpp(
@@ -1237,6 +1280,11 @@ ares_detail::AssociationPhaseStateResponse association_phase_state_response_cppa
     out.mu.assign(static_cast<size_t>(ncomp), 0.0);
     out.dzraw_dvar.assign(static_cast<size_t>(base_var_count), 0.0);
     out.dmu_dvar_row_major.assign(static_cast<size_t>(ncomp * base_var_count), 0.0);
+    out.d2zraw_dvar2_row_major.assign(static_cast<size_t>(base_var_count * base_var_count), 0.0);
+    out.d2mu_dvar2_tensor_row_major.assign(
+        static_cast<size_t>(ncomp * base_var_count * base_var_count),
+        0.0
+    );
     if (!assoc_state.active) {
         return out;
     }
@@ -1303,8 +1351,22 @@ ares_detail::AssociationPhaseStateResponse association_phase_state_response_cppa
     }
     auto values = function.Forward(0, point);
     auto jacobian = function.Jacobian(point);
+    std::vector<std::vector<double>> output_hessians;
+    output_hessians.reserve(static_cast<std::size_t>(1 + ncomp + num_sites));
+    for (int output = 0; output < 1 + ncomp + num_sites; ++output) {
+        output_hessians.push_back(ares_detail::vector_output_component_hessian_cppad(
+            function,
+            point,
+            static_cast<std::size_t>(output)
+        ));
+    }
     const auto jac = [&](int row, int col) {
         return jacobian[static_cast<size_t>(row * var_count + col)];
+    };
+    const auto hess = [&](int output, int row, int col) {
+        return output_hessians[static_cast<std::size_t>(output)][
+            static_cast<std::size_t>(row * var_count + col)
+        ];
     };
 
     const int residual_row0 = 1 + ncomp;
@@ -1320,12 +1382,16 @@ ares_detail::AssociationPhaseStateResponse association_phase_state_response_cppa
     for (int i = 0; i < ncomp; ++i) {
         out.mu[static_cast<size_t>(i)] = values[static_cast<size_t>(1 + i)];
     }
+    std::vector<double> dxa_dvar(static_cast<size_t>(base_var_count * num_sites), 0.0);
     for (int v = 0; v < base_var_count; ++v) {
         vector<double> rhs(static_cast<size_t>(num_sites), 0.0);
         for (int i = 0; i < num_sites; ++i) {
             rhs[static_cast<size_t>(i)] = -jac(residual_row0 + i, v);
         }
         vector<double> dxa_dv = ares_detail::solve_linear_system_scalar_cpp(residual_matrix, rhs, num_sites);
+        for (int site = 0; site < num_sites; ++site) {
+            dxa_dvar[static_cast<size_t>(v * num_sites + site)] = dxa_dv[static_cast<size_t>(site)];
+        }
         out.dzraw_dvar[static_cast<size_t>(v)] = jac(0, v);
         for (int site = 0; site < num_sites; ++site) {
             out.dzraw_dvar[static_cast<size_t>(v)] += jac(0, base_var_count + site) * dxa_dv[static_cast<size_t>(site)];
@@ -1336,6 +1402,82 @@ ares_detail::AssociationPhaseStateResponse association_phase_state_response_cppa
                 value += jac(1 + i, base_var_count + site) * dxa_dv[static_cast<size_t>(site)];
             }
             out.dmu_dvar_row_major[static_cast<size_t>(i * base_var_count + v)] = value;
+        }
+    }
+    for (int u = 0; u < base_var_count; ++u) {
+        for (int v = 0; v < base_var_count; ++v) {
+            vector<double> rhs(static_cast<size_t>(num_sites), 0.0);
+            for (int residual = 0; residual < num_sites; ++residual) {
+                double value = -hess(residual_row0 + residual, u, v);
+                for (int site = 0; site < num_sites; ++site) {
+                    const double dy_v = dxa_dvar[static_cast<size_t>(v * num_sites + site)];
+                    const double dy_u = dxa_dvar[static_cast<size_t>(u * num_sites + site)];
+                    value -= hess(residual_row0 + residual, u, base_var_count + site) * dy_v;
+                    value -= hess(residual_row0 + residual, v, base_var_count + site) * dy_u;
+                }
+                for (int site_i = 0; site_i < num_sites; ++site_i) {
+                    const double dy_u = dxa_dvar[static_cast<size_t>(u * num_sites + site_i)];
+                    if (dy_u == 0.0) {
+                        continue;
+                    }
+                    for (int site_j = 0; site_j < num_sites; ++site_j) {
+                        value -= hess(
+                            residual_row0 + residual,
+                            base_var_count + site_i,
+                            base_var_count + site_j
+                        ) * dy_u * dxa_dvar[static_cast<size_t>(v * num_sites + site_j)];
+                    }
+                }
+                rhs[static_cast<size_t>(residual)] = value;
+            }
+            const vector<double> d2xa = ares_detail::solve_linear_system_scalar_cpp(residual_matrix, rhs, num_sites);
+            out.d2zraw_dvar2_row_major[static_cast<size_t>(u * base_var_count + v)] = hess(0, u, v);
+            for (int site = 0; site < num_sites; ++site) {
+                const double dy_v = dxa_dvar[static_cast<size_t>(v * num_sites + site)];
+                const double dy_u = dxa_dvar[static_cast<size_t>(u * num_sites + site)];
+                out.d2zraw_dvar2_row_major[static_cast<size_t>(u * base_var_count + v)] +=
+                    hess(0, u, base_var_count + site) * dy_v
+                    + hess(0, v, base_var_count + site) * dy_u
+                    + jac(0, base_var_count + site) * d2xa[static_cast<size_t>(site)];
+            }
+            for (int site_i = 0; site_i < num_sites; ++site_i) {
+                const double dy_u = dxa_dvar[static_cast<size_t>(u * num_sites + site_i)];
+                if (dy_u == 0.0) {
+                    continue;
+                }
+                for (int site_j = 0; site_j < num_sites; ++site_j) {
+                    out.d2zraw_dvar2_row_major[static_cast<size_t>(u * base_var_count + v)] +=
+                        hess(0, base_var_count + site_i, base_var_count + site_j)
+                        * dy_u
+                        * dxa_dvar[static_cast<size_t>(v * num_sites + site_j)];
+                }
+            }
+            for (int component = 0; component < ncomp; ++component) {
+                double value = hess(1 + component, u, v);
+                for (int site = 0; site < num_sites; ++site) {
+                    const double dy_v = dxa_dvar[static_cast<size_t>(v * num_sites + site)];
+                    const double dy_u = dxa_dvar[static_cast<size_t>(u * num_sites + site)];
+                    value += hess(1 + component, u, base_var_count + site) * dy_v;
+                    value += hess(1 + component, v, base_var_count + site) * dy_u;
+                    value += jac(1 + component, base_var_count + site) * d2xa[static_cast<size_t>(site)];
+                }
+                for (int site_i = 0; site_i < num_sites; ++site_i) {
+                    const double dy_u = dxa_dvar[static_cast<size_t>(u * num_sites + site_i)];
+                    if (dy_u == 0.0) {
+                        continue;
+                    }
+                    for (int site_j = 0; site_j < num_sites; ++site_j) {
+                        value += hess(
+                            1 + component,
+                            base_var_count + site_i,
+                            base_var_count + site_j
+                        ) * dy_u * dxa_dvar[static_cast<size_t>(v * num_sites + site_j)];
+                    }
+                }
+                out.d2mu_dvar2_tensor_row_major[
+                    static_cast<size_t>(component * base_var_count * base_var_count + u * base_var_count + v)
+                ] = value;
+            }
         }
     }
     return out;
@@ -1674,8 +1816,15 @@ PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_composition_sensi
     auto values = function.Forward(0, point);
     auto jacobian = function.Jacobian(point);
     auto hessian = function.Hessian(point, 0);
+    std::vector<double> third_tensor =
+        ares_detail::scalar_function_third_derivative_tensor_cppad(function, point);
     const auto h = [&](int row, int col) {
         return hessian[static_cast<size_t>(row * var_count + col)];
+    };
+    const auto h3 = [&](int leading, int row, int col) {
+        return third_tensor[
+            static_cast<size_t>(leading * var_count * var_count + row * var_count + col)
+        ];
     };
     ares_detail::AssociationPhaseStateResponse association_response;
     if (active_association) {
@@ -1712,10 +1861,29 @@ PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_composition_sensi
         }
         return value;
     };
+    const auto base_d2zraw_dvar2 = [&](int first, int second) {
+        double value = density.rho * h3(0, first, second);
+        if (first == 0) {
+            value += h(0, second);
+        }
+        if (second == 0) {
+            value += h(0, first);
+        }
+        return value;
+    };
     const auto dzraw_dvar = [&](int var_index) {
         double value = base_dzraw_dvar(var_index);
         if (active_association) {
             value += association_response.dzraw_dvar[static_cast<size_t>(var_index)];
+        }
+        return value;
+    };
+    const auto d2zraw_dvar2 = [&](int first, int second) {
+        double value = base_d2zraw_dvar2(first, second);
+        if (active_association) {
+            value += association_response.d2zraw_dvar2_row_major[
+                static_cast<size_t>(first * var_count + second)
+            ];
         }
         return value;
     };
@@ -1724,6 +1892,16 @@ PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_composition_sensi
         double value = density.rho * dzraw;
         if (var_index == 0) {
             value += z;
+        }
+        return kb * t * N_AV * value;
+    };
+    const auto pressure_d2var = [&](int first, int second) {
+        double value = density.rho * d2zraw_dvar2(first, second);
+        if (first == 0) {
+            value += dzraw_dvar(second);
+        }
+        if (second == 0) {
+            value += dzraw_dvar(first);
         }
         return kb * t * N_AV * value;
     };
@@ -1737,16 +1915,55 @@ PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_composition_sensi
         }
         return value;
     };
-    const auto dlnphi_dvar = [&](int component, int var_index) {
+    const auto d2sum_x_dadx_dvar2 = [&](int first, int second) {
+        double value = 0.0;
+        if (first > 0) {
+            value += h(first, second);
+        }
+        if (second > 0) {
+            value += h(second, first);
+        }
+        for (int k = 0; k < ncomp; ++k) {
+            value += x[static_cast<size_t>(k)] * h3(1 + k, first, second);
+        }
+        return value;
+    };
+    const auto mu_direct_dvar = [&](int component, int var_index) {
         const double da_dvar = jacobian[static_cast<size_t>(var_index)];
-        const double dzraw = dzraw_dvar(var_index);
-        double dmu = da_dvar + base_dzraw_dvar(var_index) + h(1 + component, var_index) - sum_x_dadx_dvar(var_index);
+        double dmu =
+            da_dvar
+            + base_dzraw_dvar(var_index)
+            + h(1 + component, var_index)
+            - sum_x_dadx_dvar(var_index);
         if (active_association) {
             dmu += association_response.dmu_dvar_row_major[
                 static_cast<size_t>(component * var_count + var_index)
             ];
         }
-        return dmu - dzraw / z;
+        return dmu;
+    };
+    const auto mu_direct_d2var = [&](int component, int first, int second) {
+        double value =
+            h(first, second)
+            + base_d2zraw_dvar2(first, second)
+            + h3(1 + component, first, second)
+            - d2sum_x_dadx_dvar2(first, second);
+        if (active_association) {
+            value += association_response.d2mu_dvar2_tensor_row_major[
+                static_cast<size_t>(component * var_count * var_count + first * var_count + second)
+            ];
+        }
+        return value;
+    };
+    const auto fixed_density_dlnphi_dvar = [&](int component, int var_index) {
+        const double dzraw = dzraw_dvar(var_index);
+        return mu_direct_dvar(component, var_index) - dzraw / z;
+    };
+    const auto fixed_density_d2lnphi_dvar2 = [&](int component, int first, int second) {
+        const double dz_first = dzraw_dvar(first);
+        const double dz_second = dzraw_dvar(second);
+        const double d2z = d2zraw_dvar2(first, second);
+        return mu_direct_d2var(component, first, second) - d2z / z + dz_first * dz_second / (z * z);
     };
 
     const double dp_drho = pressure_dvar(0);
@@ -1757,27 +1974,73 @@ PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_composition_sensi
     }
 
     out.pressure_density_derivative = dp_drho;
+    out.pressure_density_second_derivative = pressure_d2var(0, 0);
     out.density_composition_derivative.assign(static_cast<size_t>(ncomp), 0.0);
+    out.density_composition_hessian_row_major.assign(static_cast<size_t>(ncomp * ncomp), 0.0);
     out.pressure_composition_fixed_density_derivative.assign(static_cast<size_t>(ncomp), 0.0);
+    out.pressure_density_composition_cross_derivative.assign(static_cast<size_t>(ncomp), 0.0);
+    out.pressure_composition_fixed_density_hessian_row_major.assign(
+        static_cast<size_t>(ncomp * ncomp),
+        0.0
+    );
     out.ln_fugacity_density_derivative.assign(static_cast<size_t>(ncomp), 0.0);
     out.fixed_density_jacobian_row_major.assign(static_cast<size_t>(ncomp * ncomp), 0.0);
+    out.fixed_density_hessian_tensor_row_major.assign(static_cast<size_t>(ncomp * ncomp * ncomp), 0.0);
     out.jacobian_row_major.assign(static_cast<size_t>(ncomp * ncomp), 0.0);
+    out.hessian_tensor_row_major.assign(static_cast<size_t>(ncomp * ncomp * ncomp), 0.0);
 
     for (int j = 0; j < ncomp; ++j) {
         const int var_index = 1 + j;
         const double dp_dx_fixed = pressure_dvar(var_index);
         out.pressure_composition_fixed_density_derivative[static_cast<size_t>(j)] = dp_dx_fixed;
+        out.pressure_density_composition_cross_derivative[static_cast<size_t>(j)] = pressure_d2var(0, var_index);
         out.density_composition_derivative[static_cast<size_t>(j)] = -dp_dx_fixed / dp_drho;
     }
+    for (int j = 0; j < ncomp; ++j) {
+        const int first = 1 + j;
+        for (int k = 0; k < ncomp; ++k) {
+            const int second = 1 + k;
+            const double density_hessian =
+                -(
+                    pressure_d2var(first, second)
+                    + pressure_d2var(0, first) * out.density_composition_derivative[static_cast<size_t>(k)]
+                    + pressure_d2var(0, second) * out.density_composition_derivative[static_cast<size_t>(j)]
+                    + pressure_d2var(0, 0)
+                        * out.density_composition_derivative[static_cast<size_t>(j)]
+                        * out.density_composition_derivative[static_cast<size_t>(k)]
+                ) / dp_drho;
+            out.density_composition_hessian_row_major[static_cast<size_t>(j * ncomp + k)] = density_hessian;
+            out.pressure_composition_fixed_density_hessian_row_major[static_cast<size_t>(j * ncomp + k)] =
+                pressure_d2var(first, second);
+        }
+    }
     for (int i = 0; i < ncomp; ++i) {
-        const double dln_drho = dlnphi_dvar(i, 0);
+        const double dln_drho = fixed_density_dlnphi_dvar(i, 0);
         out.ln_fugacity_density_derivative[static_cast<size_t>(i)] = dln_drho;
         for (int j = 0; j < ncomp; ++j) {
-            const double fixed = dlnphi_dvar(i, 1 + j);
+            const double fixed = fixed_density_dlnphi_dvar(i, 1 + j);
             const double total = fixed + dln_drho * out.density_composition_derivative[static_cast<size_t>(j)];
             const size_t index = static_cast<size_t>(i * ncomp + j);
             out.fixed_density_jacobian_row_major[index] = fixed;
             out.jacobian_row_major[index] = total;
+            for (int k = 0; k < ncomp; ++k) {
+                const double fixed_hessian = fixed_density_d2lnphi_dvar2(i, 1 + j, 1 + k);
+                out.fixed_density_hessian_tensor_row_major[
+                    static_cast<size_t>(i * ncomp * ncomp + j * ncomp + k)
+                ] = fixed_hessian;
+                out.hessian_tensor_row_major[
+                    static_cast<size_t>(i * ncomp * ncomp + j * ncomp + k)
+                ] =
+                    fixed_hessian
+                    + fixed_density_d2lnphi_dvar2(i, 1 + j, 0)
+                        * out.density_composition_derivative[static_cast<size_t>(k)]
+                    + fixed_density_d2lnphi_dvar2(i, 1 + k, 0)
+                        * out.density_composition_derivative[static_cast<size_t>(j)]
+                    + fixed_density_d2lnphi_dvar2(i, 0, 0)
+                        * out.density_composition_derivative[static_cast<size_t>(j)]
+                        * out.density_composition_derivative[static_cast<size_t>(k)]
+                    + dln_drho * out.density_composition_hessian_row_major[static_cast<size_t>(j * ncomp + k)];
+            }
         }
     }
 

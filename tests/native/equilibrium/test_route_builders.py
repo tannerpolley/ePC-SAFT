@@ -46,10 +46,9 @@ def _dense_jacobian_from_sparse_contract(payload: dict) -> np.ndarray:
     return dense
 
 
-def test_current_public_route_nlps_reject_exact_hessian_without_provider() -> None:
+def test_current_public_route_nlps_without_provider_reject_exact_hessian() -> None:
     neutral = _neutral_binary_mixture()
     ionic = _ionic_mixture()
-    electrolyte, electrolyte_feed = _ascani_electrolyte_mixture()
     reactive_feed = [0.3, 0.7]
     reactive_phase_amounts = [[0.1, 0.4], [0.2, 0.3]]
     reactive_volumes = [0.005, 0.004]
@@ -110,62 +109,6 @@ def test_current_public_route_nlps_reject_exact_hessian_without_provider() -> No
                 1.0e-5,
                 1.0e-7,
                 1.0e-4,
-                None,
-            ),
-        ),
-        (
-            "electrolyte_lle",
-            lambda: _core._native_electrolyte_lle_eos_route_result(
-                electrolyte._native,
-                298.15,
-                1.013e5,
-                electrolyte_feed,
-                30,
-                1.0e-8,
-                0.0,
-                "exact",
-                20,
-                1.0e-7,
-                1.0e-5,
-                1.0e-8,
-                1.0e-7,
-                1.0e-4,
-                None,
-            ),
-        ),
-        (
-            "electrolyte_stability",
-            lambda: _core._native_electrolyte_stability_tpd_route_result(
-                ionic._native,
-                298.15,
-                1.013e5,
-                [0.9998, 1.0e-4, 1.0e-4],
-                30,
-                1.0e-8,
-                0.0,
-                "exact",
-                20,
-                1.0e-8,
-                [],
-                None,
-            ),
-        ),
-        (
-            "neutral_stability",
-            lambda: _core._native_neutral_stability_tpd_route_result(
-                neutral._native,
-                300.0,
-                1.0e5,
-                [0.3, 0.7],
-                "vap",
-                "vap",
-                30,
-                1.0e-8,
-                0.0,
-                "exact",
-                20,
-                1.0e-8,
-                [],
                 None,
             ),
         ),
@@ -409,6 +352,39 @@ def test_neutral_stability_tpd_route_result_uses_ipopt_adapter_gate() -> None:
     assert np.asarray(payload["trial_composition"], dtype=float).sum() == pytest.approx(1.0, abs=1.0e-7)
 
 
+def test_neutral_stability_tpd_route_uses_exact_hessian_when_requested() -> None:
+    mix = _neutral_binary_mixture()
+    payload = _core._native_neutral_stability_tpd_route_result(
+        mix._native,
+        300.0,
+        1.0e5,
+        [0.3, 0.7],
+        "vap",
+        "vap",
+        30,
+        1.0e-8,
+        0.0,
+        "exact",
+        20,
+        1.0e-8,
+        [],
+        None,
+    )
+
+    if not payload["compiled"]:
+        assert payload["status"] == "ipopt_dependency_required"
+        return
+
+    assert payload["ran"] is True
+    assert payload["solver_accepted"] is True
+    assert payload["accepted"] is True
+    assert payload["status"] == "accepted"
+    assert payload["hessian_approximation"] == "exact"
+    assert payload["exact_hessian_available"] is True
+    assert payload["hessian_backend"] != "limited-memory"
+    assert payload["eval_h_calls"] > 0
+
+
 def test_electrolyte_stability_tpd_contract_adds_charge_constraint() -> None:
     mix = _ionic_mixture()
     feed = np.asarray([0.9998, 1.0e-4, 1.0e-4], dtype=float)
@@ -491,6 +467,37 @@ def test_electrolyte_stability_tpd_route_result_uses_ipopt_adapter_gate() -> Non
     trial = np.asarray(payload["trial_composition"], dtype=float)
     assert trial.sum() == pytest.approx(1.0, abs=1.0e-7)
     assert np.dot(trial, np.asarray([0.0, 1.0, -1.0])) == pytest.approx(0.0, abs=1.0e-7)
+
+
+def test_electrolyte_stability_tpd_route_uses_exact_hessian_when_requested() -> None:
+    mix = _ionic_mixture()
+    payload = _core._native_electrolyte_stability_tpd_route_result(
+        mix._native,
+        298.15,
+        1.013e5,
+        [0.9998, 1.0e-4, 1.0e-4],
+        30,
+        1.0e-8,
+        0.0,
+        "exact",
+        20,
+        1.0e-8,
+        [],
+        None,
+    )
+
+    if not payload["compiled"]:
+        assert payload["status"] == "ipopt_dependency_required"
+        return
+
+    assert payload["ran"] is True
+    assert payload["solver_accepted"] is True
+    assert payload["accepted"] is True
+    assert payload["status"] == "accepted"
+    assert payload["hessian_approximation"] == "exact"
+    assert payload["exact_hessian_available"] is True
+    assert payload["hessian_backend"] != "limited-memory"
+    assert payload["eval_h_calls"] > 0
 
 
 def test_neutral_lle_route_contract_builds_native_initial_point_from_feed() -> None:
@@ -625,6 +632,40 @@ def test_electrolyte_lle_route_result_uses_ipopt_adapter_gate_and_charge_rows() 
         vapor_density = mix.state(T=298.15, P=1.0e5, x=composition, phase="vap").density()
         assert route_density == pytest.approx(liquid_density, rel=1.0e-10)
         assert route_density / vapor_density > 100.0
+
+
+def test_electrolyte_lle_route_uses_exact_hessian_when_requested() -> None:
+    mix, feed = _ascani_electrolyte_mixture()
+    payload = _core._native_electrolyte_lle_eos_route_result(
+        mix._native,
+        298.15,
+        1.0e5,
+        feed,
+        500,
+        1.0e-8,
+        0.0,
+        "exact",
+        20,
+        1.0e-8,
+        1.0e-3,
+        1.0e-7,
+        1.0e-6,
+        0.1,
+        None,
+    )
+
+    if not payload["compiled"]:
+        assert payload["status"] == "ipopt_dependency_required"
+        return
+
+    assert payload["ran"] is True
+    assert payload["solver_accepted"] is True
+    assert payload["accepted"] is True
+    assert payload["status"] == "accepted"
+    assert payload["hessian_approximation"] == "exact"
+    assert payload["exact_hessian_available"] is True
+    assert payload["hessian_backend"] != "limited-memory"
+    assert payload["eval_h_calls"] > 0
 
 
 @pytest.mark.parametrize(
