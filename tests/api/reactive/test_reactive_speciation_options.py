@@ -440,3 +440,7 @@ def test_reactive_speciation_requested_ipopt_routes_nonideal_speciation_when_com
     assert result.diagnostics["problem_class"] == "homogeneous_nonideal_residual_speciation"
     assert result.diagnostics["derivative_backend"] == "cppad_implicit"
     assert result.diagnostics["implicit_sensitivity_backend"] == "cppad_implicit"
+    assert result.diagnostics["hessian_approximation"] == "exact"
+    assert result.diagnostics["exact_hessian_available"] is True
+    assert result.diagnostics["hessian_backend"] != "limited-memory"
+    assert result.diagnostics["eval_h_calls"] > 0

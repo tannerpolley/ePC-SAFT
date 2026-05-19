@@ -52,6 +52,8 @@ void apply_ipopt_solve_metadata(NeutralTwoPhaseEosRouteResult& out, const IpoptS
     out.jacobian_approximation = solve_string(solve, "jacobian_approximation", "exact");
     out.hessian_approximation = solve_string(solve, "hessian_approximation", out.hessian_approximation);
     out.hessian_backend = solve_string(solve, "hessian_backend", out.hessian_backend);
+    out.last_callback_exception = solve_string(solve, "last_callback_exception", out.last_callback_exception);
+    out.last_callback_failure = solve_string(solve, "last_callback_failure", out.last_callback_failure);
     out.scaling_method = solve_string(solve, "scaling_method", out.scaling_method);
     out.linear_solver_requested = solve_string(solve, "linear_solver_requested", out.linear_solver_requested);
     out.linear_solver_selected = solve_string(solve, "linear_solver_selected", out.linear_solver_selected);
@@ -87,6 +89,8 @@ void apply_ipopt_solve_metadata(ReactiveTwoPhaseEosRouteResult& out, const Ipopt
     out.jacobian_approximation = solve_string(solve, "jacobian_approximation", "exact");
     out.hessian_approximation = solve_string(solve, "hessian_approximation", out.hessian_approximation);
     out.hessian_backend = solve_string(solve, "hessian_backend", out.hessian_backend);
+    out.last_callback_exception = solve_string(solve, "last_callback_exception", out.last_callback_exception);
+    out.last_callback_failure = solve_string(solve, "last_callback_failure", out.last_callback_failure);
     out.scaling_method = solve_string(solve, "scaling_method", out.scaling_method);
     out.linear_solver_requested = solve_string(solve, "linear_solver_requested", out.linear_solver_requested);
     out.linear_solver_selected = solve_string(solve, "linear_solver_selected", out.linear_solver_selected);
@@ -1363,6 +1367,111 @@ public:
             }
         }
         return out;
+    }
+
+    bool has_exact_hessian() const override {
+        return !route_has_active_association_sites(args_) && (args_.z.empty() || args_.born_model <= 1);
+    }
+
+    int hessian_nonzero_count() const override {
+        return LagrangianHessianAssembler(variable_count()).nonzero_count();
+    }
+
+    NlpHessianStructure hessian_structure() const override {
+        return LagrangianHessianAssembler(variable_count()).structure();
+    }
+
+    std::vector<double> hessian_values(
+        const std::vector<double>& variables,
+        double objective_factor,
+        const std::vector<double>& constraint_multipliers
+    ) const override {
+        if (!has_exact_hessian()) {
+            throw ValueError("Reactive EOS route exact Hessian requires non-associating phase blocks.");
+        }
+        if (constraint_multipliers.size() != static_cast<std::size_t>(constraint_count())) {
+            throw ValueError("Reactive EOS route Hessian multiplier vector size does not match the constraint count.");
+        }
+
+        const auto blocks = phase_blocks(variables);
+        const int n = variable_count();
+        ObjectiveSecondOrderData objective;
+        objective.variable_count = n;
+        objective.value = 0.0;
+        objective.gradient.assign(static_cast<std::size_t>(n), 0.0);
+        objective.hessian_row_major.assign(static_cast<std::size_t>(n * n), 0.0);
+        objective.backend = "cppad_reactive_two_phase";
+        for (int phase = 0; phase < phase_count(); ++phase) {
+            const EosPhaseBlockResult& block = blocks[static_cast<std::size_t>(phase)];
+            if (block.objective_curvature_row_major.size()
+                != static_cast<std::size_t>(local_variable_count() * local_variable_count())) {
+                throw ValueError("Reactive EOS route phase objective Hessian shape did not match variables.");
+            }
+            const int offset = phase * local_variable_count();
+            objective.value += block.objective;
+            for (int species = 0; species < species_count_; ++species) {
+                objective.gradient[static_cast<std::size_t>(offset + species)] =
+                    block.gradient[static_cast<std::size_t>(species)]
+                    + standard_mu_rt_[static_cast<std::size_t>(species)];
+            }
+            objective.gradient[static_cast<std::size_t>(offset + species_count_)] =
+                block.gradient[static_cast<std::size_t>(species_count_)];
+            for (int local_row = 0; local_row < local_variable_count(); ++local_row) {
+                for (int local_col = 0; local_col < local_variable_count(); ++local_col) {
+                    objective.hessian_row_major[
+                        static_cast<std::size_t>((offset + local_row) * n + offset + local_col)
+                    ] += block.objective_curvature_row_major[
+                        static_cast<std::size_t>(local_row * local_variable_count() + local_col)
+                    ];
+                }
+            }
+            const auto amounts = phase_amounts_from_variables(variables);
+            for (int species = 0; species < species_count_; ++species) {
+                objective.value += amounts[static_cast<std::size_t>(phase)][static_cast<std::size_t>(species)]
+                    * standard_mu_rt_[static_cast<std::size_t>(species)];
+            }
+        }
+
+        ConstraintSecondOrderData constraints_data;
+        constraints_data.constraint_count = constraint_count();
+        constraints_data.variable_count = n;
+        constraints_data.values = this->constraints(variables);
+        constraints_data.hessian_tensor_row_major.assign(
+            static_cast<std::size_t>(constraint_count() * n * n),
+            0.0
+        );
+        constraints_data.has_hessian.assign(static_cast<std::size_t>(constraint_count()), false);
+        constraints_data.backend = "cppad_reactive_two_phase";
+        for (int phase = 0; phase < phase_count(); ++phase) {
+            const EosPhaseBlockResult& block = blocks[static_cast<std::size_t>(phase)];
+            if (block.pressure_hessian_row_major.size()
+                != static_cast<std::size_t>(local_variable_count() * local_variable_count())) {
+                throw ValueError("Reactive EOS route pressure Hessian shape did not match variables.");
+            }
+            const int constraint_row = balance_rows_ + phase;
+            const int offset = phase * local_variable_count();
+            constraints_data.has_hessian[static_cast<std::size_t>(constraint_row)] = true;
+            for (int local_row = 0; local_row < local_variable_count(); ++local_row) {
+                for (int local_col = 0; local_col < local_variable_count(); ++local_col) {
+                    constraints_data.hessian_tensor_row_major[
+                        static_cast<std::size_t>(constraint_row * n * n + (offset + local_row) * n + offset + local_col)
+                    ] += block.pressure_hessian_row_major[
+                        static_cast<std::size_t>(local_row * local_variable_count() + local_col)
+                    ];
+                }
+            }
+        }
+
+        return LagrangianHessianAssembler(n).values(
+            objective_factor,
+            objective,
+            constraints_data,
+            constraint_multipliers
+        );
+    }
+
+    std::string hessian_backend() const override {
+        return "cppad_reactive_two_phase";
     }
 
     NlpScaling scaling() const override {

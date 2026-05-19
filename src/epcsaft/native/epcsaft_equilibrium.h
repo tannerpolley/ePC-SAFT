@@ -49,6 +49,7 @@ struct ReactivePhaseResidualEvaluationNative {
     std::vector<double> upper_bounds;
     std::vector<double> residual;
     std::vector<double> jacobian_row_major;
+    std::vector<double> residual_hessian_tensor_row_major;
     int jacobian_rows = 0;
     int jacobian_cols = 0;
     std::vector<double> gradient;

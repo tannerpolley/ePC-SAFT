@@ -3,6 +3,7 @@
 #include "equilibrium_helpers.h"
 #include "../equilibrium_nlp/ipopt_adapter.h"
 #include "../equilibrium_nlp/nlp_problem.h"
+#include "../equilibrium_nlp/second_order.h"
 
 #include <algorithm>
 #include <cmath>
@@ -511,6 +512,71 @@ std::vector<double> phase_log_mole_fraction_log_amount_jacobian(const ReactivePh
     return jacobian;
 }
 
+std::vector<double> phase_composition_log_amount_hessian_tensor(const ReactivePhaseState& state) {
+    const std::size_t ncomp = state.global_component_count > 0
+        ? state.global_component_count
+        : state.composition.size();
+    const std::vector<int> indices = state.global_indices.empty()
+        ? full_component_indices(ncomp)
+        : state.global_indices;
+    const std::vector<double>& composition = state.model_composition.empty()
+        ? state.composition
+        : state.model_composition;
+    if (composition.size() != indices.size()) {
+        throw ValueError("reactive phase composition Hessian shape does not match phase indices.");
+    }
+    std::vector<double> hessian(ncomp * ncomp * ncomp, 0.0);
+    for (std::size_t local_species = 0; local_species < indices.size(); ++local_species) {
+        const std::size_t global_species = static_cast<std::size_t>(indices[local_species]);
+        const double x_species = composition[local_species];
+        for (std::size_t first = 0; first < indices.size(); ++first) {
+            const std::size_t global_first = static_cast<std::size_t>(indices[first]);
+            const double first_delta = local_species == first ? 1.0 : 0.0;
+            const double x_first = composition[first];
+            for (std::size_t second = 0; second < indices.size(); ++second) {
+                const std::size_t global_second = static_cast<std::size_t>(indices[second]);
+                const double second_delta = local_species == second ? 1.0 : 0.0;
+                const double cross_delta = first == second ? 1.0 : 0.0;
+                const double x_second = composition[second];
+                hessian[global_species * ncomp * ncomp + global_first * ncomp + global_second] =
+                    x_species * (second_delta - x_second) * (first_delta - x_first)
+                    - x_species * x_first * (cross_delta - x_second);
+            }
+        }
+    }
+    return hessian;
+}
+
+std::vector<double> phase_log_mole_fraction_log_amount_hessian_tensor(const ReactivePhaseState& state) {
+    const std::size_t ncomp = state.global_component_count > 0
+        ? state.global_component_count
+        : state.composition.size();
+    const std::vector<int> indices = state.global_indices.empty()
+        ? full_component_indices(ncomp)
+        : state.global_indices;
+    const std::vector<double>& composition = state.model_composition.empty()
+        ? state.composition
+        : state.model_composition;
+    if (composition.size() != indices.size()) {
+        throw ValueError("reactive phase log-composition Hessian shape does not match phase indices.");
+    }
+    std::vector<double> hessian(ncomp * ncomp * ncomp, 0.0);
+    for (std::size_t local_species = 0; local_species < indices.size(); ++local_species) {
+        const std::size_t global_species = static_cast<std::size_t>(indices[local_species]);
+        for (std::size_t first = 0; first < indices.size(); ++first) {
+            const std::size_t global_first = static_cast<std::size_t>(indices[first]);
+            const double x_first = composition[first];
+            for (std::size_t second = 0; second < indices.size(); ++second) {
+                const std::size_t global_second = static_cast<std::size_t>(indices[second]);
+                const double cross_delta = first == second ? 1.0 : 0.0;
+                hessian[global_species * ncomp * ncomp + global_first * ncomp + global_second] =
+                    -x_first * (cross_delta - composition[second]);
+            }
+        }
+    }
+    return hessian;
+}
+
 std::vector<double> phase_ln_activity_log_amount_jacobian(
     const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
     double t,
@@ -548,6 +614,62 @@ std::vector<double> phase_ln_activity_log_amount_jacobian(
         }
     }
     return jacobian;
+}
+
+std::vector<double> phase_ln_activity_log_amount_hessian_tensor(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    double p,
+    const ReactivePhaseState& state
+) {
+    const std::size_t ncomp = state.global_component_count > 0
+        ? state.global_component_count
+        : state.composition.size();
+    const std::vector<int> indices = state.global_indices.empty()
+        ? full_component_indices(ncomp)
+        : state.global_indices;
+    const std::vector<double>& composition = state.model_composition.empty()
+        ? state.composition
+        : state.model_composition;
+    const std::size_t local_ncomp = composition.size();
+    PhaseStateCompositionSensitivityResult sensitivity =
+        phase_state_ln_fugacity_composition_sensitivity_cpp(t, p, composition, 0, mixture->args());
+    if (!sensitivity.supported
+        || sensitivity.jacobian_row_major.size() != local_ncomp * local_ncomp
+        || sensitivity.hessian_tensor_row_major.size() != local_ncomp * local_ncomp * local_ncomp) {
+        throw ValueError("reactive phase residual Hessian requires supported phase-state fugacity Hessians.");
+    }
+    std::vector<double> hessian = phase_log_mole_fraction_log_amount_hessian_tensor(state);
+    auto dx = [&](std::size_t species, std::size_t variable) {
+        return composition[species] * ((species == variable ? 1.0 : 0.0) - composition[variable]);
+    };
+    auto d2x = [&](std::size_t species, std::size_t first, std::size_t second) {
+        return composition[species]
+            * ((species == second ? 1.0 : 0.0) - composition[second])
+            * ((species == first ? 1.0 : 0.0) - composition[first])
+            - composition[species] * composition[first] * ((first == second ? 1.0 : 0.0) - composition[second]);
+    };
+    for (std::size_t local_species = 0; local_species < indices.size(); ++local_species) {
+        const std::size_t global_species = static_cast<std::size_t>(indices[local_species]);
+        for (std::size_t first = 0; first < indices.size(); ++first) {
+            const std::size_t global_first = static_cast<std::size_t>(indices[first]);
+            for (std::size_t second = 0; second < indices.size(); ++second) {
+                const std::size_t global_second = static_cast<std::size_t>(indices[second]);
+                double value = hessian[global_species * ncomp * ncomp + global_first * ncomp + global_second];
+                for (std::size_t k = 0; k < local_ncomp; ++k) {
+                    value += sensitivity.jacobian_row_major[local_species * local_ncomp + k]
+                        * d2x(k, first, second);
+                    for (std::size_t l = 0; l < local_ncomp; ++l) {
+                        value += sensitivity.hessian_tensor_row_major[
+                            local_species * local_ncomp * local_ncomp + k * local_ncomp + l
+                        ] * dx(k, first) * dx(l, second);
+                    }
+                }
+                hessian[global_species * ncomp * ncomp + global_first * ncomp + global_second] = value;
+            }
+        }
+    }
+    return hessian;
 }
 
 std::vector<double> phase_log_concentration_log_amount_jacobian(
@@ -596,6 +718,79 @@ std::vector<double> phase_log_concentration_log_amount_jacobian(
     return jacobian;
 }
 
+std::vector<double> phase_log_concentration_log_amount_hessian_tensor(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    double p,
+    const ReactivePhaseState& state
+) {
+    const std::size_t ncomp = state.global_component_count > 0
+        ? state.global_component_count
+        : state.composition.size();
+    const std::vector<int> indices = state.global_indices.empty()
+        ? full_component_indices(ncomp)
+        : state.global_indices;
+    const std::vector<double>& composition = state.model_composition.empty()
+        ? state.composition
+        : state.model_composition;
+    const std::size_t local_ncomp = composition.size();
+    PhaseStateCompositionSensitivityResult sensitivity =
+        phase_state_ln_fugacity_composition_sensitivity_cpp(t, p, composition, 0, mixture->args());
+    if (!sensitivity.supported
+        || sensitivity.density_composition_derivative.size() != local_ncomp
+        || sensitivity.density_composition_hessian_row_major.size() != local_ncomp * local_ncomp) {
+        throw ValueError("concentration reaction residual Hessian requires supported density composition Hessians.");
+    }
+    const double density = sensitivity.density > 0.0 ? sensitivity.density : state.density;
+    if (!(std::isfinite(density) && density > 0.0)) {
+        throw ValueError("concentration reaction residual Hessian requires a finite positive molar density.");
+    }
+    std::vector<double> hessian = phase_log_mole_fraction_log_amount_hessian_tensor(state);
+    auto dx = [&](std::size_t species, std::size_t variable) {
+        return composition[species] * ((species == variable ? 1.0 : 0.0) - composition[variable]);
+    };
+    auto d2x = [&](std::size_t species, std::size_t first, std::size_t second) {
+        return composition[species]
+            * ((species == second ? 1.0 : 0.0) - composition[second])
+            * ((species == first ? 1.0 : 0.0) - composition[first])
+            - composition[species] * composition[first] * ((first == second ? 1.0 : 0.0) - composition[second]);
+    };
+    std::vector<double> dlogrho(local_ncomp, 0.0);
+    for (std::size_t variable = 0; variable < local_ncomp; ++variable) {
+        for (std::size_t k = 0; k < local_ncomp; ++k) {
+            dlogrho[variable] += sensitivity.density_composition_derivative[k] * dx(k, variable);
+        }
+        dlogrho[variable] /= density;
+    }
+    std::vector<double> d2logrho(local_ncomp * local_ncomp, 0.0);
+    for (std::size_t first = 0; first < local_ncomp; ++first) {
+        for (std::size_t second = 0; second < local_ncomp; ++second) {
+            double d2rho = 0.0;
+            for (std::size_t k = 0; k < local_ncomp; ++k) {
+                d2rho += sensitivity.density_composition_derivative[k] * d2x(k, first, second);
+                for (std::size_t l = 0; l < local_ncomp; ++l) {
+                    d2rho += sensitivity.density_composition_hessian_row_major[k * local_ncomp + l]
+                        * dx(k, first) * dx(l, second);
+                }
+            }
+            d2logrho[first * local_ncomp + second] =
+                d2rho / density - dlogrho[first] * dlogrho[second];
+        }
+    }
+    for (std::size_t local_species = 0; local_species < indices.size(); ++local_species) {
+        const std::size_t global_species = static_cast<std::size_t>(indices[local_species]);
+        for (std::size_t first = 0; first < indices.size(); ++first) {
+            const std::size_t global_first = static_cast<std::size_t>(indices[first]);
+            for (std::size_t second = 0; second < indices.size(); ++second) {
+                const std::size_t global_second = static_cast<std::size_t>(indices[second]);
+                hessian[global_species * ncomp * ncomp + global_first * ncomp + global_second] +=
+                    d2logrho[first * local_ncomp + second];
+            }
+        }
+    }
+    return hessian;
+}
+
 std::vector<double> phase_reaction_standard_state_log_amount_jacobian(
     const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
     double t,
@@ -611,6 +806,25 @@ std::vector<double> phase_reaction_standard_state_log_amount_jacobian(
     }
     if (standard_state == STANDARD_STATE_CONCENTRATION) {
         return phase_log_concentration_log_amount_jacobian(mixture, t, p, state);
+    }
+    throw ValueError("reaction standard state code is outside the native reactive-phase contract.");
+}
+
+std::vector<double> phase_reaction_standard_state_log_amount_hessian_tensor(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    double p,
+    const ReactivePhaseState& state,
+    int standard_state
+) {
+    if (standard_state == STANDARD_STATE_MOLE_FRACTION_ACTIVITY) {
+        return phase_ln_activity_log_amount_hessian_tensor(mixture, t, p, state);
+    }
+    if (standard_state == STANDARD_STATE_IDEAL_MOLE_FRACTION) {
+        return phase_log_mole_fraction_log_amount_hessian_tensor(state);
+    }
+    if (standard_state == STANDARD_STATE_CONCENTRATION) {
+        return phase_log_concentration_log_amount_hessian_tensor(mixture, t, p, state);
     }
     throw ValueError("reaction standard state code is outside the native reactive-phase contract.");
 }
@@ -772,6 +986,224 @@ std::vector<double> reactive_phase_residual_jacobian_row_major(
         jacobian[row * nvars + ncomp + species] = charges[species] * phase2.amounts[species];
     }
     return jacobian;
+}
+
+void add_phase_species_hessian(
+    std::vector<double>& target,
+    std::size_t residual_row,
+    std::size_t variable_count,
+    std::size_t phase_offset,
+    std::size_t species_count,
+    double coefficient,
+    const std::vector<double>& species_hessian_tensor,
+    std::size_t species
+) {
+    if (coefficient == 0.0) {
+        return;
+    }
+    if (species_hessian_tensor.size() != species_count * species_count * species_count) {
+        throw ValueError("reactive residual Hessian tensor shape does not match species count.");
+    }
+    for (std::size_t first = 0; first < species_count; ++first) {
+        for (std::size_t second = 0; second < species_count; ++second) {
+            target[residual_row * variable_count * variable_count
+                + (phase_offset + first) * variable_count
+                + phase_offset + second] += coefficient
+                * species_hessian_tensor[species * species_count * species_count + first * species_count + second];
+        }
+    }
+}
+
+void add_phase_amount_diagonal_hessian(
+    std::vector<double>& target,
+    std::size_t residual_row,
+    std::size_t variable_count,
+    std::size_t phase_offset,
+    const std::vector<double>& coefficients,
+    const std::vector<double>& amounts
+) {
+    if (coefficients.size() != amounts.size()) {
+        throw ValueError("reactive amount Hessian coefficients must match phase amounts.");
+    }
+    for (std::size_t species = 0; species < amounts.size(); ++species) {
+        target[residual_row * variable_count * variable_count
+            + (phase_offset + species) * variable_count
+            + phase_offset + species] += coefficients[species] * amounts[species];
+    }
+}
+
+std::vector<double> reactive_phase_residual_hessian_tensor_row_major(
+    const std::shared_ptr<ePCSAFTMixtureNative>& phase1_mixture,
+    const std::shared_ptr<ePCSAFTMixtureNative>& phase2_mixture,
+    double t,
+    double p,
+    const std::vector<double>& balance_matrix_row_major,
+    int balance_rows,
+    const std::vector<double>& reaction_stoichiometry_row_major,
+    int reaction_rows,
+    const std::vector<int>& reaction_standard_states,
+    const std::vector<double>& reaction_phase_stoichiometry_row_major,
+    const ReactivePhaseState& phase1,
+    const ReactivePhaseState& phase2,
+    const std::vector<double>& charges,
+    const ReactivePhaseResidualEvaluationNative& residual_eval
+) {
+    const std::size_t ncomp = phase1.composition.size();
+    const std::size_t nvars = 2 * ncomp;
+    std::vector<double> tensor(residual_eval.residual.size() * nvars * nvars, 0.0);
+    const std::vector<double> activity_hess1 =
+        phase_ln_activity_log_amount_hessian_tensor(phase1_mixture, t, p, phase1);
+    const std::vector<double> activity_hess2 =
+        phase_ln_activity_log_amount_hessian_tensor(phase2_mixture, t, p, phase2);
+    validate_reaction_standard_states(reaction_standard_states, reaction_rows);
+    const bool phase_tagged_reactions = has_phase_tagged_reaction_stoichiometry(
+        reaction_phase_stoichiometry_row_major,
+        reaction_rows,
+        static_cast<int>(ncomp)
+    );
+    std::size_t row = 0;
+
+    for (int balance = 0; balance < balance_rows; ++balance) {
+        std::vector<double> coefficients(ncomp, 0.0);
+        for (std::size_t species = 0; species < ncomp; ++species) {
+            coefficients[species] = balance_matrix_row_major[static_cast<std::size_t>(balance) * ncomp + species];
+        }
+        add_phase_amount_diagonal_hessian(tensor, row, nvars, 0, coefficients, phase1.amounts);
+        add_phase_amount_diagonal_hessian(tensor, row, nvars, ncomp, coefficients, phase2.amounts);
+        ++row;
+    }
+
+    if (phase_tagged_reactions) {
+        for (int reaction = 0; reaction < reaction_rows; ++reaction) {
+            const std::vector<double> reaction_hess1 = phase_reaction_standard_state_log_amount_hessian_tensor(
+                phase1_mixture,
+                t,
+                p,
+                phase1,
+                reaction_standard_states[static_cast<std::size_t>(reaction)]
+            );
+            const std::vector<double> reaction_hess2 = phase_reaction_standard_state_log_amount_hessian_tensor(
+                phase2_mixture,
+                t,
+                p,
+                phase2,
+                reaction_standard_states[static_cast<std::size_t>(reaction)]
+            );
+            const std::size_t reaction_offset = static_cast<std::size_t>(reaction) * 2 * ncomp;
+            for (std::size_t species = 0; species < ncomp; ++species) {
+                add_phase_species_hessian(
+                    tensor,
+                    row,
+                    nvars,
+                    0,
+                    ncomp,
+                    reaction_phase_stoichiometry_row_major[reaction_offset + species],
+                    reaction_hess1,
+                    species
+                );
+                add_phase_species_hessian(
+                    tensor,
+                    row,
+                    nvars,
+                    ncomp,
+                    ncomp,
+                    reaction_phase_stoichiometry_row_major[reaction_offset + ncomp + species],
+                    reaction_hess2,
+                    species
+                );
+            }
+            ++row;
+        }
+    } else {
+        for (int reaction = 0; reaction < reaction_rows; ++reaction) {
+            const std::vector<double> reaction_hess1 = phase_reaction_standard_state_log_amount_hessian_tensor(
+                phase1_mixture,
+                t,
+                p,
+                phase1,
+                reaction_standard_states[static_cast<std::size_t>(reaction)]
+            );
+            for (std::size_t species = 0; species < ncomp; ++species) {
+                add_phase_species_hessian(
+                    tensor,
+                    row,
+                    nvars,
+                    0,
+                    ncomp,
+                    reaction_stoichiometry_row_major[static_cast<std::size_t>(reaction) * ncomp + species],
+                    reaction_hess1,
+                    species
+                );
+            }
+            ++row;
+        }
+
+        for (int reaction = 0; reaction < reaction_rows; ++reaction) {
+            const std::vector<double> reaction_hess2 = phase_reaction_standard_state_log_amount_hessian_tensor(
+                phase2_mixture,
+                t,
+                p,
+                phase2,
+                reaction_standard_states[static_cast<std::size_t>(reaction)]
+            );
+            for (std::size_t species = 0; species < ncomp; ++species) {
+                add_phase_species_hessian(
+                    tensor,
+                    row,
+                    nvars,
+                    ncomp,
+                    ncomp,
+                    reaction_stoichiometry_row_major[static_cast<std::size_t>(reaction) * ncomp + species],
+                    reaction_hess2,
+                    species
+                );
+            }
+            ++row;
+        }
+    }
+
+    if (!phase_tagged_reactions) {
+        for (std::size_t species = 0; species < ncomp; ++species) {
+            if (std::abs(charges[species]) > 1.0e-12) {
+                continue;
+            }
+            add_phase_species_hessian(tensor, row, nvars, 0, ncomp, 1.0, activity_hess1, species);
+            add_phase_species_hessian(tensor, row, nvars, ncomp, ncomp, -1.0, activity_hess2, species);
+            ++row;
+        }
+
+        std::vector<int> cations;
+        std::vector<int> anions;
+        for (std::size_t species = 0; species < ncomp; ++species) {
+            if (charges[species] > 1.0e-12) {
+                cations.push_back(static_cast<int>(species));
+            } else if (charges[species] < -1.0e-12) {
+                anions.push_back(static_cast<int>(species));
+            }
+        }
+        for (int cation : cations) {
+            for (int anion : anions) {
+                const std::size_t c = static_cast<std::size_t>(cation);
+                const std::size_t a = static_cast<std::size_t>(anion);
+                const double cation_weight = std::abs(charges[a]);
+                const double anion_weight = std::abs(charges[c]);
+                add_phase_species_hessian(tensor, row, nvars, 0, ncomp, cation_weight, activity_hess1, c);
+                add_phase_species_hessian(tensor, row, nvars, 0, ncomp, anion_weight, activity_hess1, a);
+                add_phase_species_hessian(tensor, row, nvars, ncomp, ncomp, -cation_weight, activity_hess2, c);
+                add_phase_species_hessian(tensor, row, nvars, ncomp, ncomp, -anion_weight, activity_hess2, a);
+                ++row;
+            }
+        }
+    }
+
+    add_phase_amount_diagonal_hessian(tensor, row, nvars, 0, charges, phase1.amounts);
+    ++row;
+    add_phase_amount_diagonal_hessian(tensor, row, nvars, ncomp, charges, phase2.amounts);
+    ++row;
+    if (row != residual_eval.residual.size()) {
+        throw ValueError("reactive residual Hessian row count did not match the residual vector.");
+    }
+    return tensor;
 }
 
 void validate_jacobian_backend(const EquilibriumOptionsNative& options) {
@@ -971,6 +1403,22 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
     out.phase_distance = phase_distance(phase1.composition, phase2.composition);
     validate_jacobian_backend(options);
     out.jacobian_row_major = reactive_phase_residual_jacobian_row_major(
+        use_phase_models ? phase1_mixture : mixture,
+        use_phase_models ? phase2_mixture : mixture,
+        t,
+        p,
+        balance_matrix_row_major,
+        balance_rows,
+        reaction_stoichiometry_row_major,
+        reaction_rows,
+        reaction_standard_states,
+        reaction_phase_stoichiometry_row_major,
+        phase1,
+        phase2,
+        charges,
+        out
+    );
+    out.residual_hessian_tensor_row_major = reactive_phase_residual_hessian_tensor_row_major(
         use_phase_models ? phase1_mixture : mixture,
         use_phase_models ? phase2_mixture : mixture,
         t,
@@ -1559,6 +2007,94 @@ public:
         return values;
     }
 
+    bool has_exact_hessian() const override {
+        return true;
+    }
+
+    int hessian_nonzero_count() const override {
+        return epcsaft::native::equilibrium_nlp::LagrangianHessianAssembler(variable_count()).nonzero_count();
+    }
+
+    epcsaft::native::equilibrium_nlp::NlpHessianStructure hessian_structure() const override {
+        return epcsaft::native::equilibrium_nlp::LagrangianHessianAssembler(variable_count()).structure();
+    }
+
+    std::vector<double> hessian_values(
+        const std::vector<double>& variables,
+        double objective_factor,
+        const std::vector<double>& constraint_multipliers
+    ) const override {
+        const ReactivePhaseResidualEvaluationNative& eval = evaluate_cached(variables);
+        if (constraint_multipliers.size() != static_cast<std::size_t>(constraint_count())) {
+            throw ValueError("Reactive liquid-root route Hessian multiplier vector size does not match constraints.");
+        }
+        epcsaft::native::equilibrium_nlp::ResidualSecondOrderData residuals;
+        residuals.residual_count = eval.jacobian_rows;
+        residuals.variable_count = eval.jacobian_cols;
+        residuals.residuals = eval.residual;
+        residuals.jacobian_row_major = eval.jacobian_row_major;
+        residuals.residual_hessian_tensor_row_major = eval.residual_hessian_tensor_row_major;
+        residuals.backend = "cppad_implicit_reactive_residual";
+        epcsaft::native::equilibrium_nlp::ObjectiveSecondOrderData objective =
+            epcsaft::native::equilibrium_nlp::least_squares_objective_second_order(residuals);
+
+        const int nvars = variable_count();
+        const std::size_t n = static_cast<std::size_t>(nvars);
+        epcsaft::native::equilibrium_nlp::ConstraintSecondOrderData constraints_data;
+        constraints_data.constraint_count = constraint_count();
+        constraints_data.variable_count = nvars;
+        constraints_data.values = constraints(variables);
+        constraints_data.hessian_tensor_row_major.assign(
+            static_cast<std::size_t>(constraints_data.constraint_count) * n * n,
+            0.0
+        );
+        constraints_data.has_hessian.assign(static_cast<std::size_t>(constraints_data.constraint_count), false);
+        constraints_data.backend = "cppad_implicit_reactive_residual";
+        const auto copy_residual_hessian = [&](int residual_row, int constraint_row) {
+            constraints_data.has_hessian[static_cast<std::size_t>(constraint_row)] = true;
+            const std::size_t source_offset = static_cast<std::size_t>(residual_row) * n * n;
+            const std::size_t target_offset = static_cast<std::size_t>(constraint_row) * n * n;
+            std::copy(
+                eval.residual_hessian_tensor_row_major.begin() + static_cast<std::ptrdiff_t>(source_offset),
+                eval.residual_hessian_tensor_row_major.begin() + static_cast<std::ptrdiff_t>(source_offset + n * n),
+                constraints_data.hessian_tensor_row_major.begin() + static_cast<std::ptrdiff_t>(target_offset)
+            );
+        };
+        for (int row = 0; row < balance_rows_; ++row) {
+            copy_residual_hessian(row, row);
+        }
+        for (int reaction_row = 0; reaction_row < phase_tagged_reaction_constraint_count(); ++reaction_row) {
+            copy_residual_hessian(balance_rows_ + reaction_row, balance_rows_ + reaction_row);
+        }
+        if (phase_charge_constraint_count() > 0) {
+            const int charge_residual_start = eval.jacobian_rows - 2;
+            const int charge_constraint_start = balance_rows_ + phase_tagged_reaction_constraint_count();
+            copy_residual_hessian(charge_residual_start, charge_constraint_start);
+            copy_residual_hessian(charge_residual_start + 1, charge_constraint_start + 1);
+        }
+        if (separation_constraint_count() > 0) {
+            const int row = constraint_count() - 1;
+            constraints_data.has_hessian[static_cast<std::size_t>(row)] = true;
+            const std::vector<double> separation = phase_separation_hessian(variables);
+            const std::size_t offset = static_cast<std::size_t>(row) * n * n;
+            std::copy(
+                separation.begin(),
+                separation.end(),
+                constraints_data.hessian_tensor_row_major.begin() + static_cast<std::ptrdiff_t>(offset)
+            );
+        }
+        return epcsaft::native::equilibrium_nlp::LagrangianHessianAssembler(nvars).values(
+            objective_factor,
+            objective,
+            constraints_data,
+            constraint_multipliers
+        );
+    }
+
+    std::string hessian_backend() const override {
+        return "cppad_implicit_reactive_residual";
+    }
+
     epcsaft::native::equilibrium_nlp::NlpScaling scaling() const override {
         epcsaft::native::equilibrium_nlp::NlpScaling out;
         out.objective = 1.0;
@@ -1698,6 +2234,44 @@ private:
             row[second_offset] = -separation_sign_ * second[selected] * (second_indicator - second[species]);
         }
         return row;
+    }
+
+    std::vector<double> phase_separation_hessian(const std::vector<double>& variables) const {
+        const std::size_t ncomp = feed_.size();
+        const std::size_t nvars = static_cast<std::size_t>(variable_count());
+        const std::vector<double> first_amounts = exp_amounts(variables, 0, ncomp);
+        const std::vector<double> second_amounts = exp_amounts(variables, ncomp, ncomp);
+        const std::vector<double> first = composition_from_amounts(
+            first_amounts,
+            sum_amounts(first_amounts),
+            options_.min_composition
+        );
+        const std::vector<double> second = composition_from_amounts(
+            second_amounts,
+            sum_amounts(second_amounts),
+            options_.min_composition
+        );
+        std::vector<double> out(nvars * nvars, 0.0);
+        const std::size_t selected = static_cast<std::size_t>(separation_species_index_);
+        const auto add_block = [&](std::size_t offset, const std::vector<double>& composition, double scale) {
+            const double x_selected = composition[selected];
+            for (std::size_t first_index = 0; first_index < ncomp; ++first_index) {
+                const double first_delta = selected == first_index ? 1.0 : 0.0;
+                const double x_first = composition[first_index];
+                for (std::size_t second_index = 0; second_index < ncomp; ++second_index) {
+                    const double second_delta = selected == second_index ? 1.0 : 0.0;
+                    const double cross_delta = first_index == second_index ? 1.0 : 0.0;
+                    const double x_second = composition[second_index];
+                    const double value =
+                        x_selected * (second_delta - x_second) * (first_delta - x_first)
+                        - x_selected * x_first * (cross_delta - x_second);
+                    out[(offset + first_index) * nvars + offset + second_index] += scale * value;
+                }
+            }
+        };
+        add_block(0, first, separation_sign_);
+        add_block(ncomp, second, -separation_sign_);
+        return out;
     }
 
     std::shared_ptr<ePCSAFTMixtureNative> mixture_;

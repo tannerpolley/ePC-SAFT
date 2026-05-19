@@ -880,6 +880,7 @@ py::dict neutral_two_phase_eos_route_result_to_dict(
     out["solver_status"] = result.solver_status;
     out["application_status"] = result.application_status;
     out["last_callback_exception"] = result.last_callback_exception;
+    out["last_callback_failure"] = result.last_callback_failure;
     out["objective"] = result.objective;
     out["variables"] = result.variables;
     out["constraints"] = result.constraints;
@@ -974,6 +975,8 @@ py::dict reactive_two_phase_eos_route_result_to_dict(
     out["status"] = result.status;
     out["solver_status"] = result.solver_status;
     out["application_status"] = result.application_status;
+    out["last_callback_exception"] = result.last_callback_exception;
+    out["last_callback_failure"] = result.last_callback_failure;
     out["phase_count"] = result.phase_count;
     out["species_count"] = result.species_count;
     out["balance_row_count"] = result.balance_row_count;

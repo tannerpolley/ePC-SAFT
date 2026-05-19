@@ -88,6 +88,7 @@ struct NeutralTwoPhaseEosRouteResult {
     std::string solver_status;
     std::string application_status;
     std::string last_callback_exception;
+    std::string last_callback_failure;
     int iteration_count = 0;
     int iteration_history_limit = 0;
     int iteration_history_size = 0;
@@ -171,6 +172,8 @@ struct ReactiveTwoPhaseEosRouteResult {
     std::string status;
     std::string solver_status;
     std::string application_status;
+    std::string last_callback_exception;
+    std::string last_callback_failure;
     int iteration_count = 0;
     int iteration_history_limit = 0;
     int iteration_history_size = 0;
