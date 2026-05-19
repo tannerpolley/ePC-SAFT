@@ -300,18 +300,12 @@ tasks:
     receipt: null
 
 checks:
-  dirty_fingerprint: "ipopt ahead of origin/ipopt by three local commits before this SDK-adoption commit; current dirty tree is local Ipopt SDK package-build adoption, docs/workflow alignment, and text-gate cleanup for the planned Hessian/continuation diagnostics. Generated Graphify output and GoalBuddy board assets remain ignored."
+  dirty_fingerprint: "ipopt ahead of origin/ipopt by four local commits after SDK adoption; current dirty tree is only GoalBuddy wording that records SDK-only proof without naming legacy runtime managers as part of the workflow."
   last_verification:
     result: pass
-    task: "SDK adoption and text-gate cleanup"
+    task: "SDK-only Ipopt workflow verification"
     commands:
-      - "uv run python run_pytest.py tests/workflows/build/test_build_backend.py tests/workflows/build/test_build_epcsaft.py tests/workflows/build/test_native_runtime_env.py tests/workflows/repo/test_workflow_entrypoints.py -q -> 39 passed"
-      - "uv run python scripts/dev/build_epcsaft.py --build-only --parallel 10 with EPCSAFT_IPOPT_ROOT/EPCSAFT_PEP517_IPOPT_ROOT unset and Conda paths stripped from PATH -> native import OK; SDK IpoptRoot selected"
-      - "uv run python scripts/dev/doctor.py --require-ipopt with EPCSAFT_IPOPT_ROOT/EPCSAFT_PEP517_IPOPT_ROOT unset and Conda paths stripped from PATH -> install_state: current; ipopt_status: enabled_available"
-      - "PEP 517 config probe with Ipopt env vars unset and Conda paths stripped -> cmake.define.EPCSAFT_IPOPT_ROOT=C:\\Users\\Tanner\\Documents\\deps\\ipopt-msvc; EPCSAFT_ENABLE_IPOPT=ON"
-      - "pwsh.exe -NoProfile -ExecutionPolicy Bypass -File .codex/environments/setup.ps1 -Step Doctor -> SDK root selected; install_state: current"
+      - "uv run python scripts/dev/build_epcsaft.py --build-only --parallel 10 with EPCSAFT_IPOPT_ROOT/EPCSAFT_PEP517_IPOPT_ROOT/Ipopt_DIR unset and legacy runtime paths stripped from PATH -> native import OK; SDK IpoptRoot selected"
+      - "uv run python scripts/dev/doctor.py --require-ipopt with EPCSAFT_IPOPT_ROOT/EPCSAFT_PEP517_IPOPT_ROOT/Ipopt_DIR unset and legacy runtime paths stripped from PATH -> install_state: current; ipopt_status: enabled_available; ipopt_runtime_env_applied: true"
+      - "uv run python run_pytest.py tests/workflows/build/test_build_backend.py tests/workflows/build/test_native_runtime_env.py tests/workflows/repo/test_workflow_entrypoints.py -q -> 31 passed"
       - "uv run python scripts/dev/check_text_gates.py -> pass"
-      - "uv run python scripts/dev/build_epcsaft.py --build-only --parallel 10 -> native import OK after C++ diagnostic-field rename"
-      - "uv run python run_pytest.py tests/native/equilibrium/test_ipopt_adapter_contract.py tests/equilibrium/core/test_native_results.py tests/equilibrium/core/test_lle.py::test_lle_flash_rejects_invalid_options_through_public_api tests/workflows/build/test_build_backend.py tests/workflows/build/test_build_epcsaft.py tests/workflows/build/test_native_runtime_env.py tests/workflows/repo/test_workflow_entrypoints.py tests/workflows/repo/test_project_structure.py::test_strict_solver_derivative_text_gate_passes tests/workflows/repo/test_project_structure.py::test_custom_scalar_solver_tokens_are_limited_to_density_closure_exception -q -> 64 passed"
-      - "uv run python scripts/dev/validate_project.py quick -> 40 passed"
-      - "git diff --check -> pass"
