@@ -187,6 +187,12 @@ IpoptSolveOptions normalize_ipopt_solve_options(const IpoptSolveOptions& options
         normalized.tolerance,
         "complementarity_tolerance"
     );
+    if (!std::isfinite(normalized.bound_push) || normalized.bound_push < 0.0) {
+        throw ValueError("Native Ipopt adapter bound_push must be non-negative and finite.");
+    }
+    if (!std::isfinite(normalized.bound_frac) || normalized.bound_frac < 0.0) {
+        throw ValueError("Native Ipopt adapter bound_frac must be non-negative and finite.");
+    }
     normalized.linear_solver = normalize_linear_solver(normalized.linear_solver);
     return normalized;
 }
@@ -363,6 +369,8 @@ public:
         result_.diagnostics_double["constraint_violation_tolerance"] = options_.constraint_violation_tolerance;
         result_.diagnostics_double["dual_infeasibility_tolerance"] = options_.dual_infeasibility_tolerance;
         result_.diagnostics_double["complementarity_tolerance"] = options_.complementarity_tolerance;
+        result_.diagnostics_double["bound_push"] = options_.bound_push;
+        result_.diagnostics_double["bound_frac"] = options_.bound_frac;
         result_.diagnostics_double["variable_scaling_min"] = vector_min_or_zero(scaling_.variables);
         result_.diagnostics_double["variable_scaling_max"] = vector_max_or_zero(scaling_.variables);
         result_.diagnostics_double["constraint_scaling_min"] = vector_min_or_zero(scaling_.constraints);
@@ -398,14 +406,19 @@ public:
         Ipopt::Number* g_u
     ) override {
         if (n != problem_.variable_count() || m != problem_.constraint_count()) {
+            record_callback_failure("get_bounds_info", "dimension mismatch");
             return false;
         }
         std::copy(bounds_.variable_lower.begin(), bounds_.variable_lower.end(), x_l);
         std::copy(bounds_.variable_upper.begin(), bounds_.variable_upper.end(), x_u);
         std::copy(bounds_.constraint_lower.begin(), bounds_.constraint_lower.end(), g_l);
         std::copy(bounds_.constraint_upper.begin(), bounds_.constraint_upper.end(), g_u);
-        return all_finite(bounds_.variable_lower) && all_finite(bounds_.variable_upper)
+        const bool valid = all_finite(bounds_.variable_lower) && all_finite(bounds_.variable_upper)
             && all_finite(bounds_.constraint_lower) && all_finite(bounds_.constraint_upper);
+        if (!valid) {
+            record_callback_failure("get_bounds_info", "nonfinite bounds");
+        }
+        return valid;
     }
 
     bool get_starting_point(
@@ -420,6 +433,7 @@ public:
         Ipopt::Number* lambda
     ) override {
         if (!init_x || n != problem_.variable_count() || m != problem_.constraint_count()) {
+            record_callback_failure("get_starting_point", "dimension mismatch");
             return false;
         }
         std::copy(initial_.begin(), initial_.end(), x);
@@ -428,6 +442,7 @@ public:
                 options_.initial_bound_lower_multipliers.size() != initial_.size()
                 || options_.initial_bound_upper_multipliers.size() != initial_.size()
             ) {
+                record_callback_failure("get_starting_point", "bound multiplier size mismatch");
                 return false;
             }
             std::copy(options_.initial_bound_lower_multipliers.begin(), options_.initial_bound_lower_multipliers.end(), z_L);
@@ -438,6 +453,7 @@ public:
                 options_.initial_constraint_multipliers.size()
                 != static_cast<std::size_t>(problem_.constraint_count())
             ) {
+                record_callback_failure("get_starting_point", "constraint multiplier size mismatch");
                 return false;
             }
             std::copy(
@@ -447,7 +463,11 @@ public:
             );
         }
         result_.diagnostics_bool["warm_start_used"] = init_z || init_lambda;
-        return all_finite(initial_);
+        const bool valid = all_finite(initial_);
+        if (!valid) {
+            record_callback_failure("get_starting_point", "nonfinite initial point");
+        }
+        return valid;
     }
 
     bool get_scaling_parameters(
@@ -464,18 +484,24 @@ public:
         use_g_scaling = !scaling_.constraints.empty();
         if (use_x_scaling) {
             if (n != problem_.variable_count()) {
+                record_callback_failure("get_scaling_parameters", "variable dimension mismatch");
                 return false;
             }
             std::copy(scaling_.variables.begin(), scaling_.variables.end(), x_scaling);
         }
         if (use_g_scaling) {
             if (m != problem_.constraint_count()) {
+                record_callback_failure("get_scaling_parameters", "constraint dimension mismatch");
                 return false;
             }
             std::copy(scaling_.constraints.begin(), scaling_.constraints.end(), g_scaling);
         }
-        return std::isfinite(obj_scaling) && obj_scaling > 0.0 && all_finite(scaling_.variables)
+        const bool valid = std::isfinite(obj_scaling) && obj_scaling > 0.0 && all_finite(scaling_.variables)
             && all_finite(scaling_.constraints);
+        if (!valid) {
+            record_callback_failure("get_scaling_parameters", "nonpositive or nonfinite scaling");
+        }
+        return valid;
     }
 
     bool eval_f(
@@ -486,11 +512,16 @@ public:
     ) override {
         (void)new_x;
         if (n != problem_.variable_count()) {
+            record_callback_failure("eval_f", "dimension mismatch");
             return false;
         }
         try {
             obj_value = problem_.objective(vector_from_raw(x, n));
-            return std::isfinite(obj_value);
+            const bool valid = std::isfinite(obj_value);
+            if (!valid) {
+                record_callback_failure("eval_f", "nonfinite objective");
+            }
+            return valid;
         } catch (const std::exception& exc) {
             record_callback_exception("eval_f", exc.what());
             return false;
@@ -508,11 +539,13 @@ public:
     ) override {
         (void)new_x;
         if (n != problem_.variable_count()) {
+            record_callback_failure("eval_grad_f", "dimension mismatch");
             return false;
         }
         try {
             const std::vector<double> gradient = problem_.objective_gradient(vector_from_raw(x, n));
             if (gradient.size() != static_cast<std::size_t>(n) || !all_finite(gradient)) {
+                record_callback_failure("eval_grad_f", "invalid gradient shape or nonfinite value");
                 return false;
             }
             std::copy(gradient.begin(), gradient.end(), grad_f);
@@ -535,11 +568,13 @@ public:
     ) override {
         (void)new_x;
         if (n != problem_.variable_count() || m != problem_.constraint_count()) {
+            record_callback_failure("eval_g", "dimension mismatch");
             return false;
         }
         try {
             const std::vector<double> values = problem_.constraints(vector_from_raw(x, n));
             if (values.size() != static_cast<std::size_t>(m) || !all_finite(values)) {
+                record_callback_failure("eval_g", "invalid constraint shape or nonfinite value");
                 return false;
             }
             std::copy(values.begin(), values.end(), g);
@@ -566,9 +601,15 @@ public:
         (void)new_x;
         if (n != problem_.variable_count() || m != problem_.constraint_count()
             || nele_jac != problem_.jacobian_nonzero_count()) {
+            record_callback_failure("eval_jac_g", "dimension mismatch");
             return false;
         }
         if (values == nullptr) {
+            if (jacobian_structure_.rows.size() != static_cast<std::size_t>(nele_jac)
+                || jacobian_structure_.cols.size() != static_cast<std::size_t>(nele_jac)) {
+                record_callback_failure("eval_jac_g", "invalid Jacobian structure shape");
+                return false;
+            }
             for (std::size_t index = 0; index < jacobian_structure_.rows.size(); ++index) {
                 iRow[index] = jacobian_structure_.rows[index];
                 jCol[index] = jacobian_structure_.cols[index];
@@ -578,6 +619,7 @@ public:
         try {
             const std::vector<double> jacobian = problem_.jacobian_values(vector_from_raw(x, n));
             if (jacobian.size() != static_cast<std::size_t>(nele_jac) || !all_finite(jacobian)) {
+                record_callback_failure("eval_jac_g", "invalid Jacobian value shape or nonfinite value");
                 return false;
             }
             std::copy(jacobian.begin(), jacobian.end(), values);
@@ -608,9 +650,15 @@ public:
         (void)new_lambda;
         if (selected_hessian_mode_ != "exact" || n != problem_.variable_count() || m != problem_.constraint_count()
             || nele_hess != problem_.hessian_nonzero_count()) {
+            record_callback_failure("eval_h", "dimension mismatch");
             return false;
         }
         if (values == nullptr) {
+            if (hessian_structure_.rows.size() != static_cast<std::size_t>(nele_hess)
+                || hessian_structure_.cols.size() != static_cast<std::size_t>(nele_hess)) {
+                record_callback_failure("eval_h", "invalid Hessian structure shape");
+                return false;
+            }
             for (std::size_t index = 0; index < hessian_structure_.rows.size(); ++index) {
                 iRow[index] = hessian_structure_.rows[index];
                 jCol[index] = hessian_structure_.cols[index];
@@ -624,6 +672,7 @@ public:
                 vector_from_raw(lambda, m)
             );
             if (hessian.size() != static_cast<std::size_t>(nele_hess) || !all_finite(hessian)) {
+                record_callback_failure("eval_h", "invalid Hessian value shape or nonfinite value");
                 return false;
             }
             std::copy(hessian.begin(), hessian.end(), values);
@@ -717,6 +766,10 @@ public:
     }
 
 private:
+    void record_callback_failure(const std::string& callback, const std::string& message) {
+        result_.diagnostics_string["last_callback_failure"] = callback + ": " + message;
+    }
+
     void record_callback_exception(const std::string& callback, const std::string& message) {
         result_.diagnostics_string["last_callback_exception"] = callback + ": " + message;
     }
@@ -798,6 +851,12 @@ IpoptSolveResult solve_ipopt_nlp(
     app->Options()->SetNumericValue("compl_inf_tol", normalized_options.complementarity_tolerance);
     app->Options()->SetStringValue("jacobian_approximation", "exact");
     app->Options()->SetStringValue("gradient_approximation", "exact");
+    if (normalized_options.bound_push > 0.0) {
+        app->Options()->SetNumericValue("bound_push", normalized_options.bound_push);
+    }
+    if (normalized_options.bound_frac > 0.0) {
+        app->Options()->SetNumericValue("bound_frac", normalized_options.bound_frac);
+    }
     if (selected_hessian_mode == "limited-memory") {
         app->Options()->SetStringValue("hessian_approximation", "limited-memory");
     }

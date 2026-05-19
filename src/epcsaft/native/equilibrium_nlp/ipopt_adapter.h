@@ -31,6 +31,8 @@ struct IpoptSolveOptions {
     std::string hessian_mode = "auto";
     int iteration_history_limit = 20;
     std::string linear_solver = "auto";
+    double bound_push = 0.0;
+    double bound_frac = 0.0;
     std::vector<double> initial_variables;
     std::vector<double> initial_bound_lower_multipliers;
     std::vector<double> initial_bound_upper_multipliers;

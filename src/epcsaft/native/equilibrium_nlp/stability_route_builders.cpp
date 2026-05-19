@@ -61,6 +61,8 @@ void apply_stability_ipopt_metadata(StabilityRouteResult& out, const IpoptSolveR
     out.exact_hessian_available = solve_bool(solve, "exact_hessian_available");
     out.warm_start_requested = solve_bool(solve, "warm_start_requested");
     out.warm_start_used = solve_bool(solve, "warm_start_used");
+    out.last_callback_exception = solve_string(solve, "last_callback_exception", out.last_callback_exception);
+    out.last_callback_failure = solve_string(solve, "last_callback_failure", out.last_callback_failure);
     out.bound_lower_multipliers = solve.bound_lower_multipliers;
     out.bound_upper_multipliers = solve.bound_upper_multipliers;
     out.constraint_multipliers = solve.constraint_multipliers;
@@ -552,6 +554,16 @@ public:
                         * trial.hessian_tensor_row_major[species * n * n + row * n + col];
                 }
                 objective.hessian_row_major[row * n + col] = value;
+            }
+        }
+        for (std::size_t row = 0; row < n; ++row) {
+            for (std::size_t col = 0; col < row; ++col) {
+                const double symmetric_value = 0.5 * (
+                    objective.hessian_row_major[row * n + col]
+                    + objective.hessian_row_major[col * n + row]
+                );
+                objective.hessian_row_major[row * n + col] = symmetric_value;
+                objective.hessian_row_major[col * n + row] = symmetric_value;
             }
         }
         ConstraintSecondOrderData constraints;

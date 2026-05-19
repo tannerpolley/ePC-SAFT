@@ -57,6 +57,8 @@ struct StabilityRouteResult {
     std::string status;
     std::string solver_status;
     std::string application_status;
+    std::string last_callback_exception;
+    std::string last_callback_failure;
     std::string parent_phase;
     std::string trial_phase;
     std::string seed_name = "canonical_shifted_feed";

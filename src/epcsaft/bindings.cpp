@@ -1068,6 +1068,8 @@ py::dict stability_route_result_to_dict(
     out["status"] = result.status;
     out["solver_status"] = result.solver_status;
     out["application_status"] = result.application_status;
+    out["last_callback_exception"] = result.last_callback_exception;
+    out["last_callback_failure"] = result.last_callback_failure;
     out["parent_phase"] = result.parent_phase;
     out["trial_phase"] = result.trial_phase;
     out["seed_name"] = result.seed_name;
