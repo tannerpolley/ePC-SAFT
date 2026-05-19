@@ -60,6 +60,15 @@ def test_native_ipopt_quadratic_smoke_is_gated_by_compiled_dependency() -> None:
         assert abs(smoke["constraints"][0] - 3.0) < 1.0e-6
 
 
+def test_native_second_order_assembler_smoke_covers_lagrangian_residual_and_transform_blocks() -> None:
+    smoke = _core._native_second_order_assembly_smoke()
+
+    assert smoke["nonzero_count"] == 3
+    assert smoke["lagrangian_lower"] == pytest.approx([1.0, 6.5, 2.0])
+    assert smoke["least_squares_lower"] == pytest.approx([12.0, 13.0, 24.0])
+    assert smoke["transformed_lower"] == pytest.approx([118.0, 44.0, 13.0])
+
+
 def test_native_ipopt_quadratic_exact_hessian_reports_callback_and_bounded_history() -> None:
     smoke = _core._native_ipopt_quadratic_smoke(hessian_mode="exact", iteration_history_limit=2)
 

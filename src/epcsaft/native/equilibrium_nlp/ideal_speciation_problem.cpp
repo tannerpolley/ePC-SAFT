@@ -4,6 +4,7 @@
 #include "epcsaft_electrolyte.h"
 #include "gibbs_blocks.h"
 #include "reaction_block.h"
+#include "second_order.h"
 
 #include <cppad/cppad.hpp>
 #include <Eigen/Dense>
@@ -396,21 +397,11 @@ public:
     }
 
     int hessian_nonzero_count() const override {
-        const int n = request_.species_count;
-        return n * (n + 1) / 2;
+        return LagrangianHessianAssembler(request_.species_count).nonzero_count();
     }
 
     NlpHessianStructure hessian_structure() const override {
-        NlpHessianStructure out;
-        out.rows.reserve(static_cast<std::size_t>(hessian_nonzero_count()));
-        out.cols.reserve(static_cast<std::size_t>(hessian_nonzero_count()));
-        for (int row = 0; row < request_.species_count; ++row) {
-            for (int col = 0; col <= row; ++col) {
-                out.rows.push_back(row);
-                out.cols.push_back(col);
-            }
-        }
-        return out;
+        return LagrangianHessianAssembler(request_.species_count).structure();
     }
 
     std::vector<double> hessian_values(
@@ -418,20 +409,33 @@ public:
         double objective_factor,
         const std::vector<double>& constraint_multipliers
     ) const override {
-        (void)constraint_multipliers;
         const IdealReducedGibbsResult gibbs = evaluate_ideal_reduced_gibbs(variables, standard_mu_rt_, true);
         const std::size_t n = static_cast<std::size_t>(request_.species_count);
         if (gibbs.hessian_row_major.size() != n * n) {
             throw ValueError("Ideal Ipopt speciation Hessian shape did not match the species count.");
         }
-        std::vector<double> out;
-        out.reserve(static_cast<std::size_t>(hessian_nonzero_count()));
-        for (std::size_t row = 0; row < n; ++row) {
-            for (std::size_t col = 0; col <= row; ++col) {
-                out.push_back(objective_factor * gibbs.hessian_row_major[row * n + col]);
-            }
-        }
-        return out;
+        ObjectiveSecondOrderData objective;
+        objective.variable_count = request_.species_count;
+        objective.hessian_row_major = gibbs.hessian_row_major;
+        objective.backend = "analytic";
+
+        ConstraintSecondOrderData constraints;
+        constraints.constraint_count = constraint_count();
+        constraints.variable_count = request_.species_count;
+        constraints.hessian_tensor_row_major.assign(
+            static_cast<std::size_t>(constraints.constraint_count)
+                * static_cast<std::size_t>(request_.species_count)
+                * static_cast<std::size_t>(request_.species_count),
+            0.0
+        );
+        constraints.has_hessian.assign(static_cast<std::size_t>(constraints.constraint_count), false);
+        constraints.backend = "linear";
+        return LagrangianHessianAssembler(request_.species_count).values(
+            objective_factor,
+            objective,
+            constraints,
+            constraint_multipliers
+        );
     }
 
     std::string hessian_backend() const override {

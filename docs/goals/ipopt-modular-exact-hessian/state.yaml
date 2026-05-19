@@ -1,0 +1,225 @@
+version: 2
+
+goal:
+  title: "Modular Ipopt Exact Hessian"
+  slug: "ipopt-modular-exact-hessian"
+  kind: specific
+  tranche: "Replace route-specific exact-Hessian plumbing with shared second-order carriers and a common Lagrangian Hessian assembler, then make exact Hessians the default accepted path across native Ipopt equilibrium routes."
+  status: active
+  intake:
+    original_request: "PLEASE IMPLEMENT THIS PLAN: Modular Ipopt Exact-Hessian Refactor Plan"
+    interpreted_outcome: "All native Ipopt equilibrium backend/internal route families use shared exact-Hessian infrastructure by default, accepted route fixtures prove the path, selected proof runs capture Ipopt logs, focused validation passes, cleanup passes, and changes are locally committed."
+    input_shape: existing_plan
+    audience: "ePC-SAFT package maintainers and downstream generic-equilibrium users"
+    authority: requested
+    proof_type: test
+    completion_proof: "Provider diagnostics, accepted fixtures, captured Ipopt logs, focused validation, cleanup, and a local commit prove the modular default-exact route stack."
+    likely_misfire: "A route gains another one-off Hessian implementation while shared derivative carriers and assembly remain incomplete."
+    blind_spots_considered:
+      - "The Hessian must be the route NLP Lagrangian Hessian, not just objective curvature."
+      - "Transform second derivatives and nonlinear constraint multiplier terms are required where the route formulation uses them."
+      - "Accepted fixtures are required route-family evidence; provider flags alone do not close the goal."
+      - "The known broad equilibrium sweep hang is outside the completion gate."
+      - "Repo text gates forbid committed wording that suggests surrogate derivative proof."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: not_started
+    url: "http://127.0.0.1:41737/ipopt-modular-exact-hessian/"
+    command: "& C:\\Users\\Tanner\\Documents\\git\\codex-maintenance\\scripts\\start-goalbuddy-board.ps1 -Goal docs/goals/ipopt-modular-exact-hessian"
+  github_projects:
+    status: not_requested
+    url: null
+    command: "npx goalbuddy extend github-projects"
+    missing: []
+
+active_task: T020
+
+tasks:
+  - id: T001
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: high
+    objective: "Map current exact-Hessian providers, current missing provider routes, derivative-tier blockers, and route-family fixtures before the first code slice."
+    inputs:
+      - "src/epcsaft/native/equilibrium_nlp/"
+      - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+      - "src/epcsaft/native/epcsaft_equilibrium.h"
+      - "src/epcsaft/native/equilibrium/reactive_phase_equilibrium_problem.cpp"
+      - "src/epcsaft/runtime.py"
+      - "src/epcsaft/equilibrium.py"
+      - "tests/native/equilibrium/"
+      - "tests/equilibrium/"
+      - "tests/api/reactive/"
+    constraints:
+      - "Read-only except for this board receipt."
+      - "Preserve the user-provided route universe."
+      - "Do not use surrogate derivative checks as proof."
+    expected_output:
+      - "Provider gap map"
+      - "First vertical implementation slice"
+      - "Focused test commands"
+    receipt:
+      result: done
+      summary: "Mapped current exact providers, uncovered route families, and derivative-tier blockers with owner-agent read-only reports."
+      evidence:
+        - "Current providers: ideal speciation, stability TPD, electrolyte liquid-root LLE."
+        - "Main blockers: EOS phase-system constraint Hessians, association implicit curvature, reactive residual Hessian tensors, transform second derivatives."
+        - "Hydrocarbon TP-flash default-exact fixture remains missing."
+
+  - id: T010
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Add shared second-order carriers and the Lagrangian Hessian assembler, then prove it on small native contract tests."
+    allowed_files:
+      - "src/epcsaft/native/equilibrium_nlp/"
+      - "src/epcsaft/native/equilibrium_nlp/second_order.h"
+      - "src/epcsaft/native/equilibrium_nlp/second_order.cpp"
+      - "src/epcsaft/bindings.cpp"
+      - "tests/native/equilibrium/"
+      - "tests/native/equilibrium/test_ipopt_adapter_contract.py"
+      - "docs/goals/ipopt-modular-exact-hessian/state.yaml"
+    verify:
+      - "uv run python run_pytest.py tests/native/equilibrium/test_ipopt_adapter_contract.py -q"
+      - "git diff --check"
+    stop_if:
+      - "The assembler requires changing the public Python API."
+      - "The native build cannot compile after two focused repair attempts."
+    receipt:
+      result: done
+      changed_files:
+        - "src/epcsaft/native/equilibrium_nlp/second_order.h"
+        - "src/epcsaft/native/equilibrium_nlp/second_order.cpp"
+        - "src/epcsaft/bindings.cpp"
+        - "tests/native/equilibrium/test_ipopt_adapter_contract.py"
+      commands:
+        - cmd: "uv run python scripts/dev/build_epcsaft.py --build-only --parallel 10"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/equilibrium/test_ipopt_adapter_contract.py -q"
+          status: pass
+      summary: "Added native second-order carriers, dense lower-triangle structure, least-squares objective assembly, transform chaining, and common Lagrangian Hessian assembly."
+
+  - id: T020
+    type: worker
+    assignee: Worker
+    status: active
+    reasoning_hint: high
+    objective: "Migrate current exact-Hessian routes onto the shared assembler without changing their public behavior."
+    allowed_files:
+      - "src/epcsaft/native/equilibrium_nlp/"
+      - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+      - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+      - "tests/native/equilibrium/"
+      - "tests/api/equilibrium/"
+      - "tests/api/reactive/"
+      - "docs/goals/ipopt-modular-exact-hessian/state.yaml"
+    verify:
+      - "uv run python run_pytest.py tests/native/equilibrium/test_ipopt_adapter_contract.py tests/native/equilibrium/test_route_builders.py tests/api/equilibrium/test_electrolyte_lle_problem_native_ipopt.py tests/api/reactive/test_reactive_speciation_options.py -q"
+      - "git diff --check"
+    stop_if:
+      - "An existing exact-Hessian route cannot be expressed through the shared assembler."
+
+  - id: T030
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: high
+    objective: "Extend EOS phase-system second-order data and migrate neutral TP flash, neutral LLE, neutral bubble/dew, and electrolyte bubble-pressure route families."
+    allowed_files:
+      - "src/epcsaft/native/equilibrium_nlp/"
+      - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+      - "src/epcsaft/bindings.cpp"
+      - "src/epcsaft/equilibrium.py"
+      - "tests/native/equilibrium/"
+      - "tests/equilibrium/core/"
+      - "tests/equilibrium/electrolyte/"
+      - "docs/goals/ipopt-modular-exact-hessian/state.yaml"
+    verify:
+      - "uv run python run_pytest.py tests/native/equilibrium/test_eos_phase_block.py tests/native/equilibrium/test_route_builders.py tests/equilibrium/core/test_vle.py tests/equilibrium/core/test_lle.py tests/equilibrium/core/test_bubble_dew.py tests/equilibrium/electrolyte/test_electrolyte_bubble.py -q"
+      - "git diff --check"
+    stop_if:
+      - "A route needs an equation derivative outside the current native ownership map."
+
+  - id: T040
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: high
+    objective: "Extend reactive residual second-order data and migrate reactive LLE, reactive electrolyte LLE, reactive two-phase, and nonideal speciation paths."
+    allowed_files:
+      - "src/epcsaft/native/equilibrium_nlp/"
+      - "src/epcsaft/native/epcsaft_equilibrium.h"
+      - "src/epcsaft/native/equilibrium/reactive_phase_equilibrium_problem.cpp"
+      - "src/epcsaft/native/epcsaft_chemical_equilibrium.cpp"
+      - "src/epcsaft/bindings.cpp"
+      - "src/epcsaft/reactive_speciation.py"
+      - "tests/native/equilibrium/"
+      - "tests/api/reactive/"
+      - "docs/goals/ipopt-modular-exact-hessian/state.yaml"
+    verify:
+      - "uv run python run_pytest.py tests/native/equilibrium/test_reactive_phase_equilibrium_residual_surface.py tests/native/equilibrium/test_reactive_phase_equilibrium_residual_jacobian.py tests/native/equilibrium/test_route_builders.py tests/api/reactive/test_reactive_speciation_options.py tests/api/reactive/test_reactive_phase_equilibrium_problem_routes_native.py -q"
+      - "git diff --check"
+    stop_if:
+      - "Reactive second-order data cannot be produced without changing public API inputs."
+
+  - id: T050
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: medium
+    objective: "Add accepted default-exact fixtures, captured Ipopt logs for representative VLE and electrolyte LLE proof runs, and final route diagnostics assertions."
+    allowed_files:
+      - "tests/native/equilibrium/"
+      - "tests/equilibrium/"
+      - "tests/api/equilibrium/"
+      - "tests/api/reactive/"
+      - "scripts/dev/"
+      - "src/epcsaft/runtime.py"
+      - "docs/goals/ipopt-modular-exact-hessian/state.yaml"
+    verify:
+      - "uv run python run_pytest.py tests/native/equilibrium/test_ipopt_adapter_contract.py tests/native/equilibrium/test_route_builders.py tests/equilibrium/core/test_vle.py tests/equilibrium/core/test_lle.py tests/equilibrium/core/test_bubble_dew.py tests/equilibrium/core/test_stability.py tests/equilibrium/electrolyte/test_electrolyte_lle_smokes.py tests/equilibrium/electrolyte/test_electrolyte_lle_results.py tests/equilibrium/electrolyte/test_electrolyte_bubble.py tests/api/equilibrium/test_electrolyte_lle_problem_native_ipopt.py tests/api/reactive/test_reactive_speciation_options.py tests/api/reactive/test_reactive_phase_equilibrium_problem_routes_native.py -q"
+      - "git diff --check"
+    stop_if:
+      - "Representative route logs cannot be captured without committing generated artifacts."
+
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: high
+    objective: "Final audit: prove every acceptance gate, run cleanup, commit tracked changes, and mark the goal done only when all route-family gates pass."
+    verify:
+      - "uv run python scripts/dev/validate_project.py quick"
+      - "git diff --check"
+      - "pwsh.exe -NoProfile -ExecutionPolicy Bypass -File \"$env:USERPROFILE\\.codex\\hooks\\codex-cleanup.ps1\" -RepoRoot ."
+      - "node C:\\Users\\Tanner\\.codex\\plugins\\cache\\goalbuddy\\goalbuddy\\0.3.6\\skills\\goalbuddy\\scripts\\check-goal-state.mjs docs/goals/ipopt-modular-exact-hessian/state.yaml"
+    stop_if:
+      - "Any covered route lacks an accepted default-exact fixture."
+      - "Any covered route silently falls back from exact to limited-memory."
+      - "Tracked changes are uncommitted at final handoff."

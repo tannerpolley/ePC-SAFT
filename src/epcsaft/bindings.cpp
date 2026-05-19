@@ -18,6 +18,7 @@
 #include "reaction_block.h"
 #include "result_builder.h"
 #include "route_builders.h"
+#include "second_order.h"
 #include "stability_route_builders.h"
 
 epcsaft::native::cppad_support::CppADDerivativeResult cppad_eos_contribution_derivatives_cpp(
@@ -1823,6 +1824,78 @@ PYBIND11_MODULE(_core, m) {
         out["compiled"] = compiled;
         out["available"] = compiled;
         out["status"] = compiled ? "enabled_available" : "disabled";
+        return out;
+    });
+    m.def("_native_second_order_assembly_smoke", []() {
+        namespace nlp = epcsaft::native::equilibrium_nlp;
+        py::dict out;
+
+        nlp::ObjectiveSecondOrderData objective;
+        objective.variable_count = 2;
+        objective.hessian_row_major = {2.0, 1.0, 1.0, 4.0};
+        objective.backend = "analytic";
+
+        nlp::ConstraintSecondOrderData constraints;
+        constraints.constraint_count = 2;
+        constraints.variable_count = 2;
+        constraints.hessian_tensor_row_major = {
+            0.0, 2.0,
+            2.0, 0.0,
+            0.0, 0.0,
+            0.0, 0.0
+        };
+        constraints.has_hessian = {true, false};
+        constraints.backend = "analytic";
+
+        const nlp::LagrangianHessianAssembler assembler(2);
+        out["nonzero_count"] = assembler.nonzero_count();
+        out["lagrangian_lower"] = assembler.values(0.5, objective, constraints, {3.0, 100.0});
+
+        nlp::ResidualSecondOrderData residuals;
+        residuals.residual_count = 2;
+        residuals.variable_count = 2;
+        residuals.residuals = {2.0, -1.0};
+        residuals.jacobian_row_major = {
+            1.0, 2.0,
+            3.0, 4.0
+        };
+        residuals.residual_hessian_tensor_row_major = {
+            1.0, 0.0,
+            0.0, 2.0,
+            0.0, 1.0,
+            1.0, 0.0
+        };
+        const nlp::ObjectiveSecondOrderData least_squares =
+            nlp::least_squares_objective_second_order(residuals);
+        out["least_squares_lower"] =
+            nlp::lower_triangle_values(least_squares.hessian_row_major, least_squares.variable_count);
+
+        nlp::VariableTransformSecondOrderData transform;
+        transform.input_variable_count = 2;
+        transform.output_variable_count = 2;
+        transform.jacobian_row_major = {
+            4.0, 0.0,
+            0.0, 1.0
+        };
+        transform.output_hessian_tensor_row_major = {
+            2.0, 0.0,
+            0.0, 0.0,
+            0.0, 0.0,
+            0.0, 0.0
+        };
+        transform.backend = "analytic";
+        nlp::ObjectiveSecondOrderData output_objective;
+        output_objective.variable_count = 2;
+        output_objective.gradient = {3.0, 5.0};
+        output_objective.hessian_row_major = {
+            7.0, 11.0,
+            11.0, 13.0
+        };
+        output_objective.backend = "analytic";
+        const nlp::ObjectiveSecondOrderData transformed =
+            nlp::transformed_objective_second_order(transform, output_objective);
+        out["transformed_lower"] =
+            nlp::lower_triangle_values(transformed.hessian_row_major, transformed.variable_count);
         return out;
     });
     m.def("_native_ipopt_smoke", []() {

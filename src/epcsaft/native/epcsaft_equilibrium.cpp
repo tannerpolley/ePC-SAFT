@@ -1,9 +1,11 @@
 #include "epcsaft_equilibrium.h"
 #include "equilibrium/equilibrium_helpers.h"
+#include "equilibrium_nlp/second_order.h"
 
 #include <Eigen/Dense>
 
 #include <algorithm>
+#include <cstddef>
 #include <cmath>
 #include <limits>
 #include <numeric>
@@ -1488,21 +1490,11 @@ public:
     }
 
     int hessian_nonzero_count() const override {
-        const int n = variable_count();
-        return n * (n + 1) / 2;
+        return equilibrium_nlp::LagrangianHessianAssembler(variable_count()).nonzero_count();
     }
 
     equilibrium_nlp::NlpHessianStructure hessian_structure() const override {
-        equilibrium_nlp::NlpHessianStructure out;
-        out.rows.reserve(static_cast<std::size_t>(hessian_nonzero_count()));
-        out.cols.reserve(static_cast<std::size_t>(hessian_nonzero_count()));
-        for (int row = 0; row < variable_count(); ++row) {
-            for (int col = 0; col <= row; ++col) {
-                out.rows.push_back(row);
-                out.cols.push_back(col);
-            }
-        }
-        return out;
+        return equilibrium_nlp::LagrangianHessianAssembler(variable_count()).structure();
     }
 
     std::vector<double> hessian_values(
@@ -1514,7 +1506,19 @@ public:
         if (constraint_multipliers.size() != static_cast<std::size_t>(constraint_count())) {
             throw ValueError("Electrolyte LLE liquid-root NLP Hessian received an unexpected multiplier vector size.");
         }
-        std::vector<double> lagrangian_hessian(nvar * nvar, 0.0);
+        equilibrium_nlp::ObjectiveSecondOrderData objective;
+        objective.variable_count = variable_count();
+        objective.hessian_row_major.assign(nvar * nvar, 0.0);
+        objective.backend = "cppad_implicit_chain_rule";
+        equilibrium_nlp::ConstraintSecondOrderData constraints;
+        constraints.constraint_count = constraint_count();
+        constraints.variable_count = variable_count();
+        constraints.hessian_tensor_row_major.assign(
+            static_cast<std::size_t>(constraints.constraint_count) * nvar * nvar,
+            0.0
+        );
+        constraints.has_hessian.assign(static_cast<std::size_t>(constraints.constraint_count), false);
+        constraints.backend = "cppad_implicit_chain_rule";
         try {
             const ElectrolyteCandidateNative current = candidate(variables);
             const ElectrolyteResidualSecondOrderNative second_order = electrolyte_residual_second_order_native(
@@ -1531,120 +1535,102 @@ public:
             if (second_order.residual_rows != residual.size() || second_order.nvar != nvar) {
                 throw ValueError("Electrolyte LLE liquid-root Hessian helper returned an unexpected shape.");
             }
-            if (objective_factor != 0.0) {
-                for (std::size_t first = 0; first < nvar; ++first) {
-                    for (std::size_t second = 0; second < nvar; ++second) {
-                        double value = 0.0;
-                        for (std::size_t row = 0; row < residual.size(); ++row) {
-                            value += second_order.jacobian_row_major[row * nvar + first]
-                                * second_order.jacobian_row_major[row * nvar + second];
-                            value += residual[row]
-                                * second_order.residual_hessian_tensor_row_major[
-                                    row * nvar * nvar + first * nvar + second
-                                ];
-                        }
-                        lagrangian_hessian[first * nvar + second] += objective_factor * value;
-                    }
-                }
-            }
+            equilibrium_nlp::ResidualSecondOrderData residual_second_order;
+            residual_second_order.residual_count = static_cast<int>(residual.size());
+            residual_second_order.variable_count = variable_count();
+            residual_second_order.residuals = residual;
+            residual_second_order.jacobian_row_major = second_order.jacobian_row_major;
+            residual_second_order.residual_hessian_tensor_row_major =
+                second_order.residual_hessian_tensor_row_major;
+            residual_second_order.backend = "cppad_implicit_chain_rule";
+            objective = equilibrium_nlp::least_squares_objective_second_order(residual_second_order);
             for (std::size_t row = 0; row < residual.size(); ++row) {
-                const double multiplier = constraint_multipliers[row];
-                if (multiplier == 0.0) {
-                    continue;
-                }
-                for (std::size_t first = 0; first < nvar; ++first) {
-                    for (std::size_t second = 0; second < nvar; ++second) {
-                        lagrangian_hessian[first * nvar + second] += multiplier
-                            * second_order.residual_hessian_tensor_row_major[
-                                row * nvar * nvar + first * nvar + second
-                            ];
-                    }
-                }
+                constraints.has_hessian[row] = true;
+                std::copy(
+                    second_order.residual_hessian_tensor_row_major.begin()
+                        + static_cast<std::ptrdiff_t>(row * nvar * nvar),
+                    second_order.residual_hessian_tensor_row_major.begin()
+                        + static_cast<std::ptrdiff_t>((row + 1) * nvar * nvar),
+                    constraints.hessian_tensor_row_major.begin()
+                        + static_cast<std::ptrdiff_t>(row * nvar * nvar)
+                );
             }
             const std::size_t phase_distance_row = residual_constraint_count_;
-            const double phase_multiplier = constraint_multipliers[phase_distance_row];
-            if (phase_multiplier != 0.0) {
-                for (std::size_t first = 0; first < nvar; ++first) {
-                    for (std::size_t second = 0; second < nvar; ++second) {
-                        lagrangian_hessian[first * nvar + second] += phase_multiplier
-                            * second_order.phase_separation_hessian_row_major[first * nvar + second];
-                    }
-                }
-            }
+            constraints.has_hessian[phase_distance_row] = true;
+            std::copy(
+                second_order.phase_separation_hessian_row_major.begin(),
+                second_order.phase_separation_hessian_row_major.end(),
+                constraints.hessian_tensor_row_major.begin()
+                    + static_cast<std::ptrdiff_t>(phase_distance_row * nvar * nvar)
+            );
             for (std::size_t formula_row = 0; formula_row < basis_.formula_feed.size(); ++formula_row) {
-                const double multiplier = constraint_multipliers[phase_distance_row + 1 + formula_row];
-                if (multiplier == 0.0) {
-                    continue;
-                }
-                for (std::size_t first = 0; first < nvar; ++first) {
-                    for (std::size_t second = 0; second < nvar; ++second) {
-                        lagrangian_hessian[first * nvar + second] += multiplier
-                            * second_order.aqueous_formula_hessian_tensor_row_major[
-                                formula_row * nvar * nvar + first * nvar + second
-                            ];
-                    }
-                }
+                const std::size_t constraint_row = phase_distance_row + 1 + formula_row;
+                constraints.has_hessian[constraint_row] = true;
+                std::copy(
+                    second_order.aqueous_formula_hessian_tensor_row_major.begin()
+                        + static_cast<std::ptrdiff_t>(formula_row * nvar * nvar),
+                    second_order.aqueous_formula_hessian_tensor_row_major.begin()
+                        + static_cast<std::ptrdiff_t>((formula_row + 1) * nvar * nvar),
+                    constraints.hessian_tensor_row_major.begin()
+                        + static_cast<std::ptrdiff_t>(constraint_row * nvar * nvar)
+                );
             }
         } catch (const std::exception&) {
             const ElectrolyteTransformDerivativesNative transform = infeasible_formula_transform_derivatives(variables);
             const std::vector<double> aq_formula = aqueous_formula_feasibility_values(variables, basis_);
             const double scale = 1.0e8;
-            if (objective_factor != 0.0) {
-                for (std::size_t formula_row = 0; formula_row < aq_formula.size(); ++formula_row) {
-                    const double violation = std::max(0.0, options_.min_composition - aq_formula[formula_row]);
-                    if (violation <= 0.0) {
-                        continue;
-                    }
-                    for (std::size_t first = 0; first < nvar; ++first) {
-                        for (std::size_t second = 0; second < nvar; ++second) {
-                            lagrangian_hessian[first * nvar + second] += objective_factor * scale * (
-                                transform.aq_formula_dvar[formula_row * nvar + first]
-                                * transform.aq_formula_dvar[formula_row * nvar + second]
-                                - violation * transform.aq_formula_hessian_row_major[
-                                    formula_row * nvar * nvar + first * nvar + second
-                                ]
-                            );
-                        }
-                    }
-                }
-            }
-            const std::size_t phase_distance_row = residual_constraint_count_;
-            const double phase_multiplier = constraint_multipliers[phase_distance_row];
-            if (phase_multiplier != 0.0) {
-                const std::size_t formula = static_cast<std::size_t>(separation_formula_index_);
-                for (std::size_t first = 0; first < nvar; ++first) {
-                    for (std::size_t second = 0; second < nvar; ++second) {
-                        lagrangian_hessian[first * nvar + second] += phase_multiplier * separation_sign_ * (
-                            transform.org_formula_hessian_row_major[formula * nvar * nvar + first * nvar + second]
-                            - transform.aq_formula_hessian_row_major[formula * nvar * nvar + first * nvar + second]
-                        );
-                    }
-                }
-            }
-            for (std::size_t formula_row = 0; formula_row < basis_.formula_feed.size(); ++formula_row) {
-                const double multiplier = constraint_multipliers[phase_distance_row + 1 + formula_row];
-                if (multiplier == 0.0) {
+            objective.backend = "analytic_infeasible_transform";
+            constraints.backend = "analytic_infeasible_transform";
+            for (std::size_t formula_row = 0; formula_row < aq_formula.size(); ++formula_row) {
+                const double violation = std::max(0.0, options_.min_composition - aq_formula[formula_row]);
+                if (violation <= 0.0) {
                     continue;
                 }
                 for (std::size_t first = 0; first < nvar; ++first) {
                     for (std::size_t second = 0; second < nvar; ++second) {
-                        lagrangian_hessian[first * nvar + second] += multiplier
-                            * transform.aq_formula_hessian_row_major[
+                        objective.hessian_row_major[first * nvar + second] += scale * (
+                            transform.aq_formula_dvar[formula_row * nvar + first]
+                            * transform.aq_formula_dvar[formula_row * nvar + second]
+                            - violation * transform.aq_formula_hessian_row_major[
                                 formula_row * nvar * nvar + first * nvar + second
-                            ];
+                            ]
+                        );
                     }
                 }
             }
-        }
-
-        std::vector<double> out;
-        out.reserve(static_cast<std::size_t>(hessian_nonzero_count()));
-        for (std::size_t row = 0; row < nvar; ++row) {
-            for (std::size_t col = 0; col <= row; ++col) {
-                out.push_back(lagrangian_hessian[row * nvar + col]);
+            const std::size_t phase_distance_row = residual_constraint_count_;
+            const std::size_t formula = static_cast<std::size_t>(separation_formula_index_);
+            constraints.has_hessian[phase_distance_row] = true;
+            for (std::size_t first = 0; first < nvar; ++first) {
+                for (std::size_t second = 0; second < nvar; ++second) {
+                    constraints.hessian_tensor_row_major[
+                        phase_distance_row * nvar * nvar + first * nvar + second
+                    ] = separation_sign_ * (
+                        transform.org_formula_hessian_row_major[formula * nvar * nvar + first * nvar + second]
+                        - transform.aq_formula_hessian_row_major[formula * nvar * nvar + first * nvar + second]
+                    );
+                }
+            }
+            for (std::size_t formula_row = 0; formula_row < basis_.formula_feed.size(); ++formula_row) {
+                const std::size_t constraint_row = phase_distance_row + 1 + formula_row;
+                constraints.has_hessian[constraint_row] = true;
+                std::copy(
+                    transform.aq_formula_hessian_row_major.begin()
+                        + static_cast<std::ptrdiff_t>(formula_row * nvar * nvar),
+                    transform.aq_formula_hessian_row_major.begin()
+                        + static_cast<std::ptrdiff_t>((formula_row + 1) * nvar * nvar),
+                    constraints.hessian_tensor_row_major.begin()
+                        + static_cast<std::ptrdiff_t>(constraint_row * nvar * nvar)
+                );
             }
         }
-        return out;
+
+        return equilibrium_nlp::LagrangianHessianAssembler(variable_count()).values(
+            objective_factor,
+            objective,
+            constraints,
+            constraint_multipliers
+        );
     }
 
     std::string hessian_backend() const override {

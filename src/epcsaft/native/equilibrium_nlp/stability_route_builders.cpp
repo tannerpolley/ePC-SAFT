@@ -2,6 +2,7 @@
 
 #include "epcsaft_core_internal.h"
 #include "nlp_problem.h"
+#include "second_order.h"
 
 #include <algorithm>
 #include <cmath>
@@ -516,20 +517,11 @@ public:
     }
 
     int hessian_nonzero_count() const override {
-        return species_count_ * (species_count_ + 1) / 2;
+        return LagrangianHessianAssembler(species_count_).nonzero_count();
     }
 
     NlpHessianStructure hessian_structure() const override {
-        NlpHessianStructure out;
-        out.rows.reserve(static_cast<std::size_t>(hessian_nonzero_count()));
-        out.cols.reserve(static_cast<std::size_t>(hessian_nonzero_count()));
-        for (int row = 0; row < species_count_; ++row) {
-            for (int col = 0; col <= row; ++col) {
-                out.rows.push_back(row);
-                out.cols.push_back(col);
-            }
-        }
-        return out;
+        return LagrangianHessianAssembler(species_count_).structure();
     }
 
     std::vector<double> hessian_values(
@@ -546,10 +538,12 @@ public:
         if (trial.jacobian_row_major.size() != n * n || trial.hessian_tensor_row_major.size() != n * n * n) {
             throw ValueError("Stability route phase-state Hessian shape did not match the species count.");
         }
-        std::vector<double> out;
-        out.reserve(static_cast<std::size_t>(hessian_nonzero_count()));
+        ObjectiveSecondOrderData objective;
+        objective.variable_count = species_count_;
+        objective.hessian_row_major.assign(n * n, 0.0);
+        objective.backend = "cppad_implicit";
         for (std::size_t row = 0; row < n; ++row) {
-            for (std::size_t col = 0; col <= row; ++col) {
+            for (std::size_t col = 0; col < n; ++col) {
                 double value = row == col ? 1.0 / variables[row] : 0.0;
                 value += trial.jacobian_row_major[row * n + col];
                 value += trial.jacobian_row_major[col * n + row];
@@ -557,10 +551,24 @@ public:
                     value += variables[species]
                         * trial.hessian_tensor_row_major[species * n * n + row * n + col];
                 }
-                out.push_back(objective_factor * value);
+                objective.hessian_row_major[row * n + col] = value;
             }
         }
-        return out;
+        ConstraintSecondOrderData constraints;
+        constraints.constraint_count = constraint_count();
+        constraints.variable_count = species_count_;
+        constraints.hessian_tensor_row_major.assign(
+            static_cast<std::size_t>(constraints.constraint_count) * n * n,
+            0.0
+        );
+        constraints.has_hessian.assign(static_cast<std::size_t>(constraints.constraint_count), false);
+        constraints.backend = "linear";
+        return LagrangianHessianAssembler(species_count_).values(
+            objective_factor,
+            objective,
+            constraints,
+            constraint_multipliers
+        );
     }
 
     std::string hessian_backend() const override {
