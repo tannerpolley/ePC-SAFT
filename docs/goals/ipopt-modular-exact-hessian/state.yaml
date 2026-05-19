@@ -56,7 +56,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T030
+active_task: T040
 
 tasks:
   - id: T001
@@ -175,15 +175,22 @@ tasks:
   - id: T030
     type: worker
     assignee: Worker
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Extend EOS phase-system second-order data and migrate neutral TP flash, neutral LLE, neutral bubble/dew, and electrolyte bubble-pressure route families."
     allowed_files:
       - "src/epcsaft/native/equilibrium_nlp/"
+      - "src/epcsaft/native/epcsaft_core_internal.h"
+      - "src/epcsaft/native/epcsaft_ares.cpp"
+      - "src/epcsaft/native/equilibrium_nlp/eos_phase_block.h"
+      - "src/epcsaft/native/equilibrium_nlp/eos_phase_block.cpp"
+      - "src/epcsaft/native/equilibrium_nlp/bubble_dew_route_builders.cpp"
       - "src/epcsaft/native/epcsaft_equilibrium.cpp"
       - "src/epcsaft/bindings.cpp"
       - "src/epcsaft/equilibrium.py"
       - "tests/native/equilibrium/"
+      - "tests/native/equilibrium/test_eos_phase_block.py"
+      - "tests/native/equilibrium/test_route_builders.py"
       - "tests/equilibrium/core/"
       - "tests/equilibrium/electrolyte/"
       - "docs/goals/ipopt-modular-exact-hessian/state.yaml"
@@ -192,11 +199,32 @@ tasks:
       - "git diff --check"
     stop_if:
       - "A route needs an equation derivative outside the current native ownership map."
+    receipt:
+      result: done
+      changed_files:
+        - "src/epcsaft/native/epcsaft_core_internal.h"
+        - "src/epcsaft/native/epcsaft_ares.cpp"
+        - "src/epcsaft/native/equilibrium_nlp/eos_phase_block.h"
+        - "src/epcsaft/native/equilibrium_nlp/eos_phase_block.cpp"
+        - "src/epcsaft/native/equilibrium_nlp/bubble_dew_route_builders.cpp"
+        - "src/epcsaft/bindings.cpp"
+        - "tests/native/equilibrium/test_eos_phase_block.py"
+        - "tests/native/equilibrium/test_route_builders.py"
+      commands:
+        - cmd: "uv run python scripts/dev/build_epcsaft.py --build-only --parallel 10"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/equilibrium/test_route_builders.py::test_neutral_fixed_temperature_pressure_route_uses_exact_hessian_when_requested tests/native/equilibrium/test_route_builders.py::test_neutral_fixed_pressure_temperature_route_uses_exact_hessian_when_requested tests/native/equilibrium/test_route_builders.py::test_electrolyte_bubble_pressure_route_uses_exact_hessian_when_requested -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/equilibrium/test_eos_phase_block.py tests/native/equilibrium/test_route_builders.py tests/equilibrium/core/test_vle.py tests/equilibrium/core/test_lle.py tests/equilibrium/core/test_bubble_dew.py tests/equilibrium/electrolyte/test_electrolyte_bubble.py -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/api/equilibrium/test_electrolyte_lle_problem_native_ipopt.py -q"
+          status: pass
+      summary: "Extended EOS phase-system second-order data, migrated neutral TP flash/LLE and fixed-temperature/fixed-pressure bubble/dew route NLPs onto shared exact Lagrangian assembly, stabilized trace-electrolyte exact Hessian assembly through shared symmetrization, and made electrolyte bubble pressure reach Ipopt exact mode by applying its existing charge tolerance as solve-time charge bands while preserving postsolve charge acceptance."
 
   - id: T040
     type: worker
     assignee: Worker
-    status: queued
+    status: active
     reasoning_hint: high
     objective: "Extend reactive residual second-order data and migrate reactive LLE, reactive electrolyte LLE, reactive two-phase, and nonideal speciation paths."
     allowed_files:

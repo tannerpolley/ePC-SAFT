@@ -56,24 +56,6 @@ def test_current_public_route_nlps_without_provider_reject_exact_hessian() -> No
 
     cases = [
         (
-            "neutral_bubble_dew",
-            lambda: _core._native_neutral_bubble_p_eos_route_result(
-                neutral._native,
-                300.0,
-                [0.35, 0.65],
-                30,
-                1.0e-8,
-                0.0,
-                "exact",
-                20,
-                1.0e-7,
-                1.0e-5,
-                1.0e-7,
-                1.0e-4,
-                None,
-            ),
-        ),
-        (
             "reactive_lle",
             lambda: _core._native_reactive_lle_eos_route_result(
                 neutral._native,
@@ -944,6 +926,48 @@ def test_neutral_fixed_temperature_pressure_route_result_uses_ipopt_adapter_gate
 @pytest.mark.parametrize(
     ("binding_name", "problem_name"),
     [
+        ("_native_neutral_bubble_p_eos_route_result", "neutral_bubble_p_eos"),
+        ("_native_neutral_dew_p_eos_route_result", "neutral_dew_p_eos"),
+    ],
+)
+def test_neutral_fixed_temperature_pressure_route_uses_exact_hessian_when_requested(
+    binding_name: str,
+    problem_name: str,
+) -> None:
+    mix = _neutral_binary_mixture()
+    payload = getattr(_core, binding_name)(
+        mix._native,
+        300.0,
+        [0.35, 0.65],
+        30,
+        1.0e-8,
+        0.0,
+        "exact",
+        20,
+        1.0e-7,
+        1.0e-5,
+        1.0e-7,
+        1.0e-4,
+        None,
+    )
+
+    if not payload["compiled"]:
+        assert payload["status"] == "ipopt_dependency_required"
+        return
+
+    assert payload["ran"] is True
+    assert payload["problem_name"] == problem_name
+    assert payload["hessian_approximation"] == "exact"
+    assert payload["exact_hessian_available"] is True
+    assert payload["hessian_backend"] != "limited-memory"
+    assert payload["eval_h_calls"] > 0
+    assert payload["solver_status"] != "invalid_number_detected"
+    assert payload["last_callback_exception"] == ""
+
+
+@pytest.mark.parametrize(
+    ("binding_name", "problem_name"),
+    [
         ("_native_neutral_bubble_t_eos_route_result", "neutral_bubble_t_eos"),
         ("_native_neutral_dew_t_eos_route_result", "neutral_dew_t_eos"),
     ],
@@ -996,6 +1020,80 @@ def test_neutral_fixed_pressure_temperature_route_result_uses_ipopt_adapter_gate
     assert np.asarray(payload["phase_volumes"], dtype=float).shape == (2,)
     assert payload["postsolve"]["derivative_backend"] == "analytic_cppad"
     assert payload["status"] in {"accepted", "solver_rejected", "postsolve_rejected"}
+
+
+@pytest.mark.parametrize(
+    ("binding_name", "problem_name"),
+    [
+        ("_native_neutral_bubble_t_eos_route_result", "neutral_bubble_t_eos"),
+        ("_native_neutral_dew_t_eos_route_result", "neutral_dew_t_eos"),
+    ],
+)
+def test_neutral_fixed_pressure_temperature_route_uses_exact_hessian_when_requested(
+    binding_name: str,
+    problem_name: str,
+) -> None:
+    mix = _neutral_binary_mixture()
+    payload = getattr(_core, binding_name)(
+        mix._native,
+        1.0e5,
+        [0.35, 0.65],
+        30,
+        1.0e-8,
+        0.0,
+        "exact",
+        20,
+        1.0e-7,
+        1.0e-5,
+        1.0e-7,
+        1.0e-4,
+        None,
+    )
+
+    if not payload["compiled"]:
+        assert payload["status"] == "ipopt_dependency_required"
+        return
+
+    assert payload["ran"] is True
+    assert payload["problem_name"] == problem_name
+    assert payload["hessian_approximation"] == "exact"
+    assert payload["exact_hessian_available"] is True
+    assert payload["hessian_backend"] != "limited-memory"
+    assert payload["eval_h_calls"] > 0
+    assert payload["solver_status"] != "invalid_number_detected"
+    assert payload["last_callback_exception"] == ""
+
+
+def test_electrolyte_bubble_pressure_route_uses_exact_hessian_when_requested() -> None:
+    mix = _ionic_mixture()
+    payload = _core._native_electrolyte_bubble_p_eos_route_result(
+        mix._native,
+        298.15,
+        [0.9998, 1.0e-4, 1.0e-4],
+        30,
+        1.0e-8,
+        "exact",
+        20,
+        1.0e-7,
+        1.0e-5,
+        1.0e-7,
+        1.0e-4,
+        1.0e-7,
+        None,
+    )
+
+    if not payload["compiled"]:
+        assert payload["status"] == "ipopt_dependency_required"
+        return
+
+    assert payload["ran"] is True
+    assert payload["problem_name"] == "electrolyte_bubble_p_eos"
+    assert payload["hessian_approximation"] == "exact"
+    assert payload["exact_hessian_available"] is True
+    assert payload["hessian_backend"] != "limited-memory"
+    assert payload["eval_h_calls"] > 0
+    assert payload["solver_status"] != "invalid_number_detected"
+    assert payload["last_callback_exception"] == ""
 
 
 def test_neutral_two_phase_eos_route_result_translates_solver_and_postsolve() -> None:

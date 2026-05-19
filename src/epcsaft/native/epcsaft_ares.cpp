@@ -1687,7 +1687,8 @@ void eos_phase_temperature_variable_derivatives_cpp(
     const add_args &cppargs,
     double *objective,
     vector<double> *gradient,
-    vector<double> *hessian_row_major
+    vector<double> *hessian_row_major,
+    vector<double> *third_derivative_tensor_row_major
 ) {
 #ifdef EPCSAFT_HAS_CPPAD
     using CppADScalar = CppAD::AD<double>;
@@ -1745,6 +1746,10 @@ void eos_phase_temperature_variable_derivatives_cpp(
     auto value = function.Forward(0, point);
     auto jacobian = function.Jacobian(point);
     auto hessian = function.Hessian(point, 0);
+    if (third_derivative_tensor_row_major) {
+        *third_derivative_tensor_row_major =
+            ares_detail::scalar_function_third_derivative_tensor_cppad(function, point);
+    }
 
     *objective = value.at(0);
     *gradient = std::move(jacobian);
@@ -1758,6 +1763,7 @@ void eos_phase_temperature_variable_derivatives_cpp(
     (void)objective;
     (void)gradient;
     (void)hessian_row_major;
+    (void)third_derivative_tensor_row_major;
     throw ValueError("EOS phase variable-temperature Hessian requires CppAD support.");
 #endif
 }

@@ -35,6 +35,10 @@ struct EosPhaseBlockResult {
     int objective_curvature_rows = 0;
     int objective_curvature_cols = 0;
     std::vector<double> objective_curvature_row_major;
+    std::string objective_third_derivative_backend;
+    int objective_third_derivative_rows = 0;
+    int objective_third_derivative_cols = 0;
+    std::vector<double> objective_third_derivative_tensor_row_major;
     std::string pressure_hessian_backend;
     int pressure_hessian_rows = 0;
     int pressure_hessian_cols = 0;

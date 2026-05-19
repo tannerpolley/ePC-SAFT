@@ -286,7 +286,8 @@ void eos_phase_temperature_variable_derivatives_cpp(
     const add_args &cppargs,
     double *objective,
     vector<double> *gradient,
-    vector<double> *hessian_row_major
+    vector<double> *hessian_row_major,
+    vector<double> *third_derivative_tensor_row_major
 );
 EosPhasePressureDerivativeResult eos_phase_pressure_derivatives_cpp(
     double t,

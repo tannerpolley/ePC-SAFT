@@ -261,6 +261,10 @@ EosPhaseBlockResult evaluate_eos_phase_block(
         result.objective_curvature_rows = nvars;
         result.objective_curvature_cols = nvars;
         result.objective_curvature_row_major = std::move(cppad_hessian);
+        result.objective_third_derivative_backend = "cppad";
+        result.objective_third_derivative_rows = nvars;
+        result.objective_third_derivative_cols = nvars;
+        result.objective_third_derivative_tensor_row_major = cppad_third_derivative;
         result.constraint_jacobian_backend = "cppad";
         result.constraint_jacobian_rows = 1;
         result.constraint_jacobian_cols = nvars;

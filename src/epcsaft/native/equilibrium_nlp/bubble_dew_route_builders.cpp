@@ -3,6 +3,7 @@
 #include "eos_phase_block.h"
 #include "epcsaft_core_internal.h"
 #include "nlp_problem.h"
+#include "second_order.h"
 
 #include <algorithm>
 #include <cmath>
@@ -378,11 +379,150 @@ double phase_charge_norm(
     return norm;
 }
 
+bool route_has_active_association_sites(const add_args& args) {
+    for (int sites : args.assoc_num) {
+        if (sites > 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool route_supports_exact_phase_derivatives(const add_args& args) {
+    return !route_has_active_association_sites(args) && (args.z.empty() || args.born_model <= 1);
+}
+
+void require_square_block(
+    const std::vector<double>& values,
+    int variable_count,
+    const std::string& label
+) {
+    require_size(
+        values,
+        static_cast<std::size_t>(variable_count) * static_cast<std::size_t>(variable_count),
+        label
+    );
+}
+
+void require_third_derivative_tensor(
+    const std::vector<double>& values,
+    int variable_count,
+    const std::string& label
+) {
+    require_size(
+        values,
+        static_cast<std::size_t>(variable_count)
+            * static_cast<std::size_t>(variable_count)
+            * static_cast<std::size_t>(variable_count),
+        label
+    );
+}
+
+void symmetrize_square_block(std::vector<double>& values, int variable_count) {
+    const std::size_t n = static_cast<std::size_t>(variable_count);
+    for (std::size_t row = 0; row < n; ++row) {
+        for (std::size_t col = 0; col < row; ++col) {
+            const double value = 0.5 * (values[row * n + col] + values[col * n + row]);
+            values[row * n + col] = value;
+            values[col * n + row] = value;
+        }
+    }
+}
+
+std::vector<int> fixed_temperature_global_indices(int phase, int local_variable_count) {
+    std::vector<int> indices;
+    indices.reserve(static_cast<std::size_t>(local_variable_count));
+    const int offset = phase * local_variable_count;
+    for (int local = 0; local < local_variable_count; ++local) {
+        indices.push_back(offset + local);
+    }
+    return indices;
+}
+
+std::vector<int> fixed_pressure_global_indices(
+    int phase,
+    int local_variable_count,
+    int temperature_col
+) {
+    std::vector<int> indices = fixed_temperature_global_indices(phase, local_variable_count);
+    indices.push_back(temperature_col);
+    return indices;
+}
+
+void add_local_hessian_to_dense(
+    std::vector<double>& dense,
+    int variable_count,
+    const std::vector<int>& global_indices,
+    const std::vector<double>& local_hessian,
+    double scale,
+    const std::string& label
+) {
+    const int local_variable_count = static_cast<int>(global_indices.size());
+    require_square_block(local_hessian, local_variable_count, label);
+    const std::size_t n = static_cast<std::size_t>(variable_count);
+    require_square_block(dense, variable_count, "dense route Hessian");
+    for (int local_row = 0; local_row < local_variable_count; ++local_row) {
+        const int global_row = global_indices[static_cast<std::size_t>(local_row)];
+        for (int local_col = 0; local_col < local_variable_count; ++local_col) {
+            const int global_col = global_indices[static_cast<std::size_t>(local_col)];
+            dense[static_cast<std::size_t>(global_row) * n + static_cast<std::size_t>(global_col)] +=
+                scale * local_hessian[
+                    static_cast<std::size_t>(local_row * local_variable_count + local_col)
+                ];
+        }
+    }
+}
+
+void add_local_hessian_to_constraint_tensor(
+    std::vector<double>& tensor,
+    int constraint_row,
+    int variable_count,
+    const std::vector<int>& global_indices,
+    const std::vector<double>& local_hessian,
+    double scale,
+    const std::string& label
+) {
+    const int local_variable_count = static_cast<int>(global_indices.size());
+    require_square_block(local_hessian, local_variable_count, label);
+    const std::size_t n = static_cast<std::size_t>(variable_count);
+    const std::size_t row_offset = static_cast<std::size_t>(constraint_row) * n * n;
+    if (tensor.size() < row_offset + n * n) {
+        throw ValueError(label + " target tensor is smaller than the requested constraint row.");
+    }
+    for (int local_row = 0; local_row < local_variable_count; ++local_row) {
+        const int global_row = global_indices[static_cast<std::size_t>(local_row)];
+        for (int local_col = 0; local_col < local_variable_count; ++local_col) {
+            const int global_col = global_indices[static_cast<std::size_t>(local_col)];
+            tensor[row_offset + static_cast<std::size_t>(global_row) * n + static_cast<std::size_t>(global_col)] +=
+                scale * local_hessian[
+                    static_cast<std::size_t>(local_row * local_variable_count + local_col)
+                ];
+        }
+    }
+}
+
+std::vector<double> third_derivative_slice(
+    const std::vector<double>& tensor,
+    int component,
+    int variable_count,
+    const std::string& label
+) {
+    require_third_derivative_tensor(tensor, variable_count, label);
+    const std::size_t n = static_cast<std::size_t>(variable_count);
+    const std::size_t offset = static_cast<std::size_t>(component) * n * n;
+    return std::vector<double>(
+        tensor.begin() + static_cast<std::ptrdiff_t>(offset),
+        tensor.begin() + static_cast<std::ptrdiff_t>(offset + n * n)
+    );
+}
+
 struct TemperatureRoutePhaseBlock {
     EosPhaseBlockResult block;
     std::vector<double> gradient;
     std::vector<double> objective_hessian_row_major;
+    std::vector<double> objective_third_derivative_tensor_row_major;
     std::vector<double> pressure_jacobian_row_major;
+    std::vector<double> pressure_hessian_row_major;
 };
 
 TemperatureRoutePhaseBlock evaluate_temperature_route_phase_block(
@@ -403,7 +543,8 @@ TemperatureRoutePhaseBlock evaluate_temperature_route_phase_block(
         args,
         &cppad_objective,
         &out.gradient,
-        &out.objective_hessian_row_major
+        &out.objective_hessian_row_major,
+        &out.objective_third_derivative_tensor_row_major
     );
     const int local_variable_count = static_cast<int>(amounts.size()) + 2;
     if (out.gradient.size() != static_cast<std::size_t>(local_variable_count)
@@ -411,6 +552,11 @@ TemperatureRoutePhaseBlock evaluate_temperature_route_phase_block(
             != static_cast<std::size_t>(local_variable_count * local_variable_count)) {
         throw ValueError("fixed-pressure temperature route CppAD derivative shape did not match variables.");
     }
+    require_third_derivative_tensor(
+        out.objective_third_derivative_tensor_row_major,
+        local_variable_count,
+        "fixed-pressure temperature route CppAD third-derivative tensor"
+    );
     const double objective_scale = std::max(1.0, std::abs(out.block.objective));
     if (std::abs(cppad_objective - out.block.objective) > 1.0e-8 * objective_scale) {
         throw ValueError("fixed-pressure temperature route CppAD value did not match the EOS block value.");
@@ -428,6 +574,36 @@ TemperatureRoutePhaseBlock evaluate_temperature_route_phase_block(
         }
         out.pressure_jacobian_row_major.push_back(value);
     }
+    out.pressure_hessian_row_major.assign(
+        static_cast<std::size_t>(local_variable_count * local_variable_count),
+        0.0
+    );
+    for (int row = 0; row < local_variable_count; ++row) {
+        for (int col = 0; col < local_variable_count; ++col) {
+            double value = -out.block.gas_constant_temperature
+                * out.objective_third_derivative_tensor_row_major[
+                    static_cast<std::size_t>(
+                        volume_row * local_variable_count * local_variable_count
+                        + row * local_variable_count
+                        + col
+                    )
+                ];
+            if (row == temperature_col) {
+                value -= gas_constant * out.objective_hessian_row_major[
+                    static_cast<std::size_t>(volume_row * local_variable_count + col)
+                ];
+            }
+            if (col == temperature_col) {
+                value -= gas_constant * out.objective_hessian_row_major[
+                    static_cast<std::size_t>(volume_row * local_variable_count + row)
+                ];
+            }
+            out.pressure_hessian_row_major[
+                static_cast<std::size_t>(row * local_variable_count + col)
+            ] = value;
+        }
+    }
+    symmetrize_square_block(out.pressure_hessian_row_major, local_variable_count);
     return out;
 }
 
@@ -439,15 +615,20 @@ public:
         std::vector<double> fixed_composition,
         int fixed_phase_index,
         std::string problem_name,
-        std::vector<double> charges = {}
+        std::vector<double> charges = {},
+        double charge_constraint_tolerance = 0.0
     )
         : args_(std::move(args)),
           temperature_(temperature),
           fixed_composition_(normalized_positive_values(fixed_composition, problem_name + " composition")),
           fixed_phase_index_(fixed_phase_index),
           problem_name_(std::move(problem_name)),
-          charges_(std::move(charges)) {
+          charges_(std::move(charges)),
+          charge_constraint_tolerance_(charge_constraint_tolerance) {
         require_positive_finite(temperature_, problem_name_ + " temperature");
+        if (!std::isfinite(charge_constraint_tolerance_) || charge_constraint_tolerance_ < 0.0) {
+            throw ValueError(problem_name_ + " charge constraint tolerance must be finite and non-negative.");
+        }
         if (fixed_phase_index_ < 0 || fixed_phase_index_ >= phase_count()) {
             throw ValueError(problem_name_ + " fixed phase index is out of range.");
         }
@@ -513,6 +694,15 @@ public:
         out.variable_upper.push_back(1.0e9);
         out.constraint_lower.assign(static_cast<std::size_t>(constraint_count()), 0.0);
         out.constraint_upper.assign(static_cast<std::size_t>(constraint_count()), 0.0);
+        if (charge_constraint_count() > 0 && charge_constraint_tolerance_ > 0.0) {
+            const int charge_row_start = composition_constraint_count() + phase_count();
+            for (int phase = 0; phase < charge_constraint_count(); ++phase) {
+                out.constraint_lower[static_cast<std::size_t>(charge_row_start + phase)] =
+                    -charge_constraint_tolerance_;
+                out.constraint_upper[static_cast<std::size_t>(charge_row_start + phase)] =
+                    charge_constraint_tolerance_;
+            }
+        }
         out.constraint_lower.back() = minimum_phase_volume_gap_;
         out.constraint_upper.back() = 1.0e12;
         return out;
@@ -717,6 +907,147 @@ public:
         return out;
     }
 
+    bool has_exact_hessian() const override {
+        return route_supports_exact_phase_derivatives(args_);
+    }
+
+    int hessian_nonzero_count() const override {
+        return LagrangianHessianAssembler(variable_count()).nonzero_count();
+    }
+
+    NlpHessianStructure hessian_structure() const override {
+        return LagrangianHessianAssembler(variable_count()).structure();
+    }
+
+    std::vector<double> hessian_values(
+        const std::vector<double>& variables,
+        double objective_factor,
+        const std::vector<double>& constraint_multipliers
+    ) const override {
+        if (!has_exact_hessian()) {
+            throw ValueError(problem_name_ + " exact Hessian requires direct non-associating phase derivatives.");
+        }
+        if (constraint_multipliers.size() != static_cast<std::size_t>(constraint_count())) {
+            throw ValueError(problem_name_ + " Hessian multiplier vector size does not match the constraint count.");
+        }
+
+        const auto blocks = phase_blocks(variables);
+        const int n = variable_count();
+        ObjectiveSecondOrderData objective;
+        objective.variable_count = n;
+        objective.value = 0.0;
+        objective.gradient.assign(static_cast<std::size_t>(n), 0.0);
+        objective.hessian_row_major.assign(static_cast<std::size_t>(n * n), 0.0);
+        objective.backend = "cppad_phase_pressure_route";
+        const int pressure_col = n - 1;
+        for (int phase = 0; phase < phase_count(); ++phase) {
+            const EosPhaseBlockResult& block = blocks[static_cast<std::size_t>(phase)];
+            require_square_block(
+                block.objective_curvature_row_major,
+                local_variable_count(),
+                problem_name_ + " objective Hessian block"
+            );
+            require_third_derivative_tensor(
+                block.objective_third_derivative_tensor_row_major,
+                local_variable_count(),
+                problem_name_ + " objective third-derivative tensor"
+            );
+            const std::vector<int> phase_indices =
+                fixed_temperature_global_indices(phase, local_variable_count());
+            objective.value += block.objective;
+            for (int local = 0; local < local_variable_count(); ++local) {
+                objective.gradient[static_cast<std::size_t>(phase_indices[static_cast<std::size_t>(local)])] =
+                    block.gradient[static_cast<std::size_t>(local)];
+            }
+            objective.gradient[static_cast<std::size_t>(pressure_col)] +=
+                block.volume / block.gas_constant_temperature;
+            add_local_hessian_to_dense(
+                objective.hessian_row_major,
+                n,
+                phase_indices,
+                block.objective_curvature_row_major,
+                1.0,
+                problem_name_ + " objective Hessian block"
+            );
+            const int phase_volume_col = phase * local_variable_count() + species_count_;
+            const double pressure_volume_cross = 1.0 / block.gas_constant_temperature;
+            objective.hessian_row_major[
+                static_cast<std::size_t>(phase_volume_col * n + pressure_col)
+            ] += pressure_volume_cross;
+            objective.hessian_row_major[
+                static_cast<std::size_t>(pressure_col * n + phase_volume_col)
+            ] += pressure_volume_cross;
+        }
+
+        ConstraintSecondOrderData constraints_data;
+        constraints_data.constraint_count = constraint_count();
+        constraints_data.variable_count = n;
+        constraints_data.values = this->constraints(variables);
+        constraints_data.hessian_tensor_row_major.assign(
+            static_cast<std::size_t>(constraint_count() * n * n),
+            0.0
+        );
+        constraints_data.has_hessian.assign(static_cast<std::size_t>(constraint_count()), false);
+        constraints_data.backend = "cppad_phase_pressure_route";
+
+        const int pressure_row_start =
+            composition_constraint_count() + phase_count() + charge_constraint_count();
+        for (int phase = 0; phase < phase_count(); ++phase) {
+            const EosPhaseBlockResult& block = blocks[static_cast<std::size_t>(phase)];
+            require_square_block(
+                block.pressure_hessian_row_major,
+                local_variable_count(),
+                problem_name_ + " pressure Hessian block"
+            );
+            const int constraint_row = pressure_row_start + phase;
+            constraints_data.has_hessian[static_cast<std::size_t>(constraint_row)] = true;
+            add_local_hessian_to_constraint_tensor(
+                constraints_data.hessian_tensor_row_major,
+                constraint_row,
+                n,
+                fixed_temperature_global_indices(phase, local_variable_count()),
+                block.pressure_hessian_row_major,
+                1.0,
+                problem_name_ + " pressure Hessian block"
+            );
+        }
+
+        const int chemical_row_start = pressure_row_start + phase_count();
+        for (int species = 0; species < species_count_; ++species) {
+            const int constraint_row = chemical_row_start + species;
+            constraints_data.has_hessian[static_cast<std::size_t>(constraint_row)] = true;
+            for (int phase = 0; phase < phase_count(); ++phase) {
+                const EosPhaseBlockResult& block = blocks[static_cast<std::size_t>(phase)];
+                const std::vector<double> chemical_hessian = third_derivative_slice(
+                    block.objective_third_derivative_tensor_row_major,
+                    species,
+                    local_variable_count(),
+                    problem_name_ + " chemical-potential Hessian block"
+                );
+                add_local_hessian_to_constraint_tensor(
+                    constraints_data.hessian_tensor_row_major,
+                    constraint_row,
+                    n,
+                    fixed_temperature_global_indices(phase, local_variable_count()),
+                    chemical_hessian,
+                    phase == 0 ? 1.0 : -1.0,
+                    problem_name_ + " chemical-potential Hessian block"
+                );
+            }
+        }
+
+        return LagrangianHessianAssembler(n).values(
+            objective_factor,
+            objective,
+            constraints_data,
+            constraint_multipliers
+        );
+    }
+
+    std::string hessian_backend() const override {
+        return "cppad_phase_pressure_route";
+    }
+
     NlpScaling scaling() const override {
         NlpScaling out;
         out.objective = 1.0;
@@ -802,6 +1133,7 @@ private:
     int fixed_phase_index_ = 0;
     std::string problem_name_;
     std::vector<double> charges_;
+    double charge_constraint_tolerance_ = 0.0;
     int species_count_ = 0;
 };
 
@@ -1038,6 +1370,136 @@ public:
         return out;
     }
 
+    bool has_exact_hessian() const override {
+        return route_supports_exact_phase_derivatives(args_);
+    }
+
+    int hessian_nonzero_count() const override {
+        return LagrangianHessianAssembler(variable_count()).nonzero_count();
+    }
+
+    NlpHessianStructure hessian_structure() const override {
+        return LagrangianHessianAssembler(variable_count()).structure();
+    }
+
+    std::vector<double> hessian_values(
+        const std::vector<double>& variables,
+        double objective_factor,
+        const std::vector<double>& constraint_multipliers
+    ) const override {
+        if (!has_exact_hessian()) {
+            throw ValueError(problem_name_ + " exact Hessian requires direct non-associating phase derivatives.");
+        }
+        if (constraint_multipliers.size() != static_cast<std::size_t>(constraint_count())) {
+            throw ValueError(problem_name_ + " Hessian multiplier vector size does not match the constraint count.");
+        }
+
+        const auto blocks = phase_blocks(variables);
+        const int n = variable_count();
+        const int block_variable_count = local_variable_count() + 1;
+        ObjectiveSecondOrderData objective;
+        objective.variable_count = n;
+        objective.value = 0.0;
+        objective.gradient.assign(static_cast<std::size_t>(n), 0.0);
+        objective.hessian_row_major.assign(static_cast<std::size_t>(n * n), 0.0);
+        objective.backend = "cppad_phase_temperature_route";
+        for (int phase = 0; phase < phase_count(); ++phase) {
+            const TemperatureRoutePhaseBlock& block = blocks[static_cast<std::size_t>(phase)];
+            require_square_block(
+                block.objective_hessian_row_major,
+                block_variable_count,
+                problem_name_ + " objective Hessian block"
+            );
+            require_third_derivative_tensor(
+                block.objective_third_derivative_tensor_row_major,
+                block_variable_count,
+                problem_name_ + " objective third-derivative tensor"
+            );
+            const std::vector<int> phase_indices =
+                fixed_pressure_global_indices(phase, local_variable_count(), temperature_col());
+            objective.value += block.block.objective;
+            for (int local = 0; local < block_variable_count; ++local) {
+                objective.gradient[static_cast<std::size_t>(phase_indices[static_cast<std::size_t>(local)])] +=
+                    block.gradient[static_cast<std::size_t>(local)];
+            }
+            add_local_hessian_to_dense(
+                objective.hessian_row_major,
+                n,
+                phase_indices,
+                block.objective_hessian_row_major,
+                1.0,
+                problem_name_ + " objective Hessian block"
+            );
+        }
+
+        ConstraintSecondOrderData constraints_data;
+        constraints_data.constraint_count = constraint_count();
+        constraints_data.variable_count = n;
+        constraints_data.values = this->constraints(variables);
+        constraints_data.hessian_tensor_row_major.assign(
+            static_cast<std::size_t>(constraint_count() * n * n),
+            0.0
+        );
+        constraints_data.has_hessian.assign(static_cast<std::size_t>(constraint_count()), false);
+        constraints_data.backend = "cppad_phase_temperature_route";
+
+        const int pressure_row_start = composition_constraint_count() + phase_count();
+        for (int phase = 0; phase < phase_count(); ++phase) {
+            const TemperatureRoutePhaseBlock& block = blocks[static_cast<std::size_t>(phase)];
+            require_square_block(
+                block.pressure_hessian_row_major,
+                block_variable_count,
+                problem_name_ + " pressure Hessian block"
+            );
+            const int constraint_row = pressure_row_start + phase;
+            constraints_data.has_hessian[static_cast<std::size_t>(constraint_row)] = true;
+            add_local_hessian_to_constraint_tensor(
+                constraints_data.hessian_tensor_row_major,
+                constraint_row,
+                n,
+                fixed_pressure_global_indices(phase, local_variable_count(), temperature_col()),
+                block.pressure_hessian_row_major,
+                1.0,
+                problem_name_ + " pressure Hessian block"
+            );
+        }
+
+        const int chemical_row_start = pressure_row_start + phase_count();
+        for (int species = 0; species < species_count_; ++species) {
+            const int constraint_row = chemical_row_start + species;
+            constraints_data.has_hessian[static_cast<std::size_t>(constraint_row)] = true;
+            for (int phase = 0; phase < phase_count(); ++phase) {
+                const TemperatureRoutePhaseBlock& block = blocks[static_cast<std::size_t>(phase)];
+                const std::vector<double> chemical_hessian = third_derivative_slice(
+                    block.objective_third_derivative_tensor_row_major,
+                    species,
+                    block_variable_count,
+                    problem_name_ + " chemical-potential Hessian block"
+                );
+                add_local_hessian_to_constraint_tensor(
+                    constraints_data.hessian_tensor_row_major,
+                    constraint_row,
+                    n,
+                    fixed_pressure_global_indices(phase, local_variable_count(), temperature_col()),
+                    chemical_hessian,
+                    phase == 0 ? 1.0 : -1.0,
+                    problem_name_ + " chemical-potential Hessian block"
+                );
+            }
+        }
+
+        return LagrangianHessianAssembler(n).values(
+            objective_factor,
+            objective,
+            constraints_data,
+            constraint_multipliers
+        );
+    }
+
+    std::string hessian_backend() const override {
+        return "cppad_phase_temperature_route";
+    }
+
     NlpScaling scaling() const override {
         NlpScaling out;
         out.objective = 1.0;
@@ -1247,7 +1709,8 @@ NeutralTwoPhaseEosRouteResult solve_pressure_route(
             normalized_composition,
             fixed_phase_index,
             problem_name,
-            charges
+            charges,
+            charge_tolerance
         );
         const IpoptSolveResult solve = solve_ipopt_nlp(problem, attempt_options);
         NeutralTwoPhaseEosRouteResult result;
