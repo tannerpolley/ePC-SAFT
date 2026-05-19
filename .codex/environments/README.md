@@ -10,7 +10,7 @@ pwsh.exe -NoProfile -ExecutionPolicy Bypass -File .codex/environments/setup.ps1
 ```
 
 The native build action intentionally uses the script default ``--profile fast``:
-Ceres, CppAD, and system Ipopt are enabled. The setup helper resolves
+Ceres, CppAD, and native Ipopt are enabled when available. The setup helper resolves
 ``EPCSAFT_IPOPT_ROOT`` first, then ``EPCSAFT_PEP517_IPOPT_ROOT``, then the local
 Windows SDK default ``%USERPROFILE%\Documents\deps\ipopt-msvc``. It also adds
 the Ipopt ``bin`` directory to ``PATH`` and ``EPCSAFT_RUNTIME_DLL_DIRS`` so

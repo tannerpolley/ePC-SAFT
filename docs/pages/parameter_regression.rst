@@ -139,28 +139,29 @@ Liquid-electrolyte fits use native Ceres for the supported liquid row families:
 Build prerequisite
 ------------------
 
-There is no IPOPT prerequisite for the default package build. The supported
-developer path is the uv-managed environment plus the direct CMake/pybind11
-native build:
+The supported developer path is the uv-managed environment plus the direct
+CMake/pybind11 native build:
 
 .. code-block:: powershell
 
    uv sync --no-install-project
    uv run python scripts\dev\build_epcsaft.py
 
-For native Ipopt development, request a system Ipopt package through the native
-build script or PEP 517 environment variables:
+For native Ipopt development on Windows, use the local SDK root. The native
+build script and PEP 517 backend discover
+``%USERPROFILE%\Documents\deps\ipopt-msvc`` automatically when it exists:
 
 .. code-block:: powershell
 
-   uv run python scripts\dev\build_epcsaft.py --profile ipopt --ipopt-dir C:\path\to\Ipopt\lib\cmake\Ipopt
+   uv run python scripts\dev\build_epcsaft.py --profile ipopt --ipopt-root $env:USERPROFILE\Documents\deps\ipopt-msvc
 
 Current IPOPT scope
 -------------------
 
-The current package can discover and link a native system Ipopt dependency when
-explicitly requested. Production regression routes use native Ceres; production
-equilibrium routes are gated to native Ipopt constrained-NLP builders. Runtime
+The current package can discover and link a native Ipopt dependency from the
+local SDK default or an explicit install root. Production regression routes use
+native Ceres; production equilibrium routes are gated to native Ipopt
+constrained-NLP builders. Runtime
 capabilities report the discovered adapter state, public Ipopt route list, and
 whether the current build has a constrained-NLP route available.
 

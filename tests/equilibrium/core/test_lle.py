@@ -250,7 +250,7 @@ def test_equilibrium_options_public_surface_is_current_fields() -> None:
         (epcsaft.EquilibriumOptions(solver_backend="new" + "ton"), "solver_backend"),
         (epcsaft.EquilibriumOptions(timeout_seconds=0.0), "timeout_seconds"),
         (epcsaft.EquilibriumOptions(timeout_seconds=float("nan")), "timeout_seconds"),
-        (epcsaft.EquilibriumOptions(hessian_mode="quasi_newton"), "hessian_mode"),
+        (epcsaft.EquilibriumOptions(hessian_mode="unsupported-mode"), "hessian_mode"),
         (epcsaft.EquilibriumOptions(ipopt_iteration_history_limit=-1), "ipopt_iteration_history_limit"),
         (epcsaft.EquilibriumOptions(ipopt_iteration_history_limit=True), "ipopt_iteration_history_limit"),
     ],

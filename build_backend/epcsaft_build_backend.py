@@ -4,12 +4,85 @@ from __future__ import annotations
 
 import errno
 import os
+import subprocess
 import shutil
 import sys
 import tempfile
 from pathlib import Path
 
 from scikit_build_core import build as _scikit_build
+
+DEFAULT_WINDOWS_IPOPT_SDK_RELATIVE = Path("Documents") / "deps" / "ipopt-msvc"
+
+
+def _default_windows_ipopt_sdk_root(home: Path | None = None) -> Path:
+    return (Path.home() if home is None else home).expanduser() / DEFAULT_WINDOWS_IPOPT_SDK_RELATIVE
+
+
+def _resolve_default_windows_ipopt_sdk_root() -> Path | None:
+    if os.name != "nt":
+        return None
+    root = _default_windows_ipopt_sdk_root()
+    return root.resolve() if root.is_dir() else None
+
+
+def _ipopt_root_prefers_msvc(ipopt_root: Path) -> bool:
+    if os.name != "nt":
+        return False
+    lib_dir = ipopt_root / "lib"
+    if not lib_dir.is_dir():
+        return False
+    has_msvc_import_lib = any((lib_dir / name).is_file() for name in ("ipopt.lib", "ipopt-3.lib"))
+    has_mingw_import_lib = any((lib_dir / name).is_file() for name in ("libipopt.dll.a", "ipopt.dll.a"))
+    return has_msvc_import_lib and not has_mingw_import_lib
+
+
+def _find_vsdevcmd() -> Path:
+    explicit = os.environ.get("EPCSAFT_VSDEVCMD")
+    if explicit:
+        path = Path(explicit).expanduser().resolve()
+        if path.is_file():
+            return path
+    vswhere = Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")) / (
+        "Microsoft Visual Studio/Installer/vswhere.exe"
+    )
+    if vswhere.is_file():
+        output = subprocess.check_output(
+            [
+                str(vswhere),
+                "-latest",
+                "-products",
+                "*",
+                "-requires",
+                "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+                "-property",
+                "installationPath",
+            ],
+            text=True,
+        ).strip()
+        if output:
+            candidate = Path(output) / "Common7" / "Tools" / "VsDevCmd.bat"
+            if candidate.is_file():
+                return candidate
+    default_path = Path(r"C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\Common7\Tools\VsDevCmd.bat")
+    if default_path.is_file():
+        return default_path
+    raise FileNotFoundError("MSVC Ipopt SDK requested, but VsDevCmd.bat was not found.")
+
+
+def _load_msvc_env_for_ipopt_root(ipopt_root: Path) -> None:
+    if not _ipopt_root_prefers_msvc(ipopt_root) or shutil.which("cl"):
+        return
+    if os.environ.get("CMAKE_GENERATOR") == "MinGW Makefiles":
+        raise RuntimeError("The MSVC Ipopt SDK cannot be used with the MinGW Makefiles generator.")
+    vsdevcmd = _find_vsdevcmd()
+    command = f'call "{vsdevcmd}" -arch=x64 -host_arch=x64 >nul && set'
+    output = subprocess.check_output(command, text=True, shell=True)
+    for line in output.splitlines():
+        if "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        os.environ[key] = value
 
 
 def _sandbox_safe_mkdtemp(suffix=None, prefix=None, dir=None):
@@ -154,6 +227,10 @@ def _apply_system_ceres_config(config: dict) -> dict:
 def _apply_system_ipopt_config(config: dict) -> dict:
     ipopt_dir_env = os.environ.get("EPCSAFT_PEP517_IPOPT_DIR") or os.environ.get("Ipopt_DIR")
     ipopt_root_env = os.environ.get("EPCSAFT_PEP517_IPOPT_ROOT") or os.environ.get("EPCSAFT_IPOPT_ROOT")
+    if not ipopt_dir_env and not ipopt_root_env:
+        default_ipopt_root = _resolve_default_windows_ipopt_sdk_root()
+        if default_ipopt_root is not None:
+            ipopt_root_env = str(default_ipopt_root)
     if ipopt_dir_env and ipopt_root_env:
         raise ValueError("Use either EPCSAFT_PEP517_IPOPT_DIR or EPCSAFT_PEP517_IPOPT_ROOT, not both.")
     use_system_ipopt = (
@@ -171,6 +248,7 @@ def _apply_system_ipopt_config(config: dict) -> dict:
         _set_config_default(config, "cmake.define.Ipopt_DIR", str(_validate_ipopt_dir(ipopt_dir_env)))
     if ipopt_root_env:
         ipopt_root = _validate_ipopt_root(ipopt_root_env)
+        _load_msvc_env_for_ipopt_root(ipopt_root)
         _set_config_default(config, "cmake.define.EPCSAFT_IPOPT_ROOT", str(ipopt_root))
         bin_dir = ipopt_root / "bin"
         if bin_dir.is_dir():

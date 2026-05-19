@@ -10,6 +10,11 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 BACKEND_PATH = REPO_ROOT / "build_backend" / "epcsaft_build_backend.py"
 
 
+@pytest.fixture(autouse=True)
+def _isolate_default_windows_ipopt_sdk(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr(Path, "home", staticmethod(lambda: tmp_path))
+
+
 def _load_backend():
     spec = importlib.util.spec_from_file_location("epcsaft_build_backend_for_test", BACKEND_PATH)
     assert spec is not None and spec.loader is not None
@@ -94,6 +99,7 @@ def test_pep517_build_backend_uses_system_ipopt_root_env(tmp_path, monkeypatch) 
     monkeypatch.setenv("EPCSAFT_PEP517_IPOPT_ROOT", str(ipopt_root))
     original_path = "C:\\tools"
     monkeypatch.setenv("PATH", original_path)
+    monkeypatch.setattr(backend, "_load_msvc_env_for_ipopt_root", lambda root: None)
 
     config = backend._isolated_build_config(None)
 
@@ -103,6 +109,33 @@ def test_pep517_build_backend_uses_system_ipopt_root_env(tmp_path, monkeypatch) 
     assert str(bin_dir.resolve()) in os.environ["PATH"]
     assert str(bin_dir.resolve()) in os.environ["EPCSAFT_RUNTIME_DLL_DIRS"]
     assert original_path in os.environ["PATH"]
+
+
+def test_pep517_build_backend_uses_local_windows_ipopt_sdk_default(tmp_path, monkeypatch) -> None:
+    backend = _load_backend()
+    ipopt_root = tmp_path / "Documents" / "deps" / "ipopt-msvc"
+    include_dir = ipopt_root / "include" / "coin-or"
+    lib_dir = ipopt_root / "lib"
+    bin_dir = ipopt_root / "bin"
+    include_dir.mkdir(parents=True)
+    lib_dir.mkdir()
+    bin_dir.mkdir()
+    (include_dir / "IpIpoptApplication.hpp").write_text("// test header\n", encoding="utf-8")
+    (lib_dir / "ipopt.lib").write_text("", encoding="utf-8")
+    monkeypatch.delenv("EPCSAFT_PEP517_IPOPT_DIR", raising=False)
+    monkeypatch.delenv("EPCSAFT_PEP517_IPOPT_ROOT", raising=False)
+    monkeypatch.delenv("Ipopt_DIR", raising=False)
+    monkeypatch.delenv("EPCSAFT_IPOPT_ROOT", raising=False)
+    monkeypatch.setattr(backend.os, "name", "nt")
+    monkeypatch.setattr(backend, "_load_msvc_env_for_ipopt_root", lambda root: None)
+
+    config = backend._isolated_build_config(None)
+
+    assert config["cmake.define.EPCSAFT_ENABLE_IPOPT"] == "ON"
+    assert config["cmake.define.EPCSAFT_USE_SYSTEM_IPOPT"] == "ON"
+    assert Path(config["cmake.define.EPCSAFT_IPOPT_ROOT"]) == ipopt_root.resolve()
+    assert str(bin_dir.resolve()) in os.environ["PATH"]
+    assert str(bin_dir.resolve()) in os.environ["EPCSAFT_RUNTIME_DLL_DIRS"]
 
 
 def test_pep517_build_backend_requires_ceres_and_cppad_by_default(monkeypatch) -> None:

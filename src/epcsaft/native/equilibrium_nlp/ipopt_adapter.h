@@ -43,7 +43,7 @@ struct IpoptIterationRecord {
     double step_size_dual = 0.0;
     double regularization_size = 0.0;
     double complementarity = 0.0;
-    int line_search_trials = 0;
+    int step_trial_count = 0;
     bool restoration_phase = false;
 };
 

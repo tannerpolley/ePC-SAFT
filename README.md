@@ -90,19 +90,18 @@ With `uv`, use:
 uv pip install -e .
 ```
 
-### Optional IPOPT Support
+### Native IPOPT SDK Support
 
-IPOPT support is a native build dependency for constrained-NLP equilibrium routes. Request it only when CMake can discover a system Ipopt package or a native Ipopt install root:
+IPOPT support is a native build dependency for constrained-NLP equilibrium routes. On Windows, the local SDK root `%USERPROFILE%\Documents\deps\ipopt-msvc` is the preferred source. Source and editable installs pick it up automatically when that directory exists; otherwise point the build backend at an Ipopt install root explicitly:
 
 ```powershell
-$env:EPCSAFT_PEP517_ENABLE_IPOPT = "1"
-$env:EPCSAFT_PEP517_IPOPT_ROOT = "C:\path\to\Ipopt"
+$env:EPCSAFT_PEP517_IPOPT_ROOT = "$env:USERPROFILE\Documents\deps\ipopt-msvc"
 python -m pip install "epcsaft @ git+https://github.com/tannerpolley/ePC-SAFT.git@v1.5.2"
 ```
 
-Use `EPCSAFT_PEP517_IPOPT_DIR` instead when the install provides an `IpoptConfig.cmake` directory. Runtime processes that execute Ipopt on Windows must expose the Ipopt `bin` directory through both `PATH` and `EPCSAFT_RUNTIME_DLL_DIRS`.
+Use `EPCSAFT_PEP517_IPOPT_DIR` instead when the install provides an `IpoptConfig.cmake` directory. Runtime processes that execute Ipopt on Windows must expose the SDK `bin` directory through both `PATH` and `EPCSAFT_RUNTIME_DLL_DIRS`; repo build scripts do this automatically for the local SDK.
 
-IPOPT is never selected automatically by `solver_backend="auto"`. The native adapter is currently wired only for explicitly requested homogeneous ideal reactive-speciation routes; broader multiphase and electrolyte equilibrium routes remain route-builder work.
+IPOPT is never selected automatically by `solver_backend="auto"`. Use explicit Ipopt-backed routes or explicit solver options when validating native constrained-NLP behavior.
 
 ## Architecture And Diagnostics
 

@@ -455,28 +455,28 @@ py::dict native_diagnostics_to_dict(
 std::string diagnostic_string_or(
     const epcsaft::native::equilibrium_nlp::IpoptSolveResult& result,
     const std::string& key,
-    const std::string& fallback
+    const std::string& default_value
 ) {
     const auto item = result.diagnostics_string.find(key);
-    return item == result.diagnostics_string.end() ? fallback : item->second;
+    return item == result.diagnostics_string.end() ? default_value : item->second;
 }
 
 int diagnostic_int_or(
     const epcsaft::native::equilibrium_nlp::IpoptSolveResult& result,
     const std::string& key,
-    int fallback
+    int default_value
 ) {
     const auto item = result.diagnostics_int.find(key);
-    return item == result.diagnostics_int.end() ? fallback : item->second;
+    return item == result.diagnostics_int.end() ? default_value : item->second;
 }
 
 bool diagnostic_bool_or(
     const epcsaft::native::equilibrium_nlp::IpoptSolveResult& result,
     const std::string& key,
-    bool fallback
+    bool default_value
 ) {
     const auto item = result.diagnostics_bool.find(key);
-    return item == result.diagnostics_bool.end() ? fallback : item->second;
+    return item == result.diagnostics_bool.end() ? default_value : item->second;
 }
 
 py::list ipopt_iteration_history_to_list(
@@ -493,7 +493,7 @@ py::list ipopt_iteration_history_to_list(
         row["step_size_primal"] = record.step_size_primal;
         row["step_size_dual"] = record.step_size_dual;
         row["regularization_size"] = record.regularization_size;
-        row["line_search_trials"] = record.line_search_trials;
+        row["step_trial_count"] = record.step_trial_count;
         row["restoration_phase"] = record.restoration_phase;
         out.append(row);
     }

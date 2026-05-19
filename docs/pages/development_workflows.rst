@@ -85,9 +85,9 @@ The canonical local native build command is:
 
    uv run python scripts/dev/build_epcsaft.py
 
-That command uses ``--profile fast`` by default: Ceres and CppAD are enabled, and Ipopt is disabled unless explicitly requested. Ceres is required for native regression builds, and CppAD is required for derivative-capable package builds.
+That command uses ``--profile fast`` by default: Ceres and CppAD are enabled, and Ipopt is enabled when a native install is available. On Windows, the script first honors explicit ``EPCSAFT_IPOPT_ROOT`` / ``EPCSAFT_PEP517_IPOPT_ROOT`` values and otherwise uses the local SDK default ``%USERPROFILE%\Documents\deps\ipopt-msvc`` when present. Ceres is required for native regression builds, CppAD is required for derivative-capable package builds, and Ipopt-enabled equilibrium routes require an Ipopt-enabled native build.
 
-Wheel/editable/path installs go through the PEP 517/scikit-build backend and use the same required Ceres/CppAD policy. Repeated clean builds can still avoid rebuilding Ceres by using a prebuilt system Ceres package.
+Wheel/editable/path installs go through the PEP 517/scikit-build backend and use the same required Ceres/CppAD policy. On Windows, the backend also uses the local Ipopt SDK default when it exists; otherwise set ``EPCSAFT_PEP517_IPOPT_ROOT`` or ``EPCSAFT_PEP517_IPOPT_DIR`` explicitly for Ipopt package builds. Repeated clean builds can still avoid rebuilding Ceres by using a prebuilt system Ceres package.
 
 .. list-table::
    :header-rows: 1
@@ -98,17 +98,17 @@ Wheel/editable/path installs go through the PEP 517/scikit-build backend and use
      - Default Windows parallelism
      - Use when
    * - ``fast``
-     - Ceres ON, CppAD ON
+     - Ceres ON, CppAD ON, Ipopt ON when available
      - ``4``
      - Normal source-checkout setup, C++ iteration, reactive/speciation work, and most validation.
    * - ``full``
-     - Ceres ON, CppAD ON
+     - Ceres ON, CppAD ON, Ipopt ON when available
      - ``4``
      - Alias for the required Ceres + CppAD dependency profile.
    * - ``ipopt``
      - Ceres ON, CppAD ON, Ipopt ON
      - ``4``
-     - Native Ipopt adapter development or validation with a system Ipopt package.
+     - Native Ipopt adapter development or validation with the local SDK or another native Ipopt package.
 
 Use ``--build-only --parallel 10`` only after the CMake tree already exists. ``--build-only`` does not reconfigure profile flags; it builds whatever ``build/dev/CMakeCache.txt`` already says. Use ``--configure-only`` when you need to refresh CMake configuration without compiling. For a new ``build/dev`` tree, ``scripts/dev/build_epcsaft.py`` now prefers Ninja when ``ninja`` is available on ``PATH`` because it is usually faster than MinGW Makefiles for repeated local rebuilds. Existing CMake trees keep their original generator; doctor reports ``build_generator_recommendation`` when ``uv run python scripts/dev/build_epcsaft.py --clean --generator ninja`` is the appropriate one-time migration from an older MinGW tree.
 
@@ -120,7 +120,8 @@ For IDE run configurations, keep commands explicit instead of relying on one ove
 - Native incremental build: ``uv run python scripts/dev/build_epcsaft.py --build-only --parallel 10``
 - Native configure/build: ``uv run python scripts/dev/build_epcsaft.py --profile fast``
 - Clean Ceres + CppAD proof: ``uv run python scripts/dev/build_epcsaft.py --clean --profile full --parallel 4``
-- Native Ipopt proof with an install root: ``uv run python scripts/dev/build_epcsaft.py --clean --profile ipopt --ipopt-root C:\path\to\Ipopt``
+- Native Ipopt proof with the local SDK: ``uv run python scripts/dev/build_epcsaft.py --clean --profile ipopt --ipopt-root $env:USERPROFILE\Documents\deps\ipopt-msvc``
+- Native Ipopt proof with another install root: ``uv run python scripts/dev/build_epcsaft.py --clean --profile ipopt --ipopt-root C:\path\to\Ipopt``
 - Native Ipopt proof with an ``IpoptConfig.cmake`` directory: ``uv run python scripts/dev/build_epcsaft.py --clean --profile ipopt --ipopt-dir C:\path\to\lib\cmake\Ipopt``
 
 Do not use ``--clean`` for routine validation. ``uv run python scripts/dev/build_epcsaft.py --clean`` is a repair action for stale CMake state or stale/locked ``_core`` artifacts. A clean dev build deletes the reusable CMake tree, so Ceres source/configuration/build work under ``build/dev/_deps`` may run again unless you use a prebuilt system Ceres package. If Windows reports that ``_core*.pyd`` is locked, stop Python REPLs, tests, IDE run configurations, or parallel workers that imported ``epcsaft._core`` before retrying. If ``--status`` reports a stale Ninja lock, inspect the listed process ids and stop only repo-owned build processes before retrying.
@@ -143,7 +144,7 @@ The same prebuilt Ceres package can accelerate downstream path installs without 
    $env:EPCSAFT_PEP517_BUILD_DIR = "$PWD\.uv-cache\epcsaft-build"
    uv sync --reinstall-package epcsaft
 
-Without those environment variables, wheel/editable/path installs still build the default Ceres-enabled package through ``FetchContent``.
+Without those Ceres environment variables, wheel/editable/path installs still build the default Ceres-enabled package through ``FetchContent``. On Windows, Ipopt uses the local SDK default when present; otherwise set ``EPCSAFT_PEP517_IPOPT_ROOT`` or ``EPCSAFT_PEP517_IPOPT_DIR`` before installing if the package build needs Ipopt.
 
 LaTeX and Overleaf mirror
 -------------------------

@@ -596,7 +596,7 @@ public:
             record.step_size_dual = alpha_du;
             record.step_size_primal = alpha_pr;
             record.regularization_size = regularization_size;
-            record.line_search_trials = static_cast<int>(ls_trials);
+            record.step_trial_count = static_cast<int>(ls_trials);
             record.restoration_phase = mode == Ipopt::RestorationPhaseMode;
             result_.iteration_history.push_back(record);
             while (result_.iteration_history.size() > static_cast<std::size_t>(limit)) {

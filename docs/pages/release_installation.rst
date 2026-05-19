@@ -113,29 +113,29 @@ After package changes, refresh the installed dependency:
 Use ``uv run --no-sync ...`` for follow-up downstream commands when you do not
 want an implicit sync to rebuild the package again.
 
-Optional IPOPT support
-----------------------
+Native IPOPT SDK support
+------------------------
 
-IPOPT support is a native build dependency, not a Python extra. Request it only
-when the platform already has a native Ipopt package that CMake can discover
-through an install root or package config directory:
+IPOPT support is a native build dependency, not a Python extra. On Windows, the
+preferred local dependency is the SDK root at
+``%USERPROFILE%\Documents\deps\ipopt-msvc``. Source and editable installs use
+that SDK automatically when the directory exists; otherwise point the build
+backend at an Ipopt install root explicitly:
 
 .. code-block:: powershell
 
-   $env:EPCSAFT_PEP517_ENABLE_IPOPT = "1"
-   $env:EPCSAFT_PEP517_IPOPT_ROOT = "C:\path\to\Ipopt"
+   $env:EPCSAFT_PEP517_IPOPT_ROOT = "$env:USERPROFILE\Documents\deps\ipopt-msvc"
    python -m pip install "epcsaft @ git+https://github.com/tannerpolley/ePC-SAFT.git@v1.5.2"
 
 Use ``EPCSAFT_PEP517_IPOPT_DIR`` instead when the install provides an
 ``IpoptConfig.cmake`` directory.
-Runtime processes that execute Ipopt on Windows must expose the Ipopt ``bin``
-directory through both ``PATH`` and ``EPCSAFT_RUNTIME_DLL_DIRS``.
+Runtime processes that execute Ipopt on Windows must expose the SDK ``bin``
+directory through both ``PATH`` and ``EPCSAFT_RUNTIME_DLL_DIRS``; repo build
+scripts do this automatically for the local SDK.
 
-IPOPT remains opt-in at build time. When Ipopt is compiled, the public
-``solver_backend="auto"`` selector uses the native ideal reactive-speciation
-route where its assumptions hold. Broader public equilibrium routes still
-require native route-builder work before they can use Ipopt as a production
-solver.
+When Ipopt is compiled, use explicit Ipopt-backed routes or solver options for
+native constrained-NLP behavior. The automatic backend selector does not claim
+unvalidated Ipopt coverage.
 
 Verify the install
 ------------------

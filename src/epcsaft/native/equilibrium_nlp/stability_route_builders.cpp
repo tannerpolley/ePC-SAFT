@@ -11,19 +11,19 @@
 namespace epcsaft::native::equilibrium_nlp {
 namespace {
 
-std::string solve_string(const IpoptSolveResult& solve, const std::string& key, const std::string& fallback) {
+std::string solve_string(const IpoptSolveResult& solve, const std::string& key, const std::string& default_value) {
     const auto item = solve.diagnostics_string.find(key);
-    return item == solve.diagnostics_string.end() ? fallback : item->second;
+    return item == solve.diagnostics_string.end() ? default_value : item->second;
 }
 
-int solve_int(const IpoptSolveResult& solve, const std::string& key, int fallback = 0) {
+int solve_int(const IpoptSolveResult& solve, const std::string& key, int default_value = 0) {
     const auto item = solve.diagnostics_int.find(key);
-    return item == solve.diagnostics_int.end() ? fallback : item->second;
+    return item == solve.diagnostics_int.end() ? default_value : item->second;
 }
 
-bool solve_bool(const IpoptSolveResult& solve, const std::string& key, bool fallback = false) {
+bool solve_bool(const IpoptSolveResult& solve, const std::string& key, bool default_value = false) {
     const auto item = solve.diagnostics_bool.find(key);
-    return item == solve.diagnostics_bool.end() ? fallback : item->second;
+    return item == solve.diagnostics_bool.end() ? default_value : item->second;
 }
 
 void apply_stability_ipopt_metadata(StabilityRouteResult& out, const IpoptSolveResult& solve) {

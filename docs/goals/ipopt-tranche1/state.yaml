@@ -300,16 +300,18 @@ tasks:
     receipt: null
 
 checks:
-  dirty_fingerprint: "ipopt ahead of origin/ipopt by two committed handoff/literature commits; current dirty tree is the Ipopt tranche plus local SDK workflow adoption. Generated Graphify output and GoalBuddy board assets remain ignored."
+  dirty_fingerprint: "ipopt ahead of origin/ipopt by three local commits before this SDK-adoption commit; current dirty tree is local Ipopt SDK package-build adoption, docs/workflow alignment, and text-gate cleanup for the planned Hessian/continuation diagnostics. Generated Graphify output and GoalBuddy board assets remain ignored."
   last_verification:
     result: pass
-    task: "T010/T020/T030"
+    task: "SDK adoption and text-gate cleanup"
     commands:
-      - "uv run python run_pytest.py tests/workflows/build/test_native_runtime_env.py tests/workflows/build/test_build_epcsaft.py -q -> 14 passed"
-      - "uv run python scripts/dev/build_epcsaft.py --build-only --parallel 10 with EPCSAFT_IPOPT_ROOT unset and old environment paths stripped from PATH -> native import OK, SDK IpoptRoot selected"
-      - "uv run python scripts/dev/doctor.py --require-ipopt with EPCSAFT_IPOPT_ROOT unset and old environment paths stripped from PATH -> install_state: current, ipopt_status: enabled_available"
-      - "pwsh.exe -NoProfile -ExecutionPolicy Bypass -File .codex/environments/setup.ps1 -Step Doctor with uv and old environment paths stripped from PATH -> SDK root selected, install_state: current"
-      - "uv run python -c \"from epcsaft import _core; print(_core._native_ipopt_quadratic_smoke()['status'])\" with only SDK bin prepended -> success"
-      - "uv run python run_pytest.py tests/native/equilibrium/test_route_builders.py::test_current_public_route_nlps_reject_exact_hessian_without_provider -q -> 1 passed"
-      - "uv run python run_pytest.py tests/native/equilibrium/test_ipopt_adapter_contract.py tests/equilibrium/core/test_native_results.py tests/equilibrium/core/test_lle.py::test_equilibrium_options_public_surface_is_current_fields tests/equilibrium/core/test_lle.py::test_lle_flash_rejects_invalid_options_through_public_api tests/equilibrium/electrolyte/test_electrolyte_lle_smokes.py::test_electrolyte_lle_builds_native_route_before_ipopt_gate tests/equilibrium/electrolyte/test_electrolyte_bubble.py::test_electrolyte_bubble_pressure_builds_native_route_before_ipopt_gate -q -> 26 passed"
-      - "uv run python run_pytest.py tests/native/equilibrium/test_route_builders.py::test_neutral_stability_tpd_route_result_uses_ipopt_adapter_gate tests/native/equilibrium/test_route_builders.py::test_electrolyte_stability_tpd_route_result_uses_ipopt_adapter_gate tests/native/equilibrium/test_route_builders.py::test_neutral_fixed_temperature_pressure_route_result_uses_ipopt_adapter_gate tests/native/equilibrium/test_route_builders.py::test_neutral_lle_route_result_uses_ipopt_adapter_gate tests/native/equilibrium/test_route_builders.py::test_electrolyte_lle_route_result_uses_ipopt_adapter_gate_and_charge_rows tests/native/equilibrium/test_route_builders.py::test_reactive_two_phase_eos_route_result_uses_native_ipopt_gate tests/native/equilibrium/test_route_builders.py::test_reactive_lle_eos_route_builder_owns_canonical_initial_point tests/native/equilibrium/test_route_builders.py::test_reactive_electrolyte_lle_eos_route_builder_uses_liquid_root_residual_route -q -> 9 passed"
+      - "uv run python run_pytest.py tests/workflows/build/test_build_backend.py tests/workflows/build/test_build_epcsaft.py tests/workflows/build/test_native_runtime_env.py tests/workflows/repo/test_workflow_entrypoints.py -q -> 39 passed"
+      - "uv run python scripts/dev/build_epcsaft.py --build-only --parallel 10 with EPCSAFT_IPOPT_ROOT/EPCSAFT_PEP517_IPOPT_ROOT unset and Conda paths stripped from PATH -> native import OK; SDK IpoptRoot selected"
+      - "uv run python scripts/dev/doctor.py --require-ipopt with EPCSAFT_IPOPT_ROOT/EPCSAFT_PEP517_IPOPT_ROOT unset and Conda paths stripped from PATH -> install_state: current; ipopt_status: enabled_available"
+      - "PEP 517 config probe with Ipopt env vars unset and Conda paths stripped -> cmake.define.EPCSAFT_IPOPT_ROOT=C:\\Users\\Tanner\\Documents\\deps\\ipopt-msvc; EPCSAFT_ENABLE_IPOPT=ON"
+      - "pwsh.exe -NoProfile -ExecutionPolicy Bypass -File .codex/environments/setup.ps1 -Step Doctor -> SDK root selected; install_state: current"
+      - "uv run python scripts/dev/check_text_gates.py -> pass"
+      - "uv run python scripts/dev/build_epcsaft.py --build-only --parallel 10 -> native import OK after C++ diagnostic-field rename"
+      - "uv run python run_pytest.py tests/native/equilibrium/test_ipopt_adapter_contract.py tests/equilibrium/core/test_native_results.py tests/equilibrium/core/test_lle.py::test_lle_flash_rejects_invalid_options_through_public_api tests/workflows/build/test_build_backend.py tests/workflows/build/test_build_epcsaft.py tests/workflows/build/test_native_runtime_env.py tests/workflows/repo/test_workflow_entrypoints.py tests/workflows/repo/test_project_structure.py::test_strict_solver_derivative_text_gate_passes tests/workflows/repo/test_project_structure.py::test_custom_scalar_solver_tokens_are_limited_to_density_closure_exception -q -> 64 passed"
+      - "uv run python scripts/dev/validate_project.py quick -> 40 passed"
+      - "git diff --check -> pass"

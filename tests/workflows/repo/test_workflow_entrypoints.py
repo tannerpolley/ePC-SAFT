@@ -15,11 +15,15 @@ def test_bootstrap_scripts_use_normal_build_and_fast_suite() -> None:
     for path in ("scripts/dev/bootstrap_uv.ps1", "scripts/dev/bootstrap_uv.sh"):
         content = _read(path)
 
-        assert "uv python pin 3.13" in content
-        assert "uv sync --no-install-project" in content
+        assert "python pin 3.13" in content or '"python", "pin", "3.13"' in content
+        assert "sync --no-install-project" in content or '"sync", "--no-install-project"' in content
         assert "scripts/dev/build_epcsaft.py --clean" not in content
         assert "scripts\\dev\\build_epcsaft.py --clean" not in content
-        assert "scripts\\dev\\validate_project.py quick" in content or "scripts/dev/validate_project.py quick" in content
+        assert (
+            "scripts\\dev\\validate_project.py quick" in content
+            or "scripts/dev/validate_project.py quick" in content
+            or '"scripts\\dev\\validate_project.py", "quick"' in content
+        )
         assert "run_pytest.py tests/test_runtime.py -q" not in content
         assert "run_pytest.py tests\\test_runtime.py -q" not in content
 

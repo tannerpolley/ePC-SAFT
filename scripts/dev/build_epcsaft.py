@@ -40,17 +40,17 @@ BUILD_PROFILES: dict[str, BuildProfile] = {
     "fast": BuildProfile(
         enable_ipopt=True,
         windows_parallel="4",
-        description="default native dependency profile: Ceres, CppAD, and system Ipopt enabled",
+        description="default native dependency profile: Ceres, CppAD, and native Ipopt enabled when available",
     ),
     "full": BuildProfile(
         enable_ipopt=True,
         windows_parallel="4",
-        description="full native dependency profile: Ceres, CppAD, and system Ipopt enabled",
+        description="full native dependency profile: Ceres, CppAD, and native Ipopt enabled when available",
     ),
     "ipopt": BuildProfile(
         enable_ipopt=True,
         windows_parallel="4",
-        description="native solver dependency profile: Ceres, CppAD, and system Ipopt enabled",
+        description="native solver dependency profile: Ceres, CppAD, and native Ipopt enabled",
     ),
 }
 
@@ -552,8 +552,8 @@ def _parser() -> argparse.ArgumentParser:
         choices=tuple(BUILD_PROFILES),
         default="fast",
         help=(
-            "Native dependency profile. fast/full require Ceres and CppAD; "
-            "ipopt additionally enables the system Ipopt dependency."
+            "Native dependency profile. Profiles enable Ceres, CppAD, and Ipopt by default; "
+            "use --disable-ipopt only for diagnostics that intentionally exclude Ipopt."
         ),
     )
     parser.add_argument(
@@ -591,7 +591,7 @@ def _parser() -> argparse.ArgumentParser:
         "--enable-ipopt",
         dest="enable_ipopt",
         action="store_true",
-        help="Enable native Ipopt support. Requires a system Ipopt package.",
+        help="Enable native Ipopt support. Uses the local Windows SDK default when present unless another Ipopt path is supplied.",
     )
     parser.add_argument(
         "--disable-ipopt",
