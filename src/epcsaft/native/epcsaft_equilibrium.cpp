@@ -853,23 +853,29 @@ std::vector<double> cap_formula_seed_to_material_feasible_region(
 }
 
 std::vector<double> build_liquid_root_electrolyte_lle_initial_variables(
-    const ElectrolyteBasisNative& basis
+    const ElectrolyteBasisNative& basis,
+    double shift_sign = 1.0
 ) {
-    const double beta_formula = 0.635;
+    const double beta_formula = shift_sign > 0.0 ? 0.635 : 0.365;
     std::vector<double> org_formula = basis.formula_feed;
     if (basis.formula_feed.size() >= 3 && basis.neutral_indices.size() >= 2) {
-        org_formula[0] *= 0.667;
-        org_formula[1] *= 1.548;
+        org_formula[0] *= shift_sign > 0.0 ? 0.667 : 1.548;
+        org_formula[1] *= shift_sign > 0.0 ? 1.548 : 0.667;
         for (std::size_t pos = basis.neutral_indices.size(); pos < org_formula.size(); ++pos) {
             org_formula[pos] *= 0.106;
         }
     } else if (basis.formula_feed.size() >= 2) {
-        org_formula[0] *= 0.75;
-        org_formula[1] *= 1.25;
+        org_formula[0] *= shift_sign > 0.0 ? 0.75 : 1.25;
+        org_formula[1] *= shift_sign > 0.0 ? 1.25 : 0.75;
     }
     org_formula = cap_formula_seed_to_material_feasible_region(org_formula, basis.formula_feed, beta_formula);
     return pack_predictive_electrolyte_variables(beta_formula, org_formula);
 }
+
+struct NamedInitialVariables {
+    std::string seed_name;
+    std::vector<double> variables;
+};
 
 std::vector<double> org_formula_jacobian_row_major(
     const std::vector<double>& org_formula,
@@ -1367,6 +1373,39 @@ std::vector<std::vector<double>> phase_amounts_from_liquid_root_candidate(
     return out;
 }
 
+int neutral_route_quality(const equilibrium_nlp::NeutralTwoPhaseEosRouteResult& result) {
+    if (result.accepted) {
+        return 3;
+    }
+    if (result.solver_accepted) {
+        return 2;
+    }
+    if (result.ran) {
+        return 1;
+    }
+    return 0;
+}
+
+equilibrium_nlp::RouteSeedAttempt neutral_seed_attempt_from_result(
+    const equilibrium_nlp::NeutralTwoPhaseEosRouteResult& result
+) {
+    equilibrium_nlp::RouteSeedAttempt out;
+    out.seed_name = result.seed_name;
+    out.status = result.status;
+    out.solver_status = result.solver_status;
+    out.application_status = result.application_status;
+    out.solver_accepted = result.solver_accepted;
+    out.accepted = result.accepted;
+    out.iteration_count = result.iteration_count;
+    out.objective = result.objective;
+    out.phase_distance = result.postsolve.phase_distance;
+    out.material_balance_norm = result.postsolve.material_balance_norm;
+    out.charge_balance_norm = result.postsolve.charge_balance_norm;
+    out.pressure_consistency_norm = result.postsolve.pressure_consistency_norm;
+    out.chemical_potential_consistency_norm = result.postsolve.chemical_potential_consistency_norm;
+    return out;
+}
+
 equilibrium_nlp::NeutralTwoPhaseEosNlpContract evaluate_electrolyte_lle_liquid_root_nlp_contract_native(
     const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
     double t,
@@ -1402,18 +1441,18 @@ equilibrium_nlp::NeutralTwoPhaseEosRouteResult solve_electrolyte_lle_liquid_root
     double phase_distance_tolerance
 ) {
     const equilibrium_nlp::IpoptAdapterInfo adapter = equilibrium_nlp::native_ipopt_adapter_info();
-    equilibrium_nlp::NeutralTwoPhaseEosRouteResult out;
-    out.compiled = adapter.compiled;
-    out.adapter_available = adapter.adapter_available;
-    out.adapter_kind = adapter.adapter_kind;
-    out.exact_gradient_required = adapter.exact_gradient_required;
-    out.exact_jacobian_required = adapter.exact_jacobian_required;
-    out.problem_name = "electrolyte_lle_eos";
-    out.derivative_backend = "cppad_implicit";
-    out.postsolve.derivative_backend = "cppad_implicit";
+    equilibrium_nlp::NeutralTwoPhaseEosRouteResult best;
+    best.compiled = adapter.compiled;
+    best.adapter_available = adapter.adapter_available;
+    best.adapter_kind = adapter.adapter_kind;
+    best.exact_gradient_required = adapter.exact_gradient_required;
+    best.exact_jacobian_required = adapter.exact_jacobian_required;
+    best.problem_name = "electrolyte_lle_eos";
+    best.derivative_backend = "cppad_implicit";
+    best.postsolve.derivative_backend = "cppad_implicit";
     if (!adapter.compiled) {
-        out.status = "ipopt_dependency_required";
-        return out;
+        best.status = "ipopt_dependency_required";
+        return best;
     }
 
     const LiquidRootElectrolyteLleProblem problem(
@@ -1425,37 +1464,96 @@ equilibrium_nlp::NeutralTwoPhaseEosRouteResult solve_electrolyte_lle_liquid_root
         species,
         phase_distance_tolerance
     );
-    const equilibrium_nlp::IpoptSolveResult solve = equilibrium_nlp::solve_ipopt_nlp(problem, solve_options);
-    out.ran = solve.solver_ran;
-    out.solver_accepted = solve.accepted;
-    out.accepted = solve.accepted;
-    out.solver_status = solve.solver_status;
-    out.application_status = solve.application_status;
-    equilibrium_nlp::apply_ipopt_solve_metadata(out, solve);
-    const auto last_exception = solve.diagnostics_string.find("last_callback_exception");
-    if (last_exception != solve.diagnostics_string.end()) {
-        out.last_callback_exception = last_exception->second;
-    }
-    out.objective = solve.objective;
-    out.variables = solve.variables;
-    out.constraints = solve.constraints;
-    if (!solve.accepted) {
-        out.status = "solver_rejected";
-        return out;
+    const std::vector<NamedInitialVariables> seeds = {
+        {"canonical_formula_shift", build_liquid_root_electrolyte_lle_initial_variables(problem.basis(), 1.0)},
+        {"mirrored_formula_shift", build_liquid_root_electrolyte_lle_initial_variables(problem.basis(), -1.0)},
+    };
+    bool have_best = false;
+    std::vector<equilibrium_nlp::RouteSeedAttempt> attempts;
+    attempts.reserve(seeds.size() + (solve_options.initial_variables.empty() ? 0 : 1));
+
+    auto run_attempt = [&](
+        const std::string& seed_name,
+        const equilibrium_nlp::IpoptSolveOptions& attempt_options
+    ) {
+        const equilibrium_nlp::IpoptSolveResult solve = equilibrium_nlp::solve_ipopt_nlp(problem, attempt_options);
+        equilibrium_nlp::NeutralTwoPhaseEosRouteResult result;
+        result.compiled = adapter.compiled;
+        result.adapter_available = adapter.adapter_available;
+        result.adapter_kind = adapter.adapter_kind;
+        result.exact_gradient_required = adapter.exact_gradient_required;
+        result.exact_jacobian_required = adapter.exact_jacobian_required;
+        result.problem_name = "electrolyte_lle_eos";
+        result.derivative_backend = "cppad_implicit";
+        result.postsolve.derivative_backend = "cppad_implicit";
+        result.initial_point_strategy = "deterministic_multistart";
+        result.seed_name = seed_name;
+        result.ran = solve.solver_ran;
+        result.solver_accepted = solve.accepted;
+        result.accepted = solve.accepted;
+        result.solver_status = solve.solver_status;
+        result.application_status = solve.application_status;
+        equilibrium_nlp::apply_ipopt_solve_metadata(result, solve);
+        const auto last_exception = solve.diagnostics_string.find("last_callback_exception");
+        if (last_exception != solve.diagnostics_string.end()) {
+            result.last_callback_exception = last_exception->second;
+        }
+        result.objective = solve.objective;
+        result.variables = solve.variables;
+        result.constraints = solve.constraints;
+        if (!solve.accepted) {
+            result.status = "solver_rejected";
+            attempts.push_back(neutral_seed_attempt_from_result(result));
+            if (!have_best || neutral_route_quality(result) > neutral_route_quality(best)) {
+                best = result;
+                have_best = true;
+            }
+            return result;
+        }
+
+        const ElectrolyteCandidateNative candidate = problem.candidate(solve.variables);
+        result.phase_amounts = phase_amounts_from_liquid_root_candidate(candidate);
+        result.postsolve = liquid_root_postsolve_from_candidate(
+            problem,
+            candidate,
+            material_tolerance,
+            charge_tolerance,
+            chemical_potential_tolerance,
+            phase_distance_tolerance
+        );
+        result.phase_volumes = result.postsolve.phase_volumes;
+        result.accepted = result.postsolve.accepted;
+        result.status = result.accepted ? "accepted" : "postsolve_rejected";
+        attempts.push_back(neutral_seed_attempt_from_result(result));
+        if (!have_best || neutral_route_quality(result) > neutral_route_quality(best)) {
+            best = result;
+            have_best = true;
+        }
+        return result;
+    };
+
+    if (!solve_options.initial_variables.empty()) {
+        const equilibrium_nlp::NeutralTwoPhaseEosRouteResult continuation =
+            run_attempt("continuation_state", solve_options);
+        if (continuation.accepted) {
+            best.seed_attempts = attempts;
+            return best;
+        }
     }
 
-    const ElectrolyteCandidateNative candidate = problem.candidate(solve.variables);
-    out.phase_amounts = phase_amounts_from_liquid_root_candidate(candidate);
-    out.postsolve = liquid_root_postsolve_from_candidate(
-        problem,
-        candidate,
-        material_tolerance,
-        charge_tolerance,
-        chemical_potential_tolerance,
-        phase_distance_tolerance
-    );
-    out.phase_volumes = out.postsolve.phase_volumes;
-    out.accepted = out.postsolve.accepted;
-    out.status = out.accepted ? "accepted" : "postsolve_rejected";
-    return out;
+    for (const auto& seed : seeds) {
+        equilibrium_nlp::IpoptSolveOptions attempt_options = solve_options;
+        attempt_options.initial_variables = seed.variables;
+        attempt_options.initial_bound_lower_multipliers.clear();
+        attempt_options.initial_bound_upper_multipliers.clear();
+        attempt_options.initial_constraint_multipliers.clear();
+        const equilibrium_nlp::NeutralTwoPhaseEosRouteResult attempt = run_attempt(seed.seed_name, attempt_options);
+        if (attempt.accepted) {
+            break;
+        }
+    }
+
+    best.initial_point_strategy = "deterministic_multistart";
+    best.seed_attempts = attempts;
+    return best;
 }

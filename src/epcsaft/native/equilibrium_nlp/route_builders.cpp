@@ -43,6 +43,8 @@ void apply_ipopt_solve_metadata(NeutralTwoPhaseEosRouteResult& out, const IpoptS
     out.hessian_approximation = solve_string(solve, "hessian_approximation", out.hessian_approximation);
     out.hessian_backend = solve_string(solve, "hessian_backend", out.hessian_backend);
     out.scaling_method = solve_string(solve, "scaling_method", out.scaling_method);
+    out.linear_solver_requested = solve_string(solve, "linear_solver_requested", out.linear_solver_requested);
+    out.linear_solver_selected = solve_string(solve, "linear_solver_selected", out.linear_solver_selected);
     out.iteration_count = solve_int(solve, "iteration_count");
     out.iteration_history_limit = solve_int(solve, "iteration_history_limit");
     out.iteration_history_size = solve_int(solve, "iteration_history_size");
@@ -50,6 +52,13 @@ void apply_ipopt_solve_metadata(NeutralTwoPhaseEosRouteResult& out, const IpoptS
     out.constraint_scaling_count = solve_int(solve, "constraint_scaling_count");
     out.eval_h_calls = solve_int(solve, "eval_h_calls");
     out.objective_scaling = solve_double(solve, "objective_scaling", out.objective_scaling);
+    out.acceptable_tolerance = solve_double(solve, "acceptable_tolerance", out.acceptable_tolerance);
+    out.constraint_violation_tolerance =
+        solve_double(solve, "constraint_violation_tolerance", out.constraint_violation_tolerance);
+    out.dual_infeasibility_tolerance =
+        solve_double(solve, "dual_infeasibility_tolerance", out.dual_infeasibility_tolerance);
+    out.complementarity_tolerance =
+        solve_double(solve, "complementarity_tolerance", out.complementarity_tolerance);
     out.variable_scaling_min = solve_double(solve, "variable_scaling_min", out.variable_scaling_min);
     out.variable_scaling_max = solve_double(solve, "variable_scaling_max", out.variable_scaling_max);
     out.constraint_scaling_min = solve_double(solve, "constraint_scaling_min", out.constraint_scaling_min);
@@ -69,6 +78,8 @@ void apply_ipopt_solve_metadata(ReactiveTwoPhaseEosRouteResult& out, const Ipopt
     out.hessian_approximation = solve_string(solve, "hessian_approximation", out.hessian_approximation);
     out.hessian_backend = solve_string(solve, "hessian_backend", out.hessian_backend);
     out.scaling_method = solve_string(solve, "scaling_method", out.scaling_method);
+    out.linear_solver_requested = solve_string(solve, "linear_solver_requested", out.linear_solver_requested);
+    out.linear_solver_selected = solve_string(solve, "linear_solver_selected", out.linear_solver_selected);
     out.iteration_count = solve_int(solve, "iteration_count");
     out.iteration_history_limit = solve_int(solve, "iteration_history_limit");
     out.iteration_history_size = solve_int(solve, "iteration_history_size");
@@ -76,6 +87,13 @@ void apply_ipopt_solve_metadata(ReactiveTwoPhaseEosRouteResult& out, const Ipopt
     out.constraint_scaling_count = solve_int(solve, "constraint_scaling_count");
     out.eval_h_calls = solve_int(solve, "eval_h_calls");
     out.objective_scaling = solve_double(solve, "objective_scaling", out.objective_scaling);
+    out.acceptable_tolerance = solve_double(solve, "acceptable_tolerance", out.acceptable_tolerance);
+    out.constraint_violation_tolerance =
+        solve_double(solve, "constraint_violation_tolerance", out.constraint_violation_tolerance);
+    out.dual_infeasibility_tolerance =
+        solve_double(solve, "dual_infeasibility_tolerance", out.dual_infeasibility_tolerance);
+    out.complementarity_tolerance =
+        solve_double(solve, "complementarity_tolerance", out.complementarity_tolerance);
     out.variable_scaling_min = solve_double(solve, "variable_scaling_min", out.variable_scaling_min);
     out.variable_scaling_max = solve_double(solve, "variable_scaling_max", out.variable_scaling_max);
     out.constraint_scaling_min = solve_double(solve, "constraint_scaling_min", out.constraint_scaling_min);
@@ -139,7 +157,8 @@ std::vector<double> normalized_positive_values(const std::vector<double>& values
 std::vector<double> deterministic_composition_shift(
     const std::vector<double>& composition,
     const std::vector<double>& charges,
-    const std::string& route_label
+    const std::string& route_label,
+    double shift_sign = 1.0
 ) {
     std::vector<double> shifted = composition;
     if (!charges.empty()) {
@@ -200,7 +219,7 @@ std::vector<double> deterministic_composition_shift(
     double shifted_sum = 0.0;
     for (std::size_t index = 0; index < composition.size(); ++index) {
         const double scaled_direction = max_abs_direction > 0.0 ? direction[index] / max_abs_direction : 0.0;
-        shifted[index] = composition[index] * (1.0 + 0.2 * scaled_direction);
+        shifted[index] = composition[index] * (1.0 + 0.2 * shift_sign * scaled_direction);
         shifted_sum += shifted[index];
     }
     require_positive_finite(shifted_sum, "shifted composition sum");
@@ -245,11 +264,12 @@ NeutralTwoPhaseEosInitialPoint build_neutral_two_phase_eos_initial_point(
     const std::vector<double>& feed_amounts,
     double temperature,
     double target_pressure,
-    const std::string& route_label
+    const std::string& route_label,
+    double shift_sign = 1.0
 ) {
     const std::vector<double> composition = normalized_positive_values(feed_amounts, route_label + " feed amount");
     const std::vector<double> first_composition =
-        deterministic_composition_shift(composition, {}, route_label + " composition");
+        deterministic_composition_shift(composition, {}, route_label + " composition", shift_sign);
     return build_two_phase_eos_initial_point(feed_amounts, first_composition, temperature, target_pressure, route_label);
 }
 
@@ -258,12 +278,115 @@ NeutralTwoPhaseEosInitialPoint build_charge_neutral_two_phase_eos_initial_point(
     const std::vector<double>& charges,
     double temperature,
     double target_pressure,
-    const std::string& route_label
+    const std::string& route_label,
+    double shift_sign = 1.0
 ) {
     const std::vector<double> composition = normalized_positive_values(feed_amounts, route_label + " feed amount");
     const std::vector<double> first_composition =
-        deterministic_composition_shift(composition, charges, route_label + " composition");
+        deterministic_composition_shift(composition, charges, route_label + " composition", shift_sign);
     return build_two_phase_eos_initial_point(feed_amounts, first_composition, temperature, target_pressure, route_label);
+}
+
+struct NamedInitialVariables {
+    std::string seed_name;
+    std::vector<double> variables;
+};
+
+std::vector<double> neutral_two_phase_variables_from_initial(
+    const NeutralTwoPhaseEosInitialPoint& initial
+) {
+    std::vector<double> out;
+    out.reserve(initial.phase_amounts.size() * (initial.phase_amounts.front().size() + 1));
+    for (std::size_t phase = 0; phase < initial.phase_amounts.size(); ++phase) {
+        out.insert(out.end(), initial.phase_amounts[phase].begin(), initial.phase_amounts[phase].end());
+        out.push_back(initial.volumes[phase]);
+    }
+    return out;
+}
+
+std::vector<NamedInitialVariables> neutral_two_phase_seed_candidates(
+    const std::vector<double>& feed_amounts,
+    const std::vector<double>& charges,
+    double temperature,
+    double target_pressure,
+    const std::string& route_label
+) {
+    std::vector<NamedInitialVariables> out;
+    if (charges.empty()) {
+        out.push_back({
+            "canonical_shifted_feed",
+            neutral_two_phase_variables_from_initial(
+                build_neutral_two_phase_eos_initial_point(feed_amounts, temperature, target_pressure, route_label, 1.0)
+            )
+        });
+        out.push_back({
+            "mirrored_shifted_feed",
+            neutral_two_phase_variables_from_initial(
+                build_neutral_two_phase_eos_initial_point(feed_amounts, temperature, target_pressure, route_label, -1.0)
+            )
+        });
+        return out;
+    }
+    out.push_back({
+        "canonical_shifted_feed",
+        neutral_two_phase_variables_from_initial(
+            build_charge_neutral_two_phase_eos_initial_point(
+                feed_amounts,
+                charges,
+                temperature,
+                target_pressure,
+                route_label,
+                1.0
+            )
+        )
+    });
+    out.push_back({
+        "mirrored_shifted_feed",
+        neutral_two_phase_variables_from_initial(
+            build_charge_neutral_two_phase_eos_initial_point(
+                feed_amounts,
+                charges,
+                temperature,
+                target_pressure,
+                route_label,
+                -1.0
+            )
+        )
+    });
+    return out;
+}
+
+int neutral_route_quality(const NeutralTwoPhaseEosRouteResult& result) {
+    if (result.accepted) {
+        return 3;
+    }
+    if (result.solver_accepted) {
+        return 2;
+    }
+    if (result.ran) {
+        return 1;
+    }
+    return 0;
+}
+
+RouteSeedAttempt neutral_seed_attempt_from_result(
+    const NeutralTwoPhaseEosRouteResult& result
+) {
+    RouteSeedAttempt out;
+    out.seed_name = result.seed_name;
+    out.status = result.status;
+    out.solver_status = result.solver_status;
+    out.application_status = result.application_status;
+    out.solver_accepted = result.solver_accepted;
+    out.accepted = result.accepted;
+    out.iteration_count = result.iteration_count;
+    out.objective = result.objective;
+    out.phase_distance = result.postsolve.phase_distance;
+    out.material_balance_norm = result.postsolve.material_balance_norm;
+    out.charge_balance_norm = result.postsolve.charge_balance_norm;
+    out.pressure_consistency_norm = result.postsolve.pressure_consistency_norm;
+    out.chemical_potential_consistency_norm = result.postsolve.chemical_potential_consistency_norm;
+    return out;
 }
 
 double vector_infinity_norm(const std::vector<double>& values, std::size_t begin, std::size_t end) {
@@ -513,7 +636,11 @@ public:
     }
 
     int jacobian_nonzero_count() const override {
-        return variable_count() * constraint_count();
+        const int material_nonzeros = phase_count() * species_count_;
+        const int pressure_nonzeros = phase_count() * local_variable_count();
+        const int charge_nonzeros = charges_.empty() ? 0 : phase_count() * species_count_;
+        const int separation_nonzeros = separation_constraint_count() > 0 ? phase_count() * species_count_ : 0;
+        return material_nonzeros + pressure_nonzeros + charge_nonzeros + separation_nonzeros;
     }
 
     NlpBounds bounds() const override {
@@ -568,20 +695,96 @@ public:
         NlpJacobianStructure out;
         out.rows.reserve(static_cast<std::size_t>(jacobian_nonzero_count()));
         out.cols.reserve(static_cast<std::size_t>(jacobian_nonzero_count()));
-        for (int row = 0; row < constraint_count(); ++row) {
-            for (int col = 0; col < variable_count(); ++col) {
+        for (int species = 0; species < species_count_; ++species) {
+            for (int phase = 0; phase < phase_count(); ++phase) {
+                out.rows.push_back(species);
+                out.cols.push_back(phase * local_variable_count() + species);
+            }
+        }
+        const int pressure_row_start = species_count_;
+        for (int phase = 0; phase < phase_count(); ++phase) {
+            const int row = pressure_row_start + phase;
+            const int phase_offset = phase * local_variable_count();
+            for (int col = 0; col < local_variable_count(); ++col) {
                 out.rows.push_back(row);
-                out.cols.push_back(col);
+                out.cols.push_back(phase_offset + col);
+            }
+        }
+        if (!charges_.empty()) {
+            const int charge_row_start = pressure_row_start + phase_count();
+            for (int phase = 0; phase < phase_count(); ++phase) {
+                const int row = charge_row_start + phase;
+                const int phase_offset = phase * local_variable_count();
+                for (int species = 0; species < species_count_; ++species) {
+                    out.rows.push_back(row);
+                    out.cols.push_back(phase_offset + species);
+                }
+            }
+        }
+        if (separation_constraint_count() > 0) {
+            const int row = constraint_count() - 1;
+            for (int phase = 0; phase < phase_count(); ++phase) {
+                const int phase_offset = phase * local_variable_count();
+                for (int species = 0; species < species_count_; ++species) {
+                    out.rows.push_back(row);
+                    out.cols.push_back(phase_offset + species);
+                }
             }
         }
         return out;
     }
 
     std::vector<double> jacobian_values(const std::vector<double>& variables) const override {
-        std::vector<double> out = phase_system(variables).constraint_jacobian_row_major;
+        const EosPhaseSystemResult system = phase_system(variables);
+        std::vector<double> out;
+        out.reserve(static_cast<std::size_t>(jacobian_nonzero_count()));
+        const int dense_cols = variable_count();
+        for (int species = 0; species < species_count_; ++species) {
+            for (int phase = 0; phase < phase_count(); ++phase) {
+                out.push_back(
+                    system.constraint_jacobian_row_major[
+                        static_cast<std::size_t>(species) * static_cast<std::size_t>(dense_cols)
+                        + static_cast<std::size_t>(phase * local_variable_count() + species)
+                    ]
+                );
+            }
+        }
+        const int pressure_row_start = species_count_;
+        for (int phase = 0; phase < phase_count(); ++phase) {
+            const int row = pressure_row_start + phase;
+            const int phase_offset = phase * local_variable_count();
+            for (int col = 0; col < local_variable_count(); ++col) {
+                out.push_back(
+                    system.constraint_jacobian_row_major[
+                        static_cast<std::size_t>(row) * static_cast<std::size_t>(dense_cols)
+                        + static_cast<std::size_t>(phase_offset + col)
+                    ]
+                );
+            }
+        }
+        if (!charges_.empty()) {
+            const int charge_row_start = pressure_row_start + phase_count();
+            for (int phase = 0; phase < phase_count(); ++phase) {
+                const int row = charge_row_start + phase;
+                const int phase_offset = phase * local_variable_count();
+                for (int species = 0; species < species_count_; ++species) {
+                    out.push_back(
+                        system.constraint_jacobian_row_major[
+                            static_cast<std::size_t>(row) * static_cast<std::size_t>(dense_cols)
+                            + static_cast<std::size_t>(phase_offset + species)
+                        ]
+                    );
+                }
+            }
+        }
         if (separation_constraint_count() > 0) {
             const std::vector<double> row = phase_separation_jacobian(phase_amounts_from_variables(variables));
-            out.insert(out.end(), row.begin(), row.end());
+            for (int phase = 0; phase < phase_count(); ++phase) {
+                const int phase_offset = phase * local_variable_count();
+                for (int species = 0; species < species_count_; ++species) {
+                    out.push_back(row[static_cast<std::size_t>(phase_offset + species)]);
+                }
+            }
         }
         return out;
     }
@@ -820,7 +1023,20 @@ public:
     }
 
     int jacobian_nonzero_count() const override {
-        return variable_count() * constraint_count();
+        int balance_nonzeros = 0;
+        for (double coefficient : balance_matrix_row_major_) {
+            if (coefficient != 0.0) {
+                balance_nonzeros += phase_count();
+            }
+        }
+        const int pressure_nonzeros = phase_count() * local_variable_count();
+        int charge_nonzeros = 0;
+        for (double charge : charges_) {
+            if (charge != 0.0) {
+                charge_nonzeros += phase_count();
+            }
+        }
+        return balance_nonzeros + pressure_nonzeros + charge_nonzeros;
     }
 
     NlpBounds bounds() const override {
@@ -923,31 +1139,60 @@ public:
         NlpJacobianStructure out;
         out.rows.reserve(static_cast<std::size_t>(jacobian_nonzero_count()));
         out.cols.reserve(static_cast<std::size_t>(jacobian_nonzero_count()));
-        for (int row = 0; row < constraint_count(); ++row) {
-            for (int col = 0; col < variable_count(); ++col) {
+        for (int row = 0; row < balance_rows_; ++row) {
+            for (int species = 0; species < species_count_; ++species) {
+                const double coefficient = balance_matrix_row_major_[
+                    static_cast<std::size_t>(row) * static_cast<std::size_t>(species_count_)
+                    + static_cast<std::size_t>(species)
+                ];
+                if (coefficient == 0.0) {
+                    continue;
+                }
+                for (int phase = 0; phase < phase_count(); ++phase) {
+                    out.rows.push_back(row);
+                    out.cols.push_back(phase * local_variable_count() + species);
+                }
+            }
+        }
+        for (int phase = 0; phase < phase_count(); ++phase) {
+            const int row = balance_rows_ + phase;
+            const int col_offset = phase * local_variable_count();
+            for (int col = 0; col < local_variable_count(); ++col) {
                 out.rows.push_back(row);
-                out.cols.push_back(col);
+                out.cols.push_back(col_offset + col);
+            }
+        }
+        if (!charges_.empty()) {
+            const int charge_row_start = balance_rows_ + phase_count();
+            for (int phase = 0; phase < phase_count(); ++phase) {
+                const int row = charge_row_start + phase;
+                const int col_offset = phase * local_variable_count();
+                for (int species = 0; species < species_count_; ++species) {
+                    if (charges_[static_cast<std::size_t>(species)] == 0.0) {
+                        continue;
+                    }
+                    out.rows.push_back(row);
+                    out.cols.push_back(col_offset + species);
+                }
             }
         }
         return out;
     }
 
     std::vector<double> jacobian_values(const std::vector<double>& variables) const override {
-        std::vector<double> out(
-            static_cast<std::size_t>(constraint_count()) * static_cast<std::size_t>(variable_count()),
-            0.0
-        );
+        std::vector<double> out;
+        out.reserve(static_cast<std::size_t>(jacobian_nonzero_count()));
         for (int row = 0; row < balance_rows_; ++row) {
-            for (int phase = 0; phase < phase_count(); ++phase) {
-                const int phase_offset = phase * local_variable_count();
-                for (int species = 0; species < species_count_; ++species) {
-                    out[
-                        static_cast<std::size_t>(row) * static_cast<std::size_t>(variable_count())
-                        + static_cast<std::size_t>(phase_offset + species)
-                    ] = balance_matrix_row_major_[
-                        static_cast<std::size_t>(row) * static_cast<std::size_t>(species_count_)
-                        + static_cast<std::size_t>(species)
-                    ];
+            for (int species = 0; species < species_count_; ++species) {
+                const double coefficient = balance_matrix_row_major_[
+                    static_cast<std::size_t>(row) * static_cast<std::size_t>(species_count_)
+                    + static_cast<std::size_t>(species)
+                ];
+                if (coefficient == 0.0) {
+                    continue;
+                }
+                for (int phase = 0; phase < phase_count(); ++phase) {
+                    out.push_back(coefficient);
                 }
             }
         }
@@ -959,25 +1204,18 @@ public:
                 static_cast<std::size_t>(local_variable_count()),
                 "Reactive EOS pressure Jacobian"
             );
-            const int row = balance_rows_ + phase;
-            const int col_offset = phase * local_variable_count();
             for (int col = 0; col < local_variable_count(); ++col) {
-                out[
-                    static_cast<std::size_t>(row) * static_cast<std::size_t>(variable_count())
-                    + static_cast<std::size_t>(col_offset + col)
-                ] = block.pressure_jacobian_row_major[static_cast<std::size_t>(col)];
+                out.push_back(block.pressure_jacobian_row_major[static_cast<std::size_t>(col)]);
             }
         }
         if (!charges_.empty()) {
-            const int charge_row_start = balance_rows_ + phase_count();
             for (int phase = 0; phase < phase_count(); ++phase) {
-                const int row = charge_row_start + phase;
-                const int col_offset = phase * local_variable_count();
                 for (int species = 0; species < species_count_; ++species) {
-                    out[
-                        static_cast<std::size_t>(row) * static_cast<std::size_t>(variable_count())
-                        + static_cast<std::size_t>(col_offset + species)
-                    ] = charges_[static_cast<std::size_t>(species)];
+                    const double charge = charges_[static_cast<std::size_t>(species)];
+                    if (charge == 0.0) {
+                        continue;
+                    }
+                    out.push_back(charge);
                 }
             }
         }
@@ -1893,6 +2131,99 @@ NeutralTwoPhaseEosRouteResult solve_neutral_two_phase_eos_route(
     return out;
 }
 
+NeutralTwoPhaseEosRouteResult solve_seeded_neutral_two_phase_route(
+    const add_args& args,
+    double temperature,
+    double target_pressure,
+    const std::vector<double>& feed_amounts,
+    const IpoptSolveOptions& options,
+    double material_tolerance,
+    double pressure_tolerance,
+    double chemical_potential_tolerance,
+    double phase_distance_tolerance,
+    const std::vector<double>& charges,
+    const std::string& route_label,
+    const std::string& problem_name,
+    double charge_tolerance = 0.0
+) {
+    const std::vector<NamedInitialVariables> seeds = neutral_two_phase_seed_candidates(
+        feed_amounts,
+        charges,
+        temperature,
+        target_pressure,
+        route_label
+    );
+
+    NeutralTwoPhaseEosRouteResult best;
+    bool have_best = false;
+    std::vector<RouteSeedAttempt> attempts;
+    attempts.reserve(seeds.size() + (options.initial_variables.empty() ? 0 : 1));
+
+    auto run_attempt = [&](const std::string& seed_name, const IpoptSolveOptions& attempt_options) {
+        const auto& base_variables = attempt_options.initial_variables.empty()
+            ? seeds.front().variables
+            : attempt_options.initial_variables;
+        const std::size_t species_count = feed_amounts.size();
+        const std::vector<std::vector<double>> phase_amounts =
+            neutral_phase_amounts_from_route_variables(base_variables, species_count);
+        const std::vector<double> volumes = neutral_phase_volumes_from_route_variables(base_variables, species_count);
+        NeutralTwoPhaseEosRouteResult result = solve_neutral_two_phase_eos_route(
+            args,
+            temperature,
+            target_pressure,
+            phase_amounts,
+            volumes,
+            feed_amounts,
+            attempt_options,
+            material_tolerance,
+            pressure_tolerance,
+            chemical_potential_tolerance,
+            phase_distance_tolerance,
+            phase_distance_tolerance,
+            charges,
+            problem_name,
+            charge_tolerance
+        );
+        result.initial_point_strategy = "deterministic_multistart";
+        result.seed_name = seed_name;
+        attempts.push_back(neutral_seed_attempt_from_result(result));
+        if (!have_best || neutral_route_quality(result) > neutral_route_quality(best)) {
+            best = result;
+            have_best = true;
+        }
+        return result;
+    };
+
+    if (!options.initial_variables.empty()) {
+        IpoptSolveOptions continuation_options = options;
+        const NeutralTwoPhaseEosRouteResult continuation =
+            run_attempt("continuation_state", continuation_options);
+        if (continuation.accepted) {
+            best.seed_attempts = attempts;
+            return best;
+        }
+    }
+
+    for (const auto& seed : seeds) {
+        IpoptSolveOptions attempt_options = options;
+        attempt_options.initial_variables = seed.variables;
+        attempt_options.initial_bound_lower_multipliers.clear();
+        attempt_options.initial_bound_upper_multipliers.clear();
+        attempt_options.initial_constraint_multipliers.clear();
+        const NeutralTwoPhaseEosRouteResult attempt = run_attempt(seed.seed_name, attempt_options);
+        if (attempt.accepted) {
+            break;
+        }
+    }
+
+    if (!have_best) {
+        best.initial_point_strategy = "deterministic_multistart";
+        best.seed_name = seeds.empty() ? "problem_initial_point" : seeds.front().seed_name;
+    }
+    best.seed_attempts = attempts;
+    return best;
+}
+
 NeutralTwoPhaseEosRouteResult solve_neutral_two_phase_eos_tp_flash_route(
     const add_args& args,
     double temperature,
@@ -1904,21 +2235,19 @@ NeutralTwoPhaseEosRouteResult solve_neutral_two_phase_eos_tp_flash_route(
     double chemical_potential_tolerance,
     double phase_distance_tolerance
 ) {
-    const NeutralTwoPhaseEosInitialPoint initial =
-        build_neutral_two_phase_eos_initial_point(feed_amounts, temperature, target_pressure, "Neutral TP flash route");
-    return solve_neutral_two_phase_eos_route(
+    return solve_seeded_neutral_two_phase_route(
         args,
         temperature,
         target_pressure,
-        initial.phase_amounts,
-        initial.volumes,
         feed_amounts,
         options,
         material_tolerance,
         pressure_tolerance,
         chemical_potential_tolerance,
         phase_distance_tolerance,
-        phase_distance_tolerance
+        {},
+        "Neutral TP flash route",
+        "neutral_two_phase_eos"
     );
 }
 
@@ -1933,21 +2262,19 @@ NeutralTwoPhaseEosRouteResult solve_neutral_two_phase_eos_lle_route(
     double chemical_potential_tolerance,
     double phase_distance_tolerance
 ) {
-    const NeutralTwoPhaseEosInitialPoint initial =
-        build_neutral_two_phase_eos_initial_point(feed_amounts, temperature, target_pressure, "Neutral LLE route");
-    return solve_neutral_two_phase_eos_route(
+    return solve_seeded_neutral_two_phase_route(
         args,
         temperature,
         target_pressure,
-        initial.phase_amounts,
-        initial.volumes,
         feed_amounts,
         options,
         material_tolerance,
         pressure_tolerance,
         chemical_potential_tolerance,
         phase_distance_tolerance,
-        phase_distance_tolerance
+        {},
+        "Neutral LLE route",
+        "neutral_two_phase_eos"
     );
 }
 
@@ -1963,27 +2290,18 @@ NeutralTwoPhaseEosRouteResult solve_electrolyte_lle_eos_route(
     double chemical_potential_tolerance,
     double phase_distance_tolerance
 ) {
-    const NeutralTwoPhaseEosInitialPoint initial = build_charge_neutral_two_phase_eos_initial_point(
-        feed_amounts,
-        args.z,
-        temperature,
-        target_pressure,
-        "Electrolyte LLE route"
-    );
-    return solve_neutral_two_phase_eos_route(
+    return solve_seeded_neutral_two_phase_route(
         args,
         temperature,
         target_pressure,
-        initial.phase_amounts,
-        initial.volumes,
         feed_amounts,
         options,
         material_tolerance,
         pressure_tolerance,
         chemical_potential_tolerance,
         phase_distance_tolerance,
-        phase_distance_tolerance,
         args.z,
+        "Electrolyte LLE route",
         "electrolyte_lle_eos",
         charge_tolerance
     );

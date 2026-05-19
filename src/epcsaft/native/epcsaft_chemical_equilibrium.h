@@ -17,6 +17,11 @@ struct ChemicalEquilibriumOptionsNative {
     std::string solver_backend = "auto";
     std::string hessian_mode = "auto";
     int iteration_history_limit = 20;
+    std::string linear_solver = "auto";
+    double acceptable_tolerance = 0.0;
+    double constraint_violation_tolerance = 0.0;
+    double dual_infeasibility_tolerance = 0.0;
+    double complementarity_tolerance = 0.0;
     std::vector<double> initial_variables;
     std::vector<double> initial_bound_lower_multipliers;
     std::vector<double> initial_bound_upper_multipliers;

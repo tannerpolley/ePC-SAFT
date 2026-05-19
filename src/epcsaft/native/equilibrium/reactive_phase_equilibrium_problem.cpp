@@ -1073,7 +1073,8 @@ double clamped_log_amount(double amount, double floor) {
 std::vector<double> build_reactive_liquid_root_initial_variables(
     const std::vector<double>& feed,
     const std::vector<double>& charges,
-    double floor
+    double floor,
+    double shift_sign = 1.0
 ) {
     const std::size_t ncomp = feed.size();
     std::vector<double> phase1 = feed;
@@ -1090,10 +1091,10 @@ std::vector<double> build_reactive_liquid_root_initial_variables(
         const std::size_t second = neutral_indices.back();
         const double shift = 0.20 * std::min(feed[first], feed[second]);
         if (shift > floor && feed[first] > shift + floor && feed[second] > shift + floor) {
-            phase1[first] += shift;
-            phase1[second] -= shift;
-            phase2[first] -= shift;
-            phase2[second] += shift;
+            phase1[first] += shift_sign * shift;
+            phase1[second] -= shift_sign * shift;
+            phase2[first] -= shift_sign * shift;
+            phase2[second] += shift_sign * shift;
         }
     }
 
@@ -1147,7 +1148,9 @@ std::vector<double> build_reactive_phase_model_initial_variables(
     const std::vector<double>& feed,
     const std::vector<int>& phase1_indices,
     const std::vector<int>& phase2_indices,
-    double floor
+    const std::vector<double>& charges,
+    double floor,
+    double shift_sign = 1.0
 ) {
     const std::size_t ncomp = feed.size();
     std::vector<double> out(2 * ncomp, std::log(floor));
@@ -1158,6 +1161,61 @@ std::vector<double> build_reactive_phase_model_initial_variables(
         if (contains_index(phase2_indices, species)) {
             out[ncomp + species] = clamped_log_amount(feed[species], floor);
         }
+    }
+    std::vector<std::size_t> shared_neutral_indices;
+    for (std::size_t species = 0; species < ncomp; ++species) {
+        const bool shared = contains_index(phase1_indices, species) && contains_index(phase2_indices, species);
+        const bool charged = charges.size() == ncomp && std::abs(charges[species]) > 1.0e-12;
+        if (shared && !charged) {
+            shared_neutral_indices.push_back(species);
+        }
+    }
+    if (shared_neutral_indices.size() >= 2) {
+        const std::size_t first = shared_neutral_indices.front();
+        const std::size_t second = shared_neutral_indices.back();
+        const double shift = 0.20 * std::min(feed[first], feed[second]);
+        if (shift > floor && feed[first] > shift + floor && feed[second] > shift + floor) {
+            out[first] = clamped_log_amount(feed[first] + shift_sign * shift, floor);
+            out[second] = clamped_log_amount(feed[second] - shift_sign * shift, floor);
+            out[ncomp + first] = clamped_log_amount(feed[first] - shift_sign * shift, floor);
+            out[ncomp + second] = clamped_log_amount(feed[second] + shift_sign * shift, floor);
+        }
+    }
+    return out;
+}
+
+struct NamedInitialVariables {
+    std::string seed_name;
+    std::vector<double> variables;
+};
+
+std::vector<NamedInitialVariables> reactive_liquid_root_seed_candidates(
+    const std::vector<double>& feed,
+    const std::vector<double>& charges,
+    double floor
+) {
+    return {
+        {"canonical_shifted_feed", build_reactive_liquid_root_initial_variables(feed, charges, floor, 1.0)},
+        {"mirrored_shifted_feed", build_reactive_liquid_root_initial_variables(feed, charges, floor, -1.0)},
+    };
+}
+
+std::vector<NamedInitialVariables> reactive_phase_model_seed_candidates(
+    const std::vector<double>& feed,
+    const std::vector<int>& phase1_indices,
+    const std::vector<int>& phase2_indices,
+    const std::vector<double>& charges,
+    double floor
+) {
+    std::vector<NamedInitialVariables> out;
+    out.push_back({
+        "canonical_shifted_feed",
+        build_reactive_phase_model_initial_variables(feed, phase1_indices, phase2_indices, charges, floor, 1.0)
+    });
+    const std::vector<double> mirrored =
+        build_reactive_phase_model_initial_variables(feed, phase1_indices, phase2_indices, charges, floor, -1.0);
+    if (mirrored != out.front().variables) {
+        out.push_back({"mirrored_shifted_feed", mirrored});
     }
     return out;
 }
@@ -1253,6 +1311,7 @@ public:
                 feed_,
                 phase1_global_indices_,
                 phase2_global_indices_,
+                mixture_->args().z,
                 options_.min_composition
             )
             : build_reactive_liquid_root_initial_variables(
@@ -1323,7 +1382,21 @@ public:
     }
 
     int jacobian_nonzero_count() const override {
-        return variable_count() * constraint_count();
+        int balance_nonzeros = 0;
+        for (double coefficient : balance_matrix_row_major_) {
+            if (coefficient != 0.0) {
+                balance_nonzeros += 2;
+            }
+        }
+        const int reaction_nonzeros = phase_tagged_reaction_constraint_count() * variable_count();
+        int charge_nonzeros = 0;
+        for (double charge : mixture_->args().z) {
+            if (charge != 0.0) {
+                charge_nonzeros += 2;
+            }
+        }
+        const int separation_nonzeros = separation_constraint_count() > 0 ? 2 * static_cast<int>(feed_.size()) : 0;
+        return balance_nonzeros + reaction_nonzeros + charge_nonzeros + separation_nonzeros;
     }
 
     epcsaft::native::equilibrium_nlp::NlpBounds bounds() const override {
@@ -1387,9 +1460,16 @@ public:
         out.rows.reserve(static_cast<std::size_t>(jacobian_nonzero_count()));
         out.cols.reserve(static_cast<std::size_t>(jacobian_nonzero_count()));
         for (int row = 0; row < balance_rows_; ++row) {
-            for (int col = 0; col < variable_count(); ++col) {
+            for (std::size_t species = 0; species < feed_.size(); ++species) {
+                const double coefficient =
+                    balance_matrix_row_major_[static_cast<std::size_t>(row) * feed_.size() + species];
+                if (coefficient == 0.0) {
+                    continue;
+                }
                 out.rows.push_back(row);
-                out.cols.push_back(col);
+                out.cols.push_back(static_cast<int>(species));
+                out.rows.push_back(row);
+                out.cols.push_back(static_cast<int>(feed_.size() + species));
             }
         }
         for (int reaction_row = 0; reaction_row < phase_tagged_reaction_constraint_count(); ++reaction_row) {
@@ -1401,18 +1481,26 @@ public:
         }
         for (int charge_row = 0; charge_row < phase_charge_constraint_count(); ++charge_row) {
             const int row = balance_rows_ + phase_tagged_reaction_constraint_count() + charge_row;
-            for (int col = 0; col < variable_count(); ++col) {
+            const bool phase1 = charge_row == 0;
+            const int phase_offset = phase1 ? 0 : static_cast<int>(feed_.size());
+            for (std::size_t species = 0; species < feed_.size(); ++species) {
+                const double charge = mixture_->args().z[species];
+                if (charge == 0.0) {
+                    continue;
+                }
                 out.rows.push_back(row);
-                out.cols.push_back(col);
+                out.cols.push_back(phase_offset + static_cast<int>(species));
             }
         }
         if (separation_constraint_count() > 0) {
             const int row = balance_rows_
                 + phase_tagged_reaction_constraint_count()
                 + phase_charge_constraint_count();
-            for (int col = 0; col < variable_count(); ++col) {
+            for (std::size_t species = 0; species < feed_.size(); ++species) {
                 out.rows.push_back(row);
-                out.cols.push_back(col);
+                out.cols.push_back(static_cast<int>(species));
+                out.rows.push_back(row);
+                out.cols.push_back(static_cast<int>(feed_.size() + species));
             }
         }
         return out;
@@ -1427,11 +1515,10 @@ public:
             for (std::size_t species = 0; species < ncomp; ++species) {
                 const double coefficient =
                     balance_matrix_row_major_[static_cast<std::size_t>(row) * ncomp + species];
+                if (coefficient == 0.0) {
+                    continue;
+                }
                 values.push_back(coefficient * eval.phase1_amounts[species]);
-            }
-            for (std::size_t species = 0; species < ncomp; ++species) {
-                const double coefficient =
-                    balance_matrix_row_major_[static_cast<std::size_t>(row) * ncomp + species];
                 values.push_back(coefficient * eval.phase2_amounts[species]);
             }
         }
@@ -1452,21 +1539,22 @@ public:
                 charges.assign(ncomp, 0.0);
             }
             for (std::size_t species = 0; species < ncomp; ++species) {
-                values.push_back(charges[species] * eval.phase1_amounts[species]);
+                if (charges[species] != 0.0) {
+                    values.push_back(charges[species] * eval.phase1_amounts[species]);
+                }
             }
             for (std::size_t species = 0; species < ncomp; ++species) {
-                values.push_back(0.0);
-            }
-            for (std::size_t species = 0; species < ncomp; ++species) {
-                values.push_back(0.0);
-            }
-            for (std::size_t species = 0; species < ncomp; ++species) {
-                values.push_back(charges[species] * eval.phase2_amounts[species]);
+                if (charges[species] != 0.0) {
+                    values.push_back(charges[species] * eval.phase2_amounts[species]);
+                }
             }
         }
         if (separation_constraint_count() > 0) {
             const std::vector<double> separation_jacobian = phase_separation_jacobian(variables);
-            values.insert(values.end(), separation_jacobian.begin(), separation_jacobian.end());
+            for (std::size_t species = 0; species < ncomp; ++species) {
+                values.push_back(separation_jacobian[species]);
+                values.push_back(separation_jacobian[ncomp + species]);
+            }
         }
         return values;
     }
@@ -1772,6 +1860,39 @@ epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosPostsolve reactive_liquid_r
     return out;
 }
 
+int reactive_route_quality(const epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult& result) {
+    if (result.accepted) {
+        return 3;
+    }
+    if (result.solver_accepted) {
+        return 2;
+    }
+    if (result.ran) {
+        return 1;
+    }
+    return 0;
+}
+
+epcsaft::native::equilibrium_nlp::RouteSeedAttempt reactive_seed_attempt_from_result(
+    const epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult& result
+) {
+    epcsaft::native::equilibrium_nlp::RouteSeedAttempt out;
+    out.seed_name = result.seed_name;
+    out.status = result.status;
+    out.solver_status = result.solver_status;
+    out.application_status = result.application_status;
+    out.solver_accepted = result.solver_accepted;
+    out.accepted = result.accepted;
+    out.iteration_count = result.iteration_count;
+    out.objective = result.objective;
+    out.phase_distance = result.postsolve.phase_distance;
+    out.conserved_balance_norm = result.postsolve.conserved_balance_norm;
+    out.charge_balance_norm = result.postsolve.charge_balance_norm;
+    out.phase_equilibrium_norm = result.postsolve.phase_equilibrium_norm;
+    out.reaction_stationarity_norm = result.postsolve.reaction_stationarity_norm;
+    return out;
+}
+
 }  // namespace
 
 epcsaft::native::equilibrium_nlp::NeutralTwoPhaseEosNlpContract evaluate_reactive_phase_liquid_root_nlp_contract_native(
@@ -1831,19 +1952,19 @@ epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult solve_reactive_
 ) {
     const epcsaft::native::equilibrium_nlp::IpoptAdapterInfo adapter =
         epcsaft::native::equilibrium_nlp::native_ipopt_adapter_info();
-    epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult out;
-    out.compiled = adapter.compiled;
-    out.adapter_available = adapter.adapter_available;
-    out.adapter_kind = adapter.adapter_kind;
-    out.exact_gradient_required = adapter.exact_gradient_required;
-    out.exact_jacobian_required = adapter.exact_jacobian_required;
-    out.problem_name = "reactive_liquid_root_eos";
-    out.derivative_backend = "cppad_implicit";
-    out.postsolve.derivative_backend = "cppad_implicit";
-    out.postsolve.density_backend = "liquid_pressure_root";
+    epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult best;
+    best.compiled = adapter.compiled;
+    best.adapter_available = adapter.adapter_available;
+    best.adapter_kind = adapter.adapter_kind;
+    best.exact_gradient_required = adapter.exact_gradient_required;
+    best.exact_jacobian_required = adapter.exact_jacobian_required;
+    best.problem_name = "reactive_liquid_root_eos";
+    best.derivative_backend = "cppad_implicit";
+    best.postsolve.derivative_backend = "cppad_implicit";
+    best.postsolve.density_backend = "liquid_pressure_root";
     if (!adapter.compiled) {
-        out.status = "ipopt_dependency_required";
-        return out;
+        best.status = "ipopt_dependency_required";
+        return best;
     }
 
     const ReactiveLiquidRootTwoPhaseProblem problem(
@@ -1862,40 +1983,104 @@ epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult solve_reactive_
         reaction_phase_stoichiometry_row_major,
         phase_distance_tolerance
     );
-    out.phase_count = 2;
-    out.species_count = static_cast<int>(problem.feed().size());
-    out.balance_row_count = problem.balance_row_count();
-    out.reaction_count = problem.reaction_count();
-    const epcsaft::native::equilibrium_nlp::IpoptSolveResult solve =
-        epcsaft::native::equilibrium_nlp::solve_ipopt_nlp(problem, solve_options);
-    out.ran = solve.solver_ran;
-    out.solver_accepted = solve.accepted;
-    out.accepted = solve.accepted;
-    out.solver_status = solve.solver_status;
-    out.application_status = solve.application_status;
-    epcsaft::native::equilibrium_nlp::apply_ipopt_solve_metadata(out, solve);
-    out.objective = solve.objective;
-    out.variables = solve.variables;
-    out.constraints = solve.constraints;
-    out.status = solve.accepted ? "accepted" : "solver_rejected";
-    if (!solve.accepted) {
-        return out;
+    best.phase_count = 2;
+    best.species_count = static_cast<int>(problem.feed().size());
+    best.balance_row_count = problem.balance_row_count();
+    best.reaction_count = problem.reaction_count();
+    const std::vector<NamedInitialVariables> seeds = reactive_liquid_root_seed_candidates(
+        problem.feed(),
+        mixture->args().z,
+        equilibrium_options.min_composition
+    );
+    bool have_best = false;
+    std::vector<epcsaft::native::equilibrium_nlp::RouteSeedAttempt> attempts;
+    attempts.reserve(seeds.size() + (solve_options.initial_variables.empty() ? 0 : 1));
+
+    auto run_attempt = [&](
+        const std::string& seed_name,
+        const epcsaft::native::equilibrium_nlp::IpoptSolveOptions& attempt_options
+    ) {
+        const epcsaft::native::equilibrium_nlp::IpoptSolveResult solve =
+            epcsaft::native::equilibrium_nlp::solve_ipopt_nlp(problem, attempt_options);
+        epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult result;
+        result.compiled = adapter.compiled;
+        result.adapter_available = adapter.adapter_available;
+        result.adapter_kind = adapter.adapter_kind;
+        result.exact_gradient_required = adapter.exact_gradient_required;
+        result.exact_jacobian_required = adapter.exact_jacobian_required;
+        result.problem_name = "reactive_liquid_root_eos";
+        result.derivative_backend = "cppad_implicit";
+        result.postsolve.derivative_backend = "cppad_implicit";
+        result.postsolve.density_backend = "liquid_pressure_root";
+        result.initial_point_strategy = "deterministic_multistart";
+        result.seed_name = seed_name;
+        result.phase_count = 2;
+        result.species_count = static_cast<int>(problem.feed().size());
+        result.balance_row_count = problem.balance_row_count();
+        result.reaction_count = problem.reaction_count();
+        result.ran = solve.solver_ran;
+        result.solver_accepted = solve.accepted;
+        result.accepted = solve.accepted;
+        result.solver_status = solve.solver_status;
+        result.application_status = solve.application_status;
+        epcsaft::native::equilibrium_nlp::apply_ipopt_solve_metadata(result, solve);
+        result.objective = solve.objective;
+        result.variables = solve.variables;
+        result.constraints = solve.constraints;
+        result.status = solve.accepted ? "accepted" : "solver_rejected";
+        if (!solve.accepted) {
+            attempts.push_back(reactive_seed_attempt_from_result(result));
+            if (!have_best || reactive_route_quality(result) > reactive_route_quality(best)) {
+                best = result;
+                have_best = true;
+            }
+            return result;
+        }
+
+        const ReactivePhaseResidualEvaluationNative eval = problem.evaluate(solve.variables);
+        result.phase_amounts = phase_amounts_from_reactive_eval(eval);
+        result.postsolve = reactive_liquid_root_postsolve_from_eval(
+            problem,
+            eval,
+            conserved_balance_tolerance,
+            reaction_tolerance,
+            phase_equilibrium_tolerance,
+            phase_distance_tolerance
+        );
+        result.phase_volumes = result.postsolve.phase_volumes;
+        result.accepted = result.postsolve.accepted;
+        result.status = result.accepted ? "accepted" : "postsolve_rejected";
+        attempts.push_back(reactive_seed_attempt_from_result(result));
+        if (!have_best || reactive_route_quality(result) > reactive_route_quality(best)) {
+            best = result;
+            have_best = true;
+        }
+        return result;
+    };
+
+    if (!solve_options.initial_variables.empty()) {
+        const auto continuation = run_attempt("continuation_state", solve_options);
+        if (continuation.accepted) {
+            best.seed_attempts = attempts;
+            return best;
+        }
     }
 
-    const ReactivePhaseResidualEvaluationNative eval = problem.evaluate(solve.variables);
-    out.phase_amounts = phase_amounts_from_reactive_eval(eval);
-    out.postsolve = reactive_liquid_root_postsolve_from_eval(
-        problem,
-        eval,
-        conserved_balance_tolerance,
-        reaction_tolerance,
-        phase_equilibrium_tolerance,
-        phase_distance_tolerance
-    );
-    out.phase_volumes = out.postsolve.phase_volumes;
-    out.accepted = out.postsolve.accepted;
-    out.status = out.accepted ? "accepted" : "postsolve_rejected";
-    return out;
+    for (const auto& seed : seeds) {
+        epcsaft::native::equilibrium_nlp::IpoptSolveOptions attempt_options = solve_options;
+        attempt_options.initial_variables = seed.variables;
+        attempt_options.initial_bound_lower_multipliers.clear();
+        attempt_options.initial_bound_upper_multipliers.clear();
+        attempt_options.initial_constraint_multipliers.clear();
+        const auto attempt = run_attempt(seed.seed_name, attempt_options);
+        if (attempt.accepted) {
+            break;
+        }
+    }
+
+    best.initial_point_strategy = "deterministic_multistart";
+    best.seed_attempts = attempts;
+    return best;
 }
 
 epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult solve_reactive_phase_liquid_root_phase_model_route_native(
@@ -1924,19 +2109,19 @@ epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult solve_reactive_
 ) {
     const epcsaft::native::equilibrium_nlp::IpoptAdapterInfo adapter =
         epcsaft::native::equilibrium_nlp::native_ipopt_adapter_info();
-    epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult out;
-    out.compiled = adapter.compiled;
-    out.adapter_available = adapter.adapter_available;
-    out.adapter_kind = adapter.adapter_kind;
-    out.exact_gradient_required = adapter.exact_gradient_required;
-    out.exact_jacobian_required = adapter.exact_jacobian_required;
-    out.problem_name = "reactive_liquid_root_eos";
-    out.derivative_backend = "cppad_implicit";
-    out.postsolve.derivative_backend = "cppad_implicit";
-    out.postsolve.density_backend = "liquid_pressure_root";
+    epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult best;
+    best.compiled = adapter.compiled;
+    best.adapter_available = adapter.adapter_available;
+    best.adapter_kind = adapter.adapter_kind;
+    best.exact_gradient_required = adapter.exact_gradient_required;
+    best.exact_jacobian_required = adapter.exact_jacobian_required;
+    best.problem_name = "reactive_liquid_root_eos";
+    best.derivative_backend = "cppad_implicit";
+    best.postsolve.derivative_backend = "cppad_implicit";
+    best.postsolve.density_backend = "liquid_pressure_root";
     if (!adapter.compiled) {
-        out.status = "ipopt_dependency_required";
-        return out;
+        best.status = "ipopt_dependency_required";
+        return best;
     }
 
     const ReactiveLiquidRootTwoPhaseProblem problem(
@@ -1959,38 +2144,104 @@ epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult solve_reactive_
         phase2_mixture,
         phase2_global_indices
     );
-    out.phase_count = 2;
-    out.species_count = static_cast<int>(problem.feed().size());
-    out.balance_row_count = problem.balance_row_count();
-    out.reaction_count = problem.reaction_count();
-    const epcsaft::native::equilibrium_nlp::IpoptSolveResult solve =
-        epcsaft::native::equilibrium_nlp::solve_ipopt_nlp(problem, solve_options);
-    out.ran = solve.solver_ran;
-    out.solver_accepted = solve.accepted;
-    out.accepted = solve.accepted;
-    out.solver_status = solve.solver_status;
-    out.application_status = solve.application_status;
-    epcsaft::native::equilibrium_nlp::apply_ipopt_solve_metadata(out, solve);
-    out.objective = solve.objective;
-    out.variables = solve.variables;
-    out.constraints = solve.constraints;
-    out.status = solve.accepted ? "accepted" : "solver_rejected";
-    if (!solve.accepted) {
-        return out;
+    best.phase_count = 2;
+    best.species_count = static_cast<int>(problem.feed().size());
+    best.balance_row_count = problem.balance_row_count();
+    best.reaction_count = problem.reaction_count();
+    const std::vector<NamedInitialVariables> seeds = reactive_phase_model_seed_candidates(
+        problem.feed(),
+        phase1_global_indices,
+        phase2_global_indices,
+        mixture->args().z,
+        equilibrium_options.min_composition
+    );
+    bool have_best = false;
+    std::vector<epcsaft::native::equilibrium_nlp::RouteSeedAttempt> attempts;
+    attempts.reserve(seeds.size() + (solve_options.initial_variables.empty() ? 0 : 1));
+
+    auto run_attempt = [&](
+        const std::string& seed_name,
+        const epcsaft::native::equilibrium_nlp::IpoptSolveOptions& attempt_options
+    ) {
+        const epcsaft::native::equilibrium_nlp::IpoptSolveResult solve =
+            epcsaft::native::equilibrium_nlp::solve_ipopt_nlp(problem, attempt_options);
+        epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult result;
+        result.compiled = adapter.compiled;
+        result.adapter_available = adapter.adapter_available;
+        result.adapter_kind = adapter.adapter_kind;
+        result.exact_gradient_required = adapter.exact_gradient_required;
+        result.exact_jacobian_required = adapter.exact_jacobian_required;
+        result.problem_name = "reactive_liquid_root_eos";
+        result.derivative_backend = "cppad_implicit";
+        result.postsolve.derivative_backend = "cppad_implicit";
+        result.postsolve.density_backend = "liquid_pressure_root";
+        result.initial_point_strategy = "deterministic_multistart";
+        result.seed_name = seed_name;
+        result.phase_count = 2;
+        result.species_count = static_cast<int>(problem.feed().size());
+        result.balance_row_count = problem.balance_row_count();
+        result.reaction_count = problem.reaction_count();
+        result.ran = solve.solver_ran;
+        result.solver_accepted = solve.accepted;
+        result.accepted = solve.accepted;
+        result.solver_status = solve.solver_status;
+        result.application_status = solve.application_status;
+        epcsaft::native::equilibrium_nlp::apply_ipopt_solve_metadata(result, solve);
+        result.objective = solve.objective;
+        result.variables = solve.variables;
+        result.constraints = solve.constraints;
+        result.status = solve.accepted ? "accepted" : "solver_rejected";
+        if (!solve.accepted) {
+            attempts.push_back(reactive_seed_attempt_from_result(result));
+            if (!have_best || reactive_route_quality(result) > reactive_route_quality(best)) {
+                best = result;
+                have_best = true;
+            }
+            return result;
+        }
+
+        const ReactivePhaseResidualEvaluationNative eval = problem.evaluate(solve.variables);
+        result.phase_amounts = phase_amounts_from_reactive_eval(eval);
+        result.postsolve = reactive_liquid_root_postsolve_from_eval(
+            problem,
+            eval,
+            conserved_balance_tolerance,
+            reaction_tolerance,
+            phase_equilibrium_tolerance,
+            phase_distance_tolerance
+        );
+        result.phase_volumes = result.postsolve.phase_volumes;
+        result.accepted = result.postsolve.accepted;
+        result.status = result.accepted ? "accepted" : "postsolve_rejected";
+        attempts.push_back(reactive_seed_attempt_from_result(result));
+        if (!have_best || reactive_route_quality(result) > reactive_route_quality(best)) {
+            best = result;
+            have_best = true;
+        }
+        return result;
+    };
+
+    if (!solve_options.initial_variables.empty()) {
+        const auto continuation = run_attempt("continuation_state", solve_options);
+        if (continuation.accepted) {
+            best.seed_attempts = attempts;
+            return best;
+        }
     }
 
-    const ReactivePhaseResidualEvaluationNative eval = problem.evaluate(solve.variables);
-    out.phase_amounts = phase_amounts_from_reactive_eval(eval);
-    out.postsolve = reactive_liquid_root_postsolve_from_eval(
-        problem,
-        eval,
-        conserved_balance_tolerance,
-        reaction_tolerance,
-        phase_equilibrium_tolerance,
-        phase_distance_tolerance
-    );
-    out.phase_volumes = out.postsolve.phase_volumes;
-    out.accepted = out.postsolve.accepted;
-    out.status = out.accepted ? "accepted" : "postsolve_rejected";
-    return out;
+    for (const auto& seed : seeds) {
+        epcsaft::native::equilibrium_nlp::IpoptSolveOptions attempt_options = solve_options;
+        attempt_options.initial_variables = seed.variables;
+        attempt_options.initial_bound_lower_multipliers.clear();
+        attempt_options.initial_bound_upper_multipliers.clear();
+        attempt_options.initial_constraint_multipliers.clear();
+        const auto attempt = run_attempt(seed.seed_name, attempt_options);
+        if (attempt.accepted) {
+            break;
+        }
+    }
+
+    best.initial_point_strategy = "deterministic_multistart";
+    best.seed_attempts = attempts;
+    return best;
 }

@@ -22,6 +22,11 @@ def test_electrolyte_bubble_pressure_builds_native_route_before_ipopt_gate(monke
         "charge_tolerance",
         "hessian_mode",
         "ipopt_iteration_history_limit",
+        "ipopt_linear_solver",
+        "ipopt_acceptable_tolerance",
+        "ipopt_constraint_violation_tolerance",
+        "ipopt_dual_infeasibility_tolerance",
+        "ipopt_complementarity_tolerance",
         "continuation_state",
     }
     mix = _salt_mixture()
@@ -41,6 +46,7 @@ def test_electrolyte_bubble_pressure_builds_native_route_before_ipopt_gate(monke
         chemical_potential_tolerance,
         phase_distance_tolerance,
         continuation_state,
+        **ipopt_controls,
     ):
         calls.append(
             {
@@ -54,6 +60,7 @@ def test_electrolyte_bubble_pressure_builds_native_route_before_ipopt_gate(monke
                 "charge_tolerance": charge_tolerance,
                 "chemical_potential_tolerance": chemical_potential_tolerance,
                 "phase_distance_tolerance": phase_distance_tolerance,
+                "ipopt_controls": ipopt_controls,
             }
         )
         return {
@@ -76,6 +83,13 @@ def test_electrolyte_bubble_pressure_builds_native_route_before_ipopt_gate(monke
             volatile_species=["H2O"],
             nonvolatile_species=["Na+", "Cl-"],
             backend="native",
+            options=epcsaft.ElectrolyteBubbleOptions(
+                ipopt_linear_solver="mumps",
+                ipopt_acceptable_tolerance=9.0e-7,
+                ipopt_constraint_violation_tolerance=8.0e-8,
+                ipopt_dual_infeasibility_tolerance=7.0e-8,
+                ipopt_complementarity_tolerance=6.0e-8,
+            ),
         )
 
     assert len(calls) == 1
@@ -89,6 +103,11 @@ def test_electrolyte_bubble_pressure_builds_native_route_before_ipopt_gate(monke
     assert call["charge_tolerance"] == pytest.approx(1.0e-8)
     assert call["chemical_potential_tolerance"] == pytest.approx(1.0e-6)
     assert call["phase_distance_tolerance"] > 0.0
+    assert call["ipopt_controls"]["linear_solver"] == "mumps"
+    assert call["ipopt_controls"]["acceptable_tolerance"] == pytest.approx(9.0e-7)
+    assert call["ipopt_controls"]["constraint_violation_tolerance"] == pytest.approx(8.0e-8)
+    assert call["ipopt_controls"]["dual_infeasibility_tolerance"] == pytest.approx(7.0e-8)
+    assert call["ipopt_controls"]["complementarity_tolerance"] == pytest.approx(6.0e-8)
 
 
 def test_electrolyte_bubble_pressure_rejects_python_backend_alias() -> None:

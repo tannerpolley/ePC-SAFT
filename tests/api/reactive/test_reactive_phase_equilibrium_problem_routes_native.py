@@ -48,8 +48,9 @@ def test_reactive_phase_equilibrium_problem_requires_native_ipopt_route(monkeypa
     def fail_if_staged(*_args, **_kwargs):
         raise AssertionError("ReactivePhaseEquilibriumProblem must not call the staged helper")
 
-    def native_gate(*args):
+    def native_gate(*args, **kwargs):
         captured["args"] = args
+        captured["kwargs"] = kwargs
         return {
             "backend": "ipopt",
             "compiled": False,
@@ -71,7 +72,13 @@ def test_reactive_phase_equilibrium_problem_requires_native_ipopt_route(monkeypa
         totals={"total": 1.0},
         reactions=[reaction],
         phase_kind="lle_flash",
-        phase_options=epcsaft.EquilibriumOptions(max_iterations=80, tolerance=1.0e-8, min_composition=1.0e-12),
+        phase_options=epcsaft.EquilibriumOptions(
+            max_iterations=80,
+            tolerance=1.0e-8,
+            min_composition=1.0e-12,
+            ipopt_linear_solver="mumps",
+            ipopt_acceptable_tolerance=9.0e-7,
+        ),
     )
 
     with pytest.raises(epcsaft.InputError, match="native Ipopt reactive phase-equilibrium NLP route"):
@@ -88,6 +95,11 @@ def test_reactive_phase_equilibrium_problem_requires_native_ipopt_route(monkeypa
     assert args[7] == 1
     assert args[8] == pytest.approx([-1.0, 1.0])
     assert args[9] == pytest.approx([-0.079259405371])
+    assert captured["kwargs"]["linear_solver"] == "mumps"
+    assert captured["kwargs"]["acceptable_tolerance"] == pytest.approx(9.0e-7)
+    assert captured["kwargs"]["constraint_violation_tolerance"] == pytest.approx(1.0e-8)
+    assert captured["kwargs"]["dual_infeasibility_tolerance"] == pytest.approx(1.0e-8)
+    assert captured["kwargs"]["complementarity_tolerance"] == pytest.approx(1.0e-8)
 
 
 def test_reactive_phase_equilibrium_problem_rejects_non_lle_production_kind() -> None:

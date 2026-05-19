@@ -71,6 +71,11 @@ class EquilibriumOptions:
     timeout_seconds: float | None = None
     hessian_mode: Literal["auto", "exact", "limited-memory"] = "auto"
     ipopt_iteration_history_limit: int = 20
+    ipopt_linear_solver: str = "auto"
+    ipopt_acceptable_tolerance: float | None = None
+    ipopt_constraint_violation_tolerance: float | None = None
+    ipopt_dual_infeasibility_tolerance: float | None = None
+    ipopt_complementarity_tolerance: float | None = None
     continuation_state: Mapping[str, Any] | None = None
 
 
@@ -799,6 +804,11 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
             "timeout_seconds",
             "hessian_mode",
             "ipopt_iteration_history_limit",
+            "ipopt_linear_solver",
+            "ipopt_acceptable_tolerance",
+            "ipopt_constraint_violation_tolerance",
+            "ipopt_dual_infeasibility_tolerance",
+            "ipopt_complementarity_tolerance",
             "continuation_state",
         }
         unknown = sorted(set(raw) - allowed)
@@ -835,6 +845,25 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
     ipopt_iteration_history_limit = int(options.ipopt_iteration_history_limit)
     if ipopt_iteration_history_limit < 0:
         raise InputError("options.ipopt_iteration_history_limit must be an integer greater than or equal to zero.")
+    ipopt_linear_solver = str(options.ipopt_linear_solver).strip().lower()
+    if not ipopt_linear_solver:
+        raise InputError("options.ipopt_linear_solver must be a non-empty string.")
+    ipopt_acceptable_tolerance = _optional_positive_float_option(
+        options.ipopt_acceptable_tolerance,
+        "ipopt_acceptable_tolerance",
+    )
+    ipopt_constraint_violation_tolerance = _optional_positive_float_option(
+        options.ipopt_constraint_violation_tolerance,
+        "ipopt_constraint_violation_tolerance",
+    )
+    ipopt_dual_infeasibility_tolerance = _optional_positive_float_option(
+        options.ipopt_dual_infeasibility_tolerance,
+        "ipopt_dual_infeasibility_tolerance",
+    )
+    ipopt_complementarity_tolerance = _optional_positive_float_option(
+        options.ipopt_complementarity_tolerance,
+        "ipopt_complementarity_tolerance",
+    )
     continuation_state = options.continuation_state
     if continuation_state is not None and not isinstance(continuation_state, Mapping):
         raise InputError("options.continuation_state must be a mapping when provided.")
@@ -847,6 +876,11 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
         timeout_seconds=timeout_seconds,
         hessian_mode=hessian_mode,  # type: ignore[arg-type]
         ipopt_iteration_history_limit=ipopt_iteration_history_limit,
+        ipopt_linear_solver=ipopt_linear_solver,
+        ipopt_acceptable_tolerance=ipopt_acceptable_tolerance,
+        ipopt_constraint_violation_tolerance=ipopt_constraint_violation_tolerance,
+        ipopt_dual_infeasibility_tolerance=ipopt_dual_infeasibility_tolerance,
+        ipopt_complementarity_tolerance=ipopt_complementarity_tolerance,
         continuation_state=None if continuation_state is None else dict(continuation_state),
     )
 
@@ -873,8 +907,42 @@ def _native_timeout_seconds(options: EquilibriumOptions) -> float:
     return 0.0 if options.timeout_seconds is None else float(options.timeout_seconds)
 
 
+def _resolved_ipopt_acceptable_tolerance(options: EquilibriumOptions) -> float:
+    if options.ipopt_acceptable_tolerance is not None:
+        return float(options.ipopt_acceptable_tolerance)
+    return max(100.0 * float(options.tolerance), 1.0e-10)
+
+
+def _resolved_ipopt_constraint_violation_tolerance(options: EquilibriumOptions) -> float:
+    if options.ipopt_constraint_violation_tolerance is not None:
+        return float(options.ipopt_constraint_violation_tolerance)
+    return float(options.tolerance)
+
+
+def _resolved_ipopt_dual_infeasibility_tolerance(options: EquilibriumOptions) -> float:
+    if options.ipopt_dual_infeasibility_tolerance is not None:
+        return float(options.ipopt_dual_infeasibility_tolerance)
+    return float(options.tolerance)
+
+
+def _resolved_ipopt_complementarity_tolerance(options: EquilibriumOptions) -> float:
+    if options.ipopt_complementarity_tolerance is not None:
+        return float(options.ipopt_complementarity_tolerance)
+    return float(options.tolerance)
+
+
 def _native_ipopt_option_args(options: EquilibriumOptions) -> tuple[str, int]:
     return options.hessian_mode, int(options.ipopt_iteration_history_limit)
+
+
+def _native_ipopt_control_kwargs(options: EquilibriumOptions) -> dict[str, Any]:
+    return {
+        "linear_solver": str(options.ipopt_linear_solver),
+        "acceptable_tolerance": _resolved_ipopt_acceptable_tolerance(options),
+        "constraint_violation_tolerance": _resolved_ipopt_constraint_violation_tolerance(options),
+        "dual_infeasibility_tolerance": _resolved_ipopt_dual_infeasibility_tolerance(options),
+        "complementarity_tolerance": _resolved_ipopt_complementarity_tolerance(options),
+    }
 
 
 def _continuation_json_like(value: Any) -> Any:
@@ -1398,6 +1466,7 @@ def _native_neutral_fixed_temperature_pressure(
         *_native_ipopt_option_args(options),
         *route_tolerances,
         continuation_state,
+        **_native_ipopt_control_kwargs(options),
     )
     if str(route.get("status", "")) == "ipopt_dependency_required":
         _raise_native_ipopt_equilibrium_required(route_label)
@@ -1456,6 +1525,7 @@ def _native_neutral_fixed_pressure_temperature(
         *_native_ipopt_option_args(options),
         *route_tolerances,
         continuation_state,
+        **_native_ipopt_control_kwargs(options),
     )
     if str(route.get("status", "")) == "ipopt_dependency_required":
         _raise_native_ipopt_equilibrium_required(route_label)
@@ -1508,6 +1578,7 @@ def _native_neutral_tp_flash(
         *_native_ipopt_option_args(options),
         *tolerances,
         continuation_state,
+        **_native_ipopt_control_kwargs(options),
     )
     if str(route.get("status", "")) == "ipopt_dependency_required":
         _raise_native_ipopt_tp_flash_required()
@@ -1553,6 +1624,7 @@ def _native_neutral_lle_flash(
         *_native_ipopt_option_args(options),
         *tolerances,
         continuation_state,
+        **_native_ipopt_control_kwargs(options),
     )
     if str(route.get("status", "")) == "ipopt_dependency_required":
         _raise_native_ipopt_lle_required("lle_flash")
@@ -1645,6 +1717,7 @@ def _native_reactive_two_phase_flash(
             request["reaction_standard_states"],
             request["reaction_phase_stoichiometry"],
             continuation_state,
+            **_native_ipopt_control_kwargs(options),
         )
     else:
         route = getattr(_core, route_binding)(
@@ -1670,6 +1743,7 @@ def _native_reactive_two_phase_flash(
             request["reaction_standard_states"],
             request["reaction_phase_stoichiometry"],
             continuation_state,
+            **_native_ipopt_control_kwargs(options),
         )
     if str(route.get("status", "")) == "ipopt_dependency_required":
         _raise_native_ipopt_reactive_phase_required(required_route)
@@ -1781,6 +1855,7 @@ def _native_neutral_stability(
                 options.tolerance,
                 [],
                 continuation_state,
+                **_native_ipopt_control_kwargs(options),
             )
             if str(route.get("status", "")) == "ipopt_dependency_required":
                 _raise_native_ipopt_stability_required("stability")
@@ -1866,6 +1941,7 @@ def _native_electrolyte_stability(
         options.tolerance,
         [],
         continuation_state,
+        **_native_ipopt_control_kwargs(options),
     )
     if str(route.get("status", "")) == "ipopt_dependency_required":
         _raise_native_ipopt_stability_required("electrolyte_stability")
@@ -2025,6 +2101,7 @@ def _electrolyte_lle_tpdf_certificate(
                     stability_tolerance,
                     np.asarray(trial_seed, dtype=float).tolist(),
                     None,
+                    **_native_ipopt_control_kwargs(options),
                 )
             except Exception as exc:
                 trial_records.append(
@@ -2054,6 +2131,7 @@ def _electrolyte_lle_tpdf_certificate(
                             stability_tolerance,
                             restart.tolist(),
                             None,
+                            **_native_ipopt_control_kwargs(options),
                         )
                         restart_count = 1
                     except Exception:
@@ -2412,7 +2490,12 @@ def _equilibrium_options_from_reactive_options(options: Any) -> EquilibriumOptio
         jacobian_backend=str(options.jacobian_backend),
         solver_backend="auto",
         hessian_mode="auto",
-        ipopt_iteration_history_limit=20,
+        ipopt_iteration_history_limit=int(options.ipopt_iteration_history_limit),
+        ipopt_linear_solver=str(options.ipopt_linear_solver),
+        ipopt_acceptable_tolerance=options.ipopt_acceptable_tolerance,
+        ipopt_constraint_violation_tolerance=options.ipopt_constraint_violation_tolerance,
+        ipopt_dual_infeasibility_tolerance=options.ipopt_dual_infeasibility_tolerance,
+        ipopt_complementarity_tolerance=options.ipopt_complementarity_tolerance,
     )
 
 
@@ -2703,6 +2786,7 @@ def electrolyte_lle_flash_native(
             chemical_potential_tolerance,
             phase_distance_tolerance,
             continuation_state,
+            **_native_ipopt_control_kwargs(route_options),
         )
         return route_result, route_tolerances
 

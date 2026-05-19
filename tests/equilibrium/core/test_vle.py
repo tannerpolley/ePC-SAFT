@@ -48,6 +48,7 @@ def test_tp_flash_builds_one_native_route_request_before_ipopt_gate(monkeypatch:
         chemical_potential_tolerance,
         phase_distance_tolerance,
         continuation_state,
+        **ipopt_controls,
     ):
         calls.append(
             {
@@ -61,6 +62,7 @@ def test_tp_flash_builds_one_native_route_request_before_ipopt_gate(monkeypatch:
                 "pressure_tolerance": pressure_tolerance,
                 "chemical_potential_tolerance": chemical_potential_tolerance,
                 "phase_distance_tolerance": phase_distance_tolerance,
+                "ipopt_controls": ipopt_controls,
             }
         )
         return {
@@ -80,7 +82,13 @@ def test_tp_flash_builds_one_native_route_request_before_ipopt_gate(monkeypatch:
             T=220.0,
             P=1.0e5,
             z=feed,
-            options=epcsaft.EquilibriumOptions(max_iterations=17, tolerance=2.0e-7, timeout_seconds=6.5),
+            options=epcsaft.EquilibriumOptions(
+                max_iterations=17,
+                tolerance=2.0e-7,
+                timeout_seconds=6.5,
+                ipopt_linear_solver="ma57",
+                ipopt_acceptable_tolerance=5.0e-6,
+            ),
         )
 
     _assert_tp_flash_native_ipopt_gate(excinfo)
@@ -90,6 +98,11 @@ def test_tp_flash_builds_one_native_route_request_before_ipopt_gate(monkeypatch:
     assert call["max_iterations"] == 17
     assert call["tolerance"] == pytest.approx(2.0e-7)
     assert call["timeout_seconds"] == pytest.approx(6.5)
+    assert call["ipopt_controls"]["linear_solver"] == "ma57"
+    assert call["ipopt_controls"]["acceptable_tolerance"] == pytest.approx(5.0e-6)
+    assert call["ipopt_controls"]["constraint_violation_tolerance"] == pytest.approx(2.0e-7)
+    assert call["ipopt_controls"]["dual_infeasibility_tolerance"] == pytest.approx(2.0e-7)
+    assert call["ipopt_controls"]["complementarity_tolerance"] == pytest.approx(2.0e-7)
 
 
 def test_tp_flash_converts_accepted_native_route_payload(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -113,6 +126,7 @@ def test_tp_flash_converts_accepted_native_route_payload(monkeypatch: pytest.Mon
         chemical_potential_tolerance,
         phase_distance_tolerance,
         continuation_state,
+        **_ipopt_controls,
     ):
         assert temperature == pytest.approx(220.0)
         assert pressure == pytest.approx(1.0e5)
@@ -212,7 +226,7 @@ def test_tp_flash_rejected_native_route_uses_common_route_diagnostics(
     mix = _hydrocarbon_basis_mixture()
     feed = np.asarray([0.1, 0.3, 0.6])
 
-    def fake_route(_native, *route_args):
+    def fake_route(_native, *route_args, **_ipopt_controls):
         return {
             "backend": "ipopt",
             "compiled": True,

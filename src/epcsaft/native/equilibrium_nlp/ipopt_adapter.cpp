@@ -3,6 +3,7 @@
 #include "epcsaft_electrolyte.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <exception>
 #include <limits>
@@ -124,6 +125,70 @@ std::string normalize_hessian_mode(const IpoptSolveOptions& options) {
         return mode;
     }
     throw ValueError("Native Ipopt adapter hessian_mode must be 'auto', 'exact', or 'limited-memory'.");
+}
+
+double normalize_positive_tolerance(
+    double value,
+    double default_value,
+    const std::string& label
+) {
+    if (!std::isfinite(default_value) || default_value <= 0.0) {
+        throw ValueError("Native Ipopt adapter requires a positive default tolerance for " + label + ".");
+    }
+    if (value <= 0.0) {
+        return default_value;
+    }
+    if (!std::isfinite(value)) {
+        throw ValueError("Native Ipopt adapter " + label + " must be finite.");
+    }
+    return value;
+}
+
+std::string normalize_linear_solver(std::string value) {
+    if (value.empty()) {
+        return "auto";
+    }
+    std::transform(value.begin(), value.end(), value.begin(), [](unsigned char ch) {
+        return static_cast<char>(std::tolower(ch));
+    });
+    if (value == "auto") {
+        return value;
+    }
+    if (value.find_first_not_of("abcdefghijklmnopqrstuvwxyz0123456789_-") != std::string::npos) {
+        throw ValueError(
+            "Native Ipopt adapter linear_solver must be 'auto' or a non-empty Ipopt solver token."
+        );
+    }
+    return value;
+}
+
+IpoptSolveOptions normalize_ipopt_solve_options(const IpoptSolveOptions& options) {
+    IpoptSolveOptions normalized = options;
+    if (!std::isfinite(normalized.tolerance) || normalized.tolerance <= 0.0) {
+        throw ValueError("Native Ipopt adapter tolerance must be positive and finite.");
+    }
+    normalized.acceptable_tolerance = normalize_positive_tolerance(
+        normalized.acceptable_tolerance,
+        std::max(100.0 * normalized.tolerance, 1.0e-10),
+        "acceptable_tolerance"
+    );
+    normalized.constraint_violation_tolerance = normalize_positive_tolerance(
+        normalized.constraint_violation_tolerance,
+        normalized.tolerance,
+        "constraint_violation_tolerance"
+    );
+    normalized.dual_infeasibility_tolerance = normalize_positive_tolerance(
+        normalized.dual_infeasibility_tolerance,
+        normalized.tolerance,
+        "dual_infeasibility_tolerance"
+    );
+    normalized.complementarity_tolerance = normalize_positive_tolerance(
+        normalized.complementarity_tolerance,
+        normalized.tolerance,
+        "complementarity_tolerance"
+    );
+    normalized.linear_solver = normalize_linear_solver(normalized.linear_solver);
+    return normalized;
 }
 
 #ifdef EPCSAFT_HAS_IPOPT
@@ -287,10 +352,17 @@ public:
         result_.diagnostics_string["hessian_backend"] =
             selected_hessian_mode_ == "exact" ? problem_.hessian_backend() : "limited-memory";
         result_.diagnostics_string["scaling_method"] = "user-scaling";
+        result_.diagnostics_string["linear_solver_requested"] = options_.linear_solver;
+        result_.diagnostics_string["linear_solver_selected"] =
+            options_.linear_solver == "auto" ? "default" : options_.linear_solver;
         result_.diagnostics_int["iteration_history_limit"] = std::max(0, options_.iteration_history_limit);
         result_.diagnostics_int["variable_scaling_count"] = static_cast<int>(scaling_.variables.size());
         result_.diagnostics_int["constraint_scaling_count"] = static_cast<int>(scaling_.constraints.size());
         result_.diagnostics_double["objective_scaling"] = scaling_.objective;
+        result_.diagnostics_double["acceptable_tolerance"] = options_.acceptable_tolerance;
+        result_.diagnostics_double["constraint_violation_tolerance"] = options_.constraint_violation_tolerance;
+        result_.diagnostics_double["dual_infeasibility_tolerance"] = options_.dual_infeasibility_tolerance;
+        result_.diagnostics_double["complementarity_tolerance"] = options_.complementarity_tolerance;
         result_.diagnostics_double["variable_scaling_min"] = vector_min_or_zero(scaling_.variables);
         result_.diagnostics_double["variable_scaling_max"] = vector_max_or_zero(scaling_.variables);
         result_.diagnostics_double["constraint_scaling_min"] = vector_min_or_zero(scaling_.constraints);
@@ -700,13 +772,15 @@ IpoptSolveResult solve_ipopt_nlp(
     const IpoptSolveOptions& options
 ) {
     validate_nlp_problem_shape(problem);
-    const std::string selected_hessian_mode = normalize_hessian_mode(options) == "auto" && problem.has_exact_hessian()
+    const IpoptSolveOptions normalized_options = normalize_ipopt_solve_options(options);
+    const std::string normalized_hessian_mode = normalize_hessian_mode(normalized_options);
+    const std::string selected_hessian_mode = normalized_hessian_mode == "auto" && problem.has_exact_hessian()
         ? "exact"
-        : (normalize_hessian_mode(options) == "auto" ? "limited-memory" : normalize_hessian_mode(options));
+        : (normalized_hessian_mode == "auto" ? "limited-memory" : normalized_hessian_mode);
     if (selected_hessian_mode == "exact" && !problem.has_exact_hessian()) {
         throw ValueError("Native Ipopt exact Hessian mode requires an NLP Hessian provider.");
     }
-    if (!std::isfinite(options.max_wall_time_seconds) || options.max_wall_time_seconds < 0.0) {
+    if (!std::isfinite(normalized_options.max_wall_time_seconds) || normalized_options.max_wall_time_seconds < 0.0) {
         throw ValueError("Native Ipopt adapter requires a non-negative wall-clock timeout.");
     }
 #ifndef EPCSAFT_HAS_IPOPT
@@ -715,35 +789,46 @@ IpoptSolveResult solve_ipopt_nlp(
     throw SolutionError("Native Ipopt adapter requires a build configured with EPCSAFT_ENABLE_IPOPT=ON.");
 #else
     Ipopt::SmartPtr<Ipopt::IpoptApplication> app = IpoptApplicationFactory();
-    app->Options()->SetIntegerValue("print_level", options.print_level);
-    app->Options()->SetIntegerValue("max_iter", options.max_iterations);
-    app->Options()->SetNumericValue("tol", options.tolerance);
-    app->Options()->SetNumericValue("acceptable_tol", options.acceptable_tolerance);
+    app->Options()->SetIntegerValue("print_level", normalized_options.print_level);
+    app->Options()->SetIntegerValue("max_iter", normalized_options.max_iterations);
+    app->Options()->SetNumericValue("tol", normalized_options.tolerance);
+    app->Options()->SetNumericValue("acceptable_tol", normalized_options.acceptable_tolerance);
+    app->Options()->SetNumericValue("constr_viol_tol", normalized_options.constraint_violation_tolerance);
+    app->Options()->SetNumericValue("dual_inf_tol", normalized_options.dual_infeasibility_tolerance);
+    app->Options()->SetNumericValue("compl_inf_tol", normalized_options.complementarity_tolerance);
     app->Options()->SetStringValue("jacobian_approximation", "exact");
     app->Options()->SetStringValue("gradient_approximation", "exact");
     if (selected_hessian_mode == "limited-memory") {
         app->Options()->SetStringValue("hessian_approximation", "limited-memory");
     }
+    if (normalized_options.linear_solver != "auto") {
+        app->Options()->SetStringValue("linear_solver", normalized_options.linear_solver);
+    }
     app->Options()->SetStringValue("nlp_scaling_method", "user-scaling");
     if (
-        !options.initial_bound_lower_multipliers.empty()
-        || !options.initial_bound_upper_multipliers.empty()
-        || !options.initial_constraint_multipliers.empty()
+        !normalized_options.initial_bound_lower_multipliers.empty()
+        || !normalized_options.initial_bound_upper_multipliers.empty()
+        || !normalized_options.initial_constraint_multipliers.empty()
     ) {
         app->Options()->SetStringValue("warm_start_init_point", "yes");
     }
-    if (options.max_wall_time_seconds > 0.0) {
-        app->Options()->SetNumericValue("max_wall_time", options.max_wall_time_seconds);
+    if (normalized_options.max_wall_time_seconds > 0.0) {
+        app->Options()->SetNumericValue("max_wall_time", normalized_options.max_wall_time_seconds);
     }
 
     const Ipopt::ApplicationReturnStatus init_status = app->Initialize();
     if (init_status != Ipopt::Solve_Succeeded) {
         std::ostringstream msg;
-        msg << "Ipopt initialization failed: " << application_status_name(init_status);
+        if (normalized_options.linear_solver != "auto") {
+            msg << "Ipopt initialization failed for linear_solver='" << normalized_options.linear_solver
+                << "': " << application_status_name(init_status);
+        } else {
+            msg << "Ipopt initialization failed: " << application_status_name(init_status);
+        }
         throw SolutionError(msg.str());
     }
 
-    auto* adapter = new IpoptTnlpAdapter(problem, options);
+    auto* adapter = new IpoptTnlpAdapter(problem, normalized_options);
     Ipopt::SmartPtr<Ipopt::TNLP> tnlp = adapter;
     const Ipopt::ApplicationReturnStatus solve_status = app->OptimizeTNLP(tnlp);
     IpoptSolveResult result = adapter->result();

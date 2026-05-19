@@ -269,7 +269,21 @@ public:
     }
 
     int jacobian_nonzero_count() const override {
-        return constraint_count() * request_.species_count;
+        int balance_nonzeros = 0;
+        for (double coefficient : request_.balance_matrix_row_major) {
+            if (coefficient != 0.0) {
+                ++balance_nonzeros;
+            }
+        }
+        int charge_nonzeros = 0;
+        if (include_charge_constraint_) {
+            for (double charge : request_.charges) {
+                if (charge != 0.0) {
+                    ++charge_nonzeros;
+                }
+            }
+        }
+        return balance_nonzeros + charge_nonzeros;
     }
 
     NlpBounds bounds() const override {
@@ -328,12 +342,22 @@ public:
         out.cols.reserve(static_cast<std::size_t>(jacobian_nonzero_count()));
         for (int row = 0; row < request_.balance_rows; ++row) {
             for (int col = 0; col < request_.species_count; ++col) {
+                const double coefficient = request_.balance_matrix_row_major[
+                    static_cast<std::size_t>(row) * static_cast<std::size_t>(request_.species_count)
+                    + static_cast<std::size_t>(col)
+                ];
+                if (coefficient == 0.0) {
+                    continue;
+                }
                 out.rows.push_back(row);
                 out.cols.push_back(col);
             }
         }
         if (include_charge_constraint_) {
             for (int col = 0; col < request_.species_count; ++col) {
+                if (request_.charges[static_cast<std::size_t>(col)] == 0.0) {
+                    continue;
+                }
                 out.rows.push_back(request_.balance_rows);
                 out.cols.push_back(col);
             }
@@ -343,9 +367,26 @@ public:
 
     std::vector<double> jacobian_values(const std::vector<double>& variables) const override {
         (void)variables;
-        std::vector<double> out = request_.balance_matrix_row_major;
+        std::vector<double> out;
+        out.reserve(static_cast<std::size_t>(jacobian_nonzero_count()));
+        for (int row = 0; row < request_.balance_rows; ++row) {
+            for (int col = 0; col < request_.species_count; ++col) {
+                const double coefficient = request_.balance_matrix_row_major[
+                    static_cast<std::size_t>(row) * static_cast<std::size_t>(request_.species_count)
+                    + static_cast<std::size_t>(col)
+                ];
+                if (coefficient == 0.0) {
+                    continue;
+                }
+                out.push_back(coefficient);
+            }
+        }
         if (include_charge_constraint_) {
-            out.insert(out.end(), request_.charges.begin(), request_.charges.end());
+            for (double charge : request_.charges) {
+                if (charge != 0.0) {
+                    out.push_back(charge);
+                }
+            }
         }
         return out;
     }
@@ -642,10 +683,14 @@ ChemicalEquilibriumResultNative solve_ideal_speciation_chemical_equilibrium_ipop
     IpoptSolveOptions solve_options;
     solve_options.max_iterations = options.max_iterations;
     solve_options.tolerance = options.tolerance;
-    solve_options.acceptable_tolerance = std::max(options.tolerance, 10.0 * options.tolerance);
     solve_options.hessian_mode = options.hessian_mode;
     solve_options.limited_memory_hessian = options.hessian_mode != "exact";
     solve_options.iteration_history_limit = options.iteration_history_limit;
+    solve_options.linear_solver = options.linear_solver;
+    solve_options.acceptable_tolerance = options.acceptable_tolerance;
+    solve_options.constraint_violation_tolerance = options.constraint_violation_tolerance;
+    solve_options.dual_infeasibility_tolerance = options.dual_infeasibility_tolerance;
+    solve_options.complementarity_tolerance = options.complementarity_tolerance;
     solve_options.initial_variables = options.initial_variables;
     solve_options.initial_bound_lower_multipliers = options.initial_bound_lower_multipliers;
     solve_options.initial_bound_upper_multipliers = options.initial_bound_upper_multipliers;

@@ -36,8 +36,9 @@ def test_reactive_electrolyte_lle_public_route_requires_native_ipopt(monkeypatch
     mix, feed, reaction = _reactive_electrolyte_lle_fixture()
     captured: dict[str, object] = {}
 
-    def native_gate(*args):
+    def native_gate(*args, **kwargs):
         captured["args"] = args
+        captured["kwargs"] = kwargs
         return {
             "backend": "ipopt",
             "compiled": False,
@@ -71,6 +72,8 @@ def test_reactive_electrolyte_lle_public_route_requires_native_ipopt(monkeypatch
                 max_iterations=80,
                 tolerance=1.0e-8,
                 min_composition=1.0e-12,
+                ipopt_linear_solver="mumps",
+                ipopt_dual_infeasibility_tolerance=5.0e-8,
             ),
         )
 
@@ -83,6 +86,11 @@ def test_reactive_electrolyte_lle_public_route_requires_native_ipopt(monkeypatch
     assert args[6] == pytest.approx([float(feed[0] + feed[1]), float(feed[2]), float(feed[3])])
     assert args[7] == 1
     assert args[8] == pytest.approx([-1.0, 1.0, 0.0, 0.0])
+    assert captured["kwargs"]["linear_solver"] == "mumps"
+    assert captured["kwargs"]["acceptable_tolerance"] == pytest.approx(1.0e-6)
+    assert captured["kwargs"]["constraint_violation_tolerance"] == pytest.approx(1.0e-8)
+    assert captured["kwargs"]["dual_infeasibility_tolerance"] == pytest.approx(5.0e-8)
+    assert captured["kwargs"]["complementarity_tolerance"] == pytest.approx(1.0e-8)
 
 
 def test_reactive_electrolyte_lle_public_route_threads_phase_models(monkeypatch) -> None:
@@ -124,8 +132,9 @@ def test_reactive_electrolyte_lle_public_route_threads_phase_models(monkeypatch)
     )
     captured: dict[str, object] = {}
 
-    def native_gate(*args):
+    def native_gate(*args, **kwargs):
         captured["args"] = args
+        captured["kwargs"] = kwargs
         return {
             "backend": "ipopt",
             "compiled": False,
@@ -156,7 +165,13 @@ def test_reactive_electrolyte_lle_public_route_threads_phase_models(monkeypatch)
             },
             reactions=[reaction],
             phase_models={"aq": aq_model, "org": org_model},
-            phase_options=epcsaft.EquilibriumOptions(max_iterations=80, tolerance=1.0e-8, min_composition=1.0e-12),
+            phase_options=epcsaft.EquilibriumOptions(
+                max_iterations=80,
+                tolerance=1.0e-8,
+                min_composition=1.0e-12,
+                ipopt_linear_solver="ma57",
+                ipopt_constraint_violation_tolerance=7.0e-8,
+            ),
         )
 
     args = captured["args"]
@@ -168,3 +183,8 @@ def test_reactive_electrolyte_lle_public_route_threads_phase_models(monkeypatch)
     assert args[8] == 3
     assert args[11] == 1
     assert args[12] == pytest.approx([-1.0, 1.0, 0.0, 0.0])
+    assert captured["kwargs"]["linear_solver"] == "ma57"
+    assert captured["kwargs"]["acceptable_tolerance"] == pytest.approx(1.0e-6)
+    assert captured["kwargs"]["constraint_violation_tolerance"] == pytest.approx(7.0e-8)
+    assert captured["kwargs"]["dual_infeasibility_tolerance"] == pytest.approx(1.0e-8)
+    assert captured["kwargs"]["complementarity_tolerance"] == pytest.approx(1.0e-8)

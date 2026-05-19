@@ -37,6 +37,8 @@ void apply_stability_ipopt_metadata(StabilityRouteResult& out, const IpoptSolveR
     out.hessian_approximation = solve_string(solve, "hessian_approximation", out.hessian_approximation);
     out.hessian_backend = solve_string(solve, "hessian_backend", out.hessian_backend);
     out.scaling_method = solve_string(solve, "scaling_method", out.scaling_method);
+    out.linear_solver_requested = solve_string(solve, "linear_solver_requested", out.linear_solver_requested);
+    out.linear_solver_selected = solve_string(solve, "linear_solver_selected", out.linear_solver_selected);
     out.iteration_count = solve_int(solve, "iteration_count");
     out.iteration_history_limit = solve_int(solve, "iteration_history_limit");
     out.iteration_history_size = solve_int(solve, "iteration_history_size");
@@ -44,6 +46,13 @@ void apply_stability_ipopt_metadata(StabilityRouteResult& out, const IpoptSolveR
     out.constraint_scaling_count = solve_int(solve, "constraint_scaling_count");
     out.eval_h_calls = solve_int(solve, "eval_h_calls");
     out.objective_scaling = solve_double(solve, "objective_scaling", out.objective_scaling);
+    out.acceptable_tolerance = solve_double(solve, "acceptable_tolerance", out.acceptable_tolerance);
+    out.constraint_violation_tolerance =
+        solve_double(solve, "constraint_violation_tolerance", out.constraint_violation_tolerance);
+    out.dual_infeasibility_tolerance =
+        solve_double(solve, "dual_infeasibility_tolerance", out.dual_infeasibility_tolerance);
+    out.complementarity_tolerance =
+        solve_double(solve, "complementarity_tolerance", out.complementarity_tolerance);
     out.variable_scaling_min = solve_double(solve, "variable_scaling_min", out.variable_scaling_min);
     out.variable_scaling_max = solve_double(solve, "variable_scaling_max", out.variable_scaling_max);
     out.constraint_scaling_min = solve_double(solve, "constraint_scaling_min", out.constraint_scaling_min);
@@ -99,7 +108,7 @@ std::vector<double> normalized_positive_values(const std::vector<double>& values
     return normalized;
 }
 
-std::vector<double> shifted_composition(const std::vector<double>& composition) {
+std::vector<double> shifted_composition(const std::vector<double>& composition, double shift_sign = 1.0) {
     if (composition.size() <= 1) {
         std::vector<double> out;
         out.reserve(composition.size());
@@ -114,7 +123,7 @@ std::vector<double> shifted_composition(const std::vector<double>& composition) 
     double total = 0.0;
     for (std::size_t index = 0; index < composition.size(); ++index) {
         const double direction = static_cast<double>(index + 1) / triangular_sum - 1.0 / static_cast<double>(composition.size());
-        const double value = composition[index] * (1.0 + 0.2 * direction);
+        const double value = composition[index] * (1.0 + 0.2 * shift_sign * direction);
         require_positive_finite(value, "stability route shifted composition");
         shifted.push_back(value);
         total += value;
@@ -124,6 +133,149 @@ std::vector<double> shifted_composition(const std::vector<double>& composition) 
         value /= total;
     }
     return shifted;
+}
+
+std::vector<double> charge_neutral_shifted_composition(
+    const std::vector<double>& composition,
+    const std::vector<double>& charges,
+    const std::string& label,
+    double shift_sign = 1.0
+) {
+    require_size(charges, composition.size(), label + " charge");
+    if (composition.size() <= 1) {
+        throw ValueError(label + " requires at least two species.");
+    }
+    double composition_charge = 0.0;
+    double charge_square_weight = 0.0;
+    for (std::size_t index = 0; index < composition.size(); ++index) {
+        if (!std::isfinite(charges[index])) {
+            throw ValueError(label + " charge values must be finite.");
+        }
+        composition_charge += composition[index] * charges[index];
+        charge_square_weight += composition[index] * charges[index] * charges[index];
+    }
+    if (charge_square_weight <= 0.0) {
+        throw ValueError(label + " requires at least one charged species.");
+    }
+    if (std::abs(composition_charge) > 1.0e-10) {
+        throw ValueError(label + " fixed composition must be charge neutral.");
+    }
+
+    std::vector<double> positions;
+    positions.reserve(composition.size());
+    const double denominator = static_cast<double>(composition.size() - 1);
+    for (std::size_t index = 0; index < composition.size(); ++index) {
+        positions.push_back(-1.0 + 2.0 * static_cast<double>(index) / denominator);
+    }
+    double weighted_position = 0.0;
+    for (std::size_t index = 0; index < composition.size(); ++index) {
+        weighted_position += composition[index] * positions[index];
+    }
+
+    std::vector<double> direction;
+    direction.reserve(composition.size());
+    double charge_direction = 0.0;
+    for (std::size_t index = 0; index < composition.size(); ++index) {
+        const double value = positions[index] - weighted_position;
+        direction.push_back(value);
+        charge_direction += composition[index] * charges[index] * value;
+    }
+    const double charge_projection = charge_direction / charge_square_weight;
+    double max_abs_direction = 0.0;
+    for (std::size_t index = 0; index < direction.size(); ++index) {
+        direction[index] -= charge_projection * charges[index];
+        max_abs_direction = std::max(max_abs_direction, std::abs(direction[index]));
+    }
+    if (max_abs_direction <= 0.0) {
+        throw ValueError(label + " could not construct a charge-neutral initial direction.");
+    }
+
+    std::vector<double> shifted;
+    shifted.reserve(composition.size());
+    double total = 0.0;
+    for (std::size_t index = 0; index < composition.size(); ++index) {
+        const double value =
+            composition[index] * (1.0 + 0.2 * shift_sign * direction[index] / max_abs_direction);
+        require_positive_finite(value, label + " shifted composition");
+        shifted.push_back(value);
+        total += value;
+    }
+    require_positive_finite(total, label + " shifted composition total");
+    for (double& value : shifted) {
+        value /= total;
+    }
+    return shifted;
+}
+
+struct NamedInitialComposition {
+    std::string seed_name;
+    std::vector<double> composition;
+};
+
+std::vector<NamedInitialComposition> stability_seed_candidates(
+    const std::vector<double>& feed_composition,
+    const std::vector<double>& charges,
+    const std::vector<double>& trial_initial_composition
+) {
+    std::vector<NamedInitialComposition> out;
+    if (!trial_initial_composition.empty()) {
+        out.push_back({"provided_trial_initial_composition", trial_initial_composition});
+    }
+    if (charges.empty()) {
+        out.push_back({"canonical_shifted_feed", shifted_composition(feed_composition, 1.0)});
+        out.push_back({"mirrored_shifted_feed", shifted_composition(feed_composition, -1.0)});
+        return out;
+    }
+    out.push_back({
+        "canonical_charge_neutral_feed",
+        charge_neutral_shifted_composition(
+            feed_composition,
+            charges,
+            "stability trial initial composition",
+            1.0
+        )
+    });
+    out.push_back({
+        "mirrored_charge_neutral_feed",
+        charge_neutral_shifted_composition(
+            feed_composition,
+            charges,
+            "stability trial initial composition",
+            -1.0
+        )
+    });
+    return out;
+}
+
+RouteSeedAttempt stability_seed_attempt_from_result(const StabilityRouteResult& result) {
+    RouteSeedAttempt out;
+    out.seed_name = result.seed_name;
+    out.status = result.status;
+    out.solver_status = result.solver_status;
+    out.application_status = result.application_status;
+    out.solver_accepted = result.solver_accepted;
+    out.accepted = result.accepted;
+    out.stable = result.stable;
+    out.iteration_count = result.iteration_count;
+    out.objective = result.objective;
+    out.min_tpd = result.min_tpd;
+    return out;
+}
+
+bool stability_attempt_better(const StabilityRouteResult& candidate, const StabilityRouteResult& current) {
+    if (candidate.accepted != current.accepted) {
+        return candidate.accepted;
+    }
+    if (candidate.accepted && current.accepted) {
+        return candidate.min_tpd < current.min_tpd;
+    }
+    if (candidate.solver_accepted != current.solver_accepted) {
+        return candidate.solver_accepted;
+    }
+    if (candidate.ran != current.ran) {
+        return candidate.ran;
+    }
+    return false;
 }
 
 PhaseStateCompositionSensitivityResult phase_state_sensitivity(
@@ -581,21 +733,66 @@ StabilityRouteResult solve_neutral_stability_tpd_route(
     double stability_tolerance,
     const std::vector<double>& trial_initial_composition
 ) {
-    return solve_stability_tpd_route(
-        args,
-        temperature,
-        pressure,
-        feed_composition,
-        parent_phase,
-        trial_phase,
-        "neutral_stability_tpd",
-        "canonical_shifted_feed",
-        {},
-        false,
-        options,
-        stability_tolerance,
-        trial_initial_composition
-    );
+    const std::vector<NamedInitialComposition> seeds =
+        stability_seed_candidates(feed_composition, {}, trial_initial_composition);
+    StabilityRouteResult best;
+    bool have_best = false;
+    std::vector<RouteSeedAttempt> attempts;
+    attempts.reserve(seeds.size() + (options.initial_variables.empty() ? 0 : 1));
+
+    auto run_attempt = [&](
+        const std::string& seed_name,
+        const std::vector<double>& composition,
+        const IpoptSolveOptions& attempt_options
+    ) {
+        StabilityRouteResult result = solve_stability_tpd_route(
+            args,
+            temperature,
+            pressure,
+            feed_composition,
+            parent_phase,
+            trial_phase,
+            "neutral_stability_tpd",
+            seed_name,
+            {},
+            false,
+            attempt_options,
+            stability_tolerance,
+            composition
+        );
+        result.initial_point_strategy = "deterministic_multistart";
+        attempts.push_back(stability_seed_attempt_from_result(result));
+        if (!have_best || stability_attempt_better(result, best)) {
+            best = result;
+            have_best = true;
+        }
+        return result;
+    };
+
+    if (!options.initial_variables.empty()) {
+        const StabilityRouteResult continuation =
+            run_attempt("continuation_state", trial_initial_composition, options);
+        if (continuation.accepted && !continuation.stable) {
+            best.seed_attempts = attempts;
+            return best;
+        }
+    }
+
+    for (const auto& seed : seeds) {
+        IpoptSolveOptions attempt_options = options;
+        attempt_options.initial_variables.clear();
+        attempt_options.initial_bound_lower_multipliers.clear();
+        attempt_options.initial_bound_upper_multipliers.clear();
+        attempt_options.initial_constraint_multipliers.clear();
+        const StabilityRouteResult attempt = run_attempt(seed.seed_name, seed.composition, attempt_options);
+        if (attempt.accepted && !attempt.stable) {
+            break;
+        }
+    }
+
+    best.initial_point_strategy = "deterministic_multistart";
+    best.seed_attempts = attempts;
+    return best;
 }
 
 StabilityRouteResult solve_electrolyte_stability_tpd_route(
@@ -607,21 +804,66 @@ StabilityRouteResult solve_electrolyte_stability_tpd_route(
     double stability_tolerance,
     const std::vector<double>& trial_initial_composition
 ) {
-    return solve_stability_tpd_route(
-        args,
-        temperature,
-        pressure,
-        feed_composition,
-        0,
-        0,
-        "electrolyte_stability_tpd",
-        "canonical_charge_neutral_feed",
-        args.z,
-        true,
-        options,
-        stability_tolerance,
-        trial_initial_composition
-    );
+    const std::vector<NamedInitialComposition> seeds =
+        stability_seed_candidates(feed_composition, args.z, trial_initial_composition);
+    StabilityRouteResult best;
+    bool have_best = false;
+    std::vector<RouteSeedAttempt> attempts;
+    attempts.reserve(seeds.size() + (options.initial_variables.empty() ? 0 : 1));
+
+    auto run_attempt = [&](
+        const std::string& seed_name,
+        const std::vector<double>& composition,
+        const IpoptSolveOptions& attempt_options
+    ) {
+        StabilityRouteResult result = solve_stability_tpd_route(
+            args,
+            temperature,
+            pressure,
+            feed_composition,
+            0,
+            0,
+            "electrolyte_stability_tpd",
+            seed_name,
+            args.z,
+            true,
+            attempt_options,
+            stability_tolerance,
+            composition
+        );
+        result.initial_point_strategy = "deterministic_multistart";
+        attempts.push_back(stability_seed_attempt_from_result(result));
+        if (!have_best || stability_attempt_better(result, best)) {
+            best = result;
+            have_best = true;
+        }
+        return result;
+    };
+
+    if (!options.initial_variables.empty()) {
+        const StabilityRouteResult continuation =
+            run_attempt("continuation_state", trial_initial_composition, options);
+        if (continuation.accepted && !continuation.stable) {
+            best.seed_attempts = attempts;
+            return best;
+        }
+    }
+
+    for (const auto& seed : seeds) {
+        IpoptSolveOptions attempt_options = options;
+        attempt_options.initial_variables.clear();
+        attempt_options.initial_bound_lower_multipliers.clear();
+        attempt_options.initial_bound_upper_multipliers.clear();
+        attempt_options.initial_constraint_multipliers.clear();
+        const StabilityRouteResult attempt = run_attempt(seed.seed_name, seed.composition, attempt_options);
+        if (attempt.accepted && !attempt.stable) {
+            break;
+        }
+    }
+
+    best.initial_point_strategy = "deterministic_multistart";
+    best.seed_attempts = attempts;
+    return best;
 }
 
 }  // namespace epcsaft::native::equilibrium_nlp

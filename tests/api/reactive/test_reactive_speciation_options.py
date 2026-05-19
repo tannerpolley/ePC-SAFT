@@ -62,6 +62,11 @@ def test_reactive_speciation_options_public_surface_is_current_fields() -> None:
         "solver_backend",
         "hessian_mode",
         "ipopt_iteration_history_limit",
+        "ipopt_linear_solver",
+        "ipopt_acceptable_tolerance",
+        "ipopt_constraint_violation_tolerance",
+        "ipopt_dual_infeasibility_tolerance",
+        "ipopt_complementarity_tolerance",
         "continuation_state",
         "phase",
         "error_mode",
@@ -79,6 +84,20 @@ def test_reactive_speciation_options_public_surface_is_current_fields() -> None:
         (epcsaft.ReactiveSpeciationOptions(hessian_mode="unsupported-mode"), "hessian_mode"),
         (epcsaft.ReactiveSpeciationOptions(ipopt_iteration_history_limit=-1), "ipopt_iteration_history_limit"),
         (epcsaft.ReactiveSpeciationOptions(ipopt_iteration_history_limit=True), "ipopt_iteration_history_limit"),
+        (epcsaft.ReactiveSpeciationOptions(ipopt_linear_solver=""), "ipopt_linear_solver"),
+        (epcsaft.ReactiveSpeciationOptions(ipopt_acceptable_tolerance=0.0), "ipopt_acceptable_tolerance"),
+        (
+            epcsaft.ReactiveSpeciationOptions(ipopt_constraint_violation_tolerance=float("nan")),
+            "ipopt_constraint_violation_tolerance",
+        ),
+        (
+            epcsaft.ReactiveSpeciationOptions(ipopt_dual_infeasibility_tolerance=-1.0),
+            "ipopt_dual_infeasibility_tolerance",
+        ),
+        (
+            epcsaft.ReactiveSpeciationOptions(ipopt_complementarity_tolerance=True),
+            "ipopt_complementarity_tolerance",
+        ),
         (epcsaft.ReactiveSpeciationOptions(continuation_state=1), "continuation_state"),
     ],
 )
@@ -137,6 +156,12 @@ def test_reactive_speciation_builds_native_request_with_ipopt_tranche_options(mo
                 "hessian_approximation": "limited-memory",
                 "hessian_backend": "limited-memory",
                 "iteration_history_limit": 4,
+                "linear_solver_requested": "mumps",
+                "linear_solver_selected": "mumps",
+                "acceptable_tolerance": 9.0e-7,
+                "constraint_violation_tolerance": 8.0e-8,
+                "dual_infeasibility_tolerance": 7.0e-8,
+                "complementarity_tolerance": 6.0e-8,
                 "iteration_history": [],
                 "continuation_state": {
                     "variables": [0.25, 0.75],
@@ -168,6 +193,11 @@ def test_reactive_speciation_builds_native_request_with_ipopt_tranche_options(mo
             solver_backend="ipopt",
             hessian_mode="exact",
             ipopt_iteration_history_limit=4,
+            ipopt_linear_solver="mumps",
+            ipopt_acceptable_tolerance=9.0e-7,
+            ipopt_constraint_violation_tolerance=8.0e-8,
+            ipopt_dual_infeasibility_tolerance=7.0e-8,
+            ipopt_complementarity_tolerance=6.0e-8,
             continuation_state={
                 "variables": [0.5, 0.5],
                 "bound_lower_multipliers": [0.0, 0.0],
@@ -183,9 +213,20 @@ def test_reactive_speciation_builds_native_request_with_ipopt_tranche_options(mo
     request = recorded["request"]
     assert request["options"]["hessian_mode"] == "exact"
     assert request["options"]["iteration_history_limit"] == 4
+    assert request["options"]["linear_solver"] == "mumps"
+    assert request["options"]["acceptable_tolerance"] == pytest.approx(9.0e-7)
+    assert request["options"]["constraint_violation_tolerance"] == pytest.approx(8.0e-8)
+    assert request["options"]["dual_infeasibility_tolerance"] == pytest.approx(7.0e-8)
+    assert request["options"]["complementarity_tolerance"] == pytest.approx(6.0e-8)
     assert request["options"]["continuation_state"]["variables"] == pytest.approx([0.5, 0.5])
     assert result.success is True
     assert result.diagnostics["hessian_approximation"] == "limited-memory"
+    assert result.diagnostics["linear_solver_requested"] == "mumps"
+    assert result.diagnostics["linear_solver_selected"] == "mumps"
+    assert result.diagnostics["acceptable_tolerance"] == pytest.approx(9.0e-7)
+    assert result.diagnostics["constraint_violation_tolerance"] == pytest.approx(8.0e-8)
+    assert result.diagnostics["dual_infeasibility_tolerance"] == pytest.approx(7.0e-8)
+    assert result.diagnostics["complementarity_tolerance"] == pytest.approx(6.0e-8)
     assert result.diagnostics["continuation_state"]["route_kind"] == "reactive_speciation"
     assert result.diagnostics["continuation_state"]["species_order"] == ["A", "B"]
 

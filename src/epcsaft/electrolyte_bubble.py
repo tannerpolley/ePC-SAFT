@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from numbers import Integral
+from numbers import Integral, Real
 from typing import Any
 
 import numpy as np
@@ -24,6 +24,11 @@ class ElectrolyteBubbleOptions:
     charge_tolerance: float = 1.0e-8
     hessian_mode: str = "auto"
     ipopt_iteration_history_limit: int = 20
+    ipopt_linear_solver: str = "auto"
+    ipopt_acceptable_tolerance: float | None = None
+    ipopt_constraint_violation_tolerance: float | None = None
+    ipopt_dual_infeasibility_tolerance: float | None = None
+    ipopt_complementarity_tolerance: float | None = None
     continuation_state: Mapping[str, Any] | None = None
 
 
@@ -99,6 +104,25 @@ def electrolyte_bubble_pressure(
         raise InputError(
             "ElectrolyteBubbleOptions.ipopt_iteration_history_limit must be an integer greater than or equal to zero."
         )
+    ipopt_linear_solver = str(options.ipopt_linear_solver).strip().lower()
+    if not ipopt_linear_solver:
+        raise InputError("ElectrolyteBubbleOptions.ipopt_linear_solver must be a non-empty string.")
+    ipopt_acceptable_tolerance = _optional_positive_float_option(
+        options.ipopt_acceptable_tolerance,
+        "ipopt_acceptable_tolerance",
+    )
+    ipopt_constraint_violation_tolerance = _optional_positive_float_option(
+        options.ipopt_constraint_violation_tolerance,
+        "ipopt_constraint_violation_tolerance",
+    )
+    ipopt_dual_infeasibility_tolerance = _optional_positive_float_option(
+        options.ipopt_dual_infeasibility_tolerance,
+        "ipopt_dual_infeasibility_tolerance",
+    )
+    ipopt_complementarity_tolerance = _optional_positive_float_option(
+        options.ipopt_complementarity_tolerance,
+        "ipopt_complementarity_tolerance",
+    )
     if options.continuation_state is not None and not isinstance(options.continuation_state, Mapping):
         raise InputError("ElectrolyteBubbleOptions.continuation_state must be a mapping when provided.")
     if x_liq is None:
@@ -144,6 +168,11 @@ def electrolyte_bubble_pressure(
             charge_tolerance=float(options.charge_tolerance),
             hessian_mode=hessian_mode,
             ipopt_iteration_history_limit=iteration_history_limit,
+            ipopt_linear_solver=ipopt_linear_solver,
+            ipopt_acceptable_tolerance=ipopt_acceptable_tolerance,
+            ipopt_constraint_violation_tolerance=ipopt_constraint_violation_tolerance,
+            ipopt_dual_infeasibility_tolerance=ipopt_dual_infeasibility_tolerance,
+            ipopt_complementarity_tolerance=ipopt_complementarity_tolerance,
             continuation_state=options.continuation_state,
         ),
         continuation_context=continuation_context,
@@ -165,6 +194,23 @@ def electrolyte_bubble_pressure(
         float(options.tolerance),
         max(10.0 * float(options.min_composition), 1.0e-8),
         prepared_continuation_state,
+        linear_solver=ipopt_linear_solver,
+        acceptable_tolerance=_resolved_optional_tolerance(
+            ipopt_acceptable_tolerance,
+            max(100.0 * float(options.tolerance), 1.0e-10),
+        ),
+        constraint_violation_tolerance=_resolved_optional_tolerance(
+            ipopt_constraint_violation_tolerance,
+            float(options.tolerance),
+        ),
+        dual_infeasibility_tolerance=_resolved_optional_tolerance(
+            ipopt_dual_infeasibility_tolerance,
+            float(options.tolerance),
+        ),
+        complementarity_tolerance=_resolved_optional_tolerance(
+            ipopt_complementarity_tolerance,
+            float(options.tolerance),
+        ),
     )
     if str(route.get("status", "")) == "ipopt_dependency_required":
         _raise_native_ipopt_electrolyte_bubble_required()
@@ -258,3 +304,20 @@ def _normalize_species_labels(values: Any, *, field_name: str) -> tuple[str, ...
         return tuple(str(value) for value in values)
     except TypeError as exc:
         raise InputError(f"{field_name} must be a string or sequence of strings.") from exc
+
+
+def _optional_positive_float_option(value: Any, label: str) -> float | None:
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, Real):
+        raise InputError(f"ElectrolyteBubbleOptions.{label} must be a finite real number when provided.")
+    out = float(value)
+    if not np.isfinite(out) or out <= 0.0:
+        raise InputError(f"ElectrolyteBubbleOptions.{label} must be positive when provided.")
+    return out
+
+
+def _resolved_optional_tolerance(value: float | None, default: float) -> float:
+    if value is None:
+        return float(default)
+    return float(value)

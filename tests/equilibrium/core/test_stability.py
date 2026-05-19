@@ -69,6 +69,7 @@ def test_stability_builds_one_native_route_request_before_ipopt_gate(monkeypatch
         stability_tolerance,
         trial_initial_composition,
         continuation_state,
+        **ipopt_controls,
     ):
         calls.append(
             {
@@ -83,6 +84,7 @@ def test_stability_builds_one_native_route_request_before_ipopt_gate(monkeypatch
                 "trial_initial_composition": trial_initial_composition,
                 "continuation_state": continuation_state,
                 "stability_tolerance": stability_tolerance,
+                "ipopt_controls": ipopt_controls,
             }
         )
         return {
@@ -103,7 +105,13 @@ def test_stability_builds_one_native_route_request_before_ipopt_gate(monkeypatch
             z=[0.1, 0.3, 0.6],
             parent_phase="vap",
             trial_phases=("vap",),
-            options=epcsaft.EquilibriumOptions(max_iterations=19, tolerance=3.0e-8, timeout_seconds=4.5),
+            options=epcsaft.EquilibriumOptions(
+                max_iterations=19,
+                tolerance=3.0e-8,
+                timeout_seconds=4.5,
+                ipopt_linear_solver="ma57",
+                ipopt_dual_infeasibility_tolerance=8.0e-8,
+            ),
         )
 
     assert len(calls) == 1
@@ -117,6 +125,11 @@ def test_stability_builds_one_native_route_request_before_ipopt_gate(monkeypatch
     assert call["tolerance"] == pytest.approx(3.0e-8)
     assert call["timeout_seconds"] == pytest.approx(4.5)
     assert call["stability_tolerance"] == pytest.approx(3.0e-8)
+    assert call["ipopt_controls"]["linear_solver"] == "ma57"
+    assert call["ipopt_controls"]["acceptable_tolerance"] == pytest.approx(3.0e-6)
+    assert call["ipopt_controls"]["constraint_violation_tolerance"] == pytest.approx(3.0e-8)
+    assert call["ipopt_controls"]["dual_infeasibility_tolerance"] == pytest.approx(8.0e-8)
+    assert call["ipopt_controls"]["complementarity_tolerance"] == pytest.approx(3.0e-8)
 
 
 def test_stability_converts_accepted_native_route_payload(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -137,6 +150,7 @@ def test_stability_converts_accepted_native_route_payload(monkeypatch: pytest.Mo
         stability_tolerance,
         trial_initial_composition,
         continuation_state,
+        **_ipopt_controls,
     ):
         assert temperature == pytest.approx(300.0)
         assert pressure == pytest.approx(1.0e5)

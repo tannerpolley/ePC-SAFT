@@ -22,11 +22,15 @@ struct IpoptSolveOptions {
     int max_iterations = 100;
     int print_level = 0;
     double tolerance = 1.0e-8;
-    double acceptable_tolerance = 1.0e-6;
+    double acceptable_tolerance = 0.0;
+    double constraint_violation_tolerance = 0.0;
+    double dual_infeasibility_tolerance = 0.0;
+    double complementarity_tolerance = 0.0;
     double max_wall_time_seconds = 0.0;
     bool limited_memory_hessian = true;
     std::string hessian_mode = "limited-memory";
     int iteration_history_limit = 20;
+    std::string linear_solver = "auto";
     std::vector<double> initial_variables;
     std::vector<double> initial_bound_lower_multipliers;
     std::vector<double> initial_bound_upper_multipliers;
@@ -45,6 +49,27 @@ struct IpoptIterationRecord {
     double complementarity = 0.0;
     int step_trial_count = 0;
     bool restoration_phase = false;
+};
+
+struct RouteSeedAttempt {
+    std::string seed_name;
+    std::string status;
+    std::string solver_status;
+    std::string application_status;
+    bool solver_accepted = false;
+    bool accepted = false;
+    bool stable = false;
+    int iteration_count = 0;
+    double objective = 0.0;
+    double phase_distance = 0.0;
+    double material_balance_norm = 0.0;
+    double conserved_balance_norm = 0.0;
+    double charge_balance_norm = 0.0;
+    double pressure_consistency_norm = 0.0;
+    double chemical_potential_consistency_norm = 0.0;
+    double phase_equilibrium_norm = 0.0;
+    double reaction_stationarity_norm = 0.0;
+    double min_tpd = 0.0;
 };
 
 struct IpoptSolveResult {

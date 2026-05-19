@@ -107,12 +107,18 @@ def test_native_route_diagnostics_merges_postsolve_and_solver_metadata() -> None
         "hessian_approximation": "exact",
         "hessian_backend": "analytic",
         "scaling_method": "user-scaling",
+        "linear_solver_requested": "mumps",
+        "linear_solver_selected": "mumps",
         "iteration_count": 7,
         "iteration_history_limit": 3,
         "iteration_history_size": 3,
         "variable_scaling_count": 2,
         "constraint_scaling_count": 1,
         "objective_scaling": 0.5,
+        "acceptable_tolerance": 1.0e-7,
+        "constraint_violation_tolerance": 2.0e-8,
+        "dual_infeasibility_tolerance": 3.0e-8,
+        "complementarity_tolerance": 4.0e-8,
         "variable_scaling_min": 0.25,
         "variable_scaling_max": 1.0,
         "constraint_scaling_min": 0.5,
@@ -120,6 +126,26 @@ def test_native_route_diagnostics_merges_postsolve_and_solver_metadata() -> None
         "exact_hessian_available": True,
         "warm_start_requested": True,
         "warm_start_used": True,
+        "initial_point_strategy": "deterministic_multistart",
+        "seed_name": "mirrored_formula_shift",
+        "seed_attempts": [
+            {
+                "seed_name": "canonical_formula_shift",
+                "status": "solver_rejected",
+                "solver_accepted": False,
+                "accepted": False,
+                "iteration_count": 0,
+                "objective": 0.0,
+            },
+            {
+                "seed_name": "mirrored_formula_shift",
+                "status": "postsolve_rejected",
+                "solver_accepted": True,
+                "accepted": False,
+                "iteration_count": 7,
+                "objective": 0.5,
+            },
+        ],
         "continuation_state": {
             "variables": [0.2, 0.8],
             "bound_lower_multipliers": [0.0, 0.0],
@@ -160,12 +186,18 @@ def test_native_route_diagnostics_merges_postsolve_and_solver_metadata() -> None
     assert diagnostics["hessian_approximation"] == "exact"
     assert diagnostics["hessian_backend"] == "analytic"
     assert diagnostics["scaling_method"] == "user-scaling"
+    assert diagnostics["linear_solver_requested"] == "mumps"
+    assert diagnostics["linear_solver_selected"] == "mumps"
     assert diagnostics["iteration_count"] == 7
     assert diagnostics["iteration_history_limit"] == 3
     assert diagnostics["iteration_history_size"] == 3
     assert diagnostics["variable_scaling_count"] == 2
     assert diagnostics["constraint_scaling_count"] == 1
     assert diagnostics["objective_scaling"] == pytest.approx(0.5)
+    assert diagnostics["acceptable_tolerance"] == pytest.approx(1.0e-7)
+    assert diagnostics["constraint_violation_tolerance"] == pytest.approx(2.0e-8)
+    assert diagnostics["dual_infeasibility_tolerance"] == pytest.approx(3.0e-8)
+    assert diagnostics["complementarity_tolerance"] == pytest.approx(4.0e-8)
     assert diagnostics["variable_scaling_min"] == pytest.approx(0.25)
     assert diagnostics["variable_scaling_max"] == pytest.approx(1.0)
     assert diagnostics["constraint_scaling_min"] == pytest.approx(0.5)
@@ -173,6 +205,10 @@ def test_native_route_diagnostics_merges_postsolve_and_solver_metadata() -> None
     assert diagnostics["exact_hessian_available"] is True
     assert diagnostics["warm_start_requested"] is True
     assert diagnostics["warm_start_used"] is True
+    assert diagnostics["initial_point_strategy"] == "deterministic_multistart"
+    assert diagnostics["seed_name"] == "mirrored_formula_shift"
+    assert diagnostics["seed_attempts"][0]["seed_name"] == "canonical_formula_shift"
+    assert diagnostics["seed_attempts"][1]["status"] == "postsolve_rejected"
     assert diagnostics["continuation_state"]["variables"] == pytest.approx([0.2, 0.8])
     assert diagnostics["iteration_history"][1]["objective"] == pytest.approx(0.5)
     assert diagnostics["exact_gradient_required"] is True

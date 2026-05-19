@@ -35,6 +35,17 @@ def _ascani_electrolyte_mixture() -> tuple[epcsaft.ePCSAFTMixture, list[float]]:
     return mix, feed
 
 
+def _dense_jacobian_from_sparse_contract(payload: dict) -> np.ndarray:
+    dense = np.zeros((payload["constraint_count"], payload["variable_count"]), dtype=float)
+    rows = np.asarray(payload["jacobian_rows"], dtype=int)
+    cols = np.asarray(payload["jacobian_cols"], dtype=int)
+    values = np.asarray(payload["jacobian_values_at_initial"], dtype=float)
+    assert rows.shape == cols.shape == values.shape == (payload["jacobian_nonzero_count"],)
+    for row, col, value in zip(rows, cols, values, strict=True):
+        dense[row, col] += value
+    return dense
+
+
 def test_current_public_route_nlps_reject_exact_hessian_without_provider() -> None:
     neutral = _neutral_binary_mixture()
     ionic = _ionic_mixture()
@@ -258,7 +269,7 @@ def test_neutral_two_phase_eos_nlp_contract_uses_phase_system_blocks() -> None:
     assert payload["species_count"] == 2
     assert payload["variable_count"] == 6
     assert payload["constraint_count"] == 4
-    assert payload["jacobian_nonzero_count"] == 24
+    assert payload["jacobian_nonzero_count"] == 10
     assert payload["initial_point"] == pytest.approx([0.7, 0.3, volumes[0], 0.1, 0.9, volumes[1]])
     assert payload["objective_at_initial"] == pytest.approx(phase_system["objective"])
     assert payload["gradient_at_initial"] == pytest.approx(phase_system["gradient"], rel=1.0e-12, abs=1.0e-12)
@@ -267,10 +278,11 @@ def test_neutral_two_phase_eos_nlp_contract_uses_phase_system_blocks() -> None:
         rel=1.0e-12,
         abs=1.0e-8,
     )
-    assert payload["jacobian_values_at_initial"] == pytest.approx(
-        phase_system["constraint_jacobian_row_major"],
-        rel=1.0e-12,
-        abs=1.0e-8,
+    np.testing.assert_allclose(
+        _dense_jacobian_from_sparse_contract(payload),
+        np.asarray(phase_system["constraint_jacobian_row_major"], dtype=float).reshape(4, 6),
+        rtol=1.0e-12,
+        atol=1.0e-8,
     )
     assert len(payload["variable_lower_bounds"]) == payload["variable_count"]
     assert len(payload["variable_upper_bounds"]) == payload["variable_count"]
@@ -365,6 +377,11 @@ def test_neutral_stability_tpd_route_result_uses_ipopt_adapter_gate() -> None:
         1.0e-8,
         [],
         None,
+        linear_solver="mumps",
+        acceptable_tolerance=9.0e-7,
+        constraint_violation_tolerance=8.0e-8,
+        dual_infeasibility_tolerance=7.0e-8,
+        complementarity_tolerance=6.0e-8,
     )
 
     assert payload["backend"] == "ipopt"
@@ -441,6 +458,11 @@ def test_electrolyte_stability_tpd_route_result_uses_ipopt_adapter_gate() -> Non
         1.0e-8,
         [],
         None,
+        linear_solver="mumps",
+        acceptable_tolerance=9.0e-7,
+        constraint_violation_tolerance=8.0e-8,
+        dual_infeasibility_tolerance=7.0e-8,
+        complementarity_tolerance=6.0e-8,
     )
 
     assert payload["backend"] == "ipopt"
@@ -558,6 +580,11 @@ def test_electrolyte_lle_route_result_uses_ipopt_adapter_gate_and_charge_rows() 
         1.0e-6,
         0.1,
         None,
+        linear_solver="mumps",
+        acceptable_tolerance=9.0e-7,
+        constraint_violation_tolerance=8.0e-8,
+        dual_infeasibility_tolerance=7.0e-8,
+        complementarity_tolerance=6.0e-8,
     )
 
     assert payload["backend"] == "ipopt"
@@ -622,10 +649,7 @@ def test_neutral_fixed_temperature_pressure_route_contract_pins_specified_phase(
     )
 
     initial = np.asarray(payload["initial_point"], dtype=float)
-    jacobian = np.asarray(payload["jacobian_values_at_initial"], dtype=float).reshape(
-        payload["constraint_count"],
-        payload["variable_count"],
-    )
+    jacobian = _dense_jacobian_from_sparse_contract(payload)
     local_variable_count = composition.size + 1
     pressure_col = payload["variable_count"] - 1
     first_amounts = initial[: composition.size]
@@ -642,7 +666,7 @@ def test_neutral_fixed_temperature_pressure_route_contract_pins_specified_phase(
     assert payload["species_count"] == composition.size
     assert payload["variable_count"] == 2 * local_variable_count + 1
     assert payload["constraint_count"] == 2 * composition.size + 4
-    assert payload["jacobian_nonzero_count"] == payload["variable_count"] * payload["constraint_count"]
+    assert payload["jacobian_nonzero_count"] == 28
     assert np.all(initial > 0.0)
     assert fixed_amounts / fixed_amounts.sum() == pytest.approx(composition)
     assert payload["constraints_at_initial"][: composition.size + 1] == pytest.approx([0.0, 0.0, 0.0])
@@ -681,10 +705,7 @@ def test_neutral_fixed_pressure_temperature_route_contract_pins_specified_phase(
     )
 
     initial = np.asarray(payload["initial_point"], dtype=float)
-    jacobian = np.asarray(payload["jacobian_values_at_initial"], dtype=float).reshape(
-        payload["constraint_count"],
-        payload["variable_count"],
-    )
+    jacobian = _dense_jacobian_from_sparse_contract(payload)
     local_variable_count = composition.size + 1
     temperature_col = payload["variable_count"] - 1
     first_amounts = initial[: composition.size]
@@ -697,7 +718,7 @@ def test_neutral_fixed_pressure_temperature_route_contract_pins_specified_phase(
     assert payload["species_count"] == composition.size
     assert payload["variable_count"] == 2 * local_variable_count + 1
     assert payload["constraint_count"] == 2 * composition.size + 4
-    assert payload["jacobian_nonzero_count"] == payload["variable_count"] * payload["constraint_count"]
+    assert payload["jacobian_nonzero_count"] == 30
     assert np.all(initial > 0.0)
     assert initial[temperature_col] == pytest.approx(300.0)
     assert fixed_amounts / fixed_amounts.sum() == pytest.approx(composition)
@@ -725,10 +746,7 @@ def test_electrolyte_bubble_pressure_contract_adds_phase_charge_rows() -> None:
     )
 
     initial = np.asarray(payload["initial_point"], dtype=float)
-    jacobian = np.asarray(payload["jacobian_values_at_initial"], dtype=float).reshape(
-        payload["constraint_count"],
-        payload["variable_count"],
-    )
+    jacobian = _dense_jacobian_from_sparse_contract(payload)
     local_variable_count = liquid_composition.size + 1
     liquid_amounts = initial[: liquid_composition.size]
     vapor_amounts = initial[local_variable_count : local_variable_count + liquid_composition.size]
@@ -740,7 +758,7 @@ def test_electrolyte_bubble_pressure_contract_adds_phase_charge_rows() -> None:
     assert payload["species_count"] == 3
     assert payload["variable_count"] == 9
     assert payload["constraint_count"] == 12
-    assert payload["jacobian_nonzero_count"] == 108
+    assert payload["jacobian_nonzero_count"] == 52
     assert np.all(initial > 0.0)
     assert liquid_amounts / liquid_amounts.sum() == pytest.approx(liquid_composition)
     assert liquid_amounts @ charges == pytest.approx(0.0, abs=1.0e-14)
@@ -949,6 +967,11 @@ def test_neutral_lle_route_result_uses_ipopt_adapter_gate() -> None:
         1.0e-7,
         1.0e-4,
         None,
+        linear_solver="mumps",
+        acceptable_tolerance=9.0e-7,
+        constraint_violation_tolerance=8.0e-8,
+        dual_infeasibility_tolerance=7.0e-8,
+        complementarity_tolerance=6.0e-8,
     )
 
     assert payload["backend"] == "ipopt"
@@ -1129,7 +1152,7 @@ def test_reactive_two_phase_eos_contract_uses_conserved_balances_and_standard_po
     expected_gradient[:2] += standard_mu
     expected_gradient[3:5] += standard_mu
     expected_objective = phase_system["objective"] + float(standard_mu @ species_totals)
-    contract_jacobian = np.asarray(payload["jacobian_values_at_initial"], dtype=float).reshape(3, 6)
+    contract_jacobian = _dense_jacobian_from_sparse_contract(payload)
     phase_system_jacobian = np.asarray(phase_system["constraint_jacobian_row_major"], dtype=float).reshape(4, 6)
 
     assert payload["problem_name"] == "reactive_two_phase_eos"
@@ -1140,6 +1163,7 @@ def test_reactive_two_phase_eos_contract_uses_conserved_balances_and_standard_po
     assert payload["reaction_count"] == 1
     assert payload["variable_count"] == 6
     assert payload["constraint_count"] == 3
+    assert payload["jacobian_nonzero_count"] == 10
     assert payload["objective_at_initial"] == pytest.approx(expected_objective, rel=1.0e-12, abs=1.0e-10)
     assert payload["gradient_at_initial"] == pytest.approx(expected_gradient, rel=1.0e-12, abs=1.0e-10)
     assert payload["constraints_at_initial"][0] == pytest.approx(0.0, abs=1.0e-12)
@@ -1327,6 +1351,11 @@ def test_reactive_two_phase_eos_route_result_uses_native_ipopt_gate() -> None:
         1.0e-6,
         1.0e-3,
         None,
+        linear_solver="mumps",
+        acceptable_tolerance=9.0e-7,
+        constraint_violation_tolerance=8.0e-8,
+        dual_infeasibility_tolerance=7.0e-8,
+        complementarity_tolerance=6.0e-8,
     )
 
     assert payload["backend"] == "ipopt"
@@ -1381,7 +1410,7 @@ def test_reactive_lle_eos_route_builder_owns_canonical_initial_point() -> None:
     assert contract["variable_model"] == "log_phase_species_amounts"
     assert contract["variable_count"] == 2 * contract["species_count"]
     assert contract["constraint_count"] == 2
-    assert contract["jacobian_nonzero_count"] == contract["variable_count"] * contract["constraint_count"]
+    assert contract["jacobian_nonzero_count"] == 8
     assert contract["balance_row_count"] == 1
     assert contract["reaction_count"] == 1
     assert np.max(np.abs(first - second)) > 1.0e-3
@@ -1499,7 +1528,7 @@ def test_reactive_electrolyte_lle_eos_route_builder_uses_liquid_root_residual_ro
     assert contract["variable_model"] == "log_phase_species_amounts"
     assert contract["variable_count"] == 2 * contract["species_count"]
     assert contract["constraint_count"] == 6
-    assert contract["jacobian_nonzero_count"] == contract["variable_count"] * contract["constraint_count"]
+    assert contract["jacobian_nonzero_count"] == 20
     assert contract["balance_row_count"] == 3
     assert contract["reaction_count"] == 1
     assert contract["constraint_lower_bounds"][:3] == pytest.approx([0.0, 0.0, 0.0])
@@ -1542,6 +1571,11 @@ def test_reactive_electrolyte_lle_eos_route_builder_uses_liquid_root_residual_ro
         [0],
         [],
         None,
+        linear_solver="mumps",
+        acceptable_tolerance=9.0e-7,
+        constraint_violation_tolerance=8.0e-8,
+        dual_infeasibility_tolerance=7.0e-8,
+        complementarity_tolerance=6.0e-8,
     )
 
     assert payload["backend"] == "ipopt"
@@ -1559,3 +1593,187 @@ def test_reactive_electrolyte_lle_eos_route_builder_uses_liquid_root_residual_ro
     assert payload["status"] in {"accepted", "solver_rejected", "postsolve_rejected"}
     if payload["status"] != "solver_rejected":
         assert payload["postsolve"]["density_backend"] == "liquid_pressure_root"
+
+
+def test_neutral_lle_route_result_records_multistart_seed_attempts_on_failure() -> None:
+    mix = _neutral_binary_mixture()
+    payload = _core._native_neutral_lle_eos_route_result(
+        mix._native,
+        298.15,
+        1.013e5,
+        [0.45, 0.55],
+        0,
+        1.0e-8,
+        0.0,
+        "limited-memory",
+        2,
+        1.0e-8,
+        1.0e-8,
+        1.0e-8,
+        1.0e-3,
+        None,
+    )
+
+    if not payload["compiled"]:
+        assert payload["status"] == "ipopt_dependency_required"
+        return
+
+    assert payload["initial_point_strategy"] == "deterministic_multistart"
+    assert payload["seed_name"] in {"canonical_shifted_feed", "mirrored_shifted_feed"}
+    attempts = payload["seed_attempts"]
+    assert len(attempts) >= 2
+    assert attempts[0]["seed_name"] == "canonical_shifted_feed"
+    assert {attempt["seed_name"] for attempt in attempts} >= {
+        "canonical_shifted_feed",
+        "mirrored_shifted_feed",
+    }
+    assert all("status" in attempt for attempt in attempts)
+    assert all("iteration_count" in attempt for attempt in attempts)
+
+
+def test_neutral_bubble_pressure_route_records_multistart_seed_attempts_on_failure() -> None:
+    mix = _neutral_binary_mixture()
+    payload = _core._native_neutral_bubble_p_eos_route_result(
+        mix._native,
+        300.0,
+        [0.35, 0.65],
+        0,
+        1.0e-8,
+        0.0,
+        "limited-memory",
+        2,
+        1.0e-8,
+        1.0e-8,
+        1.0e-8,
+        1.0e-3,
+        None,
+    )
+
+    if not payload["compiled"]:
+        assert payload["status"] == "ipopt_dependency_required"
+        return
+
+    assert payload["initial_point_strategy"] == "deterministic_multistart"
+    assert payload["seed_name"] in {
+        "canonical_shifted_partner_phase",
+        "mirrored_shifted_partner_phase",
+    }
+    attempts = payload["seed_attempts"]
+    assert len(attempts) >= 2
+    assert attempts[0]["seed_name"] == "canonical_shifted_partner_phase"
+    assert {attempt["seed_name"] for attempt in attempts} >= {
+        "canonical_shifted_partner_phase",
+        "mirrored_shifted_partner_phase",
+    }
+
+
+def test_neutral_stability_route_records_multistart_seed_attempts_on_failure() -> None:
+    mix = _neutral_binary_mixture()
+    payload = _core._native_neutral_stability_tpd_route_result(
+        mix._native,
+        300.0,
+        1.0e5,
+        [0.3, 0.7],
+        "vap",
+        "vap",
+        0,
+        1.0e-8,
+        0.0,
+        "limited-memory",
+        2,
+        1.0e-8,
+        [],
+        None,
+    )
+
+    if not payload["compiled"]:
+        assert payload["status"] == "ipopt_dependency_required"
+        return
+
+    assert payload["initial_point_strategy"] == "deterministic_multistart"
+    assert payload["seed_name"] in {"canonical_shifted_feed", "mirrored_shifted_feed"}
+    attempts = payload["seed_attempts"]
+    assert len(attempts) >= 2
+    assert attempts[0]["seed_name"] == "canonical_shifted_feed"
+    assert {attempt["seed_name"] for attempt in attempts} >= {
+        "canonical_shifted_feed",
+        "mirrored_shifted_feed",
+    }
+
+
+def test_electrolyte_lle_route_records_formula_seed_attempts_on_failure() -> None:
+    mix, feed = _ascani_electrolyte_mixture()
+    payload = _core._native_electrolyte_lle_eos_route_result(
+        mix._native,
+        298.15,
+        1.0e5,
+        feed,
+        0,
+        1.0e-8,
+        0.0,
+        "limited-memory",
+        2,
+        1.0e-8,
+        1.0e-8,
+        1.0e-8,
+        1.0e-6,
+        0.1,
+        None,
+    )
+
+    if not payload["compiled"]:
+        assert payload["status"] == "ipopt_dependency_required"
+        return
+
+    assert payload["initial_point_strategy"] == "deterministic_multistart"
+    assert payload["seed_name"] in {"canonical_formula_shift", "mirrored_formula_shift"}
+    attempts = payload["seed_attempts"]
+    assert len(attempts) >= 2
+    assert attempts[0]["seed_name"] == "canonical_formula_shift"
+    assert {attempt["seed_name"] for attempt in attempts} >= {
+        "canonical_formula_shift",
+        "mirrored_formula_shift",
+    }
+
+
+def test_reactive_lle_route_records_multistart_seed_attempts_on_failure() -> None:
+    mix = _neutral_binary_mixture()
+    payload = _core._native_reactive_lle_eos_route_result(
+        mix._native,
+        300.0,
+        1.0e5,
+        [0.3, 0.7],
+        1,
+        [1.0, 1.0],
+        [1.0],
+        1,
+        [-1.0, 1.0],
+        [float(np.log(3.0))],
+        0,
+        1.0e-8,
+        0.0,
+        "limited-memory",
+        2,
+        1.0e-8,
+        1.0e-3,
+        1.0e-8,
+        1.0e-3,
+        1.0e-12,
+        [0],
+        [],
+        None,
+    )
+
+    if not payload["compiled"]:
+        assert payload["status"] == "ipopt_dependency_required"
+        return
+
+    assert payload["initial_point_strategy"] == "deterministic_multistart"
+    assert payload["seed_name"] in {"canonical_shifted_feed", "mirrored_shifted_feed"}
+    attempts = payload["seed_attempts"]
+    assert len(attempts) >= 2
+    assert attempts[0]["seed_name"] == "canonical_shifted_feed"
+    assert {attempt["seed_name"] for attempt in attempts} >= {
+        "canonical_shifted_feed",
+        "mirrored_shifted_feed",
+    }

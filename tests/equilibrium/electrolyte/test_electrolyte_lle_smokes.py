@@ -22,10 +22,10 @@ def _assert_electrolyte_lle_native_ipopt_gate(excinfo: pytest.ExceptionInfo[epcs
 def test_electrolyte_lle_builds_native_route_before_ipopt_gate(monkeypatch) -> None:
     feed = np.asarray([0.55, 0.40, 0.025, 0.025], dtype=float)
     mix = _ascani_water_butanol_nacl_mixture(feed)
-    calls: list[tuple[object, ...]] = []
+    calls: list[dict[str, object]] = []
 
-    def fake_route(_native, *route_args):
-        calls.append(route_args)
+    def fake_route(_native, *route_args, **ipopt_controls):
+        calls.append({"args": route_args, "ipopt_controls": ipopt_controls})
         return {
             "backend": "ipopt",
             "compiled": False,
@@ -50,6 +50,8 @@ def test_electrolyte_lle_builds_native_route_before_ipopt_gate(monkeypatch) -> N
                 timeout_seconds=9.0,
                 hessian_mode="exact",
                 ipopt_iteration_history_limit=4,
+                ipopt_linear_solver="mumps",
+                ipopt_complementarity_tolerance=6.0e-8,
             ),
         )
 
@@ -70,7 +72,7 @@ def test_electrolyte_lle_builds_native_route_before_ipopt_gate(monkeypatch) -> N
         chemical_potential_tolerance,
         phase_distance_tolerance,
         continuation_state,
-    ) = calls[0]
+    ) = calls[0]["args"]
     assert temperature == pytest.approx(298.15)
     assert target_pressure == pytest.approx(1.013e5)
     assert feed_amounts == pytest.approx(feed.tolist())
@@ -85,6 +87,11 @@ def test_electrolyte_lle_builds_native_route_before_ipopt_gate(monkeypatch) -> N
     assert chemical_potential_tolerance == pytest.approx(1.0e-7)
     assert phase_distance_tolerance > 0.0
     assert continuation_state is None
+    assert calls[0]["ipopt_controls"]["linear_solver"] == "mumps"
+    assert calls[0]["ipopt_controls"]["acceptable_tolerance"] == pytest.approx(1.0e-5)
+    assert calls[0]["ipopt_controls"]["constraint_violation_tolerance"] == pytest.approx(1.0e-7)
+    assert calls[0]["ipopt_controls"]["dual_infeasibility_tolerance"] == pytest.approx(1.0e-7)
+    assert calls[0]["ipopt_controls"]["complementarity_tolerance"] == pytest.approx(6.0e-8)
 
 
 def test_electrolyte_lle_molality_feed_requires_native_ipopt_route() -> None:

@@ -54,7 +54,7 @@ def test_explicit_staged_kind_remains_separate_from_production_reactive_lle(monk
     def fail_if_staged(*_args, **_kwargs):
         raise AssertionError("kind='reactive_lle' must bypass explicit staged workflows")
 
-    def native_gate(*_args):
+    def native_gate(*_args, **_kwargs):
         return {
             "backend": "ipopt",
             "compiled": False,

@@ -21,6 +21,8 @@ _ROUTE_STRING_DIAGNOSTIC_KEYS = (
     "hessian_approximation",
     "hessian_backend",
     "scaling_method",
+    "linear_solver_requested",
+    "linear_solver_selected",
 )
 
 _ROUTE_BOOL_DIAGNOSTIC_KEYS = (
@@ -42,6 +44,10 @@ _ROUTE_INT_DIAGNOSTIC_KEYS = (
 
 _ROUTE_FLOAT_DIAGNOSTIC_KEYS = (
     "objective_scaling",
+    "acceptable_tolerance",
+    "constraint_violation_tolerance",
+    "dual_infeasibility_tolerance",
+    "complementarity_tolerance",
     "variable_scaling_min",
     "variable_scaling_max",
     "constraint_scaling_min",
@@ -80,6 +86,14 @@ def native_route_diagnostics(
     for key in _ROUTE_FLOAT_DIAGNOSTIC_KEYS:
         if key in route or key in default_values:
             diagnostics[key] = float(route.get(key, default_values.get(key, 0.0)))
+    if "initial_point_strategy" in route or "initial_point_strategy" in default_values:
+        diagnostics["initial_point_strategy"] = str(
+            route.get("initial_point_strategy", default_values.get("initial_point_strategy", ""))
+        )
+    if "seed_name" in route or "seed_name" in default_values:
+        diagnostics["seed_name"] = str(route.get("seed_name", default_values.get("seed_name", "")))
+    if "seed_attempts" in route:
+        diagnostics["seed_attempts"] = list(route.get("seed_attempts", []))
     if "iteration_history" in route:
         diagnostics["iteration_history"] = list(route.get("iteration_history", []))
     if "continuation_state" in route:

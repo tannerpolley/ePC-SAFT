@@ -62,6 +62,7 @@ def test_lle_flash_builds_one_native_route_request_before_ipopt_gate(monkeypatch
         chemical_potential_tolerance,
         phase_distance_tolerance,
         continuation_state,
+        **ipopt_controls,
     ):
         calls.append(
             {
@@ -76,6 +77,7 @@ def test_lle_flash_builds_one_native_route_request_before_ipopt_gate(monkeypatch
                 "pressure_tolerance": pressure_tolerance,
                 "chemical_potential_tolerance": chemical_potential_tolerance,
                 "phase_distance_tolerance": phase_distance_tolerance,
+                "ipopt_controls": ipopt_controls,
             }
         )
         return {
@@ -95,7 +97,16 @@ def test_lle_flash_builds_one_native_route_request_before_ipopt_gate(monkeypatch
             T=298.15,
             P=1.013e5,
             z=feed,
-            options=epcsaft.EquilibriumOptions(max_iterations=19, tolerance=3.0e-8, timeout_seconds=4.0),
+            options=epcsaft.EquilibriumOptions(
+                max_iterations=19,
+                tolerance=3.0e-8,
+                timeout_seconds=4.0,
+                ipopt_linear_solver="mumps",
+                ipopt_acceptable_tolerance=7.0e-7,
+                ipopt_constraint_violation_tolerance=5.0e-8,
+                ipopt_dual_infeasibility_tolerance=6.0e-8,
+                ipopt_complementarity_tolerance=4.0e-8,
+            ),
         )
 
     _assert_neutral_lle_native_ipopt_gate(excinfo)
@@ -105,6 +116,13 @@ def test_lle_flash_builds_one_native_route_request_before_ipopt_gate(monkeypatch
     assert call["max_iterations"] == 19
     assert call["tolerance"] == pytest.approx(3.0e-8)
     assert call["timeout_seconds"] == pytest.approx(4.0)
+    assert call["ipopt_controls"] == {
+        "linear_solver": "mumps",
+        "acceptable_tolerance": pytest.approx(7.0e-7),
+        "constraint_violation_tolerance": pytest.approx(5.0e-8),
+        "dual_infeasibility_tolerance": pytest.approx(6.0e-8),
+        "complementarity_tolerance": pytest.approx(4.0e-8),
+    }
 
 
 def test_lle_flash_converts_accepted_native_route_payload(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -128,6 +146,7 @@ def test_lle_flash_converts_accepted_native_route_payload(monkeypatch: pytest.Mo
         chemical_potential_tolerance,
         phase_distance_tolerance,
         continuation_state,
+        **_ipopt_controls,
     ):
         assert temperature == pytest.approx(298.15)
         assert pressure == pytest.approx(1.013e5)
@@ -249,6 +268,11 @@ def test_equilibrium_options_public_surface_is_current_fields() -> None:
         "timeout_seconds",
         "hessian_mode",
         "ipopt_iteration_history_limit",
+        "ipopt_linear_solver",
+        "ipopt_acceptable_tolerance",
+        "ipopt_constraint_violation_tolerance",
+        "ipopt_dual_infeasibility_tolerance",
+        "ipopt_complementarity_tolerance",
         "continuation_state",
     }
     assert {field.name for field in fields(epcsaft.LLEProblem)} == {"T", "P", "z", "options"}
@@ -265,6 +289,11 @@ def test_equilibrium_options_public_surface_is_current_fields() -> None:
     assert epcsaft.EquilibriumOptions().max_iterations == 180
     assert epcsaft.EquilibriumOptions().hessian_mode == "auto"
     assert epcsaft.EquilibriumOptions().ipopt_iteration_history_limit == 20
+    assert epcsaft.EquilibriumOptions().ipopt_linear_solver == "auto"
+    assert epcsaft.EquilibriumOptions().ipopt_acceptable_tolerance is None
+    assert epcsaft.EquilibriumOptions().ipopt_constraint_violation_tolerance is None
+    assert epcsaft.EquilibriumOptions().ipopt_dual_infeasibility_tolerance is None
+    assert epcsaft.EquilibriumOptions().ipopt_complementarity_tolerance is None
     assert epcsaft.EquilibriumOptions().continuation_state is None
 
 
@@ -282,6 +311,17 @@ def test_equilibrium_options_public_surface_is_current_fields() -> None:
         (epcsaft.EquilibriumOptions(hessian_mode="unsupported-mode"), "hessian_mode"),
         (epcsaft.EquilibriumOptions(ipopt_iteration_history_limit=-1), "ipopt_iteration_history_limit"),
         (epcsaft.EquilibriumOptions(ipopt_iteration_history_limit=True), "ipopt_iteration_history_limit"),
+        (epcsaft.EquilibriumOptions(ipopt_linear_solver=""), "ipopt_linear_solver"),
+        (epcsaft.EquilibriumOptions(ipopt_acceptable_tolerance=0.0), "ipopt_acceptable_tolerance"),
+        (
+            epcsaft.EquilibriumOptions(ipopt_constraint_violation_tolerance=float("nan")),
+            "ipopt_constraint_violation_tolerance",
+        ),
+        (epcsaft.EquilibriumOptions(ipopt_dual_infeasibility_tolerance=-1.0), "ipopt_dual_infeasibility_tolerance"),
+        (
+            epcsaft.EquilibriumOptions(ipopt_complementarity_tolerance=True),
+            "ipopt_complementarity_tolerance",
+        ),
         (epcsaft.EquilibriumOptions(continuation_state=1), "continuation_state"),
     ],
 )

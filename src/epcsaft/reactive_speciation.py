@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from numbers import Integral
+from numbers import Integral, Real
 from typing import Any
 
 import numpy as np
@@ -256,6 +256,11 @@ class ReactiveSpeciationOptions:
     solver_backend: str = "auto"
     hessian_mode: str = "auto"
     ipopt_iteration_history_limit: int = 20
+    ipopt_linear_solver: str = "auto"
+    ipopt_acceptable_tolerance: float | None = None
+    ipopt_constraint_violation_tolerance: float | None = None
+    ipopt_dual_infeasibility_tolerance: float | None = None
+    ipopt_complementarity_tolerance: float | None = None
     continuation_state: Mapping[str, Any] | None = None
     phase: str = "liq"
     error_mode: str = "raise"
@@ -437,6 +442,25 @@ def _normalize_options(options: ReactiveSpeciationOptions | None) -> ReactiveSpe
         raise InputError(
             "ReactiveSpeciationOptions.ipopt_iteration_history_limit must be an integer greater than or equal to zero."
         )
+    ipopt_linear_solver = str(options.ipopt_linear_solver).strip().lower()
+    if not ipopt_linear_solver:
+        raise InputError("ReactiveSpeciationOptions.ipopt_linear_solver must be a non-empty string.")
+    ipopt_acceptable_tolerance = _optional_positive_float_option(
+        options.ipopt_acceptable_tolerance,
+        "ipopt_acceptable_tolerance",
+    )
+    ipopt_constraint_violation_tolerance = _optional_positive_float_option(
+        options.ipopt_constraint_violation_tolerance,
+        "ipopt_constraint_violation_tolerance",
+    )
+    ipopt_dual_infeasibility_tolerance = _optional_positive_float_option(
+        options.ipopt_dual_infeasibility_tolerance,
+        "ipopt_dual_infeasibility_tolerance",
+    )
+    ipopt_complementarity_tolerance = _optional_positive_float_option(
+        options.ipopt_complementarity_tolerance,
+        "ipopt_complementarity_tolerance",
+    )
     continuation_state = options.continuation_state
     if continuation_state is not None and not isinstance(continuation_state, Mapping):
         raise InputError("ReactiveSpeciationOptions.continuation_state must be a mapping when provided.")
@@ -452,6 +476,11 @@ def _normalize_options(options: ReactiveSpeciationOptions | None) -> ReactiveSpe
         solver_backend=solver_backend,
         hessian_mode=hessian_mode,
         ipopt_iteration_history_limit=iteration_history_limit,
+        ipopt_linear_solver=ipopt_linear_solver,
+        ipopt_acceptable_tolerance=ipopt_acceptable_tolerance,
+        ipopt_constraint_violation_tolerance=ipopt_constraint_violation_tolerance,
+        ipopt_dual_infeasibility_tolerance=ipopt_dual_infeasibility_tolerance,
+        ipopt_complementarity_tolerance=ipopt_complementarity_tolerance,
         continuation_state=None if continuation_state is None else dict(continuation_state),
         phase=options.phase,
         error_mode=error_mode,
@@ -460,6 +489,18 @@ def _normalize_options(options: ReactiveSpeciationOptions | None) -> ReactiveSpe
         charge_tolerance=options.charge_tolerance,
         reaction_tolerance=options.reaction_tolerance,
     )
+
+
+def _optional_positive_float_option(value: Any, label: str) -> float | None:
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, Real):
+        raise InputError(f"ReactiveSpeciationOptions.{label} must be a finite real number when provided.")
+    out = float(value)
+    if not np.isfinite(out) or out <= 0.0:
+        raise InputError(f"ReactiveSpeciationOptions.{label} must be positive when provided.")
+    return out
+
 
 def _options_with_solver_backend(
     options: ReactiveSpeciationOptions,
@@ -473,6 +514,11 @@ def _options_with_solver_backend(
         solver_backend=solver_backend,
         hessian_mode=options.hessian_mode,
         ipopt_iteration_history_limit=options.ipopt_iteration_history_limit,
+        ipopt_linear_solver=options.ipopt_linear_solver,
+        ipopt_acceptable_tolerance=options.ipopt_acceptable_tolerance,
+        ipopt_constraint_violation_tolerance=options.ipopt_constraint_violation_tolerance,
+        ipopt_dual_infeasibility_tolerance=options.ipopt_dual_infeasibility_tolerance,
+        ipopt_complementarity_tolerance=options.ipopt_complementarity_tolerance,
         continuation_state=options.continuation_state,
         phase=options.phase,
         error_mode=options.error_mode,

@@ -90,6 +90,27 @@ def build_reactive_speciation_native_request(
             "activity_output": str(options.activity_output),
             "hessian_mode": str(options.hessian_mode),
             "iteration_history_limit": int(options.ipopt_iteration_history_limit),
+            "linear_solver": str(options.ipopt_linear_solver),
+            "acceptable_tolerance": float(
+                options.ipopt_acceptable_tolerance
+                if options.ipopt_acceptable_tolerance is not None
+                else max(100.0 * float(options.tolerance), 1.0e-10)
+            ),
+            "constraint_violation_tolerance": float(
+                options.ipopt_constraint_violation_tolerance
+                if options.ipopt_constraint_violation_tolerance is not None
+                else float(options.tolerance)
+            ),
+            "dual_infeasibility_tolerance": float(
+                options.ipopt_dual_infeasibility_tolerance
+                if options.ipopt_dual_infeasibility_tolerance is not None
+                else float(options.tolerance)
+            ),
+            "complementarity_tolerance": float(
+                options.ipopt_complementarity_tolerance
+                if options.ipopt_complementarity_tolerance is not None
+                else float(options.tolerance)
+            ),
             "continuation_state": None if continuation_state is None else dict(continuation_state),
         },
     }

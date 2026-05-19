@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import epcsaft
+import pytest
 from epcsaft import _core
 
 
@@ -93,6 +94,28 @@ def test_native_ipopt_quadratic_limited_memory_reports_explicit_mode() -> None:
     assert smoke["hessian_approximation"] == "limited-memory"
     assert smoke["hessian_backend"] == "limited-memory"
     assert smoke["eval_h_calls"] == 0
+
+
+def test_native_ipopt_quadratic_reports_linear_solver_and_tolerance_controls() -> None:
+    smoke = _core._native_ipopt_quadratic_smoke(
+        linear_solver="mumps",
+        acceptable_tolerance=9.0e-7,
+        constraint_violation_tolerance=8.0e-8,
+        dual_infeasibility_tolerance=7.0e-8,
+        complementarity_tolerance=6.0e-8,
+    )
+
+    assert smoke["backend"] == "ipopt"
+    if not smoke["compiled"]:
+        assert smoke["status"] == "ipopt_dependency_required"
+        return
+
+    assert smoke["accepted"] is True
+    assert smoke["linear_solver_requested"] == "mumps"
+    assert smoke["acceptable_tolerance"] == pytest.approx(9.0e-7)
+    assert smoke["constraint_violation_tolerance"] == pytest.approx(8.0e-8)
+    assert smoke["dual_infeasibility_tolerance"] == pytest.approx(7.0e-8)
+    assert smoke["complementarity_tolerance"] == pytest.approx(6.0e-8)
 
 
 def test_native_ipopt_quadratic_warm_start_round_trips_primal_and_multipliers() -> None:

@@ -80,6 +80,10 @@ struct NeutralTwoPhaseEosRouteResult {
     std::string hessian_approximation = "limited-memory";
     std::string hessian_backend = "limited-memory";
     std::string scaling_method = "user-scaling";
+    std::string linear_solver_requested = "auto";
+    std::string linear_solver_selected = "default";
+    std::string initial_point_strategy = "single_seed";
+    std::string seed_name = "problem_initial_point";
     std::string status;
     std::string solver_status;
     std::string application_status;
@@ -91,6 +95,10 @@ struct NeutralTwoPhaseEosRouteResult {
     int constraint_scaling_count = 0;
     int eval_h_calls = 0;
     double objective_scaling = 1.0;
+    double acceptable_tolerance = 0.0;
+    double constraint_violation_tolerance = 0.0;
+    double dual_infeasibility_tolerance = 0.0;
+    double complementarity_tolerance = 0.0;
     double variable_scaling_min = 0.0;
     double variable_scaling_max = 0.0;
     double constraint_scaling_min = 0.0;
@@ -105,6 +113,7 @@ struct NeutralTwoPhaseEosRouteResult {
     std::vector<double> bound_upper_multipliers;
     std::vector<double> constraint_multipliers;
     std::vector<IpoptIterationRecord> iteration_history;
+    std::vector<RouteSeedAttempt> seed_attempts;
     std::vector<std::vector<double>> phase_amounts;
     std::vector<double> phase_volumes;
     NeutralTwoPhaseEosPostsolve postsolve;
@@ -155,6 +164,10 @@ struct ReactiveTwoPhaseEosRouteResult {
     std::string hessian_approximation = "limited-memory";
     std::string hessian_backend = "limited-memory";
     std::string scaling_method = "user-scaling";
+    std::string linear_solver_requested = "auto";
+    std::string linear_solver_selected = "default";
+    std::string initial_point_strategy = "single_seed";
+    std::string seed_name = "problem_initial_point";
     std::string status;
     std::string solver_status;
     std::string application_status;
@@ -165,6 +178,10 @@ struct ReactiveTwoPhaseEosRouteResult {
     int constraint_scaling_count = 0;
     int eval_h_calls = 0;
     double objective_scaling = 1.0;
+    double acceptable_tolerance = 0.0;
+    double constraint_violation_tolerance = 0.0;
+    double dual_infeasibility_tolerance = 0.0;
+    double complementarity_tolerance = 0.0;
     double variable_scaling_min = 0.0;
     double variable_scaling_max = 0.0;
     double constraint_scaling_min = 0.0;
@@ -184,6 +201,7 @@ struct ReactiveTwoPhaseEosRouteResult {
     std::vector<double> bound_upper_multipliers;
     std::vector<double> constraint_multipliers;
     std::vector<IpoptIterationRecord> iteration_history;
+    std::vector<RouteSeedAttempt> seed_attempts;
     std::vector<std::vector<double>> phase_amounts;
     std::vector<double> phase_volumes;
     ReactiveTwoPhaseEosPostsolve postsolve;
