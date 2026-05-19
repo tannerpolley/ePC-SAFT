@@ -6,6 +6,7 @@ import epcsaft
 from epcsaft import reactive_electrolyte
 from epcsaft.electrolyte_bubble import ElectrolyteBubbleResult
 from epcsaft.reactive_speciation import ReactiveSpeciationResult
+from tests.api.reactive.test_reactive_speciation_options import _native_ipopt_compiled
 
 
 def _salt_mixture(x, T, P):
@@ -36,7 +37,13 @@ def test_reactive_electrolyte_bubble_routes_require_native_ipopt_route_builder(m
         lambda **kwargs: _successful_chemical_result(),
     )
 
-    with pytest.raises(epcsaft.InputError, match="native Ipopt equilibrium route builder"):
+    expected = (
+        (epcsaft.SolutionError, "Native electrolyte bubble-pressure route was rejected.")
+        if _native_ipopt_compiled()
+        else (epcsaft.InputError, "native Ipopt equilibrium route builder")
+    )
+
+    with pytest.raises(expected[0], match=expected[1]):
         epcsaft.solve_reactive_electrolyte_bubble(
             species=["H2O", "Na+", "Cl-"],
             mixture_factory=_salt_mixture,
@@ -53,7 +60,7 @@ def test_reactive_electrolyte_bubble_routes_require_native_ipopt_route_builder(m
             vapor_species=["H2O"],
         )
 
-    with pytest.raises(epcsaft.InputError, match="native Ipopt equilibrium route builder"):
+    with pytest.raises(expected[0], match=expected[1]):
         epcsaft.solve_reactive_electrolyte_bubble_sweep(
             species=["H2O", "Na+", "Cl-"],
             mixture_factory=_salt_mixture,

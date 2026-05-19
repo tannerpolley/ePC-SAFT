@@ -60,6 +60,9 @@ def test_reactive_speciation_options_public_surface_is_current_fields() -> None:
         "min_mole_fraction",
         "jacobian_backend",
         "solver_backend",
+        "hessian_mode",
+        "ipopt_iteration_history_limit",
+        "continuation_state",
         "phase",
         "error_mode",
         "activity_output",
@@ -73,6 +76,10 @@ def test_reactive_speciation_options_public_surface_is_current_fields() -> None:
     [
         (epcsaft.ReactiveSpeciationOptions(solver_backend="python_ipopt"), "solver_backend"),
         (epcsaft.ReactiveSpeciationOptions(jacobian_backend="autodiff"), "jacobian_backend"),
+        (epcsaft.ReactiveSpeciationOptions(hessian_mode="unsupported-mode"), "hessian_mode"),
+        (epcsaft.ReactiveSpeciationOptions(ipopt_iteration_history_limit=-1), "ipopt_iteration_history_limit"),
+        (epcsaft.ReactiveSpeciationOptions(ipopt_iteration_history_limit=True), "ipopt_iteration_history_limit"),
+        (epcsaft.ReactiveSpeciationOptions(continuation_state=1), "continuation_state"),
     ],
 )
 def test_reactive_speciation_rejects_invalid_optimizer_options(options, message) -> None:
@@ -99,6 +106,123 @@ def test_reactive_speciation_rejects_invalid_optimizer_options(options, message)
             ],
             initial_x=[0.998, 0.001, 0.0005, 0.0005],
             options=options,
+        )
+
+
+def test_reactive_speciation_builds_native_request_with_ipopt_tranche_options(monkeypatch) -> None:
+    mix = epcsaft.ePCSAFTMixture.from_params(
+        {
+            "m": np.asarray([1.0, 1.0]),
+            "s": np.asarray([3.0, 3.0]),
+            "e": np.asarray([200.0, 200.0]),
+        },
+        species=["A", "B"],
+    )
+    recorded: dict[str, object] = {}
+
+    def fake_native(_native, request):
+        recorded["request"] = request
+        return {
+            "success": True,
+            "message": "converged",
+            "composition": [0.25, 0.75],
+            "activity_coefficients": [1.0, 1.0],
+            "mass_balance_residuals": [0.0],
+            "charge_residual": 0.0,
+            "reaction_residuals": [0.0],
+            "diagnostics": {
+                "derivative_backend": "analytic",
+                "selected_solver_backend": "native_ipopt",
+                "solver_selection_reason": "explicit_request",
+                "hessian_approximation": "limited-memory",
+                "hessian_backend": "limited-memory",
+                "iteration_history_limit": 4,
+                "iteration_history": [],
+                "continuation_state": {
+                    "variables": [0.25, 0.75],
+                    "bound_lower_multipliers": [0.0, 0.0],
+                    "bound_upper_multipliers": [0.0, 0.0],
+                    "constraint_multipliers": [0.0],
+                },
+            },
+        }
+
+    monkeypatch.setattr(epcsaft._core, "_solve_chemical_equilibrium_native", fake_native)
+
+    result = epcsaft.solve_reactive_speciation(
+        species=["A", "B"],
+        mixture_factory=lambda x, T, P: mix,
+        T=298.15,
+        P=1.0e5,
+        balances={"total": {"A": 1.0, "B": 1.0}},
+        totals={"total": 1.0},
+        reactions=[
+            epcsaft.ReactionDefinition(
+                {"A": -1.0, "B": 1.0},
+                log_equilibrium_constant=math.log(3.0),
+                standard_state="ideal_mole_fraction",
+            )
+        ],
+        initial_x=[0.5, 0.5],
+        options=epcsaft.ReactiveSpeciationOptions(
+            solver_backend="ipopt",
+            hessian_mode="exact",
+            ipopt_iteration_history_limit=4,
+            continuation_state={
+                "variables": [0.5, 0.5],
+                "bound_lower_multipliers": [0.0, 0.0],
+                "bound_upper_multipliers": [0.0, 0.0],
+                "constraint_multipliers": [0.0],
+                "route_kind": "reactive_speciation",
+                "species_order": ["A", "B"],
+                "fixed_specs": {"fixed": ["T", "P", "totals"], "phase": "liq"},
+            },
+        ),
+    )
+
+    request = recorded["request"]
+    assert request["options"]["hessian_mode"] == "exact"
+    assert request["options"]["iteration_history_limit"] == 4
+    assert request["options"]["continuation_state"]["variables"] == pytest.approx([0.5, 0.5])
+    assert result.success is True
+    assert result.diagnostics["hessian_approximation"] == "limited-memory"
+    assert result.diagnostics["continuation_state"]["route_kind"] == "reactive_speciation"
+    assert result.diagnostics["continuation_state"]["species_order"] == ["A", "B"]
+
+
+def test_reactive_speciation_rejects_incompatible_continuation_state_species_order() -> None:
+    mix = epcsaft.ePCSAFTMixture.from_params(
+        {
+            "m": np.asarray([1.0, 1.0]),
+            "s": np.asarray([3.0, 3.0]),
+            "e": np.asarray([200.0, 200.0]),
+        },
+        species=["A", "B"],
+    )
+
+    with pytest.raises(epcsaft.InputError, match="species_order"):
+        epcsaft.solve_reactive_speciation(
+            species=["A", "B"],
+            mixture_factory=lambda x, T, P: mix,
+            T=298.15,
+            P=1.0e5,
+            balances={"total": {"A": 1.0, "B": 1.0}},
+            totals={"total": 1.0},
+            reactions=[
+                epcsaft.ReactionDefinition(
+                    {"A": -1.0, "B": 1.0},
+                    log_equilibrium_constant=math.log(3.0),
+                    standard_state="ideal_mole_fraction",
+                )
+            ],
+            initial_x=[0.5, 0.5],
+            options=epcsaft.ReactiveSpeciationOptions(
+                solver_backend="ipopt",
+                continuation_state={
+                    "variables": [0.5, 0.5],
+                    "species_order": ["B", "A"],
+                },
+            ),
         )
 
 def test_reactive_speciation_requested_ipopt_routes_ideal_speciation_when_compiled() -> None:

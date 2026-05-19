@@ -67,6 +67,8 @@ def test_stability_builds_one_native_route_request_before_ipopt_gate(monkeypatch
         hessian_mode,
         iteration_history_limit,
         stability_tolerance,
+        trial_initial_composition,
+        continuation_state,
     ):
         calls.append(
             {
@@ -78,6 +80,8 @@ def test_stability_builds_one_native_route_request_before_ipopt_gate(monkeypatch
                 "max_iterations": max_iterations,
                 "tolerance": tolerance,
                 "timeout_seconds": timeout_seconds,
+                "trial_initial_composition": trial_initial_composition,
+                "continuation_state": continuation_state,
                 "stability_tolerance": stability_tolerance,
             }
         )
@@ -131,6 +135,8 @@ def test_stability_converts_accepted_native_route_payload(monkeypatch: pytest.Mo
         hessian_mode,
         iteration_history_limit,
         stability_tolerance,
+        trial_initial_composition,
+        continuation_state,
     ):
         assert temperature == pytest.approx(300.0)
         assert pressure == pytest.approx(1.0e5)
@@ -151,6 +157,24 @@ def test_stability_converts_accepted_native_route_payload(monkeypatch: pytest.Mo
             "status": "accepted",
             "solver_status": "Solve_Succeeded",
             "application_status": "Solve_Succeeded",
+            "iteration_count": 2,
+            "iteration_history_limit": 2,
+            "iteration_history_size": 2,
+            "objective_scaling": 1.0,
+            "variable_scaling_min": 0.5,
+            "variable_scaling_max": 1.0,
+            "constraint_scaling_min": 1.0,
+            "constraint_scaling_max": 1.0,
+            "iteration_history": [
+                {"iteration": 0, "objective": 4.0},
+                {"iteration": 1, "objective": 2.0e-6},
+            ],
+            "continuation_state": {
+                "variables": [0.12, 0.28, 0.60],
+                "bound_lower_multipliers": [0.0, 0.0, 0.0],
+                "bound_upper_multipliers": [0.0, 0.0, 0.0],
+                "constraint_multipliers": [0.0],
+            },
             "parent_phase": "vap",
             "trial_phase": "vap",
             "seed_name": "canonical_shifted_feed",
@@ -185,6 +209,8 @@ def test_stability_converts_accepted_native_route_payload(monkeypatch: pytest.Mo
     assert result.trials[0].unstable is False
     assert result.diagnostics["route_count"] == 1
     assert result.diagnostics["derivative_backend"] == "cppad_implicit"
+    assert len(result.diagnostics["iteration_history"]) == 2
+    assert result.diagnostics["continuation_state"]["route_kind"] == "stability"
 
 
 @pytest.mark.parametrize(

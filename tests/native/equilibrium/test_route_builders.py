@@ -62,6 +62,7 @@ def test_current_public_route_nlps_reject_exact_hessian_without_provider() -> No
                 1.0e-5,
                 1.0e-7,
                 1.0e-4,
+                None,
             ),
         ),
         (
@@ -80,6 +81,7 @@ def test_current_public_route_nlps_reject_exact_hessian_without_provider() -> No
                 1.0e-5,
                 1.0e-7,
                 1.0e-4,
+                None,
             ),
         ),
         (
@@ -97,6 +99,7 @@ def test_current_public_route_nlps_reject_exact_hessian_without_provider() -> No
                 1.0e-5,
                 1.0e-7,
                 1.0e-4,
+                None,
             ),
         ),
         (
@@ -116,6 +119,7 @@ def test_current_public_route_nlps_reject_exact_hessian_without_provider() -> No
                 1.0e-8,
                 1.0e-7,
                 1.0e-4,
+                None,
             ),
         ),
         (
@@ -131,6 +135,8 @@ def test_current_public_route_nlps_reject_exact_hessian_without_provider() -> No
                 "exact",
                 20,
                 1.0e-8,
+                [],
+                None,
             ),
         ),
         (
@@ -148,6 +154,8 @@ def test_current_public_route_nlps_reject_exact_hessian_without_provider() -> No
                 "exact",
                 20,
                 1.0e-8,
+                [],
+                None,
             ),
         ),
         (
@@ -175,6 +183,7 @@ def test_current_public_route_nlps_reject_exact_hessian_without_provider() -> No
                 1.0e-12,
                 [0],
                 [],
+                None,
             ),
         ),
         (
@@ -200,6 +209,7 @@ def test_current_public_route_nlps_reject_exact_hessian_without_provider() -> No
                 1.0e-6,
                 1.0e-6,
                 1.0e-3,
+                None,
             ),
         ),
     ]
@@ -353,6 +363,8 @@ def test_neutral_stability_tpd_route_result_uses_ipopt_adapter_gate() -> None:
         "limited-memory",
         20,
         1.0e-8,
+        [],
+        None,
     )
 
     assert payload["backend"] == "ipopt"
@@ -427,6 +439,8 @@ def test_electrolyte_stability_tpd_route_result_uses_ipopt_adapter_gate() -> Non
         "limited-memory",
         20,
         1.0e-8,
+        [],
+        None,
     )
 
     assert payload["backend"] == "ipopt"
@@ -543,6 +557,7 @@ def test_electrolyte_lle_route_result_uses_ipopt_adapter_gate_and_charge_rows() 
         1.0e-7,
         1.0e-6,
         0.1,
+        None,
     )
 
     assert payload["backend"] == "ipopt"
@@ -765,6 +780,7 @@ def test_neutral_fixed_temperature_pressure_route_result_uses_ipopt_adapter_gate
         1.0e-5,
         1.0e-7,
         1.0e-4,
+        None,
     )
 
     assert payload["backend"] == "ipopt"
@@ -821,6 +837,7 @@ def test_neutral_fixed_pressure_temperature_route_result_uses_ipopt_adapter_gate
         1.0e-5,
         1.0e-7,
         1.0e-4,
+        None,
     )
 
     assert payload["backend"] == "ipopt"
@@ -884,6 +901,7 @@ def test_neutral_two_phase_eos_route_result_translates_solver_and_postsolve() ->
         1.0e-5,
         1.0e-7,
         1.0e-4,
+        None,
     )
 
     assert payload["backend"] == "ipopt"
@@ -930,6 +948,7 @@ def test_neutral_lle_route_result_uses_ipopt_adapter_gate() -> None:
         1.0e-5,
         1.0e-7,
         1.0e-4,
+        None,
     )
 
     assert payload["backend"] == "ipopt"
@@ -1307,6 +1326,7 @@ def test_reactive_two_phase_eos_route_result_uses_native_ipopt_gate() -> None:
         1.0e-6,
         1.0e-6,
         1.0e-3,
+        None,
     )
 
     assert payload["backend"] == "ipopt"
@@ -1400,6 +1420,7 @@ def test_reactive_lle_eos_route_builder_owns_canonical_initial_point() -> None:
         1.0e-12,
         [0],
         [],
+        None,
     )
 
     assert payload["backend"] == "ipopt"
@@ -1520,6 +1541,7 @@ def test_reactive_electrolyte_lle_eos_route_builder_uses_liquid_root_residual_ro
         1.0e-12,
         [0],
         [],
+        None,
     )
 
     assert payload["backend"] == "ipopt"

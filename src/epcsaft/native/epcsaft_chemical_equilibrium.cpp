@@ -1356,12 +1356,15 @@ ChemicalEquilibriumResultNative solve_nonideal_speciation_chemical_equilibrium_i
     solve_options.max_iterations = options.max_iterations;
     solve_options.tolerance = options.tolerance;
     solve_options.acceptable_tolerance = std::max(options.tolerance, 10.0 * options.tolerance);
-    solve_options.limited_memory_hessian = true;
+    solve_options.hessian_mode = options.hessian_mode;
+    solve_options.limited_memory_hessian = options.hessian_mode != "exact";
+    solve_options.iteration_history_limit = options.iteration_history_limit;
+    solve_options.initial_variables = options.initial_variables;
+    solve_options.initial_bound_lower_multipliers = options.initial_bound_lower_multipliers;
+    solve_options.initial_bound_upper_multipliers = options.initial_bound_upper_multipliers;
+    solve_options.initial_constraint_multipliers = options.initial_constraint_multipliers;
     epcsaft::native::equilibrium_nlp::IpoptSolveResult ipopt_result =
         epcsaft::native::equilibrium_nlp::solve_ipopt_nlp(problem, solve_options);
-    if (!ipopt_result.accepted) {
-        throw SolutionError("Ipopt did not accept the nonideal reactive speciation NLP solution.");
-    }
     if (ipopt_result.variables.size() != static_cast<std::size_t>(request.species_count)) {
         throw SolutionError("Ipopt returned an invalid nonideal reactive speciation variable vector.");
     }
@@ -1399,14 +1402,27 @@ ChemicalEquilibriumResultNative solve_nonideal_speciation_chemical_equilibrium_i
 
     ChemicalEquilibriumResultNative result;
     result.success = ipopt_result.accepted && current.residual_norm <= options.tolerance;
-    result.message = result.success
-        ? "converged"
-        : "Ipopt nonideal reactive speciation residual acceptance gate failed";
+    if (result.success) {
+        result.message = "converged";
+    } else if (!ipopt_result.accepted) {
+        result.message = "Ipopt did not accept the nonideal reactive speciation NLP solution.";
+    } else {
+        result.message = "Ipopt nonideal reactive speciation residual acceptance gate failed";
+    }
     result.composition = current.x;
     result.activity_coefficients = current.gamma;
     result.mass_balance_residuals = current.mass_residuals;
     result.charge_residual = current.charge_residual;
     result.reaction_residuals = current.reaction_residuals;
+    result.diagnostics_double = ipopt_result.diagnostics_double;
+    result.diagnostics_int = ipopt_result.diagnostics_int;
+    result.diagnostics_bool = ipopt_result.diagnostics_bool;
+    result.diagnostics_string = ipopt_result.diagnostics_string;
+    result.continuation_variables = ipopt_result.variables;
+    result.continuation_bound_lower_multipliers = ipopt_result.bound_lower_multipliers;
+    result.continuation_bound_upper_multipliers = ipopt_result.bound_upper_multipliers;
+    result.continuation_constraint_multipliers = ipopt_result.constraint_multipliers;
+    result.iteration_history = ipopt_result.iteration_history;
     result.diagnostics_string["solver_language"] = "c++";
     result.diagnostics_string["native_entrypoint"] = "_solve_chemical_equilibrium_native";
     result.diagnostics_string["problem_class"] = "homogeneous_nonideal_residual_speciation";

@@ -7,6 +7,7 @@ import pytest
 
 import epcsaft
 from tests.equilibrium.core.test_vle import _assert_tp_flash_native_ipopt_gate
+from tests.api.reactive.test_reactive_speciation_options import _native_ipopt_compiled
 
 
 def _toy_mixture() -> epcsaft.ePCSAFTMixture:
@@ -60,7 +61,23 @@ def test_staged_workflow_requires_native_ipopt_phase_route_after_fixed_constant_
         lambda **kwargs: _successful_speciation_result(),
     )
 
-    with pytest.raises(epcsaft.InputError) as excinfo:
+    if not _native_ipopt_compiled():
+        with pytest.raises(epcsaft.InputError) as excinfo:
+            epcsaft.solve_reactive_staged_equilibrium(
+                species=mix.species,
+                mixture_factory=lambda x, T, P: mix,
+                T=298.15,
+                P=1.0e5,
+                balances={"total": {"A": 1.0, "B": 1.0}},
+                totals={"total": 1.0},
+                reactions=[_fixed_literature_reaction()],
+                initial_x=[0.5, 0.5],
+                phase_kind="tp_flash",
+            )
+        _assert_tp_flash_native_ipopt_gate(excinfo)
+        return
+
+    with pytest.raises(epcsaft.SolutionError, match="Native neutral TP flash route was rejected."):
         epcsaft.solve_reactive_staged_equilibrium(
             species=mix.species,
             mixture_factory=lambda x, T, P: mix,
@@ -72,8 +89,6 @@ def test_staged_workflow_requires_native_ipopt_phase_route_after_fixed_constant_
             initial_x=[0.5, 0.5],
             phase_kind="tp_flash",
         )
-
-    _assert_tp_flash_native_ipopt_gate(excinfo)
 
 
 @pytest.mark.parametrize("phase_kind", ["stability", "stability_tp", "electrolyte_stability", "electrolyte_stability_tp"])

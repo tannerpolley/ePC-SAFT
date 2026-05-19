@@ -116,6 +116,8 @@ def test_electrolyte_stability_builds_native_route_request_before_ipopt_gate(
         hessian_mode,
         iteration_history_limit,
         stability_tolerance,
+        trial_initial_composition,
+        continuation_state,
     ):
         calls.append(
             {
@@ -176,6 +178,8 @@ def test_electrolyte_stability_converts_accepted_native_route_payload(
         hessian_mode,
         iteration_history_limit,
         stability_tolerance,
+        trial_initial_composition,
+        continuation_state,
     ):
         assert temperature == pytest.approx(298.15)
         assert pressure == pytest.approx(1.0e5)

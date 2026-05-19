@@ -112,9 +112,32 @@ def test_native_route_diagnostics_merges_postsolve_and_solver_metadata() -> None
         "iteration_history_size": 3,
         "variable_scaling_count": 2,
         "constraint_scaling_count": 1,
+        "objective_scaling": 0.5,
+        "variable_scaling_min": 0.25,
+        "variable_scaling_max": 1.0,
+        "constraint_scaling_min": 0.5,
+        "constraint_scaling_max": 0.5,
         "exact_hessian_available": True,
         "warm_start_requested": True,
         "warm_start_used": True,
+        "continuation_state": {
+            "variables": [0.2, 0.8],
+            "bound_lower_multipliers": [0.0, 0.0],
+            "bound_upper_multipliers": [0.0, 0.0],
+            "constraint_multipliers": [1.0],
+        },
+        "iteration_history": [
+            {
+                "iteration": 0,
+                "objective": 1.0,
+                "primal_infeasibility": 1.0e-2,
+            },
+            {
+                "iteration": 1,
+                "objective": 0.5,
+                "primal_infeasibility": 1.0e-6,
+            },
+        ],
         "exact_gradient_required": True,
         "exact_jacobian_required": True,
         "postsolve": {
@@ -142,9 +165,16 @@ def test_native_route_diagnostics_merges_postsolve_and_solver_metadata() -> None
     assert diagnostics["iteration_history_size"] == 3
     assert diagnostics["variable_scaling_count"] == 2
     assert diagnostics["constraint_scaling_count"] == 1
+    assert diagnostics["objective_scaling"] == pytest.approx(0.5)
+    assert diagnostics["variable_scaling_min"] == pytest.approx(0.25)
+    assert diagnostics["variable_scaling_max"] == pytest.approx(1.0)
+    assert diagnostics["constraint_scaling_min"] == pytest.approx(0.5)
+    assert diagnostics["constraint_scaling_max"] == pytest.approx(0.5)
     assert diagnostics["exact_hessian_available"] is True
     assert diagnostics["warm_start_requested"] is True
     assert diagnostics["warm_start_used"] is True
+    assert diagnostics["continuation_state"]["variables"] == pytest.approx([0.2, 0.8])
+    assert diagnostics["iteration_history"][1]["objective"] == pytest.approx(0.5)
     assert diagnostics["exact_gradient_required"] is True
     assert diagnostics["exact_jacobian_required"] is True
 

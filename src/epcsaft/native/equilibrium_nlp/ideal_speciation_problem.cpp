@@ -643,7 +643,13 @@ ChemicalEquilibriumResultNative solve_ideal_speciation_chemical_equilibrium_ipop
     solve_options.max_iterations = options.max_iterations;
     solve_options.tolerance = options.tolerance;
     solve_options.acceptable_tolerance = std::max(options.tolerance, 10.0 * options.tolerance);
-    solve_options.limited_memory_hessian = true;
+    solve_options.hessian_mode = options.hessian_mode;
+    solve_options.limited_memory_hessian = options.hessian_mode != "exact";
+    solve_options.iteration_history_limit = options.iteration_history_limit;
+    solve_options.initial_variables = options.initial_variables;
+    solve_options.initial_bound_lower_multipliers = options.initial_bound_lower_multipliers;
+    solve_options.initial_bound_upper_multipliers = options.initial_bound_upper_multipliers;
+    solve_options.initial_constraint_multipliers = options.initial_constraint_multipliers;
     const std::string derivative_backend = ideal_derivative_backend_from_options(options.jacobian_backend);
     const IdealSpeciationIpoptResult ipopt_result =
         solve_ideal_speciation_ipopt(request, solve_options, derivative_backend);
@@ -655,9 +661,13 @@ ChemicalEquilibriumResultNative solve_ideal_speciation_chemical_equilibrium_ipop
 
     ChemicalEquilibriumResultNative result;
     result.success = ipopt_result.ipopt.accepted && residual_norm <= options.tolerance;
-    result.message = result.success
-        ? "converged"
-        : "Ipopt ideal reactive speciation residual acceptance gate failed";
+    if (result.success) {
+        result.message = "converged";
+    } else if (!ipopt_result.ipopt.accepted) {
+        result.message = "Ipopt did not accept the ideal reactive speciation NLP solution.";
+    } else {
+        result.message = "Ipopt ideal reactive speciation residual acceptance gate failed";
+    }
     result.composition = ipopt_result.composition;
     if (options.activity_output == "always") {
         result.activity_coefficients = ipopt_result.activity_coefficients;
@@ -665,6 +675,15 @@ ChemicalEquilibriumResultNative solve_ideal_speciation_chemical_equilibrium_ipop
     result.mass_balance_residuals = ipopt_result.mass_balance_residuals;
     result.charge_residual = ipopt_result.charge_residual;
     result.reaction_residuals = ipopt_result.reaction_residuals;
+    result.diagnostics_double = ipopt_result.ipopt.diagnostics_double;
+    result.diagnostics_int = ipopt_result.ipopt.diagnostics_int;
+    result.diagnostics_bool = ipopt_result.ipopt.diagnostics_bool;
+    result.diagnostics_string = ipopt_result.ipopt.diagnostics_string;
+    result.continuation_variables = ipopt_result.ipopt.variables;
+    result.continuation_bound_lower_multipliers = ipopt_result.ipopt.bound_lower_multipliers;
+    result.continuation_bound_upper_multipliers = ipopt_result.ipopt.bound_upper_multipliers;
+    result.continuation_constraint_multipliers = ipopt_result.ipopt.constraint_multipliers;
+    result.iteration_history = ipopt_result.ipopt.iteration_history;
     result.diagnostics_string["solver_language"] = "c++";
     result.diagnostics_string["native_entrypoint"] = "_solve_chemical_equilibrium_native";
     result.diagnostics_string["problem_class"] = "homogeneous_ideal_gibbs_speciation";

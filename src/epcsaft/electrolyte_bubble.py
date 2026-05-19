@@ -24,6 +24,7 @@ class ElectrolyteBubbleOptions:
     charge_tolerance: float = 1.0e-8
     hessian_mode: str = "auto"
     ipopt_iteration_history_limit: int = 20
+    continuation_state: Mapping[str, Any] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,6 +74,13 @@ def electrolyte_bubble_pressure(
     options: ElectrolyteBubbleOptions | None = None,
 ) -> ElectrolyteBubbleResult:
     """Solve fixed-liquid electrolyte bubble pressure through the native Ipopt route."""
+    from .equilibrium import (
+        _ipopt_continuation_context,
+        _prepare_ipopt_continuation_state,
+        _stamp_ipopt_continuation_state,
+    )
+    from .equilibrium_core.native_results import native_route_diagnostics
+
     if options is None:
         options = ElectrolyteBubbleOptions()
     if not isinstance(options, ElectrolyteBubbleOptions):
@@ -91,6 +99,8 @@ def electrolyte_bubble_pressure(
         raise InputError(
             "ElectrolyteBubbleOptions.ipopt_iteration_history_limit must be an integer greater than or equal to zero."
         )
+    if options.continuation_state is not None and not isinstance(options.continuation_state, Mapping):
+        raise InputError("ElectrolyteBubbleOptions.continuation_state must be a mapping when provided.")
     if x_liq is None:
         if z is None:
             raise InputError("electrolyte_bubble_pressure requires x_liq or z.")
@@ -118,6 +128,26 @@ def electrolyte_bubble_pressure(
     unknown_vapor = sorted(set(vapor_labels).difference(species))
     if unknown_vapor:
         raise InputError("Unknown vapor species: " + ", ".join(unknown_vapor))
+    continuation_context = _ipopt_continuation_context(
+        route_kind="electrolyte_bubble_pressure",
+        mixture=mixture,
+        fixed_specs={
+            "fixed": ["T", "x_liq"],
+            "vapor_species": list(vapor_labels),
+        },
+    )
+    prepared_continuation_state = _prepare_ipopt_continuation_state(
+        ElectrolyteBubbleOptions(
+            max_iterations=int(options.max_iterations),
+            tolerance=float(options.tolerance),
+            min_composition=float(options.min_composition),
+            charge_tolerance=float(options.charge_tolerance),
+            hessian_mode=hessian_mode,
+            ipopt_iteration_history_limit=iteration_history_limit,
+            continuation_state=options.continuation_state,
+        ),
+        continuation_context=continuation_context,
+    )
 
     from . import _core
 
@@ -134,16 +164,13 @@ def electrolyte_bubble_pressure(
         float(options.charge_tolerance),
         float(options.tolerance),
         max(10.0 * float(options.min_composition), 1.0e-8),
+        prepared_continuation_state,
     )
     if str(route.get("status", "")) == "ipopt_dependency_required":
         _raise_native_ipopt_electrolyte_bubble_required()
     if not bool(route.get("accepted", False)):
-        postsolve = route.get("postsolve", {})
-        diagnostics = dict(postsolve) if isinstance(postsolve, Mapping) else {}
-        if route_status := route.get("status"):
-            diagnostics["route_status"] = route_status
-        if solver_status := route.get("solver_status"):
-            diagnostics["solver_status"] = solver_status
+        diagnostics = native_route_diagnostics(route)
+        _stamp_ipopt_continuation_state(diagnostics, route, continuation_context=continuation_context)
         raise SolutionError("Native electrolyte bubble-pressure route was rejected.", diagnostics)
     return _accepted_native_electrolyte_bubble_result(
         mixture,
@@ -151,6 +178,7 @@ def electrolyte_bubble_pressure(
         x_liq=x_values,
         vapor_labels=tuple(vapor_labels),
         route=route,
+        continuation_context=continuation_context,
     )
 
 
@@ -165,7 +193,11 @@ def _accepted_native_electrolyte_bubble_result(
     x_liq: np.ndarray,
     vapor_labels: tuple[str, ...],
     route: Mapping[str, Any],
+    continuation_context: Mapping[str, Any] | None = None,
 ) -> ElectrolyteBubbleResult:
+    from .equilibrium import _stamp_ipopt_continuation_state
+    from .equilibrium_core.native_results import native_route_diagnostics
+
     species = list(getattr(mixture, "species", []))
     phase_amounts = np.asarray(route.get("phase_amounts"), dtype=float)
     if phase_amounts.ndim != 2 or phase_amounts.shape != (2, len(species)):
@@ -197,12 +229,10 @@ def _accepted_native_electrolyte_bubble_result(
         for index in vapor_indices
     }
     fugacity_residual_norm = max((abs(value) for value in fugacity_residual.values()), default=0.0)
-    diagnostics = dict(route.get("postsolve", {}) if isinstance(route.get("postsolve"), Mapping) else {})
+    diagnostics = native_route_diagnostics(route)
     diagnostics["backend"] = "ipopt"
-    if problem_name := route.get("problem_name"):
-        diagnostics["problem_name"] = problem_name
-    if derivative_backend := route.get("derivative_backend"):
-        diagnostics["derivative_backend"] = derivative_backend
+    if continuation_context is not None:
+        _stamp_ipopt_continuation_state(diagnostics, route, continuation_context=continuation_context)
     return ElectrolyteBubbleResult(
         success=True,
         message="converged",

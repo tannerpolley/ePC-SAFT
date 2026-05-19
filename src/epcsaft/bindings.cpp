@@ -470,6 +470,15 @@ int diagnostic_int_or(
     return item == result.diagnostics_int.end() ? default_value : item->second;
 }
 
+double diagnostic_double_or(
+    const epcsaft::native::equilibrium_nlp::IpoptSolveResult& result,
+    const std::string& key,
+    double default_value
+) {
+    const auto item = result.diagnostics_double.find(key);
+    return item == result.diagnostics_double.end() ? default_value : item->second;
+}
+
 bool diagnostic_bool_or(
     const epcsaft::native::equilibrium_nlp::IpoptSolveResult& result,
     const std::string& key,
@@ -508,6 +517,20 @@ py::dict ipopt_continuation_state_to_dict(
     out["bound_lower_multipliers"] = result.bound_lower_multipliers;
     out["bound_upper_multipliers"] = result.bound_upper_multipliers;
     out["constraint_multipliers"] = result.constraint_multipliers;
+    return out;
+}
+
+py::dict ipopt_continuation_state_to_dict(
+    const std::vector<double>& variables,
+    const std::vector<double>& bound_lower_multipliers,
+    const std::vector<double>& bound_upper_multipliers,
+    const std::vector<double>& constraint_multipliers
+) {
+    py::dict out;
+    out["variables"] = variables;
+    out["bound_lower_multipliers"] = bound_lower_multipliers;
+    out["bound_upper_multipliers"] = bound_upper_multipliers;
+    out["constraint_multipliers"] = constraint_multipliers;
     return out;
 }
 
@@ -789,6 +812,11 @@ py::dict neutral_two_phase_eos_route_result_to_dict(
     out["variable_scaling_count"] = result.variable_scaling_count;
     out["constraint_scaling_count"] = result.constraint_scaling_count;
     out["eval_h_calls"] = result.eval_h_calls;
+    out["objective_scaling"] = result.objective_scaling;
+    out["variable_scaling_min"] = result.variable_scaling_min;
+    out["variable_scaling_max"] = result.variable_scaling_max;
+    out["constraint_scaling_min"] = result.constraint_scaling_min;
+    out["constraint_scaling_max"] = result.constraint_scaling_max;
     out["exact_hessian_available"] = result.exact_hessian_available;
     out["warm_start_requested"] = result.warm_start_requested;
     out["warm_start_used"] = result.warm_start_used;
@@ -799,6 +827,13 @@ py::dict neutral_two_phase_eos_route_result_to_dict(
     out["objective"] = result.objective;
     out["variables"] = result.variables;
     out["constraints"] = result.constraints;
+    out["continuation_state"] = ipopt_continuation_state_to_dict(
+        result.variables,
+        result.bound_lower_multipliers,
+        result.bound_upper_multipliers,
+        result.constraint_multipliers
+    );
+    out["iteration_history"] = ipopt_iteration_history_to_list(result.iteration_history);
     out["phase_amounts"] = result.phase_amounts;
     out["phase_volumes"] = result.phase_volumes;
     out["postsolve"] = neutral_two_phase_eos_postsolve_to_dict(result.postsolve);
@@ -863,6 +898,11 @@ py::dict reactive_two_phase_eos_route_result_to_dict(
     out["variable_scaling_count"] = result.variable_scaling_count;
     out["constraint_scaling_count"] = result.constraint_scaling_count;
     out["eval_h_calls"] = result.eval_h_calls;
+    out["objective_scaling"] = result.objective_scaling;
+    out["variable_scaling_min"] = result.variable_scaling_min;
+    out["variable_scaling_max"] = result.variable_scaling_max;
+    out["constraint_scaling_min"] = result.constraint_scaling_min;
+    out["constraint_scaling_max"] = result.constraint_scaling_max;
     out["exact_hessian_available"] = result.exact_hessian_available;
     out["warm_start_requested"] = result.warm_start_requested;
     out["warm_start_used"] = result.warm_start_used;
@@ -877,6 +917,13 @@ py::dict reactive_two_phase_eos_route_result_to_dict(
     out["standard_mu_rt"] = result.standard_mu_rt;
     out["variables"] = result.variables;
     out["constraints"] = result.constraints;
+    out["continuation_state"] = ipopt_continuation_state_to_dict(
+        result.variables,
+        result.bound_lower_multipliers,
+        result.bound_upper_multipliers,
+        result.constraint_multipliers
+    );
+    out["iteration_history"] = ipopt_iteration_history_to_list(result.iteration_history);
     out["phase_amounts"] = result.phase_amounts;
     out["phase_volumes"] = result.phase_volumes;
     out["postsolve"] = reactive_two_phase_eos_postsolve_to_dict(result.postsolve);
@@ -948,6 +995,11 @@ py::dict stability_route_result_to_dict(
     out["variable_scaling_count"] = result.variable_scaling_count;
     out["constraint_scaling_count"] = result.constraint_scaling_count;
     out["eval_h_calls"] = result.eval_h_calls;
+    out["objective_scaling"] = result.objective_scaling;
+    out["variable_scaling_min"] = result.variable_scaling_min;
+    out["variable_scaling_max"] = result.variable_scaling_max;
+    out["constraint_scaling_min"] = result.constraint_scaling_min;
+    out["constraint_scaling_max"] = result.constraint_scaling_max;
     out["exact_hessian_available"] = result.exact_hessian_available;
     out["warm_start_requested"] = result.warm_start_requested;
     out["warm_start_used"] = result.warm_start_used;
@@ -961,6 +1013,13 @@ py::dict stability_route_result_to_dict(
     out["min_tpd"] = result.min_tpd;
     out["variables"] = result.variables;
     out["constraints"] = result.constraints;
+    out["continuation_state"] = ipopt_continuation_state_to_dict(
+        result.variables,
+        result.bound_lower_multipliers,
+        result.bound_upper_multipliers,
+        result.constraint_multipliers
+    );
+    out["iteration_history"] = ipopt_iteration_history_to_list(result.iteration_history);
     out["trial_composition"] = result.trial_composition;
     out["initial_composition"] = result.initial_composition;
     out["parent_reduced_potential"] = result.parent_reduced_potential;
@@ -1068,6 +1127,13 @@ py::dict native_chemical_equilibrium_to_dict(const ChemicalEquilibriumResultNati
         result.diagnostics_string,
         result.diagnostics_vector
     );
+    diagnostics["continuation_state"] = ipopt_continuation_state_to_dict(
+        result.continuation_variables,
+        result.continuation_bound_lower_multipliers,
+        result.continuation_bound_upper_multipliers,
+        result.continuation_constraint_multipliers
+    );
+    diagnostics["iteration_history"] = ipopt_iteration_history_to_list(result.iteration_history);
     py::dict handoff;
     auto handoff_it = result.diagnostics_vector.find("phase_handoff_composition");
     handoff["composition"] = handoff_it == result.diagnostics_vector.end() ? result.composition : handoff_it->second;
@@ -1220,6 +1286,20 @@ ChemicalEquilibriumOptionsNative chemical_options_from_request(const py::dict& r
     }
     if (input.contains("solver_backend")) {
         options.solver_backend = input["solver_backend"].cast<std::string>();
+    }
+    if (input.contains("hessian_mode")) {
+        options.hessian_mode = input["hessian_mode"].cast<std::string>();
+    }
+    if (input.contains("iteration_history_limit")) {
+        options.iteration_history_limit = input["iteration_history_limit"].cast<int>();
+    }
+    if (input.contains("continuation_state") && !input["continuation_state"].is_none()) {
+        epcsaft::native::equilibrium_nlp::IpoptSolveOptions solve_options;
+        apply_ipopt_continuation_state(solve_options, input["continuation_state"]);
+        options.initial_variables = solve_options.initial_variables;
+        options.initial_bound_lower_multipliers = solve_options.initial_bound_lower_multipliers;
+        options.initial_bound_upper_multipliers = solve_options.initial_bound_upper_multipliers;
+        options.initial_constraint_multipliers = solve_options.initial_constraint_multipliers;
     }
     if (input.contains("phase")) {
         options.phase = input["phase"].cast<std::string>();
@@ -1692,6 +1772,11 @@ PYBIND11_MODULE(_core, m) {
         out["scaling_method"] = diagnostic_string_or(result, "scaling_method", "");
         out["variable_scaling_count"] = diagnostic_int_or(result, "variable_scaling_count", 0);
         out["constraint_scaling_count"] = diagnostic_int_or(result, "constraint_scaling_count", 0);
+        out["objective_scaling"] = diagnostic_double_or(result, "objective_scaling", 1.0);
+        out["variable_scaling_min"] = diagnostic_double_or(result, "variable_scaling_min", 0.0);
+        out["variable_scaling_max"] = diagnostic_double_or(result, "variable_scaling_max", 0.0);
+        out["constraint_scaling_min"] = diagnostic_double_or(result, "constraint_scaling_min", 0.0);
+        out["constraint_scaling_max"] = diagnostic_double_or(result, "constraint_scaling_max", 0.0);
         out["warm_start_requested"] = diagnostic_bool_or(result, "warm_start_requested", false);
         out["warm_start_used"] = diagnostic_bool_or(result, "warm_start_used", false);
         out["exact_hessian_available"] = diagnostic_bool_or(result, "exact_hessian_available", false);
@@ -2237,13 +2322,15 @@ PYBIND11_MODULE(_core, m) {
         double material_tolerance,
         double pressure_tolerance,
         double chemical_potential_tolerance,
-        double phase_distance_tolerance
+        double phase_distance_tolerance,
+        const py::object& continuation_state
     ) {
         if (!mixture) {
             throw ValueError("Neutral two-phase EOS route result requires a native mixture.");
         }
-        const epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
+        epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
             ipopt_solve_options_from_scalars(max_iterations, tolerance, 0.0, hessian_mode, iteration_history_limit);
+        apply_ipopt_continuation_state(options, continuation_state);
         return neutral_two_phase_eos_route_result_to_dict(
             epcsaft::native::equilibrium_nlp::solve_neutral_two_phase_eos_route(
                 mixture->args(),
@@ -2280,12 +2367,13 @@ PYBIND11_MODULE(_core, m) {
         double conserved_balance_tolerance,
         double pressure_tolerance,
         double reaction_stationarity_tolerance,
-        double phase_distance_tolerance
+        double phase_distance_tolerance,
+        const py::object& continuation_state
     ) {
         if (!mixture) {
             throw ValueError("Reactive two-phase EOS route result requires a native mixture.");
         }
-        const epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
+        epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
             ipopt_solve_options_from_scalars(
                 max_iterations,
                 tolerance,
@@ -2293,6 +2381,7 @@ PYBIND11_MODULE(_core, m) {
                 hessian_mode,
                 iteration_history_limit
             );
+        apply_ipopt_continuation_state(options, continuation_state);
         return reactive_two_phase_eos_route_result_to_dict(
             epcsaft::native::equilibrium_nlp::solve_reactive_two_phase_eos_route(
                 mixture->args(),
@@ -2337,12 +2426,13 @@ PYBIND11_MODULE(_core, m) {
         double phase_distance_tolerance,
         double min_composition,
         const std::vector<int>& reaction_standard_states,
-        const std::vector<double>& reaction_phase_stoichiometry
+        const std::vector<double>& reaction_phase_stoichiometry,
+        const py::object& continuation_state
     ) {
         if (!mixture) {
             throw ValueError("Reactive LLE EOS route result requires a native mixture.");
         }
-        const epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
+        epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
             ipopt_solve_options_from_scalars(
                 max_iterations,
                 tolerance,
@@ -2350,6 +2440,7 @@ PYBIND11_MODULE(_core, m) {
                 hessian_mode,
                 iteration_history_limit
             );
+        apply_ipopt_continuation_state(options, continuation_state);
         EquilibriumOptionsNative equilibrium_options;
         equilibrium_options.min_composition = min_composition;
         return reactive_two_phase_eos_route_result_to_dict(
@@ -2397,12 +2488,13 @@ PYBIND11_MODULE(_core, m) {
         double phase_distance_tolerance,
         double min_composition,
         const std::vector<int>& reaction_standard_states,
-        const std::vector<double>& reaction_phase_stoichiometry
+        const std::vector<double>& reaction_phase_stoichiometry,
+        const py::object& continuation_state
     ) {
         if (!mixture) {
             throw ValueError("Reactive electrolyte LLE EOS route result requires a native mixture.");
         }
-        const epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
+        epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
             ipopt_solve_options_from_scalars(
                 max_iterations,
                 tolerance,
@@ -2410,6 +2502,7 @@ PYBIND11_MODULE(_core, m) {
                 hessian_mode,
                 iteration_history_limit
             );
+        apply_ipopt_continuation_state(options, continuation_state);
         EquilibriumOptionsNative equilibrium_options;
         equilibrium_options.min_composition = min_composition;
         return reactive_two_phase_eos_route_result_to_dict(
@@ -2461,12 +2554,13 @@ PYBIND11_MODULE(_core, m) {
         double phase_distance_tolerance,
         double min_composition,
         const std::vector<int>& reaction_standard_states,
-        const std::vector<double>& reaction_phase_stoichiometry
+        const std::vector<double>& reaction_phase_stoichiometry,
+        const py::object& continuation_state
     ) {
         if (!mixture || !phase1_mixture || !phase2_mixture) {
             throw ValueError("Reactive electrolyte LLE phase_models route requires global, aqueous, and organic native mixtures.");
         }
-        const epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
+        epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
             ipopt_solve_options_from_scalars(
                 max_iterations,
                 tolerance,
@@ -2474,6 +2568,7 @@ PYBIND11_MODULE(_core, m) {
                 hessian_mode,
                 iteration_history_limit
             );
+        apply_ipopt_continuation_state(options, continuation_state);
         EquilibriumOptionsNative equilibrium_options;
         equilibrium_options.min_composition = min_composition;
         return reactive_two_phase_eos_route_result_to_dict(
@@ -2516,12 +2611,13 @@ PYBIND11_MODULE(_core, m) {
         double material_tolerance,
         double pressure_tolerance,
         double chemical_potential_tolerance,
-        double phase_distance_tolerance
+        double phase_distance_tolerance,
+        const py::object& continuation_state
     ) {
         if (!mixture) {
             throw ValueError("Neutral TP flash EOS route result requires a native mixture.");
         }
-        const epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
+        epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
             ipopt_solve_options_from_scalars(
                 max_iterations,
                 tolerance,
@@ -2529,6 +2625,7 @@ PYBIND11_MODULE(_core, m) {
                 hessian_mode,
                 iteration_history_limit
             );
+        apply_ipopt_continuation_state(options, continuation_state);
         return neutral_two_phase_eos_route_result_to_dict(
             epcsaft::native::equilibrium_nlp::solve_neutral_two_phase_eos_tp_flash_route(
                 mixture->args(),
@@ -2556,12 +2653,13 @@ PYBIND11_MODULE(_core, m) {
         double material_tolerance,
         double pressure_tolerance,
         double chemical_potential_tolerance,
-        double phase_distance_tolerance
+        double phase_distance_tolerance,
+        const py::object& continuation_state
     ) {
         if (!mixture) {
             throw ValueError("Neutral LLE EOS route result requires a native mixture.");
         }
-        const epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
+        epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
             ipopt_solve_options_from_scalars(
                 max_iterations,
                 tolerance,
@@ -2569,6 +2667,7 @@ PYBIND11_MODULE(_core, m) {
                 hessian_mode,
                 iteration_history_limit
             );
+        apply_ipopt_continuation_state(options, continuation_state);
         return neutral_two_phase_eos_route_result_to_dict(
             epcsaft::native::equilibrium_nlp::solve_neutral_two_phase_eos_lle_route(
                 mixture->args(),
@@ -2597,13 +2696,14 @@ PYBIND11_MODULE(_core, m) {
         double pressure_tolerance,
         double charge_tolerance,
         double chemical_potential_tolerance,
-        double phase_distance_tolerance
+        double phase_distance_tolerance,
+        const py::object& continuation_state
     ) {
         if (!mixture) {
             throw ValueError("Electrolyte LLE EOS route result requires a native mixture.");
         }
         (void)pressure_tolerance;
-        const epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
+        epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
             ipopt_solve_options_from_scalars(
                 max_iterations,
                 tolerance,
@@ -2611,6 +2711,7 @@ PYBIND11_MODULE(_core, m) {
                 hessian_mode,
                 iteration_history_limit
             );
+        apply_ipopt_continuation_state(options, continuation_state);
         EquilibriumOptionsNative equilibrium_options;
         return neutral_two_phase_eos_route_result_to_dict(
             solve_electrolyte_lle_liquid_root_route_native(
@@ -2640,12 +2741,13 @@ PYBIND11_MODULE(_core, m) {
         double phase_total_tolerance,
         double pressure_tolerance,
         double chemical_potential_tolerance,
-        double phase_distance_tolerance
+        double phase_distance_tolerance,
+        const py::object& continuation_state
     ) {
         if (!mixture) {
             throw ValueError("Neutral bubble pressure EOS route result requires a native mixture.");
         }
-        const epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
+        epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
             ipopt_solve_options_from_scalars(
                 max_iterations,
                 tolerance,
@@ -2653,6 +2755,7 @@ PYBIND11_MODULE(_core, m) {
                 hessian_mode,
                 iteration_history_limit
             );
+        apply_ipopt_continuation_state(options, continuation_state);
         return neutral_two_phase_eos_route_result_to_dict(
             epcsaft::native::equilibrium_nlp::solve_neutral_bubble_p_eos_route(
                 mixture->args(),
@@ -2678,13 +2781,15 @@ PYBIND11_MODULE(_core, m) {
         double pressure_tolerance,
         double charge_tolerance,
         double chemical_potential_tolerance,
-        double phase_distance_tolerance
+        double phase_distance_tolerance,
+        const py::object& continuation_state
     ) {
         if (!mixture) {
             throw ValueError("Electrolyte bubble pressure EOS route result requires a native mixture.");
         }
-        const epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
+        epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
             ipopt_solve_options_from_scalars(max_iterations, tolerance, 0.0, hessian_mode, iteration_history_limit);
+        apply_ipopt_continuation_state(options, continuation_state);
         return neutral_two_phase_eos_route_result_to_dict(
             epcsaft::native::equilibrium_nlp::solve_electrolyte_bubble_p_eos_route(
                 mixture->args(),
@@ -2711,12 +2816,13 @@ PYBIND11_MODULE(_core, m) {
         double phase_total_tolerance,
         double pressure_tolerance,
         double chemical_potential_tolerance,
-        double phase_distance_tolerance
+        double phase_distance_tolerance,
+        const py::object& continuation_state
     ) {
         if (!mixture) {
             throw ValueError("Neutral dew pressure EOS route result requires a native mixture.");
         }
-        const epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
+        epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
             ipopt_solve_options_from_scalars(
                 max_iterations,
                 tolerance,
@@ -2724,6 +2830,7 @@ PYBIND11_MODULE(_core, m) {
                 hessian_mode,
                 iteration_history_limit
             );
+        apply_ipopt_continuation_state(options, continuation_state);
         return neutral_two_phase_eos_route_result_to_dict(
             epcsaft::native::equilibrium_nlp::solve_neutral_dew_p_eos_route(
                 mixture->args(),
@@ -2749,12 +2856,13 @@ PYBIND11_MODULE(_core, m) {
         double phase_total_tolerance,
         double pressure_tolerance,
         double chemical_potential_tolerance,
-        double phase_distance_tolerance
+        double phase_distance_tolerance,
+        const py::object& continuation_state
     ) {
         if (!mixture) {
             throw ValueError("Neutral bubble temperature EOS route result requires a native mixture.");
         }
-        const epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
+        epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
             ipopt_solve_options_from_scalars(
                 max_iterations,
                 tolerance,
@@ -2762,6 +2870,7 @@ PYBIND11_MODULE(_core, m) {
                 hessian_mode,
                 iteration_history_limit
             );
+        apply_ipopt_continuation_state(options, continuation_state);
         return neutral_two_phase_eos_route_result_to_dict(
             epcsaft::native::equilibrium_nlp::solve_neutral_bubble_t_eos_route(
                 mixture->args(),
@@ -2787,12 +2896,13 @@ PYBIND11_MODULE(_core, m) {
         double phase_total_tolerance,
         double pressure_tolerance,
         double chemical_potential_tolerance,
-        double phase_distance_tolerance
+        double phase_distance_tolerance,
+        const py::object& continuation_state
     ) {
         if (!mixture) {
             throw ValueError("Neutral dew temperature EOS route result requires a native mixture.");
         }
-        const epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
+        epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
             ipopt_solve_options_from_scalars(
                 max_iterations,
                 tolerance,
@@ -2800,6 +2910,7 @@ PYBIND11_MODULE(_core, m) {
                 hessian_mode,
                 iteration_history_limit
             );
+        apply_ipopt_continuation_state(options, continuation_state);
         return neutral_two_phase_eos_route_result_to_dict(
             epcsaft::native::equilibrium_nlp::solve_neutral_dew_t_eos_route(
                 mixture->args(),
@@ -2826,12 +2937,13 @@ PYBIND11_MODULE(_core, m) {
         const std::string& hessian_mode,
         int iteration_history_limit,
         double stability_tolerance,
-        const std::vector<double>& trial_initial_composition
+        const std::vector<double>& trial_initial_composition,
+        const py::object& continuation_state
     ) {
         if (!mixture) {
             throw ValueError("Neutral stability TPD route result requires a native mixture.");
         }
-        const epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
+        epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
             ipopt_solve_options_from_scalars(
                 max_iterations,
                 tolerance,
@@ -2839,6 +2951,7 @@ PYBIND11_MODULE(_core, m) {
                 hessian_mode,
                 iteration_history_limit
             );
+        apply_ipopt_continuation_state(options, continuation_state);
         return stability_route_result_to_dict(
             epcsaft::native::equilibrium_nlp::solve_neutral_stability_tpd_route(
                 mixture->args(),
@@ -2865,7 +2978,8 @@ PYBIND11_MODULE(_core, m) {
         py::arg("hessian_mode"),
         py::arg("iteration_history_limit"),
         py::arg("stability_tolerance"),
-        py::arg("trial_initial_composition") = std::vector<double>{}
+        py::arg("trial_initial_composition") = std::vector<double>{},
+        py::arg("continuation_state") = py::none()
     );
     m.def("_native_electrolyte_stability_tpd_route_result", [](
         const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
@@ -2878,12 +2992,13 @@ PYBIND11_MODULE(_core, m) {
         const std::string& hessian_mode,
         int iteration_history_limit,
         double stability_tolerance,
-        const std::vector<double>& trial_initial_composition
+        const std::vector<double>& trial_initial_composition,
+        const py::object& continuation_state
     ) {
         if (!mixture) {
             throw ValueError("Electrolyte stability TPD route result requires a native mixture.");
         }
-        const epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
+        epcsaft::native::equilibrium_nlp::IpoptSolveOptions options =
             ipopt_solve_options_from_scalars(
                 max_iterations,
                 tolerance,
@@ -2891,6 +3006,7 @@ PYBIND11_MODULE(_core, m) {
                 hessian_mode,
                 iteration_history_limit
             );
+        apply_ipopt_continuation_state(options, continuation_state);
         return stability_route_result_to_dict(
             epcsaft::native::equilibrium_nlp::solve_electrolyte_stability_tpd_route(
                 mixture->args(),
@@ -2913,7 +3029,8 @@ PYBIND11_MODULE(_core, m) {
         py::arg("hessian_mode"),
         py::arg("iteration_history_limit"),
         py::arg("stability_tolerance"),
-        py::arg("trial_initial_composition") = std::vector<double>{}
+        py::arg("trial_initial_composition") = std::vector<double>{},
+        py::arg("continuation_state") = py::none()
     );
     m.def("_native_neutral_two_phase_eos_postsolve", [](
         const std::shared_ptr<ePCSAFTMixtureNative>& mixture,

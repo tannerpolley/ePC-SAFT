@@ -63,6 +63,11 @@ struct StabilityRouteResult {
     int variable_scaling_count = 0;
     int constraint_scaling_count = 0;
     int eval_h_calls = 0;
+    double objective_scaling = 1.0;
+    double variable_scaling_min = 0.0;
+    double variable_scaling_max = 0.0;
+    double constraint_scaling_min = 0.0;
+    double constraint_scaling_max = 0.0;
     bool exact_hessian_available = false;
     bool warm_start_requested = false;
     bool warm_start_used = false;
@@ -70,6 +75,10 @@ struct StabilityRouteResult {
     double min_tpd = 0.0;
     std::vector<double> variables;
     std::vector<double> constraints;
+    std::vector<double> bound_lower_multipliers;
+    std::vector<double> bound_upper_multipliers;
+    std::vector<double> constraint_multipliers;
+    std::vector<IpoptIterationRecord> iteration_history;
     std::vector<double> trial_composition;
     std::vector<double> initial_composition;
     std::vector<double> parent_reduced_potential;

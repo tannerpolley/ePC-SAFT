@@ -134,7 +134,12 @@ def test_native_chemical_equilibrium_solve_accepts_ideal_cppad_derivative_reques
         "reaction_rows": 1,
         "log_equilibrium_constants": [math.log(3.0)],
         "reaction_standard_states": [1],
-        "options": {"solver_backend": "ipopt", "jacobian_backend": "cppad"},
+        "options": {
+            "solver_backend": "ipopt",
+            "jacobian_backend": "cppad",
+            "hessian_mode": "limited-memory",
+            "iteration_history_limit": 2,
+        },
     }
 
     if not _core._native_ipopt_smoke()["compiled"]:
@@ -147,6 +152,10 @@ def test_native_chemical_equilibrium_solve_accepts_ideal_cppad_derivative_reques
     assert payload["diagnostics"]["requested_jacobian_backend"] == "cppad"
     assert payload["diagnostics"]["derivative_backend"] == "cppad"
     assert payload["diagnostics"]["implicit_sensitivity_backend"] == "cppad_implicit"
+    assert payload["diagnostics"]["hessian_approximation"] == "limited-memory"
+    assert payload["diagnostics"]["iteration_history_limit"] == 2
+    assert len(payload["diagnostics"]["iteration_history"]) <= 2
+    assert len(payload["diagnostics"]["continuation_state"]["variables"]) == 2
 
 
 def test_native_chemical_equilibrium_solve_routes_nonideal_speciation_to_ipopt() -> None:
@@ -180,6 +189,34 @@ def test_native_chemical_equilibrium_solve_routes_nonideal_speciation_to_ipopt()
     assert diagnostics["jacobian_backend"] == "cppad_implicit"
     assert diagnostics["implicit_sensitivity_backend"] == "cppad_implicit"
     assert diagnostics["selected_solver_backend"] == "native_ipopt"
+
+
+@pytest.mark.parametrize("standard_state_code", [0, 1])
+def test_native_chemical_equilibrium_solve_rejects_exact_hessian_without_provider(
+    standard_state_code: int,
+) -> None:
+    mix = _toy_mixture()
+    request = {
+        "T": 298.15,
+        "P": 1.0e5,
+        "initial_x": [0.5, 0.5],
+        "balance_matrix": [1.0, 1.0],
+        "balance_rows": 1,
+        "total_vector": [1.0],
+        "reaction_stoichiometry": [-1.0, 1.0],
+        "reaction_rows": 1,
+        "log_equilibrium_constants": [math.log(3.0)],
+        "reaction_standard_states": [standard_state_code],
+        "options": {"solver_backend": "ipopt", "hessian_mode": "exact"},
+    }
+
+    if not _core._native_ipopt_smoke()["compiled"]:
+        with pytest.raises(_core.NativeSolutionError, match=r"EPCSAFT_ENABLE_IPOPT=ON"):
+            _core._solve_chemical_equilibrium_native(mix._native, request)
+        return
+
+    with pytest.raises(_core.NativeValueError, match="exact Hessian mode requires"):
+        _core._solve_chemical_equilibrium_native(mix._native, request)
 
 
 def test_native_chemical_equilibrium_solve_accepts_mixed_nonideal_standard_states() -> None:

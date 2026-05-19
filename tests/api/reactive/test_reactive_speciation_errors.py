@@ -60,8 +60,12 @@ def test_solve_reactive_speciation_result_mode_does_not_mask_native_ipopt_depend
         _assert_reactive_speciation_native_ipopt_dependency_required(excinfo)
         return
 
-    with pytest.raises(epcsaft.SolutionError, match="Ipopt"):
-        epcsaft.solve_reactive_speciation(**kwargs)
+    result = epcsaft.solve_reactive_speciation(**kwargs)
+
+    assert result.success is False
+    assert "Ipopt" in result.message
+    assert result.diagnostics["native_success"] is False
+    assert result.diagnostics["selected_solver_backend"] == "native_ipopt"
 
 
 @pytest.mark.parametrize(

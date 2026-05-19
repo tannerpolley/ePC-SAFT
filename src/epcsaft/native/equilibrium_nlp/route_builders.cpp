@@ -25,6 +25,11 @@ int solve_int(const IpoptSolveResult& solve, const std::string& key, int default
     return item == solve.diagnostics_int.end() ? default_value : item->second;
 }
 
+double solve_double(const IpoptSolveResult& solve, const std::string& key, double default_value = 0.0) {
+    const auto item = solve.diagnostics_double.find(key);
+    return item == solve.diagnostics_double.end() ? default_value : item->second;
+}
+
 bool solve_bool(const IpoptSolveResult& solve, const std::string& key, bool default_value = false) {
     const auto item = solve.diagnostics_bool.find(key);
     return item == solve.diagnostics_bool.end() ? default_value : item->second;
@@ -44,9 +49,18 @@ void apply_ipopt_solve_metadata(NeutralTwoPhaseEosRouteResult& out, const IpoptS
     out.variable_scaling_count = solve_int(solve, "variable_scaling_count");
     out.constraint_scaling_count = solve_int(solve, "constraint_scaling_count");
     out.eval_h_calls = solve_int(solve, "eval_h_calls");
+    out.objective_scaling = solve_double(solve, "objective_scaling", out.objective_scaling);
+    out.variable_scaling_min = solve_double(solve, "variable_scaling_min", out.variable_scaling_min);
+    out.variable_scaling_max = solve_double(solve, "variable_scaling_max", out.variable_scaling_max);
+    out.constraint_scaling_min = solve_double(solve, "constraint_scaling_min", out.constraint_scaling_min);
+    out.constraint_scaling_max = solve_double(solve, "constraint_scaling_max", out.constraint_scaling_max);
     out.exact_hessian_available = solve_bool(solve, "exact_hessian_available");
     out.warm_start_requested = solve_bool(solve, "warm_start_requested");
     out.warm_start_used = solve_bool(solve, "warm_start_used");
+    out.bound_lower_multipliers = solve.bound_lower_multipliers;
+    out.bound_upper_multipliers = solve.bound_upper_multipliers;
+    out.constraint_multipliers = solve.constraint_multipliers;
+    out.iteration_history = solve.iteration_history;
 }
 
 void apply_ipopt_solve_metadata(ReactiveTwoPhaseEosRouteResult& out, const IpoptSolveResult& solve) {
@@ -61,9 +75,18 @@ void apply_ipopt_solve_metadata(ReactiveTwoPhaseEosRouteResult& out, const Ipopt
     out.variable_scaling_count = solve_int(solve, "variable_scaling_count");
     out.constraint_scaling_count = solve_int(solve, "constraint_scaling_count");
     out.eval_h_calls = solve_int(solve, "eval_h_calls");
+    out.objective_scaling = solve_double(solve, "objective_scaling", out.objective_scaling);
+    out.variable_scaling_min = solve_double(solve, "variable_scaling_min", out.variable_scaling_min);
+    out.variable_scaling_max = solve_double(solve, "variable_scaling_max", out.variable_scaling_max);
+    out.constraint_scaling_min = solve_double(solve, "constraint_scaling_min", out.constraint_scaling_min);
+    out.constraint_scaling_max = solve_double(solve, "constraint_scaling_max", out.constraint_scaling_max);
     out.exact_hessian_available = solve_bool(solve, "exact_hessian_available");
     out.warm_start_requested = solve_bool(solve, "warm_start_requested");
     out.warm_start_used = solve_bool(solve, "warm_start_used");
+    out.bound_lower_multipliers = solve.bound_lower_multipliers;
+    out.bound_upper_multipliers = solve.bound_upper_multipliers;
+    out.constraint_multipliers = solve.constraint_multipliers;
+    out.iteration_history = solve.iteration_history;
 }
 
 namespace {

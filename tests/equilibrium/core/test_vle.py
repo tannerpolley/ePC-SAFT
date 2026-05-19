@@ -47,6 +47,7 @@ def test_tp_flash_builds_one_native_route_request_before_ipopt_gate(monkeypatch:
         pressure_tolerance,
         chemical_potential_tolerance,
         phase_distance_tolerance,
+        continuation_state,
     ):
         calls.append(
             {
@@ -111,6 +112,7 @@ def test_tp_flash_converts_accepted_native_route_payload(monkeypatch: pytest.Mon
         pressure_tolerance,
         chemical_potential_tolerance,
         phase_distance_tolerance,
+        continuation_state,
     ):
         assert temperature == pytest.approx(220.0)
         assert pressure == pytest.approx(1.0e5)

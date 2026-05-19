@@ -40,6 +40,7 @@ def test_bubble_p_builds_one_native_route_request_before_ipopt_gate(monkeypatch:
         pressure_tolerance,
         chemical_potential_tolerance,
         phase_distance_tolerance,
+        continuation_state,
     ):
         calls.append(
             {
@@ -102,6 +103,7 @@ def test_bubble_t_builds_one_native_route_request_before_ipopt_gate(monkeypatch:
         pressure_tolerance,
         chemical_potential_tolerance,
         phase_distance_tolerance,
+        continuation_state,
     ):
         calls.append(
             {
@@ -167,6 +169,7 @@ def test_dew_p_converts_accepted_native_route_payload(monkeypatch: pytest.Monkey
         pressure_tolerance,
         chemical_potential_tolerance,
         phase_distance_tolerance,
+        continuation_state,
     ):
         assert temperature == pytest.approx(240.0)
         assert received_vapor_composition == pytest.approx(vapor_composition)
@@ -273,6 +276,7 @@ def test_dew_t_converts_accepted_native_route_payload(monkeypatch: pytest.Monkey
         pressure_tolerance,
         chemical_potential_tolerance,
         phase_distance_tolerance,
+        continuation_state,
     ):
         assert target_pressure == pytest.approx(fixed_pressure)
         assert received_vapor_composition == pytest.approx(vapor_composition)

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from numbers import Integral
 from typing import Any
 
 import numpy as np
@@ -253,6 +254,9 @@ class ReactiveSpeciationOptions:
     min_mole_fraction: float = 1.0e-14
     jacobian_backend: str = "auto"
     solver_backend: str = "auto"
+    hessian_mode: str = "auto"
+    ipopt_iteration_history_limit: int = 20
+    continuation_state: Mapping[str, Any] | None = None
     phase: str = "liq"
     error_mode: str = "raise"
     activity_output: str = "auto"
@@ -419,23 +423,36 @@ def _normalize_options(options: ReactiveSpeciationOptions | None) -> ReactiveSpe
     solver_backend = str(options.solver_backend).strip().lower()
     if solver_backend not in {"auto", "ipopt"}:
         raise InputError("ReactiveSpeciationOptions.solver_backend must be 'auto' or 'ipopt'.")
+    hessian_mode = str(options.hessian_mode).strip().lower().replace("_", "-")
+    if hessian_mode not in {"auto", "exact", "limited-memory"}:
+        raise InputError("ReactiveSpeciationOptions.hessian_mode must be 'auto', 'exact', or 'limited-memory'.")
+    if isinstance(options.ipopt_iteration_history_limit, bool) or not isinstance(
+        options.ipopt_iteration_history_limit, Integral
+    ):
+        raise InputError(
+            "ReactiveSpeciationOptions.ipopt_iteration_history_limit must be an integer greater than or equal to zero."
+        )
+    iteration_history_limit = int(options.ipopt_iteration_history_limit)
+    if iteration_history_limit < 0:
+        raise InputError(
+            "ReactiveSpeciationOptions.ipopt_iteration_history_limit must be an integer greater than or equal to zero."
+        )
+    continuation_state = options.continuation_state
+    if continuation_state is not None and not isinstance(continuation_state, Mapping):
+        raise InputError("ReactiveSpeciationOptions.continuation_state must be a mapping when provided.")
     for name in ("mass_tolerance", "charge_tolerance", "reaction_tolerance"):
         value = getattr(options, name)
         if value is not None and value <= 0.0:
             raise InputError(f"ReactiveSpeciationOptions.{name} must be positive when provided.")
-    if (
-        jacobian_backend == options.jacobian_backend
-        and solver_backend == options.solver_backend
-        and error_mode == options.error_mode
-        and activity_output == options.activity_output
-    ):
-        return options
     return ReactiveSpeciationOptions(
         max_iterations=options.max_iterations,
         tolerance=options.tolerance,
         min_mole_fraction=options.min_mole_fraction,
         jacobian_backend=jacobian_backend,
         solver_backend=solver_backend,
+        hessian_mode=hessian_mode,
+        ipopt_iteration_history_limit=iteration_history_limit,
+        continuation_state=None if continuation_state is None else dict(continuation_state),
         phase=options.phase,
         error_mode=error_mode,
         activity_output=activity_output,
@@ -454,6 +471,9 @@ def _options_with_solver_backend(
         min_mole_fraction=options.min_mole_fraction,
         jacobian_backend=options.jacobian_backend,
         solver_backend=solver_backend,
+        hessian_mode=options.hessian_mode,
+        ipopt_iteration_history_limit=options.ipopt_iteration_history_limit,
+        continuation_state=options.continuation_state,
         phase=options.phase,
         error_mode=options.error_mode,
         activity_output=options.activity_output,
@@ -461,6 +481,97 @@ def _options_with_solver_backend(
         charge_tolerance=options.charge_tolerance,
         reaction_tolerance=options.reaction_tolerance,
     )
+
+
+def _reactive_speciation_continuation_context(
+    *,
+    species: list[str],
+    options: ReactiveSpeciationOptions,
+) -> dict[str, Any]:
+    return {
+        "route_kind": "reactive_speciation",
+        "species_order": list(species),
+        "fixed_specs": {
+            "fixed": ["T", "P", "totals"],
+            "phase": str(options.phase),
+        },
+    }
+
+
+def _continuation_numeric_sequence(state: Mapping[str, Any], label: str) -> list[float]:
+    values = state.get(label, [])
+    if values is None:
+        return []
+    if isinstance(values, (str, bytes)):
+        raise InputError(f"options.continuation_state.{label} must be a numeric sequence.")
+    try:
+        return [float(value) for value in values]
+    except (TypeError, ValueError) as exc:
+        raise InputError(f"options.continuation_state.{label} must be a numeric sequence.") from exc
+
+
+def _prepare_reactive_speciation_continuation_state(
+    options: ReactiveSpeciationOptions,
+    *,
+    continuation_context: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    state = options.continuation_state
+    if state is None:
+        return None
+    variables = _continuation_numeric_sequence(state, "variables")
+    if not variables:
+        raise InputError("options.continuation_state must contain a 'variables' vector.")
+    variable_count = int(state.get("variable_count", len(variables)))
+    if variable_count != len(variables):
+        raise InputError("options.continuation_state.variable_count does not match the variables vector length.")
+    bound_lower = _continuation_numeric_sequence(state, "bound_lower_multipliers")
+    if bound_lower and len(bound_lower) != len(variables):
+        raise InputError(
+            "options.continuation_state.bound_lower_multipliers must be empty or match the variables vector length."
+        )
+    bound_upper = _continuation_numeric_sequence(state, "bound_upper_multipliers")
+    if bound_upper and len(bound_upper) != len(variables):
+        raise InputError(
+            "options.continuation_state.bound_upper_multipliers must be empty or match the variables vector length."
+        )
+    constraint_multipliers = _continuation_numeric_sequence(state, "constraint_multipliers")
+    constraint_count = int(state.get("constraint_count", len(constraint_multipliers)))
+    if constraint_count != len(constraint_multipliers):
+        raise InputError(
+            "options.continuation_state.constraint_count does not match the constraint_multipliers length."
+        )
+    route_kind = state.get("route_kind")
+    if route_kind is not None and str(route_kind) != str(continuation_context["route_kind"]):
+        raise InputError("options.continuation_state route_kind does not match the requested Ipopt route.")
+    species_order = state.get("species_order")
+    if species_order is not None:
+        current_species_order = [str(label) for label in continuation_context["species_order"]]
+        if [str(label) for label in species_order] != current_species_order:
+            raise InputError("options.continuation_state species_order does not match the current mixture species order.")
+    fixed_specs = state.get("fixed_specs")
+    if fixed_specs is not None and _json_like(fixed_specs) != _json_like(continuation_context["fixed_specs"]):
+        raise InputError("options.continuation_state fixed_specs do not match the requested Ipopt route.")
+    return {
+        "variables": variables,
+        "bound_lower_multipliers": bound_lower,
+        "bound_upper_multipliers": bound_upper,
+        "constraint_multipliers": constraint_multipliers,
+    }
+
+
+def _stamp_reactive_speciation_continuation_state(
+    diagnostics: dict[str, Any],
+    *,
+    continuation_context: Mapping[str, Any],
+) -> None:
+    state = diagnostics.get("continuation_state")
+    if not isinstance(state, Mapping):
+        return
+    stamped = dict(state)
+    stamped.setdefault("route_kind", continuation_context["route_kind"])
+    stamped.setdefault("species_order", list(continuation_context["species_order"]))
+    stamped.setdefault("fixed_specs", _json_like(continuation_context["fixed_specs"]))
+    diagnostics["continuation_state"] = stamped
 
 
 def _solve_reactive_speciation_native(
@@ -488,6 +599,11 @@ def _solve_reactive_speciation_native(
         raise InputError("native reactive speciation backend requires mixture_factory to return an ePCSAFTMixture.")
     if list(getattr(mixture, "species", species)) != species:
         raise InputError("native reactive speciation backend requires mixture species to match the species argument.")
+    continuation_context = _reactive_speciation_continuation_context(species=species, options=options)
+    continuation_state = _prepare_reactive_speciation_continuation_state(
+        options,
+        continuation_context=continuation_context,
+    )
     request = build_reactive_speciation_native_request(
         T=T,
         P=P,
@@ -497,6 +613,7 @@ def _solve_reactive_speciation_native(
         species=species,
         reactions=reactions,
         options=options,
+        continuation_state=continuation_state,
     )
     try:
         payload = _core._solve_chemical_equilibrium_native(native, request)
@@ -536,6 +653,7 @@ def _solve_reactive_speciation_native(
     diagnostics["reaction_constant_conventions"] = _reaction_constant_conventions(reactions)
     diagnostics["reaction_constant_sources"] = _reaction_constant_sources(reactions)
     diagnostics["reaction_constant_policy"] = "fixed_literature_constants_first"
+    _stamp_reactive_speciation_continuation_state(diagnostics, continuation_context=continuation_context)
     diagnostics.update(
         {
             "activity_basis": activity_basis,

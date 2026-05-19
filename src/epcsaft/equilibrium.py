@@ -71,6 +71,7 @@ class EquilibriumOptions:
     timeout_seconds: float | None = None
     hessian_mode: Literal["auto", "exact", "limited-memory"] = "auto"
     ipopt_iteration_history_limit: int = 20
+    continuation_state: Mapping[str, Any] | None = None
 
 
 def _classify_problem_route(mixture: Any, kind: str) -> dict[str, str]:
@@ -798,6 +799,7 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
             "timeout_seconds",
             "hessian_mode",
             "ipopt_iteration_history_limit",
+            "continuation_state",
         }
         unknown = sorted(set(raw) - allowed)
         if unknown:
@@ -833,6 +835,9 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
     ipopt_iteration_history_limit = int(options.ipopt_iteration_history_limit)
     if ipopt_iteration_history_limit < 0:
         raise InputError("options.ipopt_iteration_history_limit must be an integer greater than or equal to zero.")
+    continuation_state = options.continuation_state
+    if continuation_state is not None and not isinstance(continuation_state, Mapping):
+        raise InputError("options.continuation_state must be a mapping when provided.")
     return EquilibriumOptions(
         max_iterations=max_iterations,
         tolerance=tolerance,
@@ -842,6 +847,7 @@ def _normalize_options(options: EquilibriumOptions | Mapping[str, Any] | None) -
         timeout_seconds=timeout_seconds,
         hessian_mode=hessian_mode,  # type: ignore[arg-type]
         ipopt_iteration_history_limit=ipopt_iteration_history_limit,
+        continuation_state=None if continuation_state is None else dict(continuation_state),
     )
 
 
@@ -869,6 +875,100 @@ def _native_timeout_seconds(options: EquilibriumOptions) -> float:
 
 def _native_ipopt_option_args(options: EquilibriumOptions) -> tuple[str, int]:
     return options.hessian_mode, int(options.ipopt_iteration_history_limit)
+
+
+def _continuation_json_like(value: Any) -> Any:
+    if isinstance(value, Mapping):
+        return {str(key): _continuation_json_like(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_continuation_json_like(item) for item in value]
+    return value
+
+
+def _ipopt_continuation_context(
+    *,
+    route_kind: str,
+    mixture: Any,
+    fixed_specs: Mapping[str, Any],
+) -> dict[str, Any]:
+    return {
+        "route_kind": str(route_kind),
+        "species_order": [str(label) for label in getattr(mixture, "species", ())],
+        "fixed_specs": _continuation_json_like(dict(fixed_specs)),
+    }
+
+
+def _require_continuation_sequence_length(value: Any, label: str) -> int:
+    if isinstance(value, (str, bytes)):
+        raise InputError(f"options.continuation_state.{label} must be a numeric sequence.")
+    try:
+        return len(value)
+    except TypeError as exc:
+        raise InputError(f"options.continuation_state.{label} must be a numeric sequence.") from exc
+
+
+def _prepare_ipopt_continuation_state(
+    options: EquilibriumOptions,
+    *,
+    continuation_context: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    state = options.continuation_state
+    if state is None:
+        return None
+    prepared = dict(state)
+    if "variables" not in prepared:
+        raise InputError("options.continuation_state must contain a 'variables' vector.")
+    variable_count = _require_continuation_sequence_length(prepared["variables"], "variables")
+    if "variable_count" in prepared and int(prepared["variable_count"]) != variable_count:
+        raise InputError("options.continuation_state.variable_count does not match the variables vector length.")
+    for key in ("bound_lower_multipliers", "bound_upper_multipliers"):
+        if key in prepared:
+            count = _require_continuation_sequence_length(prepared[key], key)
+            if count not in {0, variable_count}:
+                raise InputError(f"options.continuation_state.{key} must be empty or match the variables vector length.")
+    if "constraint_multipliers" in prepared:
+        constraint_count = _require_continuation_sequence_length(
+            prepared["constraint_multipliers"],
+            "constraint_multipliers",
+        )
+        if "constraint_count" in prepared and int(prepared["constraint_count"]) != constraint_count:
+            raise InputError(
+                "options.continuation_state.constraint_count does not match the constraint_multipliers length."
+            )
+    if "route_kind" in prepared and str(prepared["route_kind"]) != str(continuation_context["route_kind"]):
+        raise InputError("options.continuation_state route_kind does not match the requested Ipopt route.")
+    if "species_order" in prepared:
+        species_order = [str(label) for label in prepared["species_order"]]
+        if species_order != list(continuation_context["species_order"]):
+            raise InputError("options.continuation_state species_order does not match the current mixture species order.")
+    if "fixed_specs" in prepared:
+        fixed_specs = _continuation_json_like(prepared["fixed_specs"])
+        if fixed_specs != continuation_context["fixed_specs"]:
+            raise InputError("options.continuation_state fixed_specs do not match the requested Ipopt route.")
+    return prepared
+
+
+def _stamp_ipopt_continuation_state(
+    diagnostics: dict[str, Any],
+    route: Mapping[str, Any],
+    *,
+    continuation_context: Mapping[str, Any],
+) -> None:
+    state = route.get("continuation_state")
+    if not isinstance(state, Mapping):
+        return
+    stamped = dict(state)
+    stamped["route_kind"] = str(continuation_context["route_kind"])
+    stamped["species_order"] = list(continuation_context["species_order"])
+    stamped["fixed_specs"] = _continuation_json_like(continuation_context["fixed_specs"])
+    if "variables" in stamped:
+        stamped["variable_count"] = _require_continuation_sequence_length(stamped["variables"], "variables")
+    if "constraint_multipliers" in stamped:
+        stamped["constraint_count"] = _require_continuation_sequence_length(
+            stamped["constraint_multipliers"],
+            "constraint_multipliers",
+        )
+    diagnostics["continuation_state"] = stamped
 
 
 def _normalize_feed(z: Any, ncomp: int, min_composition: float, kind: str) -> np.ndarray:
@@ -962,6 +1062,7 @@ def _accepted_native_neutral_two_phase_result(
     feed_diagnostics: Mapping[str, Any] | None = None,
     electrolyte_basis_diagnostics: Mapping[str, Any] | None = None,
     options: EquilibriumOptions | None = None,
+    continuation_context: Mapping[str, Any] | None = None,
 ) -> EquilibriumResult:
     from . import _core
 
@@ -1073,6 +1174,8 @@ def _accepted_native_neutral_two_phase_result(
         diagnostics["species_labels"] = list(getattr(mixture, "species", ()))
         diagnostics["charge_vector"] = _mixture_charges(mixture).tolist()
         diagnostics["density_recompute_relative_errors"] = density_errors
+        if continuation_context is not None:
+            _stamp_ipopt_continuation_state(diagnostics, route, continuation_context=continuation_context)
         _add_electrolyte_lle_residual_diagnostics(
             diagnostics,
             phases=tuple(phases),
@@ -1122,10 +1225,22 @@ def _accepted_native_neutral_two_phase_result(
         chemical_potential_tolerance,
         phase_distance_tolerance,
     )
-    return neutral_two_phase_payload_to_result(
+    result = neutral_two_phase_payload_to_result(
         result_payload,
         problem_kind=problem_kind,
         phase_labels=phase_labels,
+    )
+    diagnostics = native_route_diagnostics(route)
+    diagnostics.update(result.diagnostics)
+    if continuation_context is not None:
+        _stamp_ipopt_continuation_state(diagnostics, route, continuation_context=continuation_context)
+    return EquilibriumResult(
+        backend=result.backend,
+        problem_kind=result.problem_kind,
+        phases=result.phases,
+        stable=result.stable,
+        split_detected=result.split_detected,
+        diagnostics=diagnostics,
     )
 
 
@@ -1139,6 +1254,7 @@ def _accepted_native_reactive_two_phase_result(
     route_label: str,
     problem_kind: str,
     phase_labels: tuple[str, str],
+    continuation_context: Mapping[str, Any] | None = None,
 ) -> EquilibriumResult:
     from . import _core
 
@@ -1195,6 +1311,8 @@ def _accepted_native_reactive_two_phase_result(
                 "problem_name": "reactive_liquid_root_eos",
             },
         )
+        if continuation_context is not None:
+            _stamp_ipopt_continuation_state(diagnostics, route, continuation_context=continuation_context)
         return EquilibriumResult(
             backend="native_equilibrium_nlp",
             problem_kind=problem_kind,
@@ -1228,11 +1346,14 @@ def _accepted_native_reactive_two_phase_result(
         problem_kind=problem_kind,
         phase_labels=phase_labels,
     )
-    diagnostics = dict(result.diagnostics)
+    diagnostics = native_route_diagnostics(route, route_status_key="reactive_route_status")
+    diagnostics.update(result.diagnostics)
     diagnostics["reactive_postsolve"] = _json_like(route.get("postsolve", {}))
     diagnostics["reactive_route_status"] = str(route.get("status", ""))
     diagnostics["reaction_count"] = int(route.get("reaction_count", 0))
     diagnostics["balance_row_count"] = int(route.get("balance_row_count", 0))
+    if continuation_context is not None:
+        _stamp_ipopt_continuation_state(diagnostics, route, continuation_context=continuation_context)
     return EquilibriumResult(
         backend=result.backend,
         problem_kind=result.problem_kind,
@@ -1255,6 +1376,12 @@ def _native_neutral_fixed_temperature_pressure(
 ) -> EquilibriumResult:
     from . import _core
 
+    continuation_context = _ipopt_continuation_context(
+        route_kind=route_label,
+        mixture=mixture,
+        fixed_specs={"fixed": ["T", "composition"]},
+    )
+    continuation_state = _prepare_ipopt_continuation_state(options, continuation_context=continuation_context)
     route_tolerances = (
         options.tolerance,
         max(1.0e5 * options.tolerance, options.tolerance),
@@ -1270,6 +1397,7 @@ def _native_neutral_fixed_temperature_pressure(
         _native_timeout_seconds(options),
         *_native_ipopt_option_args(options),
         *route_tolerances,
+        continuation_state,
     )
     if str(route.get("status", "")) == "ipopt_dependency_required":
         _raise_native_ipopt_equilibrium_required(route_label)
@@ -1290,6 +1418,7 @@ def _native_neutral_fixed_temperature_pressure(
         route_label=route_label,
         problem_kind=problem_kind,
         phase_labels=("liq", "vap"),
+        continuation_context=continuation_context,
     )
 
 
@@ -1305,6 +1434,12 @@ def _native_neutral_fixed_pressure_temperature(
 ) -> EquilibriumResult:
     from . import _core
 
+    continuation_context = _ipopt_continuation_context(
+        route_kind=route_label,
+        mixture=mixture,
+        fixed_specs={"fixed": ["P", "composition"]},
+    )
+    continuation_state = _prepare_ipopt_continuation_state(options, continuation_context=continuation_context)
     route_tolerances = (
         options.tolerance,
         max(P * options.tolerance, options.tolerance),
@@ -1320,6 +1455,7 @@ def _native_neutral_fixed_pressure_temperature(
         _native_timeout_seconds(options),
         *_native_ipopt_option_args(options),
         *route_tolerances,
+        continuation_state,
     )
     if str(route.get("status", "")) == "ipopt_dependency_required":
         _raise_native_ipopt_equilibrium_required(route_label)
@@ -1340,6 +1476,7 @@ def _native_neutral_fixed_pressure_temperature(
         route_label=route_label,
         problem_kind=problem_kind,
         phase_labels=("liq", "vap"),
+        continuation_context=continuation_context,
     )
 
 
@@ -1353,6 +1490,12 @@ def _native_neutral_tp_flash(
 ) -> EquilibriumResult:
     from . import _core
 
+    continuation_context = _ipopt_continuation_context(
+        route_kind="tp_flash",
+        mixture=mixture,
+        fixed_specs={"fixed": ["T", "P", "z"]},
+    )
+    continuation_state = _prepare_ipopt_continuation_state(options, continuation_context=continuation_context)
     tolerances = neutral_two_phase_eos_tolerances(P, options)
     route = _core._native_neutral_tp_flash_eos_route_result(
         mixture._native,
@@ -1364,6 +1507,7 @@ def _native_neutral_tp_flash(
         _native_timeout_seconds(options),
         *_native_ipopt_option_args(options),
         *tolerances,
+        continuation_state,
     )
     if str(route.get("status", "")) == "ipopt_dependency_required":
         _raise_native_ipopt_tp_flash_required()
@@ -1377,6 +1521,7 @@ def _native_neutral_tp_flash(
         route_label="TP flash",
         problem_kind="neutral_tp_flash",
         phase_labels=("phase_0", "phase_1"),
+        continuation_context=continuation_context,
     )
 
 
@@ -1390,6 +1535,12 @@ def _native_neutral_lle_flash(
 ) -> EquilibriumResult:
     from . import _core
 
+    continuation_context = _ipopt_continuation_context(
+        route_kind="lle_flash",
+        mixture=mixture,
+        fixed_specs={"fixed": ["T", "P", "z"]},
+    )
+    continuation_state = _prepare_ipopt_continuation_state(options, continuation_context=continuation_context)
     tolerances = neutral_two_phase_eos_tolerances(P, options)
     route = _core._native_neutral_lle_eos_route_result(
         mixture._native,
@@ -1401,6 +1552,7 @@ def _native_neutral_lle_flash(
         _native_timeout_seconds(options),
         *_native_ipopt_option_args(options),
         *tolerances,
+        continuation_state,
     )
     if str(route.get("status", "")) == "ipopt_dependency_required":
         _raise_native_ipopt_lle_required("lle_flash")
@@ -1414,6 +1566,7 @@ def _native_neutral_lle_flash(
         route_label="LLE",
         problem_kind="neutral_lle",
         phase_labels=("liq1", "liq2"),
+        continuation_context=continuation_context,
     )
 
 
@@ -1437,6 +1590,17 @@ def _native_reactive_two_phase_flash(
 ) -> EquilibriumResult:
     from . import _core
 
+    continuation_context = _ipopt_continuation_context(
+        route_kind=required_route,
+        mixture=mixture,
+        fixed_specs={
+            "fixed": ["T", "P", "totals"],
+            "balance_rows": int(balance_matrix.shape[0]),
+            "reaction_rows": int(len(reactions)),
+            "phase_models": bool(phase_models is not None),
+        },
+    )
+    continuation_state = _prepare_ipopt_continuation_state(options, continuation_context=continuation_context)
     request = build_reactive_two_phase_eos_native_request(
         T=T,
         P=P,
@@ -1480,6 +1644,7 @@ def _native_reactive_two_phase_flash(
             options.min_composition,
             request["reaction_standard_states"],
             request["reaction_phase_stoichiometry"],
+            continuation_state,
         )
     else:
         route = getattr(_core, route_binding)(
@@ -1504,6 +1669,7 @@ def _native_reactive_two_phase_flash(
             options.min_composition,
             request["reaction_standard_states"],
             request["reaction_phase_stoichiometry"],
+            continuation_state,
         )
     if str(route.get("status", "")) == "ipopt_dependency_required":
         _raise_native_ipopt_reactive_phase_required(required_route)
@@ -1516,6 +1682,7 @@ def _native_reactive_two_phase_flash(
         route_label="LLE",
         problem_kind=problem_kind,
         phase_labels=phase_labels,
+        continuation_context=continuation_context,
     )
 
 
@@ -1546,20 +1713,22 @@ def _normalize_phase_token(value: Any, label: str) -> str:
     return token
 
 
-def _native_stability_trial_from_route(route: Mapping[str, Any], stability_tolerance: float) -> StabilityTrial:
+def _native_stability_trial_from_route(
+    route: Mapping[str, Any],
+    stability_tolerance: float,
+    *,
+    continuation_context: Mapping[str, Any] | None = None,
+) -> StabilityTrial:
     composition = np.asarray(route.get("trial_composition", route.get("variables", [])), dtype=float).flatten()
     if composition.size == 0 or not np.all(np.isfinite(composition)):
         raise SolutionError("Native stability route did not return a finite trial composition.", dict(route))
     min_tpd = float(route.get("min_tpd", route.get("objective", np.nan)))
     if not np.isfinite(min_tpd):
         raise SolutionError("Native stability route did not return a finite TPD objective.", dict(route))
-    diagnostics = {
-        "route_status": str(route.get("status", "")),
-        "solver_status": str(route.get("solver_status", "")),
-        "application_status": str(route.get("application_status", "")),
-        "derivative_backend": str(route.get("derivative_backend", "")),
-        "constraints": _json_like(route.get("constraints", [])),
-    }
+    diagnostics = native_route_diagnostics(route)
+    diagnostics["constraints"] = _json_like(route.get("constraints", []))
+    if continuation_context is not None:
+        _stamp_ipopt_continuation_state(diagnostics, route, continuation_context=continuation_context)
     return StabilityTrial(
         parent_phase=str(route.get("parent_phase", "")),
         trial_phase=str(route.get("trial_phase", "")),
@@ -1585,6 +1754,16 @@ def _native_neutral_stability(
 ) -> StabilityResult:
     from . import _core
 
+    continuation_context = _ipopt_continuation_context(
+        route_kind="stability",
+        mixture=mixture,
+        fixed_specs={
+            "fixed": ["T", "P", "z"],
+            "parent_phases": list(parent_phases),
+            "trial_phases": list(trial_phases),
+        },
+    )
+    continuation_state = _prepare_ipopt_continuation_state(options, continuation_context=continuation_context)
     route_payloads: list[Mapping[str, Any]] = []
     for parent in parent_phases:
         for trial in trial_phases:
@@ -1600,6 +1779,8 @@ def _native_neutral_stability(
                 _native_timeout_seconds(options),
                 *_native_ipopt_option_args(options),
                 options.tolerance,
+                [],
+                continuation_state,
             )
             if str(route.get("status", "")) == "ipopt_dependency_required":
                 _raise_native_ipopt_stability_required("stability")
@@ -1616,13 +1797,33 @@ def _native_neutral_stability(
         }
         raise SolutionError("Native neutral stability route was rejected.", diagnostics)
 
-    trials = tuple(_native_stability_trial_from_route(route, options.tolerance) for route in route_payloads)
+    trials = tuple(
+        _native_stability_trial_from_route(
+            route,
+            options.tolerance,
+            continuation_context=continuation_context,
+        )
+        for route in route_payloads
+    )
     if not trials:
         raise SolutionError("Native neutral stability produced no trial routes.")
     tpd_values = np.asarray([trial.tpd for trial in trials], dtype=float)
     selected_index = int(np.argmin(tpd_values))
     selected = trials[selected_index]
     stable = selected.tpd >= -abs(options.tolerance)
+    diagnostics = native_route_diagnostics(route_payloads[selected_index])
+    diagnostics.update(
+        {
+            "backend": "ipopt",
+            "derivative_backend": "cppad_implicit",
+            "route_count": len(trials),
+            "selected_trial_index": selected_index,
+            "stability_tolerance": options.tolerance,
+            "parent_phases": list(parent_phases),
+            "trial_phases": list(trial_phases),
+        }
+    )
+    _stamp_ipopt_continuation_state(diagnostics, route_payloads[selected_index], continuation_context=continuation_context)
     return StabilityResult(
         backend="native_equilibrium_nlp",
         problem_kind="neutral_stability",
@@ -1632,15 +1833,7 @@ def _native_neutral_stability(
         trial_phase=selected.trial_phase,
         trial_composition=selected.composition,
         trials=trials,
-        diagnostics={
-            "backend": "ipopt",
-            "derivative_backend": "cppad_implicit",
-            "route_count": len(trials),
-            "selected_trial_index": selected_index,
-            "stability_tolerance": options.tolerance,
-            "parent_phases": list(parent_phases),
-            "trial_phases": list(trial_phases),
-        },
+        diagnostics=diagnostics,
     )
 
 
@@ -1655,6 +1848,12 @@ def _native_electrolyte_stability(
 ) -> StabilityResult:
     from . import _core
 
+    continuation_context = _ipopt_continuation_context(
+        route_kind="electrolyte_stability",
+        mixture=mixture,
+        fixed_specs={"fixed": ["T", "P", "z"]},
+    )
+    continuation_state = _prepare_ipopt_continuation_state(options, continuation_context=continuation_context)
     route = _core._native_electrolyte_stability_tpd_route_result(
         mixture._native,
         T,
@@ -1665,6 +1864,8 @@ def _native_electrolyte_stability(
         _native_timeout_seconds(options),
         *_native_ipopt_option_args(options),
         options.tolerance,
+        [],
+        continuation_state,
     )
     if str(route.get("status", "")) == "ipopt_dependency_required":
         _raise_native_ipopt_stability_required("electrolyte_stability")
@@ -1674,8 +1875,24 @@ def _native_electrolyte_stability(
         diagnostics["trial_phase"] = str(route.get("trial_phase", ""))
         raise SolutionError("Native electrolyte stability route was rejected.", diagnostics)
 
-    trial = _native_stability_trial_from_route(route, options.tolerance)
+    trial = _native_stability_trial_from_route(
+        route,
+        options.tolerance,
+        continuation_context=continuation_context,
+    )
     stable = trial.tpd >= -abs(options.tolerance)
+    diagnostics = native_route_diagnostics(route)
+    diagnostics.update(
+        {
+            "backend": "ipopt",
+            "derivative_backend": "cppad_implicit",
+            "route_count": 1,
+            "selected_trial_index": 0,
+            "stability_tolerance": options.tolerance,
+            "feed_basis": _json_like(feed_diagnostics),
+        }
+    )
+    _stamp_ipopt_continuation_state(diagnostics, route, continuation_context=continuation_context)
     return StabilityResult(
         backend="native_equilibrium_nlp",
         problem_kind="electrolyte_stability",
@@ -1685,14 +1902,7 @@ def _native_electrolyte_stability(
         trial_phase=trial.trial_phase,
         trial_composition=trial.composition,
         trials=(trial,),
-        diagnostics={
-            "backend": "ipopt",
-            "derivative_backend": "cppad_implicit",
-            "route_count": 1,
-            "selected_trial_index": 0,
-            "stability_tolerance": options.tolerance,
-            "feed_basis": _json_like(feed_diagnostics),
-        },
+        diagnostics=diagnostics,
     )
 
 
@@ -1814,6 +2024,7 @@ def _electrolyte_lle_tpdf_certificate(
                     *_native_ipopt_option_args(options),
                     stability_tolerance,
                     np.asarray(trial_seed, dtype=float).tolist(),
+                    None,
                 )
             except Exception as exc:
                 trial_records.append(
@@ -1842,6 +2053,7 @@ def _electrolyte_lle_tpdf_certificate(
                             *_native_ipopt_option_args(options),
                             stability_tolerance,
                             restart.tolist(),
+                            None,
                         )
                         restart_count = 1
                     except Exception:
@@ -2460,12 +2672,21 @@ def electrolyte_lle_flash_native(
         feed,
         salt_labels=tuple(feed_diagnostics.get("salt_molality", {})),
     )
+    continuation_context = _ipopt_continuation_context(
+        route_kind="electrolyte_lle",
+        mixture=mixture,
+        fixed_specs={"fixed": ["T", "P", "z"]},
+    )
     from . import _core
 
     def run_route(route_options: EquilibriumOptions) -> tuple[Mapping[str, Any], tuple[float, float, float, float]]:
         route_tolerances = neutral_two_phase_eos_tolerances(P, route_options)
         material_tolerance, pressure_tolerance, chemical_potential_tolerance, phase_distance_tolerance = route_tolerances
         charge_tolerance = min(route_options.tolerance, 1.0e-8)
+        continuation_state = _prepare_ipopt_continuation_state(
+            route_options,
+            continuation_context=continuation_context,
+        )
         route_result = _core._native_electrolyte_lle_eos_route_result(
             mixture._native,
             T,
@@ -2481,6 +2702,7 @@ def electrolyte_lle_flash_native(
             charge_tolerance,
             chemical_potential_tolerance,
             phase_distance_tolerance,
+            continuation_state,
         )
         return route_result, route_tolerances
 
@@ -2502,6 +2724,11 @@ def electrolyte_lle_flash_native(
             timeout_seconds=opts.timeout_seconds,
             hessian_mode=opts.hessian_mode,
             ipopt_iteration_history_limit=opts.ipopt_iteration_history_limit,
+            continuation_state=(
+                dict(route.get("continuation_state", {}))
+                if isinstance(route.get("continuation_state"), Mapping)
+                else opts.continuation_state
+            ),
         )
         route, route_tolerances = run_route(route_options)
     if str(route.get("status", "")) == "ipopt_dependency_required":
@@ -2520,4 +2747,5 @@ def electrolyte_lle_flash_native(
         feed_diagnostics=feed_diagnostics,
         electrolyte_basis_diagnostics=electrolyte_basis_diagnostics,
         options=route_options,
+        continuation_context=continuation_context,
     )

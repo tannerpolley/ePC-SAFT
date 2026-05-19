@@ -40,6 +40,14 @@ _ROUTE_INT_DIAGNOSTIC_KEYS = (
     "eval_h_calls",
 )
 
+_ROUTE_FLOAT_DIAGNOSTIC_KEYS = (
+    "objective_scaling",
+    "variable_scaling_min",
+    "variable_scaling_max",
+    "constraint_scaling_min",
+    "constraint_scaling_max",
+)
+
 
 def _diagnostics(payload: Mapping[str, Any]) -> dict[str, Any]:
     diagnostics = payload.get("diagnostics", {})
@@ -69,6 +77,14 @@ def native_route_diagnostics(
     for key in _ROUTE_INT_DIAGNOSTIC_KEYS:
         if key in route or key in default_values:
             diagnostics[key] = int(route.get(key, default_values.get(key, 0)))
+    for key in _ROUTE_FLOAT_DIAGNOSTIC_KEYS:
+        if key in route or key in default_values:
+            diagnostics[key] = float(route.get(key, default_values.get(key, 0.0)))
+    if "iteration_history" in route:
+        diagnostics["iteration_history"] = list(route.get("iteration_history", []))
+    if "continuation_state" in route:
+        state = route.get("continuation_state", {})
+        diagnostics["continuation_state"] = dict(state) if isinstance(state, Mapping) else state
     return diagnostics
 
 

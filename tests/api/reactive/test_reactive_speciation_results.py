@@ -172,3 +172,64 @@ def test_reactive_speciation_sweep_preserves_input_validation_failure_shape() ->
     assert results[0].success is False
     assert "Missing total" in results[0].message
     assert results[0].diagnostics["structured_failure"] is True
+
+
+def test_reactive_speciation_reuses_compatible_continuation_state_when_compiled() -> None:
+    from epcsaft import _core
+
+    mix = epcsaft.ePCSAFTMixture.from_params(
+        {
+            "m": np.asarray([1.0, 1.0]),
+            "s": np.asarray([3.0, 3.0]),
+            "e": np.asarray([200.0, 200.0]),
+        },
+        species=["A", "B"],
+    )
+    kwargs = {
+        "species": ["A", "B"],
+        "mixture_factory": lambda x, T, P: mix,
+        "T": 298.15,
+        "P": 1.0e5,
+        "balances": {"total": {"A": 1.0, "B": 1.0}},
+        "totals": {"total": 1.0},
+        "reactions": [
+            epcsaft.ReactionDefinition(
+                {"A": -1.0, "B": 1.0},
+                log_equilibrium_constant=math.log(3.0),
+                standard_state="ideal_mole_fraction",
+            )
+        ],
+        "initial_x": [0.5, 0.5],
+        "options": epcsaft.ReactiveSpeciationOptions(
+            solver_backend="ipopt",
+            tolerance=1.0e-9,
+            ipopt_iteration_history_limit=2,
+        ),
+    }
+
+    if not _core._native_ipopt_smoke()["compiled"]:
+        with pytest.raises(epcsaft.SolutionError) as excinfo:
+            epcsaft.solve_reactive_speciation(**kwargs)
+        _assert_reactive_speciation_native_ipopt_dependency_required(excinfo)
+        return
+
+    first = epcsaft.solve_reactive_speciation(**kwargs)
+    continuation_state = first.diagnostics["continuation_state"]
+    second = epcsaft.solve_reactive_speciation(
+        **{
+            **kwargs,
+            "options": epcsaft.ReactiveSpeciationOptions(
+                solver_backend="ipopt",
+                tolerance=1.0e-9,
+                ipopt_iteration_history_limit=2,
+                continuation_state=continuation_state,
+            ),
+        }
+    )
+
+    assert first.success is True
+    assert second.success is True
+    assert second.diagnostics["warm_start_requested"] is True
+    assert second.diagnostics["continuation_state"]["variables"] == pytest.approx(
+        continuation_state["variables"]
+    )

@@ -61,6 +61,7 @@ def test_lle_flash_builds_one_native_route_request_before_ipopt_gate(monkeypatch
         pressure_tolerance,
         chemical_potential_tolerance,
         phase_distance_tolerance,
+        continuation_state,
     ):
         calls.append(
             {
@@ -70,6 +71,7 @@ def test_lle_flash_builds_one_native_route_request_before_ipopt_gate(monkeypatch
                 "max_iterations": max_iterations,
                 "tolerance": tolerance,
                 "timeout_seconds": timeout_seconds,
+                "continuation_state": continuation_state,
                 "material_tolerance": material_tolerance,
                 "pressure_tolerance": pressure_tolerance,
                 "chemical_potential_tolerance": chemical_potential_tolerance,
@@ -125,6 +127,7 @@ def test_lle_flash_converts_accepted_native_route_payload(monkeypatch: pytest.Mo
         pressure_tolerance,
         chemical_potential_tolerance,
         phase_distance_tolerance,
+        continuation_state,
     ):
         assert temperature == pytest.approx(298.15)
         assert pressure == pytest.approx(1.013e5)
@@ -142,6 +145,26 @@ def test_lle_flash_converts_accepted_native_route_payload(monkeypatch: pytest.Mo
             "ran": True,
             "accepted": True,
             "status": "accepted",
+            "solver_status": "Solve_Succeeded",
+            "application_status": "solve_succeeded",
+            "iteration_count": 3,
+            "iteration_history_limit": 2,
+            "iteration_history_size": 2,
+            "objective_scaling": 0.5,
+            "variable_scaling_min": 0.5,
+            "variable_scaling_max": 1.0,
+            "constraint_scaling_min": 0.25,
+            "constraint_scaling_max": 0.25,
+            "iteration_history": [
+                {"iteration": 1, "objective": 2.0},
+                {"iteration": 2, "objective": 1.0},
+            ],
+            "continuation_state": {
+                "variables": [0.03, 0.47, 0.42, 0.08, 1.013e5],
+                "bound_lower_multipliers": [0.0] * 5,
+                "bound_upper_multipliers": [0.0] * 5,
+                "constraint_multipliers": [0.0] * 3,
+            },
             "phase_amounts": route_amounts,
             "phase_volumes": route_volumes,
             "postsolve": {"accepted": True},
@@ -208,6 +231,10 @@ def test_lle_flash_converts_accepted_native_route_payload(monkeypatch: pytest.Mo
     assert result.split_detected is True
     assert [phase.label for phase in result.phases] == ["liq1", "liq2"]
     assert result.phases[1].fugacity_coefficient == pytest.approx(np.exp(result.phases[1].ln_fugacity_coefficient))
+    assert result.diagnostics["objective_scaling"] == pytest.approx(0.5)
+    assert len(result.diagnostics["iteration_history"]) == 2
+    assert result.diagnostics["continuation_state"]["route_kind"] == "lle_flash"
+    assert result.diagnostics["continuation_state"]["species_order"] == ["Methanol", "Cyclohexane"]
 
 
 def test_equilibrium_options_public_surface_is_current_fields() -> None:
@@ -222,6 +249,7 @@ def test_equilibrium_options_public_surface_is_current_fields() -> None:
         "timeout_seconds",
         "hessian_mode",
         "ipopt_iteration_history_limit",
+        "continuation_state",
     }
     assert {field.name for field in fields(epcsaft.LLEProblem)} == {"T", "P", "z", "options"}
     assert {field.name for field in fields(epcsaft.ElectrolyteLLEProblem)} == {
@@ -237,6 +265,7 @@ def test_equilibrium_options_public_surface_is_current_fields() -> None:
     assert epcsaft.EquilibriumOptions().max_iterations == 180
     assert epcsaft.EquilibriumOptions().hessian_mode == "auto"
     assert epcsaft.EquilibriumOptions().ipopt_iteration_history_limit == 20
+    assert epcsaft.EquilibriumOptions().continuation_state is None
 
 
 @pytest.mark.parametrize(
@@ -253,6 +282,7 @@ def test_equilibrium_options_public_surface_is_current_fields() -> None:
         (epcsaft.EquilibriumOptions(hessian_mode="unsupported-mode"), "hessian_mode"),
         (epcsaft.EquilibriumOptions(ipopt_iteration_history_limit=-1), "ipopt_iteration_history_limit"),
         (epcsaft.EquilibriumOptions(ipopt_iteration_history_limit=True), "ipopt_iteration_history_limit"),
+        (epcsaft.EquilibriumOptions(continuation_state=1), "continuation_state"),
     ],
 )
 def test_lle_flash_rejects_invalid_options_through_public_api(options, match) -> None:

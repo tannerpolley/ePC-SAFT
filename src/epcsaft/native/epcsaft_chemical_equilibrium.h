@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 
+#include "ipopt_adapter.h"
+
 class ePCSAFTMixtureNative;
 
 struct ChemicalEquilibriumOptionsNative {
@@ -13,6 +15,12 @@ struct ChemicalEquilibriumOptionsNative {
     double min_mole_fraction = 1.0e-14;
     std::string jacobian_backend = "auto";
     std::string solver_backend = "auto";
+    std::string hessian_mode = "auto";
+    int iteration_history_limit = 20;
+    std::vector<double> initial_variables;
+    std::vector<double> initial_bound_lower_multipliers;
+    std::vector<double> initial_bound_upper_multipliers;
+    std::vector<double> initial_constraint_multipliers;
     std::string phase = "liq";
     std::string activity_output = "auto";
 };
@@ -30,6 +38,11 @@ struct ChemicalEquilibriumResultNative {
     std::map<std::string, bool> diagnostics_bool;
     std::map<std::string, std::string> diagnostics_string;
     std::map<std::string, std::vector<double>> diagnostics_vector;
+    std::vector<double> continuation_variables;
+    std::vector<double> continuation_bound_lower_multipliers;
+    std::vector<double> continuation_bound_upper_multipliers;
+    std::vector<double> continuation_constraint_multipliers;
+    std::vector<epcsaft::native::equilibrium_nlp::IpoptIterationRecord> iteration_history;
 };
 
 struct ChemicalResidualEvaluationNative {

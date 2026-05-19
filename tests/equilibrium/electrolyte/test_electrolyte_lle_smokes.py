@@ -69,6 +69,7 @@ def test_electrolyte_lle_builds_native_route_before_ipopt_gate(monkeypatch) -> N
         charge_tolerance,
         chemical_potential_tolerance,
         phase_distance_tolerance,
+        continuation_state,
     ) = calls[0]
     assert temperature == pytest.approx(298.15)
     assert target_pressure == pytest.approx(1.013e5)
@@ -83,6 +84,7 @@ def test_electrolyte_lle_builds_native_route_before_ipopt_gate(monkeypatch) -> N
     assert charge_tolerance == pytest.approx(1.0e-8)
     assert chemical_potential_tolerance == pytest.approx(1.0e-7)
     assert phase_distance_tolerance > 0.0
+    assert continuation_state is None
 
 
 def test_electrolyte_lle_molality_feed_requires_native_ipopt_route() -> None:

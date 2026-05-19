@@ -61,6 +61,7 @@ def build_reactive_speciation_native_request(
     species: Sequence[str],
     reactions: Sequence[Any],
     options: Any,
+    continuation_state: Any = None,
 ) -> dict[str, Any]:
     labels = [str(label) for label in species]
     balance_values = np.asarray(balance_matrix, dtype=float)
@@ -87,5 +88,8 @@ def build_reactive_speciation_native_request(
             "solver_backend": str(options.solver_backend),
             "phase": str(options.phase),
             "activity_output": str(options.activity_output),
+            "hessian_mode": str(options.hessian_mode),
+            "iteration_history_limit": int(options.ipopt_iteration_history_limit),
+            "continuation_state": None if continuation_state is None else dict(continuation_state),
         },
     }
