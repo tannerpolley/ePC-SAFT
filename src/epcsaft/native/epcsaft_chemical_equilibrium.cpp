@@ -1629,7 +1629,7 @@ public:
             );
         }
         epcsaft::native::equilibrium_nlp::ObjectiveSecondOrderData objective =
-            epcsaft::native::equilibrium_nlp::least_squares_objective_second_order(residuals);
+            epcsaft::native::equilibrium_nlp::residual_quadratic_objective_second_order(residuals);
 
         epcsaft::native::equilibrium_nlp::ConstraintSecondOrderData constraints_data;
         constraints_data.constraint_count = constraint_count();

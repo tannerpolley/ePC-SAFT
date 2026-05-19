@@ -68,6 +68,7 @@ struct NeutralTwoPhaseEosRouteResult {
     bool adapter_available = false;
     bool ran = false;
     bool solver_accepted = false;
+    bool solver_feasible_point = false;
     bool accepted = false;
     bool exact_gradient_required = true;
     bool exact_jacobian_required = true;

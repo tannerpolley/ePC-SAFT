@@ -18,6 +18,69 @@ def _neutral_binary_mixture() -> epcsaft.ePCSAFTMixture:
     return epcsaft.ePCSAFTMixture.from_params(params, species=["Methane", "Ethane"])
 
 
+def _nonideal_lle_binary_mixture() -> epcsaft.ePCSAFTMixture:
+    params = {
+        "m": np.asarray([1.0, 2.0]),
+        "s": np.asarray([3.5, 4.0]),
+        "e": np.asarray([150.0, 250.0]),
+        "k_ij": np.asarray([[0.0, 0.5], [0.5, 0.0]]),
+    }
+    return epcsaft.ePCSAFTMixture.from_params(params, species=["A", "B"])
+
+
+def _methanol_cyclohexane_mixture() -> epcsaft.ePCSAFTMixture:
+    params = {
+        "MW": np.asarray([32.042e-3, 84.147e-3]),
+        "m": np.asarray([1.5255, 2.5303]),
+        "s": np.asarray([3.2300, 3.8499]),
+        "e": np.asarray([188.90, 278.11]),
+        "e_assoc": np.asarray([2899.5, 0.0]),
+        "vol_a": np.asarray([0.035176, 0.0]),
+        "assoc_scheme": ["2B", None],
+        "k_ij": np.asarray([[0.0, 0.051], [0.051, 0.0]]),
+        "z": np.asarray([0.0, 0.0]),
+        "dielc": np.asarray([33.05, 2.02]),
+    }
+    return epcsaft.ePCSAFTMixture.from_params(params, species=["Methanol", "Cyclohexane"])
+
+
+def _methanol_cyclohexane_lle_feed() -> list[float]:
+    methanol_poor = np.asarray([0.05, 0.95], dtype=float)
+    methanol_rich = np.asarray([0.85, 0.15], dtype=float)
+    return (0.5 * methanol_poor + 0.5 * methanol_rich).tolist()
+
+
+def _hydrocarbon_workbook_params() -> dict[str, np.ndarray]:
+    return {
+        "m": np.asarray([1.0, 1.6069, 2.0020]),
+        "s": np.asarray([3.7039, 3.5206, 3.6184]),
+        "e": np.asarray([150.03, 191.42, 208.11]),
+        "k_ij": np.asarray(
+            [
+                [0.0, 3.0e-4, 1.15e-2],
+                [3.0e-4, 0.0, 5.10e-3],
+                [1.15e-2, 5.10e-3, 0.0],
+            ],
+            dtype=float,
+        ),
+    }
+
+
+# The workbook's "PC-SAFT VLE" sheet is a bubble-pressure solve: fixed T and
+# liquid x, liquid/vapor eta roots adjusted to P, and y_i = x_i phi_i^L/phi_i^V.
+WORKBOOK_TEMPERATURE = 233.15
+WORKBOOK_BUBBLE_PRESSURE = 1_276_369.4735856401
+WORKBOOK_LIQUID_COMPOSITION = [0.1, 0.3, 0.6]
+WORKBOOK_VAPOR_COMPOSITION = [0.7246628928343289, 0.20293191372324873, 0.0724051934424223]
+WORKBOOK_LIQUID_DENSITY = 14_330.417109760687
+WORKBOOK_VAPOR_DENSITY = 728.5617203262267
+
+
+def _hydrocarbon_workbook_mixture() -> epcsaft.ePCSAFTMixture:
+    params = _hydrocarbon_workbook_params()
+    return epcsaft.ePCSAFTMixture.from_params(params, species=["Methane", "Ethane", "Propane"])
+
+
 def _ionic_mixture() -> epcsaft.ePCSAFTMixture:
     params = _ionic_params()
     params["assoc_scheme"] = [None, None, None]
@@ -50,18 +113,18 @@ def test_neutral_tp_flash_route_uses_exact_hessian_when_requested() -> None:
     mix = _neutral_binary_mixture()
     payload = _core._native_neutral_tp_flash_eos_route_result(
         mix._native,
-        300.0,
-        1.0e5,
+        260.0,
+        5.0e6,
         [0.4, 0.6],
-        30,
-        1.0e-8,
+        180,
+        1.0e-6,
         0.0,
         "exact",
         20,
-        1.0e-7,
-        1.0e-5,
-        1.0e-7,
-        1.0e-4,
+        1.0e-6,
+        5.0,
+        1.0e-6,
+        1.0e-8,
         None,
     )
 
@@ -71,26 +134,30 @@ def test_neutral_tp_flash_route_uses_exact_hessian_when_requested() -> None:
 
     assert payload["ran"] is True
     assert payload["solver_accepted"] is True
+    assert payload["accepted"] is True
+    assert payload["status"] == "accepted"
     assert payload["hessian_approximation"] == "exact"
     assert payload["exact_hessian_available"] is True
     assert payload["hessian_backend"] == "cppad_phase_system"
     assert payload["eval_h_calls"] > 0
+    assert payload["postsolve"]["phase_distance"] > 0.1
+    assert payload["postsolve"]["chemical_potential_consistency_norm"] <= 1.0e-6
 
 
 def test_neutral_lle_route_uses_exact_hessian_when_requested() -> None:
-    mix = _neutral_binary_mixture()
+    mix = _nonideal_lle_binary_mixture()
     payload = _core._native_neutral_lle_eos_route_result(
         mix._native,
-        298.15,
-        1.013e5,
-        [0.45, 0.55],
-        30,
+        300.0,
+        5.0e6,
+        [0.5, 0.5],
+        100,
         1.0e-8,
         0.0,
         "exact",
         20,
         1.0e-7,
-        1.0e-5,
+        1.0e-2,
         1.0e-7,
         1.0e-4,
         None,
@@ -102,6 +169,41 @@ def test_neutral_lle_route_uses_exact_hessian_when_requested() -> None:
 
     assert payload["ran"] is True
     assert payload["solver_accepted"] is True
+    assert payload["accepted"] is True
+    assert payload["status"] == "accepted"
+    assert payload["hessian_approximation"] == "exact"
+    assert payload["exact_hessian_available"] is True
+    assert payload["hessian_backend"] == "cppad_phase_system"
+    assert payload["eval_h_calls"] > 0
+    assert payload["postsolve"]["phase_distance"] > 0.9
+    assert payload["postsolve"]["chemical_potential_consistency_norm"] <= 1.0e-7
+
+
+@pytest.mark.parametrize("hessian_mode", ["auto", "exact"])
+def test_neutral_lle_associating_route_uses_exact_hessian(hessian_mode: str) -> None:
+    mix = _methanol_cyclohexane_mixture()
+    payload = _core._native_neutral_lle_eos_route_result(
+        mix._native,
+        298.15,
+        1.013e5,
+        _methanol_cyclohexane_lle_feed(),
+        30,
+        1.0e-8,
+        0.0,
+        hessian_mode,
+        5,
+        1.0e-7,
+        1.0e-2,
+        1.0e-7,
+        1.0e-4,
+        None,
+    )
+
+    if not payload["compiled"]:
+        assert payload["status"] == "ipopt_dependency_required"
+        return
+
+    assert payload["ran"] is True
     assert payload["hessian_approximation"] == "exact"
     assert payload["exact_hessian_available"] is True
     assert payload["hessian_backend"] == "cppad_phase_system"
@@ -201,6 +303,138 @@ def test_neutral_tp_flash_route_contract_builds_native_initial_point_from_feed()
     assert payload["constraint_lower_bounds"][-1] == pytest.approx(1.0e-8)
     assert payload["constraint_upper_bounds"][-1] > 1.0e6
     assert payload["constraints_at_initial"][-1] >= payload["constraint_lower_bounds"][-1]
+
+
+def test_hydrocarbon_workbook_params_are_hc_dispersion_only() -> None:
+    params = _hydrocarbon_workbook_params()
+
+    assert set(params) == {"m", "s", "e", "k_ij"}
+    assert params["m"] == pytest.approx([1.0, 1.6069, 2.0020])
+    assert params["s"] == pytest.approx([3.7039, 3.5206, 3.6184])
+    assert params["e"] == pytest.approx([150.03, 191.42, 208.11])
+    np.testing.assert_allclose(
+        params["k_ij"],
+        np.asarray(
+            [
+                [0.0, 3.0e-4, 1.15e-2],
+                [3.0e-4, 0.0, 5.10e-3],
+                [1.15e-2, 5.10e-3, 0.0],
+            ],
+            dtype=float,
+        ),
+    )
+
+
+def test_neutral_tp_flash_workbook_seed_uses_phase_specific_density_roots() -> None:
+    mix = _hydrocarbon_workbook_mixture()
+    temperature = WORKBOOK_TEMPERATURE
+    target_pressure = WORKBOOK_BUBBLE_PRESSURE
+    feed_amounts = np.asarray(WORKBOOK_LIQUID_COMPOSITION, dtype=float)
+
+    payload = _core._native_neutral_tp_flash_eos_nlp_contract(
+        mix._native,
+        temperature,
+        target_pressure,
+        feed_amounts.tolist(),
+    )
+
+    initial = np.asarray(payload["initial_point"], dtype=float).reshape(2, 4)
+    phase_amounts = initial[:, :3]
+    volumes = initial[:, 3]
+    densities = np.sum(phase_amounts, axis=1) / volumes
+    pressure_residuals = np.asarray(payload["constraints_at_initial"], dtype=float)[3:5]
+    ideal_density = target_pressure / (8.31446261815324 * temperature)
+
+    assert payload["problem_name"] == "neutral_two_phase_eos"
+    assert phase_amounts.sum(axis=0) == pytest.approx(feed_amounts)
+    assert densities[0] > 8_000.0
+    assert densities[1] < 3_000.0
+    assert densities[0] / densities[1] > 5.0
+    assert densities == pytest.approx([14_192.12241442391, 1_076.07578975462], rel=1.0e-10)
+    assert np.max(np.abs(pressure_residuals)) / target_pressure <= 1.0e-11
+    assert not np.allclose(densities, ideal_density)
+
+
+def test_neutral_bubble_pressure_workbook_seed_uses_phase_density_roots() -> None:
+    mix = _hydrocarbon_workbook_mixture()
+    temperature = WORKBOOK_TEMPERATURE
+    liquid_composition = np.asarray(WORKBOOK_LIQUID_COMPOSITION, dtype=float)
+
+    payload = _core._native_neutral_bubble_p_eos_nlp_contract(
+        mix._native,
+        temperature,
+        liquid_composition.tolist(),
+    )
+
+    initial = np.asarray(payload["initial_point"], dtype=float)
+    local_variable_count = liquid_composition.size + 1
+    liquid_amounts = initial[: liquid_composition.size]
+    vapor_amounts = initial[local_variable_count : local_variable_count + liquid_composition.size]
+    liquid_volume = initial[local_variable_count - 1]
+    vapor_volume = initial[2 * local_variable_count - 1]
+    seed_pressure = initial[-1]
+    liquid_x = liquid_amounts / liquid_amounts.sum()
+    vapor_y = vapor_amounts / vapor_amounts.sum()
+    densities = np.asarray([liquid_amounts.sum() / liquid_volume, vapor_amounts.sum() / vapor_volume])
+    expected_densities = np.asarray(
+        [
+            mix.state(T=temperature, P=seed_pressure, x=liquid_x, phase="liq").density(),
+            mix.state(T=temperature, P=seed_pressure, x=vapor_y, phase="vap").density(),
+        ]
+    )
+    pressure_residuals = np.asarray(payload["constraints_at_initial"], dtype=float)[4:6]
+
+    assert payload["problem_name"] == "neutral_bubble_p_eos"
+    assert seed_pressure == pytest.approx(1.0e5)
+    assert liquid_x == pytest.approx(liquid_composition)
+    assert densities == pytest.approx(expected_densities, rel=1.0e-10)
+    assert densities[0] > 10_000.0
+    assert 1.0 < densities[1] < 200.0
+    assert densities[0] > densities[1]
+    assert np.max(np.abs(pressure_residuals)) / seed_pressure <= 1.0e-11
+
+
+def test_neutral_bubble_pressure_workbook_accepted_point_runs_postsolve() -> None:
+    mix = _hydrocarbon_workbook_mixture()
+    liquid_composition = WORKBOOK_LIQUID_COMPOSITION
+
+    payload = _core._native_neutral_bubble_p_eos_route_result(
+        mix._native,
+        WORKBOOK_TEMPERATURE,
+        liquid_composition,
+        200,
+        1.0e-8,
+        0.0,
+        "auto",
+        4,
+        1.0e-8,
+        1.0e-3,
+        1.0e-8,
+        1.0e-8,
+        None,
+    )
+
+    if not payload["compiled"]:
+        assert payload["status"] == "ipopt_dependency_required"
+        return
+
+    phase_amounts = np.asarray(payload["phase_amounts"], dtype=float)
+    phase_volumes = np.asarray(payload["phase_volumes"], dtype=float)
+    vapor_composition = phase_amounts[1] / np.sum(phase_amounts[1])
+    densities = phase_amounts.sum(axis=1) / phase_volumes
+
+    assert payload["status"] == "accepted"
+    assert payload["accepted"] is True
+    assert payload["solver_status"] in {"success", "acceptable_point", "feasible_point_found"}
+    assert payload["solver_accepted"] is True
+    assert payload["seed_name"] in {"canonical_phase_density_root", "mirrored_phase_density_root"}
+    assert payload["hessian_approximation"] == "exact"
+    assert payload["exact_hessian_available"] is True
+    assert payload["eval_h_calls"] > 0
+    assert payload["variables"][-1] == pytest.approx(WORKBOOK_BUBBLE_PRESSURE, rel=5.0e-5)
+    assert phase_amounts[0] / np.sum(phase_amounts[0]) == pytest.approx(liquid_composition, abs=1.0e-10)
+    assert vapor_composition == pytest.approx(WORKBOOK_VAPOR_COMPOSITION, rel=5.0e-5, abs=5.0e-7)
+    assert densities == pytest.approx([WORKBOOK_LIQUID_DENSITY, WORKBOOK_VAPOR_DENSITY], rel=5.0e-5)
 
 
 def test_neutral_stability_tpd_contract_builds_exact_native_nlp() -> None:
@@ -1170,6 +1404,13 @@ def test_neutral_lle_route_result_uses_ipopt_adapter_gate() -> None:
         return
 
     assert payload["ran"] is True
+    if not payload["solver_accepted"]:
+        assert payload["accepted"] is False
+        assert payload["status"] == "solver_rejected"
+        assert payload["phase_amounts"] == []
+        assert payload["phase_volumes"] == []
+        return
+
     assert np.asarray(payload["phase_amounts"], dtype=float).shape == (2, 2)
     assert np.asarray(payload["phase_volumes"], dtype=float).shape == (2,)
     assert payload["status"] in {"accepted", "solver_rejected", "postsolve_rejected"}
@@ -1927,7 +2168,7 @@ def test_reactive_electrolyte_lle_eos_route_uses_exact_hessian_when_requested() 
     assert payload["last_callback_exception"] == ""
 
 
-def test_neutral_lle_route_result_records_multistart_seed_attempts_on_failure() -> None:
+def test_neutral_lle_route_result_records_seed_sweep_attempts_on_failure() -> None:
     mix = _neutral_binary_mixture()
     payload = _core._native_neutral_lle_eos_route_result(
         mix._native,
@@ -1950,7 +2191,7 @@ def test_neutral_lle_route_result_records_multistart_seed_attempts_on_failure() 
         assert payload["status"] == "ipopt_dependency_required"
         return
 
-    assert payload["initial_point_strategy"] == "deterministic_multistart"
+    assert payload["initial_point_strategy"] == "deterministic_seed_sweep"
     assert payload["seed_name"] in {"canonical_shifted_feed", "mirrored_shifted_feed"}
     attempts = payload["seed_attempts"]
     assert len(attempts) >= 2
@@ -1963,7 +2204,7 @@ def test_neutral_lle_route_result_records_multistart_seed_attempts_on_failure() 
     assert all("iteration_count" in attempt for attempt in attempts)
 
 
-def test_neutral_bubble_pressure_route_records_multistart_seed_attempts_on_failure() -> None:
+def test_neutral_bubble_pressure_route_records_seed_sweep_attempts_on_failure() -> None:
     mix = _neutral_binary_mixture()
     payload = _core._native_neutral_bubble_p_eos_route_result(
         mix._native,
@@ -1985,7 +2226,7 @@ def test_neutral_bubble_pressure_route_records_multistart_seed_attempts_on_failu
         assert payload["status"] == "ipopt_dependency_required"
         return
 
-    assert payload["initial_point_strategy"] == "deterministic_multistart"
+    assert payload["initial_point_strategy"] == "deterministic_seed_sweep"
     assert payload["seed_name"] in {
         "canonical_shifted_partner_phase",
         "mirrored_shifted_partner_phase",
@@ -1999,7 +2240,7 @@ def test_neutral_bubble_pressure_route_records_multistart_seed_attempts_on_failu
     }
 
 
-def test_neutral_stability_route_records_multistart_seed_attempts_on_failure() -> None:
+def test_neutral_stability_route_records_seed_sweep_attempts_on_failure() -> None:
     mix = _neutral_binary_mixture()
     payload = _core._native_neutral_stability_tpd_route_result(
         mix._native,
@@ -2022,7 +2263,7 @@ def test_neutral_stability_route_records_multistart_seed_attempts_on_failure() -
         assert payload["status"] == "ipopt_dependency_required"
         return
 
-    assert payload["initial_point_strategy"] == "deterministic_multistart"
+    assert payload["initial_point_strategy"] == "deterministic_seed_sweep"
     assert payload["seed_name"] in {"canonical_shifted_feed", "mirrored_shifted_feed"}
     attempts = payload["seed_attempts"]
     assert len(attempts) >= 2
@@ -2057,7 +2298,7 @@ def test_electrolyte_lle_route_records_formula_seed_attempts_on_failure() -> Non
         assert payload["status"] == "ipopt_dependency_required"
         return
 
-    assert payload["initial_point_strategy"] == "deterministic_multistart"
+    assert payload["initial_point_strategy"] == "deterministic_seed_sweep"
     assert payload["seed_name"] in {"canonical_formula_shift", "mirrored_formula_shift"}
     attempts = payload["seed_attempts"]
     assert len(attempts) >= 2
@@ -2068,7 +2309,7 @@ def test_electrolyte_lle_route_records_formula_seed_attempts_on_failure() -> Non
     }
 
 
-def test_reactive_lle_route_records_multistart_seed_attempts_on_failure() -> None:
+def test_reactive_lle_route_records_seed_sweep_attempts_on_failure() -> None:
     mix = _neutral_binary_mixture()
     payload = _core._native_reactive_lle_eos_route_result(
         mix._native,
@@ -2100,7 +2341,7 @@ def test_reactive_lle_route_records_multistart_seed_attempts_on_failure() -> Non
         assert payload["status"] == "ipopt_dependency_required"
         return
 
-    assert payload["initial_point_strategy"] == "deterministic_multistart"
+    assert payload["initial_point_strategy"] == "deterministic_seed_sweep"
     assert payload["seed_name"] in {"canonical_shifted_feed", "mirrored_shifted_feed"}
     attempts = payload["seed_attempts"]
     assert len(attempts) >= 2

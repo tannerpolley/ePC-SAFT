@@ -80,6 +80,15 @@ struct EosPhasePressureDerivativeResult {
     vector<double> pressure_jacobian_row_major;
 };
 
+struct EosPhaseAssociationDerivativeCorrectionResult {
+    bool active = false;
+    std::string backend = "unspecified";
+    std::string message;
+    int variable_count = 0;
+    vector<double> objective_hessian_row_major;
+    vector<double> pressure_hessian_row_major;
+};
+
 struct DensityScanPoint {
     double nu = 0.0;
     double rho = 0.0;
@@ -215,6 +224,7 @@ using thermo_detail::DensityRootCandidate;
 using thermo_detail::DensityScanPoint;
 using thermo_detail::DielectricState;
 using thermo_detail::DispersionPolynomialState;
+using thermo_detail::EosPhaseAssociationDerivativeCorrectionResult;
 using thermo_detail::EosPhasePressureDerivativeResult;
 using thermo_detail::MixtureState;
 
@@ -290,6 +300,12 @@ void eos_phase_temperature_variable_derivatives_cpp(
     vector<double> *third_derivative_tensor_row_major
 );
 EosPhasePressureDerivativeResult eos_phase_pressure_derivatives_cpp(
+    double t,
+    const vector<double> &amounts,
+    double volume,
+    const add_args &cppargs
+);
+EosPhaseAssociationDerivativeCorrectionResult eos_phase_association_derivative_corrections_cpp(
     double t,
     const vector<double> &amounts,
     double volume,

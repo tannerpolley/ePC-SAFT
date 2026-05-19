@@ -66,7 +66,7 @@ def test_native_second_order_assembler_smoke_covers_lagrangian_residual_and_tran
     assert smoke["nonzero_count"] == 3
     assert smoke["lagrangian_lower"] == pytest.approx([1.0, 6.5, 2.0])
     assert smoke["weighted_symmetry_lower"] == pytest.approx([0.0, 1.0e12, 0.0])
-    assert smoke["least_squares_lower"] == pytest.approx([12.0, 13.0, 24.0])
+    assert smoke["residual_quadratic_lower"] == pytest.approx([12.0, 13.0, 24.0])
     assert smoke["transformed_lower"] == pytest.approx([118.0, 44.0, 13.0])
 
 

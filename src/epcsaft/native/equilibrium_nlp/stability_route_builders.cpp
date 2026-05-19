@@ -836,7 +836,7 @@ StabilityRouteResult solve_neutral_stability_tpd_route(
             stability_tolerance,
             composition
         );
-        result.initial_point_strategy = "deterministic_multistart";
+        result.initial_point_strategy = "deterministic_seed_sweep";
         attempts.push_back(stability_seed_attempt_from_result(result));
         if (!have_best || stability_attempt_better(result, best)) {
             best = result;
@@ -866,7 +866,7 @@ StabilityRouteResult solve_neutral_stability_tpd_route(
         }
     }
 
-    best.initial_point_strategy = "deterministic_multistart";
+    best.initial_point_strategy = "deterministic_seed_sweep";
     best.seed_attempts = attempts;
     return best;
 }
@@ -907,7 +907,7 @@ StabilityRouteResult solve_electrolyte_stability_tpd_route(
             stability_tolerance,
             composition
         );
-        result.initial_point_strategy = "deterministic_multistart";
+        result.initial_point_strategy = "deterministic_seed_sweep";
         attempts.push_back(stability_seed_attempt_from_result(result));
         if (!have_best || stability_attempt_better(result, best)) {
             best = result;
@@ -937,7 +937,7 @@ StabilityRouteResult solve_electrolyte_stability_tpd_route(
         }
     }
 
-    best.initial_point_strategy = "deterministic_multistart";
+    best.initial_point_strategy = "deterministic_seed_sweep";
     best.seed_attempts = attempts;
     return best;
 }

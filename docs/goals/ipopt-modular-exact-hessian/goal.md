@@ -47,7 +47,7 @@ Coverage includes every native Ipopt equilibrium backend/internal path used by p
 1. Architecture gate: route files no longer own bespoke lower-triangle Hessian extraction or multiplier-weighted Lagrangian assembly.
 2. Provider gate: covered routes report `exact_hessian_available == true`, `hessian_approximation == "exact"`, `hessian_backend != "limited-memory"`, and `eval_h_calls > 0` for default `auto` and explicit `exact`.
 3. Accepted-fixture gate: each route family has at least one accepted solve fixture using default exact Hessians.
-4. Hydrocarbon proof gate: the first neutral VLE proof uses the methane/ethane/propane workbook benchmark at `T=220 K`, `P=1e5 Pa`, `z=[0.1, 0.3, 0.6]`.
+4. Hydrocarbon proof gate: the first neutral VLE proof uses the methane/ethane/propane workbook benchmark from `workbooks/PC-SAFT Calculations - Hydrocarbon Basis.xlsm`; the workbook saves a bubble-pressure VLE point at `T=233.15 K`, `P=1,276,369.4735856401 Pa`, liquid `x=[0.1, 0.3, 0.6]`, vapor `y≈[0.7246628928, 0.2029319137, 0.07240519344]`, and phase-specific liquid/vapor density roots.
 5. Electrolyte proof gate: electrolyte LLE remains an accepted exact-Hessian proof route with diagnostics.
 6. Log gate: representative VLE and electrolyte LLE proof commands capture Ipopt logs while tests assert structured diagnostics and iteration history.
 7. Opt-out gate: explicit `limited-memory` still runs where supported and reports `eval_h_calls == 0`.

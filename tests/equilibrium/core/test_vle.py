@@ -23,6 +23,16 @@ def _hydrocarbon_basis_mixture() -> ePCSAFTMixture:
     return ePCSAFTMixture.from_params(params, species=["Methane", "Ethane", "Propane"])
 
 
+def _methane_ethane_mixture() -> ePCSAFTMixture:
+    params = {
+        "m": np.asarray([1.0, 1.6069]),
+        "s": np.asarray([3.7039, 3.5206]),
+        "e": np.asarray([150.03, 191.42]),
+        "k_ij": np.asarray([[0.0, 3.0e-4], [3.0e-4, 0.0]]),
+    }
+    return ePCSAFTMixture.from_params(params, species=["Methane", "Ethane"])
+
+
 def _assert_tp_flash_native_ipopt_gate(excinfo: pytest.ExceptionInfo[epcsaft.InputError]) -> None:
     message = str(excinfo.value)
     assert "tp_flash requires a native Ipopt equilibrium NLP route" in message
@@ -218,6 +228,31 @@ def test_tp_flash_converts_accepted_native_route_payload(monkeypatch: pytest.Mon
     assert problem_result.problem_kind == "neutral_tp_flash"
     assert problem_result.diagnostics["equilibrium_route"] == "neutral_vle"
     assert problem_result.diagnostics["route_reason"] == "requested vapor-liquid path"
+
+
+def test_tp_flash_accepts_default_exact_hessian_binary_fixture() -> None:
+    if not _core._native_ipopt_smoke()["compiled"]:
+        pytest.skip("native Ipopt is not compiled")
+
+    result = _methane_ethane_mixture().equilibrium(
+        kind="tp_flash",
+        T=260.0,
+        P=5.0e6,
+        z=[0.4, 0.6],
+    )
+
+    diagnostics = result.diagnostics
+    assert result.problem_kind == "neutral_tp_flash"
+    assert result.split_detected is True
+    assert diagnostics["route_status"] == "accepted"
+    assert diagnostics["solver_accepted"] is True
+    assert diagnostics["hessian_approximation"] == "exact"
+    assert diagnostics["hessian_backend"] != "limited-memory"
+    assert diagnostics["exact_hessian_available"] is True
+    assert diagnostics["eval_h_calls"] > 0
+    assert diagnostics["phase_distance"] > 0.1
+    assert diagnostics["chemical_potential_consistency_norm"] <= 1.0e-6
+    assert result.phases[0].density > result.phases[1].density
 
 
 def test_tp_flash_rejected_native_route_uses_common_route_diagnostics(

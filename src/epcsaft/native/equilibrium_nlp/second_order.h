@@ -51,7 +51,7 @@ std::vector<double> lower_triangle_values(
     int variable_count
 );
 
-ObjectiveSecondOrderData least_squares_objective_second_order(
+ObjectiveSecondOrderData residual_quadratic_objective_second_order(
     const ResidualSecondOrderData& residuals
 );
 

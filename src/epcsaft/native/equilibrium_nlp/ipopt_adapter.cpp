@@ -746,6 +746,7 @@ public:
         result_.solver_status = solver_status_name(status);
         result_.solved = status == Ipopt::SUCCESS;
         result_.acceptable = status == Ipopt::STOP_AT_ACCEPTABLE_POINT;
+        result_.feasible_point = status == Ipopt::FEASIBLE_POINT_FOUND;
         result_.accepted = result_.solved || result_.acceptable;
         result_.objective = obj_value;
         result_.variables = vector_from_raw(x, n);
@@ -759,6 +760,7 @@ public:
         result_.diagnostics_int["iteration_history_size"] = static_cast<int>(result_.iteration_history.size());
         result_.diagnostics_bool["exact_gradient_required"] = true;
         result_.diagnostics_bool["exact_jacobian_required"] = true;
+        result_.diagnostics_bool["feasible_point_found"] = result_.feasible_point;
     }
 
     const IpoptSolveResult& result() const {

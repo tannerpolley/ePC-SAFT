@@ -31,6 +31,16 @@ def _methanol_cyclohexane_mixture() -> ePCSAFTMixture:
     return ePCSAFTMixture.from_params(params, species=["Methanol", "Cyclohexane"])
 
 
+def _nonideal_lle_binary_mixture() -> ePCSAFTMixture:
+    params = {
+        "m": np.asarray([1.0, 2.0]),
+        "s": np.asarray([3.5, 4.0]),
+        "e": np.asarray([150.0, 250.0]),
+        "k_ij": np.asarray([[0.0, 0.5], [0.5, 0.0]]),
+    }
+    return ePCSAFTMixture.from_params(params, species=["A", "B"])
+
+
 def _methanol_cyclohexane_lle_feed() -> np.ndarray:
     methanol_poor = np.asarray([0.05, 0.95], dtype=float)
     methanol_rich = np.asarray([0.85, 0.15], dtype=float)
@@ -254,6 +264,38 @@ def test_lle_flash_converts_accepted_native_route_payload(monkeypatch: pytest.Mo
     assert len(result.diagnostics["iteration_history"]) == 2
     assert result.diagnostics["continuation_state"]["route_kind"] == "lle_flash"
     assert result.diagnostics["continuation_state"]["species_order"] == ["Methanol", "Cyclohexane"]
+
+
+def test_lle_flash_accepts_default_exact_hessian_binary_fixture() -> None:
+    if not _core._native_ipopt_smoke()["compiled"]:
+        pytest.skip("native Ipopt is not compiled")
+
+    mix = _nonideal_lle_binary_mixture()
+
+    result = mix.equilibrium(
+        kind="lle_flash",
+        T=300.0,
+        P=5.0e6,
+        z=[0.5, 0.5],
+        options=epcsaft.EquilibriumOptions(
+            max_iterations=100,
+            tolerance=1.0e-8,
+            ipopt_iteration_history_limit=4,
+        ),
+    )
+
+    diagnostics = result.diagnostics
+    compositions = [phase.composition for phase in result.phases]
+    phase_distance = max(abs(compositions[0][index] - compositions[1][index]) for index in range(2))
+
+    assert result.problem_kind == "neutral_lle"
+    assert diagnostics["route_status"] == "accepted"
+    assert diagnostics["solver_accepted"] is True
+    assert diagnostics["hessian_approximation"] == "exact"
+    assert diagnostics["hessian_backend"] == "cppad_phase_system"
+    assert diagnostics["exact_hessian_available"] is True
+    assert diagnostics["eval_h_calls"] > 0
+    assert phase_distance > 0.9
 
 
 def test_equilibrium_options_public_surface_is_current_fields() -> None:

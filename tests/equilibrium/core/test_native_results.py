@@ -126,7 +126,7 @@ def test_native_route_diagnostics_merges_postsolve_and_solver_metadata() -> None
         "exact_hessian_available": True,
         "warm_start_requested": True,
         "warm_start_used": True,
-        "initial_point_strategy": "deterministic_multistart",
+        "initial_point_strategy": "deterministic_seed_sweep",
         "seed_name": "mirrored_formula_shift",
         "seed_attempts": [
             {
@@ -205,7 +205,7 @@ def test_native_route_diagnostics_merges_postsolve_and_solver_metadata() -> None
     assert diagnostics["exact_hessian_available"] is True
     assert diagnostics["warm_start_requested"] is True
     assert diagnostics["warm_start_used"] is True
-    assert diagnostics["initial_point_strategy"] == "deterministic_multistart"
+    assert diagnostics["initial_point_strategy"] == "deterministic_seed_sweep"
     assert diagnostics["seed_name"] == "mirrored_formula_shift"
     assert diagnostics["seed_attempts"][0]["seed_name"] == "canonical_formula_shift"
     assert diagnostics["seed_attempts"][1]["status"] == "postsolve_rejected"

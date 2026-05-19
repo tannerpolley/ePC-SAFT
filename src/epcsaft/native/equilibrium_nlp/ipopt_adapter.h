@@ -78,6 +78,7 @@ struct IpoptSolveResult {
     bool solver_ran = false;
     bool solved = false;
     bool acceptable = false;
+    bool feasible_point = false;
     bool accepted = false;
     std::string backend = "ipopt";
     std::string adapter_kind = "native_tnlp_adapter";

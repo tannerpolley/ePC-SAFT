@@ -846,6 +846,7 @@ py::dict neutral_two_phase_eos_route_result_to_dict(
     out["derivative_backend"] = result.derivative_backend;
     out["ran"] = result.ran;
     out["solver_accepted"] = result.solver_accepted;
+    out["solver_feasible_point"] = result.solver_feasible_point;
     out["accepted"] = result.accepted;
     out["exact_gradient_required"] = result.exact_gradient_required;
     out["exact_jacobian_required"] = result.exact_jacobian_required;
@@ -1457,6 +1458,10 @@ void apply_ipopt_control_kwargs(
             options.complementarity_tolerance = py::cast<double>(item.second);
             continue;
         }
+        if (key == "print_level") {
+            options.print_level = py::cast<int>(item.second);
+            continue;
+        }
         throw ValueError("Unknown Ipopt solve option keyword: " + key);
     }
 }
@@ -1893,10 +1898,10 @@ PYBIND11_MODULE(_core, m) {
             0.0, 1.0,
             1.0, 0.0
         };
-        const nlp::ObjectiveSecondOrderData least_squares =
-            nlp::least_squares_objective_second_order(residuals);
-        out["least_squares_lower"] =
-            nlp::lower_triangle_values(least_squares.hessian_row_major, least_squares.variable_count);
+        const nlp::ObjectiveSecondOrderData residual_quadratic =
+            nlp::residual_quadratic_objective_second_order(residuals);
+        out["residual_quadratic_lower"] =
+            nlp::lower_triangle_values(residual_quadratic.hessian_row_major, residual_quadratic.variable_count);
 
         nlp::VariableTransformSecondOrderData transform;
         transform.input_variable_count = 2;

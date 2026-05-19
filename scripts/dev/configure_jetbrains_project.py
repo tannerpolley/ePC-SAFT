@@ -142,6 +142,18 @@ def _ensure_source_folder_order_entry(manager: ET.Element, actions: list[str]) -
     actions.append("add sourceFolder orderEntry")
 
 
+def _prune_stale_module_dependencies(manager: ET.Element, declared_modules: set[str], actions: list[str]) -> None:
+    if not declared_modules:
+        return
+    for entry in list(manager.findall("orderEntry")):
+        if entry.get("type") != "module":
+            continue
+        module_name = entry.get("module-name")
+        if module_name and module_name not in declared_modules:
+            manager.remove(entry)
+            actions.append(f"remove stale module dependency {module_name}")
+
+
 def _replace_content_roots(content: ET.Element, transient_paths: tuple[str, ...], actions: list[str]) -> None:
     existing_source_folders = list(content.findall("sourceFolder"))
     existing_exclude_folders = list(content.findall("excludeFolder"))
@@ -275,6 +287,7 @@ def _normalize_iml(iml_path: Path, transient_paths: tuple[str, ...], declared_mo
     _ensure_exclude_output(manager, actions)
     content = _ensure_content_root(manager, actions)
     _ensure_source_folder_order_entry(manager, actions)
+    _prune_stale_module_dependencies(manager, declared_modules, actions)
     _replace_content_roots(content, transient_paths, actions)
     warnings = _module_dependency_warnings(iml_path, module_root, declared_modules)
     proposed_text = _serialize_tree(tree)

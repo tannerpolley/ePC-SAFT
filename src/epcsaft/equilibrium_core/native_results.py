@@ -31,6 +31,8 @@ _ROUTE_BOOL_DIAGNOSTIC_KEYS = (
     "exact_hessian_available",
     "warm_start_requested",
     "warm_start_used",
+    "solver_accepted",
+    "solver_feasible_point",
 )
 
 _ROUTE_INT_DIAGNOSTIC_KEYS = (

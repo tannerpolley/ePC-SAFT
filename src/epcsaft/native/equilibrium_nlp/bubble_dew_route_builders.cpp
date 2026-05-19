@@ -13,10 +13,20 @@
 namespace epcsaft::native::equilibrium_nlp {
 namespace {
 
-constexpr double kGasConstant = 8.31446261815324;
 constexpr double kInitialPressure = 1.0e5;
 constexpr double kInitialTemperature = 300.0;
-constexpr double kInitialLiquidDensity = 8000.0;
+constexpr double kGasConstant = 8.31446261815324;
+constexpr double kSeparatedLiquidDensity = 8000.0;
+constexpr double kMinimumLiquidVolume = 1.0e-6;
+constexpr double kMaximumLiquidVolume = 5.0e-4;
+constexpr double kMinimumVaporVolume = 1.0e-3;
+constexpr double kMaximumVaporVolume = 1.0e6;
+constexpr double kMinimumPhaseVolumeGap = 1.0e-7;
+
+enum class DensitySeedMode {
+    PhasePressureRoot,
+    SeparatedPhaseRole,
+};
 
 void require_size(const std::vector<double>& values, std::size_t expected, const std::string& label) {
     if (values.size() == expected) {
@@ -142,18 +152,78 @@ std::vector<double> charge_neutral_shifted_composition(
     return shifted;
 }
 
+int phase_kind_from_index(int phase, const std::string& problem_name) {
+    if (phase == 0) {
+        return 0;
+    }
+    if (phase == 1) {
+        return 1;
+    }
+    throw ValueError(problem_name + " phase index is out of range for density-root seeding.");
+}
+
+double phase_density_root_seed(
+    const add_args& args,
+    double temperature,
+    double pressure,
+    const std::vector<double>& composition,
+    int phase,
+    const std::string& problem_name
+) {
+    const DensitySolveResult density = density_solve_report_cpp(
+        temperature,
+        pressure,
+        composition,
+        phase_kind_from_index(phase, problem_name),
+        args
+    );
+    if (!density.valid || !std::isfinite(density.rho) || density.rho <= 0.0) {
+        throw ValueError(problem_name + " could not construct a phase-specific pressure-density root seed.");
+    }
+    return density.rho;
+}
+
+double separated_phase_role_density_seed(double temperature, double pressure, int phase, const std::string& problem_name) {
+    if (phase == 0) {
+        return kSeparatedLiquidDensity;
+    }
+    if (phase == 1) {
+        return std::max(pressure / (kGasConstant * temperature), 1.0e-12);
+    }
+    throw ValueError(problem_name + " phase index is out of range for separated density seeding.");
+}
+
+bool fixed_temperature_pressure_seed_satisfies_volume_bounds(
+    const std::vector<double>& variables,
+    int species_count
+) {
+    const int local_variable_count = species_count + 1;
+    if (variables.size() != static_cast<std::size_t>(2 * local_variable_count + 1)) {
+        return false;
+    }
+    const double liquid_volume = variables[static_cast<std::size_t>(species_count)];
+    const double vapor_volume = variables[static_cast<std::size_t>(local_variable_count + species_count)];
+    return liquid_volume >= kMinimumLiquidVolume
+        && liquid_volume <= kMaximumLiquidVolume
+        && vapor_volume >= kMinimumVaporVolume
+        && vapor_volume <= kMaximumVaporVolume
+        && vapor_volume - liquid_volume >= kMinimumPhaseVolumeGap;
+}
+
 struct NamedInitialVariables {
     std::string seed_name;
     std::vector<double> variables;
 };
 
 std::vector<double> build_pressure_route_initial_variables(
+    const add_args& args,
     const std::vector<double>& fixed_composition,
     int fixed_phase_index,
     double temperature,
     const std::vector<double>& charges,
     const std::string& problem_name,
-    double shift_sign
+    double shift_sign,
+    DensitySeedMode density_seed_mode
 ) {
     const std::vector<double> shifted = charges.empty()
         ? shifted_composition(fixed_composition, shift_sign)
@@ -163,13 +233,14 @@ std::vector<double> build_pressure_route_initial_variables(
             problem_name + " shifted composition",
             shift_sign
         );
-    const double vapor_density = std::max(kInitialPressure / (kGasConstant * temperature), 1.0e-12);
     std::vector<double> out;
     out.reserve(2 * (fixed_composition.size() + 1) + 1);
     for (int phase = 0; phase < 2; ++phase) {
         const std::vector<double>& composition = phase == fixed_phase_index ? fixed_composition : shifted;
         out.insert(out.end(), composition.begin(), composition.end());
-        const double density = phase == 0 ? kInitialLiquidDensity : vapor_density;
+        const double density = density_seed_mode == DensitySeedMode::PhasePressureRoot
+            ? phase_density_root_seed(args, temperature, kInitialPressure, composition, phase, problem_name)
+            : separated_phase_role_density_seed(temperature, kInitialPressure, phase, problem_name);
         out.push_back(1.0 / density);
     }
     out.push_back(kInitialPressure);
@@ -177,20 +248,23 @@ std::vector<double> build_pressure_route_initial_variables(
 }
 
 std::vector<double> build_temperature_route_initial_variables(
+    const add_args& args,
     const std::vector<double>& fixed_composition,
     int fixed_phase_index,
     double target_pressure,
     const std::string& problem_name,
-    double shift_sign
+    double shift_sign,
+    DensitySeedMode density_seed_mode
 ) {
     const std::vector<double> shifted = shifted_composition(fixed_composition, shift_sign);
-    const double vapor_density = std::max(target_pressure / (kGasConstant * kInitialTemperature), 1.0e-12);
     std::vector<double> out;
     out.reserve(2 * (fixed_composition.size() + 1) + 1);
     for (int phase = 0; phase < 2; ++phase) {
         const std::vector<double>& composition = phase == fixed_phase_index ? fixed_composition : shifted;
         out.insert(out.end(), composition.begin(), composition.end());
-        const double density = phase == 0 ? kInitialLiquidDensity : vapor_density;
+        const double density = density_seed_mode == DensitySeedMode::PhasePressureRoot
+            ? phase_density_root_seed(args, kInitialTemperature, target_pressure, composition, phase, problem_name)
+            : separated_phase_role_density_seed(kInitialTemperature, target_pressure, phase, problem_name);
         out.push_back(1.0 / density);
     }
     out.push_back(kInitialTemperature);
@@ -198,66 +272,144 @@ std::vector<double> build_temperature_route_initial_variables(
 }
 
 std::vector<NamedInitialVariables> pressure_route_seed_candidates(
+    const add_args& args,
     const std::vector<double>& fixed_composition,
     int fixed_phase_index,
     double temperature,
     const std::vector<double>& charges,
     const std::string& problem_name
 ) {
-    return {
-        {
-            "canonical_shifted_partner_phase",
-            build_pressure_route_initial_variables(
-                fixed_composition,
-                fixed_phase_index,
-                temperature,
-                charges,
-                problem_name,
-                1.0
-            )
-        },
-        {
-            "mirrored_shifted_partner_phase",
-            build_pressure_route_initial_variables(
-                fixed_composition,
-                fixed_phase_index,
-                temperature,
-                charges,
-                problem_name,
-                -1.0
-            )
-        },
+    std::vector<NamedInitialVariables> out;
+    auto append_if_feasible = [&](std::string seed_name, std::vector<double> variables) {
+        if (fixed_temperature_pressure_seed_satisfies_volume_bounds(
+                variables,
+                static_cast<int>(fixed_composition.size())
+            )) {
+            out.push_back({std::move(seed_name), std::move(variables)});
+        }
     };
+    if (charges.empty()) {
+        append_if_feasible(
+            "canonical_phase_density_root",
+            build_pressure_route_initial_variables(
+                args,
+                fixed_composition,
+                fixed_phase_index,
+                temperature,
+                charges,
+                problem_name,
+                1.0,
+                DensitySeedMode::PhasePressureRoot
+            )
+        );
+        append_if_feasible(
+            "mirrored_phase_density_root",
+            build_pressure_route_initial_variables(
+                args,
+                fixed_composition,
+                fixed_phase_index,
+                temperature,
+                charges,
+                problem_name,
+                -1.0,
+                DensitySeedMode::PhasePressureRoot
+            )
+        );
+    }
+    out.push_back({
+        "canonical_shifted_partner_phase",
+        build_pressure_route_initial_variables(
+            args,
+            fixed_composition,
+            fixed_phase_index,
+            temperature,
+            charges,
+            problem_name,
+            1.0,
+            DensitySeedMode::SeparatedPhaseRole
+        )
+    });
+    out.push_back({
+        "mirrored_shifted_partner_phase",
+        build_pressure_route_initial_variables(
+            args,
+            fixed_composition,
+            fixed_phase_index,
+            temperature,
+            charges,
+            problem_name,
+            -1.0,
+            DensitySeedMode::SeparatedPhaseRole
+        )
+    });
+    return out;
 }
 
 std::vector<NamedInitialVariables> temperature_route_seed_candidates(
+    const add_args& args,
     const std::vector<double>& fixed_composition,
     int fixed_phase_index,
     double target_pressure,
     const std::string& problem_name
 ) {
-    return {
-        {
-            "canonical_shifted_partner_phase",
-            build_temperature_route_initial_variables(
-                fixed_composition,
-                fixed_phase_index,
-                target_pressure,
-                problem_name,
-                1.0
-            )
-        },
-        {
-            "mirrored_shifted_partner_phase",
-            build_temperature_route_initial_variables(
-                fixed_composition,
-                fixed_phase_index,
-                target_pressure,
-                problem_name,
-                -1.0
-            )
-        },
+    std::vector<NamedInitialVariables> out;
+    auto append_if_feasible = [&](std::string seed_name, std::vector<double> variables) {
+        if (fixed_temperature_pressure_seed_satisfies_volume_bounds(
+                variables,
+                static_cast<int>(fixed_composition.size())
+            )) {
+            out.push_back({std::move(seed_name), std::move(variables)});
+        }
     };
+    append_if_feasible(
+        "canonical_phase_density_root",
+        build_temperature_route_initial_variables(
+            args,
+            fixed_composition,
+            fixed_phase_index,
+            target_pressure,
+            problem_name,
+            1.0,
+            DensitySeedMode::PhasePressureRoot
+        )
+    );
+    append_if_feasible(
+        "mirrored_phase_density_root",
+        build_temperature_route_initial_variables(
+            args,
+            fixed_composition,
+            fixed_phase_index,
+            target_pressure,
+            problem_name,
+            -1.0,
+            DensitySeedMode::PhasePressureRoot
+        )
+    );
+    out.push_back({
+        "canonical_shifted_partner_phase",
+        build_temperature_route_initial_variables(
+            args,
+            fixed_composition,
+            fixed_phase_index,
+            target_pressure,
+            problem_name,
+            1.0,
+            DensitySeedMode::SeparatedPhaseRole
+        )
+    });
+    out.push_back({
+        "mirrored_shifted_partner_phase",
+        build_temperature_route_initial_variables(
+            args,
+            fixed_composition,
+            fixed_phase_index,
+            target_pressure,
+            problem_name,
+            -1.0,
+            DensitySeedMode::SeparatedPhaseRole
+        )
+    });
+    return out;
 }
 
 int neutral_route_quality(const NeutralTwoPhaseEosRouteResult& result) {
@@ -709,24 +861,31 @@ public:
     }
 
     std::vector<double> initial_point() const override {
-        const std::vector<double> shifted = charges_.empty()
-            ? shifted_composition(fixed_composition_)
-            : charge_neutral_shifted_composition(
+        if (charges_.empty()) {
+            const std::vector<double> root = build_pressure_route_initial_variables(
+                args_,
                 fixed_composition_,
+                fixed_phase_index_,
+                temperature_,
                 charges_,
-                problem_name_ + " shifted composition"
+                problem_name_,
+                1.0,
+                DensitySeedMode::PhasePressureRoot
             );
-        const double vapor_density = std::max(initial_pressure_ / (kGasConstant * temperature_), 1.0e-12);
-        std::vector<double> out;
-        out.reserve(static_cast<std::size_t>(variable_count()));
-        for (int phase = 0; phase < phase_count(); ++phase) {
-            const std::vector<double>& composition = phase == fixed_phase_index_ ? fixed_composition_ : shifted;
-            out.insert(out.end(), composition.begin(), composition.end());
-            const double density = phase == liquid_phase_index() ? initial_liquid_density_ : vapor_density;
-            out.push_back(1.0 / density);
+            if (fixed_temperature_pressure_seed_satisfies_volume_bounds(root, species_count_)) {
+                return root;
+            }
         }
-        out.push_back(initial_pressure_);
-        return out;
+        return build_pressure_route_initial_variables(
+            args_,
+            fixed_composition_,
+            fixed_phase_index_,
+            temperature_,
+            charges_,
+            problem_name_,
+            1.0,
+            DensitySeedMode::SeparatedPhaseRole
+        );
     }
 
     double objective(const std::vector<double>& variables) const override {
@@ -1123,12 +1282,11 @@ private:
     add_args args_;
     double temperature_ = 0.0;
     double initial_pressure_ = 1.0e5;
-    double initial_liquid_density_ = 8000.0;
-    double minimum_liquid_volume_ = 1.0e-6;
-    double maximum_liquid_volume_ = 5.0e-4;
-    double minimum_vapor_volume_ = 1.0e-3;
-    double maximum_vapor_volume_ = 1.0e6;
-    double minimum_phase_volume_gap_ = 1.0e-7;
+    double minimum_liquid_volume_ = kMinimumLiquidVolume;
+    double maximum_liquid_volume_ = kMaximumLiquidVolume;
+    double minimum_vapor_volume_ = kMinimumVaporVolume;
+    double maximum_vapor_volume_ = kMaximumVaporVolume;
+    double minimum_phase_volume_gap_ = kMinimumPhaseVolumeGap;
     std::vector<double> fixed_composition_;
     int fixed_phase_index_ = 0;
     std::string problem_name_;
@@ -1208,18 +1366,27 @@ public:
     }
 
     std::vector<double> initial_point() const override {
-        const std::vector<double> shifted = shifted_composition(fixed_composition_);
-        const double vapor_density = std::max(target_pressure_ / (kGasConstant * initial_temperature_), 1.0e-12);
-        std::vector<double> out;
-        out.reserve(static_cast<std::size_t>(variable_count()));
-        for (int phase = 0; phase < phase_count(); ++phase) {
-            const std::vector<double>& composition = phase == fixed_phase_index_ ? fixed_composition_ : shifted;
-            out.insert(out.end(), composition.begin(), composition.end());
-            const double density = phase == liquid_phase_index() ? initial_liquid_density_ : vapor_density;
-            out.push_back(1.0 / density);
+        const std::vector<double> root = build_temperature_route_initial_variables(
+            args_,
+            fixed_composition_,
+            fixed_phase_index_,
+            target_pressure_,
+            problem_name_,
+            1.0,
+            DensitySeedMode::PhasePressureRoot
+        );
+        if (fixed_temperature_pressure_seed_satisfies_volume_bounds(root, species_count_)) {
+            return root;
         }
-        out.push_back(initial_temperature_);
-        return out;
+        return build_temperature_route_initial_variables(
+            args_,
+            fixed_composition_,
+            fixed_phase_index_,
+            target_pressure_,
+            problem_name_,
+            1.0,
+            DensitySeedMode::SeparatedPhaseRole
+        );
     }
 
     double objective(const std::vector<double>& variables) const override {
@@ -1577,12 +1744,11 @@ private:
     double initial_temperature_ = 300.0;
     double minimum_temperature_ = 1.0;
     double maximum_temperature_ = 2000.0;
-    double initial_liquid_density_ = 8000.0;
-    double minimum_liquid_volume_ = 1.0e-6;
-    double maximum_liquid_volume_ = 5.0e-4;
-    double minimum_vapor_volume_ = 1.0e-3;
-    double maximum_vapor_volume_ = 1.0e6;
-    double minimum_phase_volume_gap_ = 1.0e-7;
+    double minimum_liquid_volume_ = kMinimumLiquidVolume;
+    double maximum_liquid_volume_ = kMaximumLiquidVolume;
+    double minimum_vapor_volume_ = kMinimumVaporVolume;
+    double maximum_vapor_volume_ = kMaximumVaporVolume;
+    double minimum_phase_volume_gap_ = kMinimumPhaseVolumeGap;
     std::vector<double> fixed_composition_;
     int fixed_phase_index_ = 0;
     std::string problem_name_;
@@ -1692,6 +1858,7 @@ NeutralTwoPhaseEosRouteResult solve_pressure_route(
     const std::vector<double> normalized_composition =
         normalized_positive_values(fixed_composition, problem_name + " composition");
     const std::vector<NamedInitialVariables> seeds = pressure_route_seed_candidates(
+        args,
         normalized_composition,
         fixed_phase_index,
         temperature,
@@ -1720,17 +1887,19 @@ NeutralTwoPhaseEosRouteResult solve_pressure_route(
         result.exact_gradient_required = adapter.exact_gradient_required;
         result.exact_jacobian_required = adapter.exact_jacobian_required;
         result.problem_name = problem_name;
-        result.initial_point_strategy = "deterministic_multistart";
+        result.initial_point_strategy = "deterministic_seed_sweep";
         result.seed_name = seed_name;
         result.ran = solve.solver_ran;
-        result.solver_accepted = solve.accepted;
+        const bool can_postsolve = solve.accepted || solve.feasible_point;
+        result.solver_accepted = can_postsolve;
+        result.solver_feasible_point = solve.feasible_point;
         result.solver_status = solve.solver_status;
         result.application_status = solve.application_status;
         apply_ipopt_solve_metadata(result, solve);
         result.objective = solve.objective;
         result.variables = solve.variables;
         result.constraints = solve.constraints;
-        if (!solve.accepted) {
+        if (!can_postsolve) {
             result.status = "solver_rejected";
             attempts.push_back(neutral_seed_attempt_from_result(result));
             if (!have_best || neutral_route_quality(result) > neutral_route_quality(best)) {
@@ -1788,7 +1957,7 @@ NeutralTwoPhaseEosRouteResult solve_pressure_route(
         }
     }
 
-    best.initial_point_strategy = "deterministic_multistart";
+    best.initial_point_strategy = "deterministic_seed_sweep";
     best.seed_attempts = attempts;
     return best;
 }
@@ -1821,6 +1990,7 @@ NeutralTwoPhaseEosRouteResult solve_temperature_route(
     const std::vector<double> normalized_composition =
         normalized_positive_values(fixed_composition, problem_name + " composition");
     const std::vector<NamedInitialVariables> seeds = temperature_route_seed_candidates(
+        args,
         normalized_composition,
         fixed_phase_index,
         target_pressure,
@@ -1846,17 +2016,19 @@ NeutralTwoPhaseEosRouteResult solve_temperature_route(
         result.exact_gradient_required = adapter.exact_gradient_required;
         result.exact_jacobian_required = adapter.exact_jacobian_required;
         result.problem_name = problem_name;
-        result.initial_point_strategy = "deterministic_multistart";
+        result.initial_point_strategy = "deterministic_seed_sweep";
         result.seed_name = seed_name;
         result.ran = solve.solver_ran;
-        result.solver_accepted = solve.accepted;
+        const bool can_postsolve = solve.accepted || solve.feasible_point;
+        result.solver_accepted = can_postsolve;
+        result.solver_feasible_point = solve.feasible_point;
         result.solver_status = solve.solver_status;
         result.application_status = solve.application_status;
         apply_ipopt_solve_metadata(result, solve);
         result.objective = solve.objective;
         result.variables = solve.variables;
         result.constraints = solve.constraints;
-        if (!solve.accepted) {
+        if (!can_postsolve) {
             result.status = "solver_rejected";
             attempts.push_back(neutral_seed_attempt_from_result(result));
             if (!have_best || neutral_route_quality(result) > neutral_route_quality(best)) {
@@ -1915,7 +2087,7 @@ NeutralTwoPhaseEosRouteResult solve_temperature_route(
         }
     }
 
-    best.initial_point_strategy = "deterministic_multistart";
+    best.initial_point_strategy = "deterministic_seed_sweep";
     best.seed_attempts = attempts;
     return best;
 }

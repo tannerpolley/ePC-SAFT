@@ -214,29 +214,29 @@ std::vector<double> lower_triangle_values(
     return out;
 }
 
-ObjectiveSecondOrderData least_squares_objective_second_order(
+ObjectiveSecondOrderData residual_quadratic_objective_second_order(
     const ResidualSecondOrderData& residuals
 ) {
-    require_positive_count(residuals.variable_count, "least-squares variable count");
-    require_nonnegative_count(residuals.residual_count, "least-squares residual count");
+    require_positive_count(residuals.variable_count, "residual quadratic variable count");
+    require_nonnegative_count(residuals.residual_count, "residual quadratic residual count");
     require_size(
         residuals.residuals,
         static_cast<std::size_t>(residuals.residual_count),
-        "least-squares residual vector"
+        "residual quadratic residual vector"
     );
     require_matrix_shape(
         residuals.jacobian_row_major,
         residuals.residual_count,
         residuals.variable_count,
-        "least-squares residual Jacobian"
+        "residual quadratic residual Jacobian"
     );
     validate_symmetric_tensor(
         residuals.residual_hessian_tensor_row_major,
         residuals.residual_count,
         residuals.variable_count,
-        "least-squares residual Hessian tensor"
+        "residual quadratic residual Hessian tensor"
     );
-    require_finite_values(residuals.residuals, "least-squares residual vector");
+    require_finite_values(residuals.residuals, "residual quadratic residual vector");
 
     const std::size_t rows = static_cast<std::size_t>(residuals.residual_count);
     const std::size_t n = static_cast<std::size_t>(residuals.variable_count);
@@ -263,7 +263,7 @@ ObjectiveSecondOrderData least_squares_objective_second_order(
             }
         }
     }
-    validate_symmetric_matrix(out.hessian_row_major, residuals.variable_count, "least-squares objective Hessian");
+    validate_symmetric_matrix(out.hessian_row_major, residuals.variable_count, "residual quadratic objective Hessian");
     return out;
 }
 

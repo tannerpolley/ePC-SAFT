@@ -2036,7 +2036,7 @@ public:
         residuals.residual_hessian_tensor_row_major = eval.residual_hessian_tensor_row_major;
         residuals.backend = "cppad_implicit_reactive_residual";
         epcsaft::native::equilibrium_nlp::ObjectiveSecondOrderData objective =
-            epcsaft::native::equilibrium_nlp::least_squares_objective_second_order(residuals);
+            epcsaft::native::equilibrium_nlp::residual_quadratic_objective_second_order(residuals);
 
         const int nvars = variable_count();
         const std::size_t n = static_cast<std::size_t>(nvars);
@@ -2586,7 +2586,7 @@ epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult solve_reactive_
         result.derivative_backend = "cppad_implicit";
         result.postsolve.derivative_backend = "cppad_implicit";
         result.postsolve.density_backend = "liquid_pressure_root";
-        result.initial_point_strategy = "deterministic_multistart";
+        result.initial_point_strategy = "deterministic_seed_sweep";
         result.seed_name = seed_name;
         result.phase_count = 2;
         result.species_count = static_cast<int>(problem.feed().size());
@@ -2652,7 +2652,7 @@ epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult solve_reactive_
         }
     }
 
-    best.initial_point_strategy = "deterministic_multistart";
+    best.initial_point_strategy = "deterministic_seed_sweep";
     best.seed_attempts = attempts;
     return best;
 }
@@ -2749,7 +2749,7 @@ epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult solve_reactive_
         result.derivative_backend = "cppad_implicit";
         result.postsolve.derivative_backend = "cppad_implicit";
         result.postsolve.density_backend = "liquid_pressure_root";
-        result.initial_point_strategy = "deterministic_multistart";
+        result.initial_point_strategy = "deterministic_seed_sweep";
         result.seed_name = seed_name;
         result.phase_count = 2;
         result.species_count = static_cast<int>(problem.feed().size());
@@ -2815,7 +2815,7 @@ epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult solve_reactive_
         }
     }
 
-    best.initial_point_strategy = "deterministic_multistart";
+    best.initial_point_strategy = "deterministic_seed_sweep";
     best.seed_attempts = attempts;
     return best;
 }

@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <exception>
 #include <numeric>
 #include <utility>
 
@@ -36,18 +37,10 @@ bool solve_bool(const IpoptSolveResult& solve, const std::string& key, bool defa
     return item == solve.diagnostics_bool.end() ? default_value : item->second;
 }
 
-bool route_has_active_association_sites(const add_args& args) {
-    for (int sites : args.assoc_num) {
-        if (sites > 0) {
-            return true;
-        }
-    }
-    return false;
-}
-
 }  // namespace
 
 void apply_ipopt_solve_metadata(NeutralTwoPhaseEosRouteResult& out, const IpoptSolveResult& solve) {
+    out.solver_feasible_point = solve.feasible_point;
     out.gradient_approximation = solve_string(solve, "gradient_approximation", "exact");
     out.jacobian_approximation = solve_string(solve, "jacobian_approximation", "exact");
     out.hessian_approximation = solve_string(solve, "hessian_approximation", out.hessian_approximation);
@@ -244,16 +237,21 @@ std::vector<double> deterministic_composition_shift(
 }
 
 NeutralTwoPhaseEosInitialPoint build_two_phase_eos_initial_point(
+    const add_args& args,
     const std::vector<double>& feed_amounts,
     const std::vector<double>& first_composition,
     double temperature,
     double target_pressure,
-    const std::string& route_label
+    const std::string& route_label,
+    const std::vector<int>& phase_kinds
 ) {
     require_positive_finite(temperature, route_label + " temperature");
     require_positive_finite(target_pressure, route_label + " pressure");
     const double total_feed = positive_sum(feed_amounts, route_label + " feed amount");
     require_size(first_composition, feed_amounts.size(), route_label + " first phase composition");
+    if (phase_kinds.size() != 2) {
+        throw ValueError(route_label + " requires exactly two phase kinds.");
+    }
 
     NeutralTwoPhaseEosInitialPoint out;
     out.phase_amounts.assign(2, std::vector<double>(feed_amounts.size(), 0.0));
@@ -264,41 +262,80 @@ NeutralTwoPhaseEosInitialPoint build_two_phase_eos_initial_point(
         require_positive_finite(out.phase_amounts[1][index], route_label + " second phase amount");
     }
 
-    const double density = std::max(target_pressure / (kGasConstant * temperature), 1.0e-12);
     out.volumes.reserve(2);
-    for (const auto& amounts : out.phase_amounts) {
+    for (std::size_t phase = 0; phase < out.phase_amounts.size(); ++phase) {
+        const auto& amounts = out.phase_amounts[phase];
         const double phase_total = std::accumulate(amounts.begin(), amounts.end(), 0.0);
         require_positive_finite(phase_total, route_label + " phase amount total");
-        out.volumes.push_back(phase_total / density);
+        std::vector<double> composition;
+        composition.reserve(amounts.size());
+        for (double amount : amounts) {
+            composition.push_back(amount / phase_total);
+        }
+        const int phase_kind = phase_kinds[phase];
+        if (phase_kind != 0 && phase_kind != 1) {
+            throw ValueError(route_label + " phase kind must be 0/liquid or 1/vapor.");
+        }
+        const DensitySolveResult density = density_solve_report_cpp(
+            temperature,
+            target_pressure,
+            composition,
+            phase_kind,
+            args
+        );
+        if (!density.valid || !std::isfinite(density.rho) || density.rho <= 0.0) {
+            throw ValueError(route_label + " could not construct a phase-specific pressure-density root seed.");
+        }
+        out.volumes.push_back(phase_total / density.rho);
     }
     return out;
 }
 
 NeutralTwoPhaseEosInitialPoint build_neutral_two_phase_eos_initial_point(
+    const add_args& args,
     const std::vector<double>& feed_amounts,
     double temperature,
     double target_pressure,
     const std::string& route_label,
+    const std::vector<int>& phase_kinds,
     double shift_sign = 1.0
 ) {
     const std::vector<double> composition = normalized_positive_values(feed_amounts, route_label + " feed amount");
     const std::vector<double> first_composition =
         deterministic_composition_shift(composition, {}, route_label + " composition", shift_sign);
-    return build_two_phase_eos_initial_point(feed_amounts, first_composition, temperature, target_pressure, route_label);
+    return build_two_phase_eos_initial_point(
+        args,
+        feed_amounts,
+        first_composition,
+        temperature,
+        target_pressure,
+        route_label,
+        phase_kinds
+    );
 }
 
 NeutralTwoPhaseEosInitialPoint build_charge_neutral_two_phase_eos_initial_point(
+    const add_args& args,
     const std::vector<double>& feed_amounts,
     const std::vector<double>& charges,
     double temperature,
     double target_pressure,
     const std::string& route_label,
+    const std::vector<int>& phase_kinds,
     double shift_sign = 1.0
 ) {
     const std::vector<double> composition = normalized_positive_values(feed_amounts, route_label + " feed amount");
     const std::vector<double> first_composition =
         deterministic_composition_shift(composition, charges, route_label + " composition", shift_sign);
-    return build_two_phase_eos_initial_point(feed_amounts, first_composition, temperature, target_pressure, route_label);
+    return build_two_phase_eos_initial_point(
+        args,
+        feed_amounts,
+        first_composition,
+        temperature,
+        target_pressure,
+        route_label,
+        phase_kinds
+    );
 }
 
 struct NamedInitialVariables {
@@ -319,37 +356,96 @@ std::vector<double> neutral_two_phase_variables_from_initial(
 }
 
 std::vector<NamedInitialVariables> neutral_two_phase_seed_candidates(
+    const add_args& args,
     const std::vector<double>& feed_amounts,
     const std::vector<double>& charges,
     double temperature,
     double target_pressure,
-    const std::string& route_label
+    const std::string& route_label,
+    const std::vector<int>& phase_kinds
 ) {
     std::vector<NamedInitialVariables> out;
     if (charges.empty()) {
+        const std::vector<double> feed_composition =
+            normalized_positive_values(feed_amounts, route_label + " feed amount");
         out.push_back({
             "canonical_shifted_feed",
             neutral_two_phase_variables_from_initial(
-                build_neutral_two_phase_eos_initial_point(feed_amounts, temperature, target_pressure, route_label, 1.0)
+                build_neutral_two_phase_eos_initial_point(
+                    args,
+                    feed_amounts,
+                    temperature,
+                    target_pressure,
+                    route_label,
+                    phase_kinds,
+                    1.0
+                )
             )
         });
         out.push_back({
             "mirrored_shifted_feed",
             neutral_two_phase_variables_from_initial(
-                build_neutral_two_phase_eos_initial_point(feed_amounts, temperature, target_pressure, route_label, -1.0)
+                build_neutral_two_phase_eos_initial_point(
+                    args,
+                    feed_amounts,
+                    temperature,
+                    target_pressure,
+                    route_label,
+                    phase_kinds,
+                    -1.0
+                )
             )
         });
+        if (feed_amounts.size() == 2) {
+            auto append_binary_extreme = [&](int poor_component) {
+                const int rich_component = 1 - poor_component;
+                const double poor_fraction = std::max(
+                    1.0e-6,
+                    std::min(0.05, 0.5 * feed_composition[static_cast<std::size_t>(poor_component)])
+                );
+                std::vector<double> first_composition(2, 0.0);
+                first_composition[static_cast<std::size_t>(poor_component)] = poor_fraction;
+                first_composition[static_cast<std::size_t>(rich_component)] = 1.0 - poor_fraction;
+                for (std::size_t species = 0; species < first_composition.size(); ++species) {
+                    if (0.5 * first_composition[species] >= feed_composition[species]) {
+                        return;
+                    }
+                }
+                try {
+                    out.push_back({
+                        "binary_extreme_component_" + std::to_string(poor_component) + "_poor",
+                        neutral_two_phase_variables_from_initial(
+                            build_two_phase_eos_initial_point(
+                                args,
+                                feed_amounts,
+                                first_composition,
+                                temperature,
+                                target_pressure,
+                                route_label,
+                                phase_kinds
+                            )
+                        )
+                    });
+                } catch (const std::exception&) {
+                    return;
+                }
+            };
+            append_binary_extreme(0);
+            append_binary_extreme(1);
+        }
         return out;
     }
     out.push_back({
         "canonical_shifted_feed",
         neutral_two_phase_variables_from_initial(
             build_charge_neutral_two_phase_eos_initial_point(
+                args,
                 feed_amounts,
                 charges,
                 temperature,
                 target_pressure,
                 route_label,
+                phase_kinds,
                 1.0
             )
         )
@@ -358,11 +454,13 @@ std::vector<NamedInitialVariables> neutral_two_phase_seed_candidates(
         "mirrored_shifted_feed",
         neutral_two_phase_variables_from_initial(
             build_charge_neutral_two_phase_eos_initial_point(
+                args,
                 feed_amounts,
                 charges,
                 temperature,
                 target_pressure,
                 route_label,
+                phase_kinds,
                 -1.0
             )
         )
@@ -804,7 +902,7 @@ public:
     }
 
     bool has_exact_hessian() const override {
-        return !route_has_active_association_sites(args_) && (args_.z.empty() || args_.born_model <= 1);
+        return args_.z.empty() || args_.born_model <= 1;
     }
 
     int hessian_nonzero_count() const override {
@@ -821,7 +919,7 @@ public:
         const std::vector<double>& constraint_multipliers
     ) const override {
         if (!has_exact_hessian()) {
-            throw ValueError("Neutral EOS route exact Hessian requires non-associating phase blocks.");
+            throw ValueError("Neutral EOS route exact Hessian requires direct or absent Born phase blocks.");
         }
         if (constraint_multipliers.size() != static_cast<std::size_t>(constraint_count())) {
             throw ValueError("Neutral EOS route Hessian multiplier vector size does not match the constraint count.");
@@ -1370,7 +1468,7 @@ public:
     }
 
     bool has_exact_hessian() const override {
-        return !route_has_active_association_sites(args_) && (args_.z.empty() || args_.born_model <= 1);
+        return args_.z.empty() || args_.born_model <= 1;
     }
 
     int hessian_nonzero_count() const override {
@@ -1387,7 +1485,7 @@ public:
         const std::vector<double>& constraint_multipliers
     ) const override {
         if (!has_exact_hessian()) {
-            throw ValueError("Reactive EOS route exact Hessian requires non-associating phase blocks.");
+            throw ValueError("Reactive EOS route exact Hessian requires direct or absent Born phase blocks.");
         }
         if (constraint_multipliers.size() != static_cast<std::size_t>(constraint_count())) {
             throw ValueError("Reactive EOS route Hessian multiplier vector size does not match the constraint count.");
@@ -1635,8 +1733,14 @@ NeutralTwoPhaseEosNlpContract evaluate_neutral_two_phase_eos_tp_flash_nlp_contra
     double target_pressure,
     const std::vector<double>& feed_amounts
 ) {
-    const NeutralTwoPhaseEosInitialPoint initial =
-        build_neutral_two_phase_eos_initial_point(feed_amounts, temperature, target_pressure, "Neutral TP flash route");
+    const NeutralTwoPhaseEosInitialPoint initial = build_neutral_two_phase_eos_initial_point(
+        args,
+        feed_amounts,
+        temperature,
+        target_pressure,
+        "Neutral TP flash route",
+        {0, 1}
+    );
     NeutralTwoPhaseEosProblem problem(
         args,
         temperature,
@@ -1657,8 +1761,14 @@ NeutralTwoPhaseEosNlpContract evaluate_neutral_two_phase_eos_lle_nlp_contract(
     double target_pressure,
     const std::vector<double>& feed_amounts
 ) {
-    const NeutralTwoPhaseEosInitialPoint initial =
-        build_neutral_two_phase_eos_initial_point(feed_amounts, temperature, target_pressure, "Neutral LLE route");
+    const NeutralTwoPhaseEosInitialPoint initial = build_neutral_two_phase_eos_initial_point(
+        args,
+        feed_amounts,
+        temperature,
+        target_pressure,
+        "Neutral LLE route",
+        {0, 0}
+    );
     NeutralTwoPhaseEosProblem problem(
         args,
         temperature,
@@ -1680,11 +1790,13 @@ NeutralTwoPhaseEosNlpContract evaluate_electrolyte_lle_eos_nlp_contract(
     const std::vector<double>& feed_amounts
 ) {
     const NeutralTwoPhaseEosInitialPoint initial = build_charge_neutral_two_phase_eos_initial_point(
+        args,
         feed_amounts,
         args.z,
         temperature,
         target_pressure,
-        "Electrolyte LLE route"
+        "Electrolyte LLE route",
+        {0, 0}
     );
     NeutralTwoPhaseEosProblem problem(
         args,
@@ -1749,8 +1861,14 @@ NeutralTwoPhaseEosNlpContract evaluate_reactive_lle_eos_nlp_contract(
     const std::vector<double>& reaction_stoichiometry_row_major,
     const std::vector<double>& log_equilibrium_constants
 ) {
-    const NeutralTwoPhaseEosInitialPoint initial =
-        build_neutral_two_phase_eos_initial_point(feed_amounts, temperature, target_pressure, "Reactive LLE route");
+    const NeutralTwoPhaseEosInitialPoint initial = build_neutral_two_phase_eos_initial_point(
+        args,
+        feed_amounts,
+        temperature,
+        target_pressure,
+        "Reactive LLE route",
+        {0, 0}
+    );
     return evaluate_reactive_two_phase_eos_nlp_contract(
         args,
         temperature,
@@ -1779,11 +1897,13 @@ NeutralTwoPhaseEosNlpContract evaluate_reactive_electrolyte_lle_eos_nlp_contract
     const std::vector<double>& log_equilibrium_constants
 ) {
     const NeutralTwoPhaseEosInitialPoint initial = build_charge_neutral_two_phase_eos_initial_point(
+        args,
         feed_amounts,
         args.z,
         temperature,
         target_pressure,
-        "Reactive electrolyte LLE route"
+        "Reactive electrolyte LLE route",
+        {0, 0}
     );
     ReactiveTwoPhaseEosProblem problem(
         args,
@@ -2019,8 +2139,14 @@ ReactiveTwoPhaseEosRouteResult solve_reactive_lle_eos_route(
     double reaction_stationarity_tolerance,
     double phase_distance_tolerance
 ) {
-    const NeutralTwoPhaseEosInitialPoint initial =
-        build_neutral_two_phase_eos_initial_point(feed_amounts, temperature, target_pressure, "Reactive LLE route");
+    const NeutralTwoPhaseEosInitialPoint initial = build_neutral_two_phase_eos_initial_point(
+        args,
+        feed_amounts,
+        temperature,
+        target_pressure,
+        "Reactive LLE route",
+        {0, 0}
+    );
     return solve_reactive_two_phase_eos_route(
         args,
         temperature,
@@ -2060,11 +2186,13 @@ ReactiveTwoPhaseEosRouteResult solve_reactive_electrolyte_lle_eos_route(
     double phase_distance_tolerance
 ) {
     const NeutralTwoPhaseEosInitialPoint initial = build_charge_neutral_two_phase_eos_initial_point(
+        args,
         feed_amounts,
         args.z,
         temperature,
         target_pressure,
-        "Reactive electrolyte LLE route"
+        "Reactive electrolyte LLE route",
+        {0, 0}
     );
     return solve_reactive_two_phase_eos_route(
         args,
@@ -2396,14 +2524,17 @@ NeutralTwoPhaseEosRouteResult solve_seeded_neutral_two_phase_route(
     const std::vector<double>& charges,
     const std::string& route_label,
     const std::string& problem_name,
+    const std::vector<int>& phase_kinds,
     double charge_tolerance = 0.0
 ) {
     const std::vector<NamedInitialVariables> seeds = neutral_two_phase_seed_candidates(
+        args,
         feed_amounts,
         charges,
         temperature,
         target_pressure,
-        route_label
+        route_label,
+        phase_kinds
     );
 
     NeutralTwoPhaseEosRouteResult best;
@@ -2436,7 +2567,7 @@ NeutralTwoPhaseEosRouteResult solve_seeded_neutral_two_phase_route(
             problem_name,
             charge_tolerance
         );
-        result.initial_point_strategy = "deterministic_multistart";
+        result.initial_point_strategy = "deterministic_seed_sweep";
         result.seed_name = seed_name;
         attempts.push_back(neutral_seed_attempt_from_result(result));
         if (!have_best || neutral_route_quality(result) > neutral_route_quality(best)) {
@@ -2469,7 +2600,7 @@ NeutralTwoPhaseEosRouteResult solve_seeded_neutral_two_phase_route(
     }
 
     if (!have_best) {
-        best.initial_point_strategy = "deterministic_multistart";
+        best.initial_point_strategy = "deterministic_seed_sweep";
         best.seed_name = seeds.empty() ? "problem_initial_point" : seeds.front().seed_name;
     }
     best.seed_attempts = attempts;
@@ -2499,7 +2630,8 @@ NeutralTwoPhaseEosRouteResult solve_neutral_two_phase_eos_tp_flash_route(
         phase_distance_tolerance,
         {},
         "Neutral TP flash route",
-        "neutral_two_phase_eos"
+        "neutral_two_phase_eos",
+        {0, 1}
     );
 }
 
@@ -2526,7 +2658,8 @@ NeutralTwoPhaseEosRouteResult solve_neutral_two_phase_eos_lle_route(
         phase_distance_tolerance,
         {},
         "Neutral LLE route",
-        "neutral_two_phase_eos"
+        "neutral_two_phase_eos",
+        {0, 0}
     );
 }
 
@@ -2555,6 +2688,7 @@ NeutralTwoPhaseEosRouteResult solve_electrolyte_lle_eos_route(
         args.z,
         "Electrolyte LLE route",
         "electrolyte_lle_eos",
+        {0, 0},
         charge_tolerance
     );
 }

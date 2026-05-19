@@ -1543,7 +1543,7 @@ public:
             residual_second_order.residual_hessian_tensor_row_major =
                 second_order.residual_hessian_tensor_row_major;
             residual_second_order.backend = "cppad_implicit_chain_rule";
-            objective = equilibrium_nlp::least_squares_objective_second_order(residual_second_order);
+            objective = equilibrium_nlp::residual_quadratic_objective_second_order(residual_second_order);
             for (std::size_t row = 0; row < residual.size(); ++row) {
                 constraints.has_hessian[row] = true;
                 std::copy(
@@ -2073,7 +2073,7 @@ equilibrium_nlp::NeutralTwoPhaseEosRouteResult solve_electrolyte_lle_liquid_root
         result.problem_name = "electrolyte_lle_eos";
         result.derivative_backend = "cppad_implicit";
         result.postsolve.derivative_backend = "cppad_implicit";
-        result.initial_point_strategy = "deterministic_multistart";
+        result.initial_point_strategy = "deterministic_seed_sweep";
         result.seed_name = seed_name;
         result.ran = solve.solver_ran;
         result.solver_accepted = solve.accepted;
@@ -2140,7 +2140,7 @@ equilibrium_nlp::NeutralTwoPhaseEosRouteResult solve_electrolyte_lle_liquid_root
         }
     }
 
-    best.initial_point_strategy = "deterministic_multistart";
+    best.initial_point_strategy = "deterministic_seed_sweep";
     best.seed_attempts = attempts;
     return best;
 }

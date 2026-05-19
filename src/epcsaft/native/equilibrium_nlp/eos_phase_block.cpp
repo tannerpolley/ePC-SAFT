@@ -211,6 +211,42 @@ EosPhaseBlockResult evaluate_eos_phase_block(
     result.gradient.push_back((target_pressure - eos_pressure) / rt);
     const int nvars = static_cast<int>(amounts.size()) + 1;
     if (has_active_association_sites(args)) {
+        const add_args non_associating_args = without_solved_association(args);
+        double base_objective = 0.0;
+        std::vector<double> base_gradient;
+        std::vector<double> base_hessian;
+        std::vector<double> base_third_derivative;
+        eos_phase_objective_derivatives_cpp(
+            temperature,
+            target_pressure,
+            amounts,
+            volume,
+            non_associating_args,
+            &base_objective,
+            &base_gradient,
+            &base_hessian,
+            &base_third_derivative
+        );
+        if (base_hessian.size() != static_cast<std::size_t>(nvars * nvars)) {
+            throw ValueError("EOS phase base objective Hessian shape did not match associating phase variables.");
+        }
+        if (base_third_derivative.size() != static_cast<std::size_t>(nvars * nvars * nvars)) {
+            throw ValueError("EOS phase base objective third-derivative shape did not match associating phase variables.");
+        }
+        const EosPhaseAssociationDerivativeCorrectionResult association_corrections =
+            eos_phase_association_derivative_corrections_cpp(temperature, amounts, volume, args);
+        if (!association_corrections.active) {
+            const std::string message = association_corrections.message.empty()
+                ? "EOS phase association derivative corrections were not available."
+                : association_corrections.message;
+            throw ValueError(message);
+        }
+        if (association_corrections.objective_hessian_row_major.size()
+                != static_cast<std::size_t>(nvars * nvars)
+            || association_corrections.pressure_hessian_row_major.size()
+                != static_cast<std::size_t>(nvars * nvars)) {
+            throw ValueError("EOS phase association derivative correction shape did not match variables.");
+        }
         const EosPhasePressureDerivativeResult pressure_derivatives =
             eos_phase_pressure_derivatives_cpp(temperature, amounts, volume, args);
         if (!pressure_derivatives.supported) {
@@ -222,14 +258,44 @@ EosPhaseBlockResult evaluate_eos_phase_block(
         if (pressure_derivatives.pressure_jacobian_row_major.size() != static_cast<std::size_t>(nvars)) {
             throw ValueError("EOS phase pressure derivative shape did not match the phase variable model.");
         }
-        result.objective_curvature_backend = "unreported_association_implicit";
-        result.objective_curvature_rows = 0;
-        result.objective_curvature_cols = 0;
+        result.objective_curvature_backend = association_corrections.backend;
+        result.objective_curvature_rows = nvars;
+        result.objective_curvature_cols = nvars;
+        result.objective_curvature_row_major = std::move(base_hessian);
+        for (std::size_t index = 0; index < result.objective_curvature_row_major.size(); ++index) {
+            result.objective_curvature_row_major[index] +=
+                association_corrections.objective_hessian_row_major[index];
+        }
         result.constraint_jacobian_backend = pressure_derivatives.backend;
         result.constraint_jacobian_rows = 1;
         result.constraint_jacobian_cols = nvars;
         result.constraint_jacobian_row_major = pressure_derivatives.pressure_jacobian_row_major;
         result.pressure_density_derivative = pressure_derivatives.pressure_density_derivative;
+        result.pressure_hessian_backend = association_corrections.backend;
+        result.pressure_hessian_rows = nvars;
+        result.pressure_hessian_cols = nvars;
+        result.pressure_hessian_row_major.assign(static_cast<std::size_t>(nvars * nvars), 0.0);
+        const int volume_row = nvars - 1;
+        for (int row = 0; row < nvars; ++row) {
+            for (int col = 0; col < nvars; ++col) {
+                result.pressure_hessian_row_major[static_cast<std::size_t>(row * nvars + col)] =
+                    -rt * base_third_derivative[
+                        static_cast<std::size_t>(volume_row * nvars * nvars + row * nvars + col)
+                    ] + association_corrections.pressure_hessian_row_major[
+                        static_cast<std::size_t>(row * nvars + col)
+                    ];
+            }
+        }
+        for (int row = 0; row < nvars; ++row) {
+            for (int col = 0; col < row; ++col) {
+                const double symmetric_value = 0.5 * (
+                    result.pressure_hessian_row_major[static_cast<std::size_t>(row * nvars + col)]
+                    + result.pressure_hessian_row_major[static_cast<std::size_t>(col * nvars + row)]
+                );
+                result.pressure_hessian_row_major[static_cast<std::size_t>(row * nvars + col)] = symmetric_value;
+                result.pressure_hessian_row_major[static_cast<std::size_t>(col * nvars + row)] = symmetric_value;
+            }
+        }
     } else {
         double cppad_objective = 0.0;
         std::vector<double> cppad_gradient;

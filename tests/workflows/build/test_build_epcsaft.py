@@ -121,9 +121,12 @@ def test_package_and_dev_defaults_require_ceres_and_cppad() -> None:
     assert native_system_ceres["cacheVariables"]["EPCSAFT_USE_SYSTEM_CERES"] == "ON"
     assert native_system_ceres["cacheVariables"]["EPCSAFT_ENABLE_CPPAD"] == "ON"
 
-    dev_mingw = next(p for p in presets["configurePresets"] if p["name"] == "dev-mingw")
-    assert dev_mingw["cacheVariables"]["EPCSAFT_ENABLE_CERES"] == "ON"
-    assert dev_mingw["cacheVariables"]["EPCSAFT_ENABLE_CPPAD"] == "ON"
+    dev_native = next(p for p in presets["configurePresets"] if p["name"] == "dev-native")
+    assert dev_native["generator"] == "Ninja"
+    assert dev_native["binaryDir"] == "${sourceDir}/build/dev"
+    assert dev_native["cacheVariables"]["CMAKE_BUILD_TYPE"] == "Release"
+    assert dev_native["cacheVariables"]["EPCSAFT_ENABLE_CERES"] == "ON"
+    assert dev_native["cacheVariables"]["EPCSAFT_ENABLE_CPPAD"] == "ON"
 
 
 def test_build_status_reports_generator_core_optional_flags_and_stale_lock(tmp_path, monkeypatch) -> None:

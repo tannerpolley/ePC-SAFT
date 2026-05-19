@@ -95,13 +95,13 @@
       }
     },
     {
-      "name": "dev-mingw",
-      "displayName": "Optional IDE build (Windows MinGW)",
-      "description": "Optional Windows MinGW preset for IDE/manual CMake use with required Ceres and CppAD dependencies. The canonical local native build is uv run python scripts/dev/build_epcsaft.py.",
-      "generator": "MinGW Makefiles",
+      "name": "dev-native",
+      "displayName": "IDE dev build (Windows Ninja)",
+      "description": "Current IDE/manual CMake preset for the shared build/dev tree. It matches the canonical local native build shape: Ninja generator, Release build type, in-place extension output, and the required Ceres/CppAD plus system Ipopt flags. The canonical local native build remains uv run python scripts/dev/build_epcsaft.py.",
+      "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/dev",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_TRY_COMPILE_TARGET_TYPE": "STATIC_LIBRARY",
         "EPCSAFT_DEV_INPLACE": "ON",
         "EPCSAFT_ENABLE_CERES": "ON",
@@ -139,9 +139,9 @@
       "configurePreset": "native-system-ceres"
     },
     {
-      "name": "dev-mingw",
-      "displayName": "Optional IDE extension build",
-      "configurePreset": "dev-mingw"
+      "name": "dev-native",
+      "displayName": "Build IDE dev profile",
+      "configurePreset": "dev-native"
     }
   ]
 }

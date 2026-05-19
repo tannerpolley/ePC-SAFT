@@ -7,6 +7,14 @@ import epcsaft
 from epcsaft import _core
 
 
+WORKBOOK_TEMPERATURE = 233.15
+WORKBOOK_BUBBLE_PRESSURE = 1_276_369.4735856401
+WORKBOOK_LIQUID_COMPOSITION = [0.1, 0.3, 0.6]
+WORKBOOK_VAPOR_COMPOSITION = np.asarray([0.7246628928343289, 0.20293191372324873, 0.0724051934424223])
+WORKBOOK_LIQUID_DENSITY = 14_330.417109760687
+WORKBOOK_VAPOR_DENSITY = 728.5617203262267
+
+
 def _hydrocarbon_mixture() -> epcsaft.ePCSAFTMixture:
     params = {
         "m": np.asarray([1.0, 1.6069, 2.0020]),
@@ -21,6 +29,38 @@ def _hydrocarbon_mixture() -> epcsaft.ePCSAFTMixture:
         ),
     }
     return epcsaft.ePCSAFTMixture.from_params(params, species=["Methane", "Ethane", "Propane"])
+
+
+def test_bubble_p_matches_hydrocarbon_workbook_vle_with_default_exact_hessian() -> None:
+    if not _core._native_ipopt_smoke()["compiled"]:
+        pytest.skip("native Ipopt is not compiled")
+
+    mix = _hydrocarbon_mixture()
+
+    result = mix.bubble_p(
+        T=WORKBOOK_TEMPERATURE,
+        x=WORKBOOK_LIQUID_COMPOSITION,
+        options=epcsaft.EquilibriumOptions(
+            max_iterations=200,
+            tolerance=1.0e-8,
+            ipopt_iteration_history_limit=4,
+        ),
+    )
+
+    diagnostics = result.diagnostics
+    assert result.problem_kind == "neutral_bubble_p"
+    assert [phase.label for phase in result.phases] == ["liq", "vap"]
+    assert result.phases[0].composition == pytest.approx(WORKBOOK_LIQUID_COMPOSITION, abs=1.0e-10)
+    assert result.phases[1].composition == pytest.approx(WORKBOOK_VAPOR_COMPOSITION, rel=5.0e-5, abs=5.0e-7)
+    assert result.phases[0].pressure == pytest.approx(WORKBOOK_BUBBLE_PRESSURE, rel=5.0e-5)
+    assert result.phases[0].density == pytest.approx(WORKBOOK_LIQUID_DENSITY, rel=5.0e-5)
+    assert result.phases[1].density == pytest.approx(WORKBOOK_VAPOR_DENSITY, rel=5.0e-5)
+    assert diagnostics["solver_status"] in {"success", "acceptable_point", "feasible_point_found"}
+    assert diagnostics["solver_accepted"] is True
+    assert diagnostics["hessian_approximation"] == "exact"
+    assert diagnostics["hessian_backend"] != "limited-memory"
+    assert diagnostics["exact_hessian_available"] is True
+    assert diagnostics["eval_h_calls"] > 0
 
 
 def test_bubble_p_builds_one_native_route_request_before_ipopt_gate(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -18,6 +18,22 @@ def _neutral_binary_mixture() -> epcsaft.ePCSAFTMixture:
     return epcsaft.ePCSAFTMixture.from_params(params, species=["Methane", "Ethane"])
 
 
+def _methanol_cyclohexane_mixture() -> epcsaft.ePCSAFTMixture:
+    params = {
+        "MW": np.asarray([32.042e-3, 84.147e-3]),
+        "m": np.asarray([1.5255, 2.5303]),
+        "s": np.asarray([3.2300, 3.8499]),
+        "e": np.asarray([188.90, 278.11]),
+        "e_assoc": np.asarray([2899.5, 0.0]),
+        "vol_a": np.asarray([0.035176, 0.0]),
+        "assoc_scheme": ["2B", None],
+        "k_ij": np.asarray([[0.0, 0.051], [0.051, 0.0]]),
+        "z": np.asarray([0.0, 0.0]),
+        "dielc": np.asarray([33.05, 2.02]),
+    }
+    return epcsaft.ePCSAFTMixture.from_params(params, species=["Methanol", "Cyclohexane"])
+
+
 def _ionic_mixture() -> epcsaft.ePCSAFTMixture:
     params = _ionic_params()
     params["assoc_scheme"] = [None, None, None]
@@ -151,6 +167,34 @@ def test_eos_phase_block_reports_pressure_constraint_jacobian_from_exact_curvatu
     assert np.all(np.isfinite(pressure_hessian))
     assert pressure_hessian == pytest.approx(pressure_hessian.T, rel=1.0e-12, abs=1.0e-8)
     assert constraint_jacobian[0, :] == pytest.approx(expected_pressure_jacobian, rel=1.0e-11, abs=1.0e-8)
+
+
+def test_eos_phase_block_reports_association_implicit_second_order_data() -> None:
+    mix = _methanol_cyclohexane_mixture()
+    amounts = np.asarray([0.5, 0.5], dtype=float)
+    temperature = 298.15
+    density = 1000.0
+    volume = float(amounts.sum() / density)
+    composition = amounts / amounts.sum()
+    state = mix.state(T=temperature, rho=density, x=composition, phase="liquid")
+
+    payload = _core._native_eos_phase_block(mix._native, temperature, state.pressure(), amounts.tolist(), volume)
+
+    objective_curvature = np.asarray(payload["objective_curvature_row_major"], dtype=float).reshape((3, 3))
+    constraint_jacobian = np.asarray(payload["constraint_jacobian_row_major"], dtype=float).reshape((1, 3))
+    pressure_hessian = np.asarray(payload["pressure_hessian_row_major"], dtype=float).reshape((3, 3))
+    expected_pressure_jacobian = -payload["gas_constant_temperature"] * objective_curvature[-1, :]
+
+    assert payload["objective_curvature_backend"] == "cppad_implicit_association"
+    assert payload["objective_curvature_shape"] == (3, 3)
+    assert payload["constraint_jacobian_backend"] == "cppad_implicit"
+    assert payload["pressure_hessian_backend"] == "cppad_implicit_association"
+    assert payload["pressure_hessian_shape"] == (3, 3)
+    assert np.all(np.isfinite(objective_curvature))
+    assert np.all(np.isfinite(pressure_hessian))
+    assert objective_curvature == pytest.approx(objective_curvature.T, rel=1.0e-11, abs=1.0e-8)
+    assert pressure_hessian == pytest.approx(pressure_hessian.T, rel=1.0e-11, abs=1.0e-8)
+    assert constraint_jacobian[0, :] == pytest.approx(expected_pressure_jacobian, rel=1.0e-8, abs=1.0e-6)
 
 
 def test_eos_phase_system_assembles_two_phase_material_balance_and_objective() -> None:
