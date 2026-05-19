@@ -48,7 +48,6 @@ def _dense_jacobian_from_sparse_contract(payload: dict) -> np.ndarray:
 
 def test_current_public_route_nlps_without_provider_reject_exact_hessian() -> None:
     neutral = _neutral_binary_mixture()
-    ionic = _ionic_mixture()
     reactive_feed = [0.3, 0.7]
     reactive_phase_amounts = [[0.1, 0.4], [0.2, 0.3]]
     reactive_volumes = [0.005, 0.004]
@@ -56,44 +55,6 @@ def test_current_public_route_nlps_without_provider_reject_exact_hessian() -> No
     reactive_stoichiometry = [-1.0, 1.0]
 
     cases = [
-        (
-            "neutral_tp_flash",
-            lambda: _core._native_neutral_tp_flash_eos_route_result(
-                neutral._native,
-                300.0,
-                1.0e5,
-                [0.4, 0.6],
-                30,
-                1.0e-8,
-                0.0,
-                "exact",
-                20,
-                1.0e-7,
-                1.0e-5,
-                1.0e-7,
-                1.0e-4,
-                None,
-            ),
-        ),
-        (
-            "neutral_lle",
-            lambda: _core._native_neutral_lle_eos_route_result(
-                neutral._native,
-                298.15,
-                1.013e5,
-                [0.45, 0.55],
-                30,
-                1.0e-8,
-                0.0,
-                "exact",
-                20,
-                1.0e-7,
-                1.0e-5,
-                1.0e-7,
-                1.0e-4,
-                None,
-            ),
-        ),
         (
             "neutral_bubble_dew",
             lambda: _core._native_neutral_bubble_p_eos_route_result(
@@ -171,6 +132,68 @@ def test_current_public_route_nlps_without_provider_reject_exact_hessian() -> No
     for name, call in cases:
         with pytest.raises(_core.NativeValueError, match="exact Hessian mode requires"):
             call()
+
+
+def test_neutral_tp_flash_route_uses_exact_hessian_when_requested() -> None:
+    mix = _neutral_binary_mixture()
+    payload = _core._native_neutral_tp_flash_eos_route_result(
+        mix._native,
+        300.0,
+        1.0e5,
+        [0.4, 0.6],
+        30,
+        1.0e-8,
+        0.0,
+        "exact",
+        20,
+        1.0e-7,
+        1.0e-5,
+        1.0e-7,
+        1.0e-4,
+        None,
+    )
+
+    if not payload["compiled"]:
+        assert payload["status"] == "ipopt_dependency_required"
+        return
+
+    assert payload["ran"] is True
+    assert payload["solver_accepted"] is True
+    assert payload["hessian_approximation"] == "exact"
+    assert payload["exact_hessian_available"] is True
+    assert payload["hessian_backend"] == "cppad_phase_system"
+    assert payload["eval_h_calls"] > 0
+
+
+def test_neutral_lle_route_uses_exact_hessian_when_requested() -> None:
+    mix = _neutral_binary_mixture()
+    payload = _core._native_neutral_lle_eos_route_result(
+        mix._native,
+        298.15,
+        1.013e5,
+        [0.45, 0.55],
+        30,
+        1.0e-8,
+        0.0,
+        "exact",
+        20,
+        1.0e-7,
+        1.0e-5,
+        1.0e-7,
+        1.0e-4,
+        None,
+    )
+
+    if not payload["compiled"]:
+        assert payload["status"] == "ipopt_dependency_required"
+        return
+
+    assert payload["ran"] is True
+    assert payload["solver_accepted"] is True
+    assert payload["hessian_approximation"] == "exact"
+    assert payload["exact_hessian_available"] is True
+    assert payload["hessian_backend"] == "cppad_phase_system"
+    assert payload["eval_h_calls"] > 0
 
 
 def test_neutral_two_phase_eos_nlp_contract_uses_phase_system_blocks() -> None:
@@ -666,6 +689,53 @@ def test_electrolyte_lle_route_uses_exact_hessian_when_requested() -> None:
     assert payload["exact_hessian_available"] is True
     assert payload["hessian_backend"] != "limited-memory"
     assert payload["eval_h_calls"] > 0
+
+
+def test_electrolyte_lle_exact_hessian_dilute_salt_route_keeps_callback_finite() -> None:
+    formula = np.asarray(
+        [0.6732574103166201, 0.0354880934611478, 0.2323336121370503, 0.05892088408518178],
+        dtype=float,
+    )
+    neutrals = formula[:3] / float(np.sum(formula[:3]))
+    salt = 1.0e-6
+    formula = np.asarray([*(neutrals * (1.0 - salt)), salt], dtype=float)
+    feed = np.asarray([formula[0], formula[1], formula[2], formula[3], formula[3]], dtype=float)
+    feed = feed / float(np.sum(feed))
+    mix = epcsaft.ePCSAFTMixture.from_dataset(
+        "2026_Khudaida",
+        ["H2O", "Ethanol", "Butanol", "Na+", "Cl-"],
+        feed,
+        303.15,
+    )
+
+    payload = _core._native_electrolyte_lle_eos_route_result(
+        mix._native,
+        303.15,
+        1.0e5,
+        feed.tolist(),
+        20,
+        1.0e-8,
+        0.0,
+        "exact",
+        20,
+        1.0e-7,
+        1.0e-3,
+        1.0e-7,
+        1.0e-6,
+        0.1,
+        None,
+    )
+
+    if not payload["compiled"]:
+        assert payload["status"] == "ipopt_dependency_required"
+        return
+
+    assert payload["ran"] is True
+    assert payload["hessian_approximation"] == "exact"
+    assert payload["exact_hessian_available"] is True
+    assert payload["eval_h_calls"] > 0
+    assert payload["solver_status"] != "invalid_number_detected"
+    assert payload["last_callback_exception"] == ""
 
 
 @pytest.mark.parametrize(

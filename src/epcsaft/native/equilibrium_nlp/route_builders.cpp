@@ -5,6 +5,7 @@
 #include "ipopt_adapter.h"
 #include "nlp_problem.h"
 #include "reaction_block.h"
+#include "second_order.h"
 
 #include <algorithm>
 #include <cmath>
@@ -33,6 +34,15 @@ double solve_double(const IpoptSolveResult& solve, const std::string& key, doubl
 bool solve_bool(const IpoptSolveResult& solve, const std::string& key, bool default_value = false) {
     const auto item = solve.diagnostics_bool.find(key);
     return item == solve.diagnostics_bool.end() ? default_value : item->second;
+}
+
+bool route_has_active_association_sites(const add_args& args) {
+    for (int sites : args.assoc_num) {
+        if (sites > 0) {
+            return true;
+        }
+    }
+    return false;
 }
 
 }  // namespace
@@ -789,6 +799,100 @@ public:
         return out;
     }
 
+    bool has_exact_hessian() const override {
+        return !route_has_active_association_sites(args_) && (args_.z.empty() || args_.born_model <= 1);
+    }
+
+    int hessian_nonzero_count() const override {
+        return LagrangianHessianAssembler(variable_count()).nonzero_count();
+    }
+
+    NlpHessianStructure hessian_structure() const override {
+        return LagrangianHessianAssembler(variable_count()).structure();
+    }
+
+    std::vector<double> hessian_values(
+        const std::vector<double>& variables,
+        double objective_factor,
+        const std::vector<double>& constraint_multipliers
+    ) const override {
+        if (!has_exact_hessian()) {
+            throw ValueError("Neutral EOS route exact Hessian requires non-associating phase blocks.");
+        }
+        if (constraint_multipliers.size() != static_cast<std::size_t>(constraint_count())) {
+            throw ValueError("Neutral EOS route Hessian multiplier vector size does not match the constraint count.");
+        }
+        const EosPhaseSystemResult system = phase_system(variables);
+        if (system.objective_hessian_row_major.size()
+            != static_cast<std::size_t>(variable_count() * variable_count())) {
+            throw ValueError("Neutral EOS route objective Hessian shape did not match the NLP variable count.");
+        }
+
+        ObjectiveSecondOrderData objective;
+        objective.variable_count = variable_count();
+        objective.value = system.objective;
+        objective.gradient = system.gradient;
+        objective.hessian_row_major = system.objective_hessian_row_major;
+        objective.backend = system.objective_hessian_backend;
+
+        ConstraintSecondOrderData constraints;
+        constraints.constraint_count = constraint_count();
+        constraints.variable_count = variable_count();
+        constraints.values = system.constraints;
+        constraints.jacobian_row_major = system.constraint_jacobian_row_major;
+        constraints.hessian_tensor_row_major.assign(
+            static_cast<std::size_t>(constraint_count() * variable_count() * variable_count()),
+            0.0
+        );
+        constraints.has_hessian.assign(static_cast<std::size_t>(constraint_count()), false);
+        constraints.backend = system.constraint_hessian_backend;
+        if (system.constraint_hessian_tensor_row_major.size()
+            != static_cast<std::size_t>(
+                system.constraint_jacobian_rows * variable_count() * variable_count()
+            )) {
+            throw ValueError("Neutral EOS route constraint Hessian tensor shape did not match the system constraints.");
+        }
+        for (int row = 0; row < system.constraint_jacobian_rows; ++row) {
+            if (row >= constraint_count()) {
+                throw ValueError("Neutral EOS route system constraint count exceeded the NLP constraint count.");
+            }
+            constraints.has_hessian[static_cast<std::size_t>(row)] =
+                row < static_cast<int>(system.constraint_has_hessian.size())
+                && system.constraint_has_hessian[static_cast<std::size_t>(row)];
+            const std::size_t source_offset =
+                static_cast<std::size_t>(row * variable_count() * variable_count());
+            std::copy(
+                system.constraint_hessian_tensor_row_major.begin() + static_cast<std::ptrdiff_t>(source_offset),
+                system.constraint_hessian_tensor_row_major.begin()
+                    + static_cast<std::ptrdiff_t>(source_offset + variable_count() * variable_count()),
+                constraints.hessian_tensor_row_major.begin() + static_cast<std::ptrdiff_t>(source_offset)
+            );
+        }
+        if (separation_constraint_count() > 0) {
+            constraints.has_hessian.back() = true;
+            const std::vector<double> separation_hessian =
+                phase_separation_hessian(phase_amounts_from_variables(variables));
+            const std::size_t offset = static_cast<std::size_t>(
+                (constraint_count() - 1) * variable_count() * variable_count()
+            );
+            std::copy(
+                separation_hessian.begin(),
+                separation_hessian.end(),
+                constraints.hessian_tensor_row_major.begin() + static_cast<std::ptrdiff_t>(offset)
+            );
+        }
+        return LagrangianHessianAssembler(variable_count()).values(
+            objective_factor,
+            objective,
+            constraints,
+            constraint_multipliers
+        );
+    }
+
+    std::string hessian_backend() const override {
+        return "cppad_phase_system";
+    }
+
     NlpScaling scaling() const override {
         const double total_feed = std::accumulate(feed_amounts_.begin(), feed_amounts_.end(), 0.0);
         const double amount_scale = std::max(1.0, total_feed);
@@ -875,6 +979,45 @@ private:
             row[second_offset] = -separation_sign_ * (second_indicator - second[selected]) / second_total;
         }
         return row;
+    }
+
+    std::vector<double> phase_separation_hessian(
+        const std::vector<std::vector<double>>& phase_amounts
+    ) const {
+        if (phase_amounts.size() != static_cast<std::size_t>(phase_count())) {
+            throw ValueError("Neutral EOS route phase amount phase count does not match the NLP model.");
+        }
+        std::vector<double> hessian(static_cast<std::size_t>(variable_count() * variable_count()), 0.0);
+        const std::size_t selected = static_cast<std::size_t>(separation_species_index_);
+        for (int phase = 0; phase < phase_count(); ++phase) {
+            const std::vector<double> composition = phase_composition(
+                phase_amounts[static_cast<std::size_t>(phase)],
+                "Neutral EOS route phase amount total"
+            );
+            const double total = std::accumulate(
+                phase_amounts[static_cast<std::size_t>(phase)].begin(),
+                phase_amounts[static_cast<std::size_t>(phase)].end(),
+                0.0
+            );
+            require_positive_finite(total, "Neutral EOS route phase amount total");
+            const double phase_sign = phase == 0 ? separation_sign_ : -separation_sign_;
+            const std::size_t phase_offset = static_cast<std::size_t>(phase * local_variable_count());
+            for (int first = 0; first < species_count_; ++first) {
+                for (int second = 0; second < species_count_; ++second) {
+                    const double first_indicator =
+                        static_cast<std::size_t>(first) == selected ? 1.0 : 0.0;
+                    const double second_indicator =
+                        static_cast<std::size_t>(second) == selected ? 1.0 : 0.0;
+                    const double value = phase_sign
+                        * (2.0 * composition[selected] - first_indicator - second_indicator)
+                        / (total * total);
+                    const std::size_t row = phase_offset + static_cast<std::size_t>(first);
+                    const std::size_t col = phase_offset + static_cast<std::size_t>(second);
+                    hessian[row * static_cast<std::size_t>(variable_count()) + col] = value;
+                }
+            }
+        }
+        return hessian;
     }
 
     std::vector<std::vector<double>> phase_amounts_from_variables(const std::vector<double>& variables) const {

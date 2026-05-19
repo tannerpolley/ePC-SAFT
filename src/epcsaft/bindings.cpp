@@ -683,6 +683,9 @@ py::dict eos_phase_block_to_dict(const epcsaft::native::equilibrium_nlp::EosPhas
     out["objective_curvature_shape"] =
         py::make_tuple(result.objective_curvature_rows, result.objective_curvature_cols);
     out["objective_curvature_row_major"] = result.objective_curvature_row_major;
+    out["pressure_hessian_backend"] = result.pressure_hessian_backend;
+    out["pressure_hessian_shape"] = py::make_tuple(result.pressure_hessian_rows, result.pressure_hessian_cols);
+    out["pressure_hessian_row_major"] = result.pressure_hessian_row_major;
     out["pressure_consistency_residual"] = result.pressure_consistency_residual;
     out["constraint_jacobian_backend"] = result.constraint_jacobian_backend;
     out["constraint_jacobian_shape"] = py::make_tuple(result.constraint_jacobian_rows, result.constraint_jacobian_cols);
@@ -730,6 +733,9 @@ py::dict eos_phase_system_to_dict(const epcsaft::native::equilibrium_nlp::EosPha
     out["association_objective"] = result.association_objective;
     out["phase_association_objectives"] = result.phase_association_objectives;
     out["gradient"] = result.gradient;
+    out["objective_hessian_backend"] = result.objective_hessian_backend;
+    out["objective_hessian_shape"] = py::make_tuple(result.objective_hessian_rows, result.objective_hessian_cols);
+    out["objective_hessian_row_major"] = result.objective_hessian_row_major;
     out["constraints"] = result.constraints;
     out["phase_charge_residuals"] = result.phase_charge_residuals;
     out["phase_association_residuals"] = result.phase_association_residuals;
@@ -737,6 +743,11 @@ py::dict eos_phase_system_to_dict(const epcsaft::native::equilibrium_nlp::EosPha
     out["constraint_jacobian_shape"] =
         py::make_tuple(result.constraint_jacobian_rows, result.constraint_jacobian_cols);
     out["constraint_jacobian_row_major"] = result.constraint_jacobian_row_major;
+    out["constraint_hessian_backend"] = result.constraint_hessian_backend;
+    out["constraint_hessian_shape"] =
+        py::make_tuple(result.constraint_hessian_rows, result.constraint_hessian_cols);
+    out["constraint_hessian_tensor_row_major"] = result.constraint_hessian_tensor_row_major;
+    out["constraint_has_hessian"] = result.constraint_has_hessian;
     py::list phase_blocks;
     for (const auto& block : result.phase_blocks) {
         phase_blocks.append(eos_phase_block_to_dict(block));
@@ -1852,6 +1863,18 @@ PYBIND11_MODULE(_core, m) {
         const nlp::LagrangianHessianAssembler assembler(2);
         out["nonzero_count"] = assembler.nonzero_count();
         out["lagrangian_lower"] = assembler.values(0.5, objective, constraints, {3.0, 100.0});
+
+        nlp::ConstraintSecondOrderData nearly_symmetric_constraints;
+        nearly_symmetric_constraints.constraint_count = 1;
+        nearly_symmetric_constraints.variable_count = 2;
+        nearly_symmetric_constraints.hessian_tensor_row_major = {
+            0.0, 1.0 + 5.0e-9,
+            1.0 - 5.0e-9, 0.0,
+        };
+        nearly_symmetric_constraints.has_hessian = {true};
+        nearly_symmetric_constraints.backend = "analytic";
+        out["weighted_symmetry_lower"] =
+            assembler.values(0.0, objective, nearly_symmetric_constraints, {1.0e12});
 
         nlp::ResidualSecondOrderData residuals;
         residuals.residual_count = 2;

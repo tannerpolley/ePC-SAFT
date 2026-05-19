@@ -35,6 +35,10 @@ struct EosPhaseBlockResult {
     int objective_curvature_rows = 0;
     int objective_curvature_cols = 0;
     std::vector<double> objective_curvature_row_major;
+    std::string pressure_hessian_backend;
+    int pressure_hessian_rows = 0;
+    int pressure_hessian_cols = 0;
+    std::vector<double> pressure_hessian_row_major;
     double pressure_consistency_residual = 0.0;
     std::string constraint_jacobian_backend;
     int constraint_jacobian_rows = 0;
@@ -61,6 +65,10 @@ struct EosPhaseSystemResult {
     double association_objective = 0.0;
     std::vector<double> phase_association_objectives;
     std::vector<double> gradient;
+    std::string objective_hessian_backend;
+    int objective_hessian_rows = 0;
+    int objective_hessian_cols = 0;
+    std::vector<double> objective_hessian_row_major;
     std::vector<double> constraints;
     std::vector<double> phase_charge_residuals;
     std::vector<double> phase_association_residuals;
@@ -68,6 +76,11 @@ struct EosPhaseSystemResult {
     int constraint_jacobian_rows = 0;
     int constraint_jacobian_cols = 0;
     std::vector<double> constraint_jacobian_row_major;
+    std::string constraint_hessian_backend;
+    int constraint_hessian_rows = 0;
+    int constraint_hessian_cols = 0;
+    std::vector<double> constraint_hessian_tensor_row_major;
+    std::vector<bool> constraint_has_hessian;
 };
 
 EosPhaseBlockResult evaluate_eos_phase_block(

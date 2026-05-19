@@ -166,6 +166,17 @@ void add_scaled_matrix(
     }
 }
 
+void symmetrize_square_matrix(std::vector<double>& values, int variable_count) {
+    const std::size_t n = static_cast<std::size_t>(variable_count);
+    for (std::size_t row = 0; row < n; ++row) {
+        for (std::size_t col = 0; col < row; ++col) {
+            const double value = 0.5 * (values[row * n + col] + values[col * n + row]);
+            values[row * n + col] = value;
+            values[col * n + row] = value;
+        }
+    }
+}
+
 }  // namespace
 
 int dense_lower_hessian_nonzero_count(int variable_count) {
@@ -484,6 +495,7 @@ std::vector<double> LagrangianHessianAssembler::values(
                 * constraints.hessian_tensor_row_major[offset + index];
         }
     }
+    symmetrize_square_matrix(dense, variable_count_);
     return lower_triangle_values(dense, variable_count_);
 }
 

@@ -234,6 +234,7 @@ EosPhaseBlockResult evaluate_eos_phase_block(
         double cppad_objective = 0.0;
         std::vector<double> cppad_gradient;
         std::vector<double> cppad_hessian;
+        std::vector<double> cppad_third_derivative;
         eos_phase_objective_derivatives_cpp(
             temperature,
             target_pressure,
@@ -242,11 +243,15 @@ EosPhaseBlockResult evaluate_eos_phase_block(
             args,
             &cppad_objective,
             &cppad_gradient,
-            &cppad_hessian
+            &cppad_hessian,
+            &cppad_third_derivative
         );
         if (cppad_gradient.size() != result.gradient.size()
             || cppad_hessian.size() != static_cast<std::size_t>(nvars * nvars)) {
             throw ValueError("EOS phase objective CppAD derivative shape did not match the phase variable model.");
+        }
+        if (cppad_third_derivative.size() != static_cast<std::size_t>(nvars * nvars * nvars)) {
+            throw ValueError("EOS phase objective CppAD third-derivative shape did not match the phase variable model.");
         }
         const double objective_scale = std::max(1.0, std::abs(result.objective));
         if (std::abs(cppad_objective - result.objective) > 1.0e-8 * objective_scale) {
@@ -270,6 +275,28 @@ EosPhaseBlockResult evaluate_eos_phase_block(
         }
         result.pressure_density_derivative =
             -result.constraint_jacobian_row_major[static_cast<std::size_t>(volume_row)] * volume / density;
+        result.pressure_hessian_backend = "cppad";
+        result.pressure_hessian_rows = nvars;
+        result.pressure_hessian_cols = nvars;
+        result.pressure_hessian_row_major.assign(static_cast<std::size_t>(nvars * nvars), 0.0);
+        for (int row = 0; row < nvars; ++row) {
+            for (int col = 0; col < nvars; ++col) {
+                result.pressure_hessian_row_major[static_cast<std::size_t>(row * nvars + col)] =
+                    -rt * cppad_third_derivative[
+                        static_cast<std::size_t>(volume_row * nvars * nvars + row * nvars + col)
+                    ];
+            }
+        }
+        for (int row = 0; row < nvars; ++row) {
+            for (int col = 0; col < row; ++col) {
+                const double symmetric_value = 0.5 * (
+                    result.pressure_hessian_row_major[static_cast<std::size_t>(row * nvars + col)]
+                    + result.pressure_hessian_row_major[static_cast<std::size_t>(col * nvars + row)]
+                );
+                result.pressure_hessian_row_major[static_cast<std::size_t>(row * nvars + col)] = symmetric_value;
+                result.pressure_hessian_row_major[static_cast<std::size_t>(col * nvars + row)] = symmetric_value;
+            }
+        }
     }
     result.pressure_jacobian_backend = result.constraint_jacobian_backend;
     result.pressure_jacobian_rows = result.constraint_jacobian_rows;
@@ -430,6 +457,15 @@ EosPhaseSystemResult evaluate_eos_phase_system(
     result.constraint_jacobian_rows = static_cast<int>(constraint_count);
     result.constraint_jacobian_cols = static_cast<int>(variable_count);
     result.constraint_jacobian_row_major.assign(constraint_count * variable_count, 0.0);
+    result.objective_hessian_backend = "cppad_phase_blocks";
+    result.objective_hessian_rows = static_cast<int>(variable_count);
+    result.objective_hessian_cols = static_cast<int>(variable_count);
+    result.objective_hessian_row_major.assign(variable_count * variable_count, 0.0);
+    result.constraint_hessian_backend = "cppad_phase_blocks";
+    result.constraint_hessian_rows = static_cast<int>(constraint_count);
+    result.constraint_hessian_cols = static_cast<int>(variable_count);
+    result.constraint_hessian_tensor_row_major.assign(constraint_count * variable_count * variable_count, 0.0);
+    result.constraint_has_hessian.assign(constraint_count, false);
     for (std::size_t species = 0; species < species_count; ++species) {
         for (std::size_t phase = 0; phase < phase_count; ++phase) {
             result.constraint_jacobian_row_major[
@@ -442,11 +478,29 @@ EosPhaseSystemResult evaluate_eos_phase_system(
         if (block.pressure_jacobian_row_major.size() != base_local_variable_count) {
             throw ValueError("EOS phase pressure Jacobian size did not match the phase variable model.");
         }
+        if (block.objective_curvature_row_major.size() != base_local_variable_count * base_local_variable_count) {
+            throw ValueError("EOS phase objective Hessian size did not match the phase variable model.");
+        }
+        if (block.pressure_hessian_row_major.size() != base_local_variable_count * base_local_variable_count) {
+            throw ValueError("EOS phase pressure Hessian size did not match the phase variable model.");
+        }
         const std::size_t row = species_count + phase;
         const std::size_t col_offset = phase * local_variable_count;
         for (std::size_t col = 0; col < base_local_variable_count; ++col) {
             result.constraint_jacobian_row_major[row * variable_count + col_offset + col] =
                 block.pressure_jacobian_row_major[col];
+        }
+        result.constraint_has_hessian[row] = true;
+        for (std::size_t local_row = 0; local_row < base_local_variable_count; ++local_row) {
+            for (std::size_t local_col = 0; local_col < base_local_variable_count; ++local_col) {
+                const std::size_t global_row = col_offset + local_row;
+                const std::size_t global_col = col_offset + local_col;
+                result.objective_hessian_row_major[global_row * variable_count + global_col] =
+                    block.objective_curvature_row_major[local_row * base_local_variable_count + local_col];
+                result.constraint_hessian_tensor_row_major[
+                    row * variable_count * variable_count + global_row * variable_count + global_col
+                ] = block.pressure_hessian_row_major[local_row * base_local_variable_count + local_col];
+            }
         }
     }
     for (std::size_t row = 0; row < charge_constraint_count; ++row) {

@@ -141,10 +141,15 @@ def test_eos_phase_block_reports_pressure_constraint_jacobian_from_exact_curvatu
     assert payload["constraint_jacobian_shape"] == (1, 3)
     objective_curvature = np.asarray(payload["objective_curvature_row_major"], dtype=float).reshape((3, 3))
     constraint_jacobian = np.asarray(payload["constraint_jacobian_row_major"], dtype=float).reshape((1, 3))
+    pressure_hessian = np.asarray(payload["pressure_hessian_row_major"], dtype=float).reshape((3, 3))
     expected_pressure_jacobian = -payload["gas_constant_temperature"] * objective_curvature[-1, :]
 
     assert np.all(np.isfinite(objective_curvature))
     assert np.all(np.isfinite(constraint_jacobian))
+    assert payload["pressure_hessian_backend"] == "cppad"
+    assert payload["pressure_hessian_shape"] == (3, 3)
+    assert np.all(np.isfinite(pressure_hessian))
+    assert pressure_hessian == pytest.approx(pressure_hessian.T, rel=1.0e-12, abs=1.0e-8)
     assert constraint_jacobian[0, :] == pytest.approx(expected_pressure_jacobian, rel=1.0e-11, abs=1.0e-8)
 
 
@@ -223,6 +228,47 @@ def test_eos_phase_system_reports_exact_material_and_pressure_jacobian_rows() ->
     assert jacobian[2, 3:] == pytest.approx([0.0, 0.0, 0.0], abs=0.0)
     assert jacobian[3, :3] == pytest.approx([0.0, 0.0, 0.0], abs=0.0)
     assert jacobian[3, 3:] == pytest.approx(phase_blocks[1]["pressure_jacobian"], rel=1.0e-12, abs=1.0e-8)
+
+
+def test_eos_phase_system_reports_objective_and_pressure_constraint_hessians() -> None:
+    mix, temperature, phase_amounts, volumes, feed_amounts, target_pressure = _two_phase_binary_case()
+
+    payload = _core._native_eos_phase_system(
+        mix._native,
+        temperature,
+        target_pressure,
+        [phase.tolist() for phase in phase_amounts],
+        volumes,
+        feed_amounts.tolist(),
+    )
+    phase_blocks = [
+        _core._native_eos_phase_block(mix._native, temperature, target_pressure, phase.tolist(), volume)
+        for phase, volume in zip(phase_amounts, volumes, strict=True)
+    ]
+
+    objective_hessian = np.asarray(payload["objective_hessian_row_major"], dtype=float).reshape((6, 6))
+    constraint_hessians = np.asarray(payload["constraint_hessian_tensor_row_major"], dtype=float).reshape((4, 6, 6))
+    first_objective = np.asarray(phase_blocks[0]["objective_curvature_row_major"], dtype=float).reshape((3, 3))
+    second_objective = np.asarray(phase_blocks[1]["objective_curvature_row_major"], dtype=float).reshape((3, 3))
+    first_pressure = np.asarray(phase_blocks[0]["pressure_hessian_row_major"], dtype=float).reshape((3, 3))
+    second_pressure = np.asarray(phase_blocks[1]["pressure_hessian_row_major"], dtype=float).reshape((3, 3))
+
+    assert payload["objective_hessian_backend"] == "cppad_phase_blocks"
+    assert payload["objective_hessian_shape"] == (6, 6)
+    assert payload["constraint_hessian_backend"] == "cppad_phase_blocks"
+    assert payload["constraint_hessian_shape"] == (4, 6)
+    assert payload["constraint_has_hessian"] == [False, False, True, True]
+    assert np.all(np.isfinite(objective_hessian))
+    assert objective_hessian[:3, :3] == pytest.approx(first_objective, rel=1.0e-12, abs=1.0e-8)
+    assert objective_hessian[3:, 3:] == pytest.approx(second_objective, rel=1.0e-12, abs=1.0e-8)
+    assert objective_hessian[:3, 3:] == pytest.approx(np.zeros((3, 3)), abs=0.0)
+    assert objective_hessian[3:, :3] == pytest.approx(np.zeros((3, 3)), abs=0.0)
+    assert constraint_hessians[0] == pytest.approx(np.zeros((6, 6)), abs=0.0)
+    assert constraint_hessians[1] == pytest.approx(np.zeros((6, 6)), abs=0.0)
+    assert constraint_hessians[2, :3, :3] == pytest.approx(first_pressure, rel=1.0e-12, abs=1.0e-8)
+    assert constraint_hessians[2, 3:, :] == pytest.approx(np.zeros((3, 6)), abs=0.0)
+    assert constraint_hessians[3, 3:, 3:] == pytest.approx(second_pressure, rel=1.0e-12, abs=1.0e-8)
+    assert constraint_hessians[3, :3, :] == pytest.approx(np.zeros((3, 6)), abs=0.0)
 
 
 def test_eos_phase_system_can_append_phase_charge_balance_rows() -> None:
