@@ -538,6 +538,7 @@ def capabilities() -> dict[str, object]:
                 "backend": "structured_residual_evaluation",
                 "scope": "fixed-shape residual evaluator for native thermodynamic calls, not a production optimizer",
             },
+            # AlgID: reactive_electrolyte_batch_residual_context
             "reactive_electrolyte_batch_context": {
                 "available": True,
                 "backend": "batch_residual_evaluation_context",

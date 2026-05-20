@@ -2382,6 +2382,7 @@ def _fit_pure_neutral_internal_with_native(
     return fit_result, native_result
 
 
+# AlgID: pure_neutral_ceres_regression
 def fit_pure_neutral(
     records: Any,
     component: str,
@@ -2718,6 +2719,7 @@ def _annotate_contract_problem(
     return result
 
 
+# AlgID: pure_neutral_ceres_regression
 def fit_pure_parameters(
     *,
     species: str | Sequence[str],
@@ -2765,6 +2767,7 @@ def fit_pure_parameters(
     )
 
 
+# AlgID: pure_ion_ceres_regression
 def fit_pure_ion(
     records: Any,
     component: str,
@@ -2793,6 +2796,7 @@ def fit_pure_ion(
     )
 
 
+# AlgID: binary_kij_ceres_regression
 def fit_binary_parameters(
     *,
     species: Sequence[str],
@@ -2966,6 +2970,7 @@ def _seed_value_for_component_target(
     return value
 
 
+# AlgID: pure_ion_ceres_regression
 def fit_liquid_electrolyte_parameters(
     *,
     species: Sequence[str],

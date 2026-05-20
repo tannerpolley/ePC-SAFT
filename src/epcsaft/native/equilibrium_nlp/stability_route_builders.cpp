@@ -1012,6 +1012,7 @@ StabilityNlpContract evaluate_electrolyte_stability_tpd_nlp_contract(
     return make_contract(problem);
 }
 
+// AlgID: stability_tpd_ipopt
 StabilityRouteResult solve_neutral_stability_tpd_route(
     const add_args& args,
     double temperature,
@@ -1085,6 +1086,7 @@ StabilityRouteResult solve_neutral_stability_tpd_route(
     return best;
 }
 
+// AlgID: stability_tpd_ipopt
 StabilityRouteResult solve_electrolyte_stability_tpd_route(
     const add_args& args,
     double temperature,

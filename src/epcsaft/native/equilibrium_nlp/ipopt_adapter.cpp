@@ -321,6 +321,7 @@ std::string application_status_name(Ipopt::ApplicationReturnStatus status) {
     }
 }
 
+// AlgID: ipopt_tnlp_adapter
 class IpoptTnlpAdapter final : public Ipopt::TNLP {
 public:
     explicit IpoptTnlpAdapter(const NlpProblem& problem, const IpoptSolveOptions& options)

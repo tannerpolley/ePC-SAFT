@@ -620,6 +620,8 @@ def _stamp_reactive_speciation_continuation_state(
     diagnostics["continuation_state"] = stamped
 
 
+# AlgID: ideal_speciation_ipopt
+# AlgID: nonideal_speciation_ipopt
 def _solve_reactive_speciation_native(
     *,
     species: list[str],

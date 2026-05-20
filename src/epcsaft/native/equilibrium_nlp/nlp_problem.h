@@ -29,6 +29,7 @@ struct NlpScaling {
     std::vector<double> constraints;
 };
 
+// AlgID: native_nlp_problem_contract
 class NlpProblem {
 public:
     virtual ~NlpProblem() = default;

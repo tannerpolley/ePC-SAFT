@@ -16,9 +16,17 @@ The LaTeX document remains the current source of truth; this Markdown view and `
 - LaTeX: `docs/latex/equations.tex:27`
 - C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:554` (MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {)
 
+**LaTeX source**
+
 ```tex
 \bar{m}=\sum_{i} x_{i} m_{i}
 ```
+
+**Rendered formula**
+
+$$
+\bar{m}=\sum_{i} x_{i} m_{i}
+$$
 
 #### `mw_bar`
 - Label: `eq:mw_bar`
@@ -29,9 +37,17 @@ The LaTeX document remains the current source of truth; this Markdown view and `
 - LaTeX: `docs/latex/equations.tex:38`
 - C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:104` (Scalar dielectric_constant_rule_scalar_cpp(int rule, const vector<Scalar> &x, const add_args &cppargs) {)
 
+**LaTeX source**
+
 ```tex
 \overline{MW}=\sum_{j=1}^{N_{c}} x_{j}\,MW_{j}
 ```
+
+**Rendered formula**
+
+$$
+\overline{MW}=\sum_{j=1}^{N_{c}} x_{j}\,MW_{j}
+$$
 
 #### `mw_solvent_bar`
 - Label: `eq:mw_solvent_bar`
@@ -42,9 +58,17 @@ The LaTeX document remains the current source of truth; this Markdown view and `
 - LaTeX: `docs/latex/equations.tex:49`
 - C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:104` (Scalar dielectric_constant_rule_scalar_cpp(int rule, const vector<Scalar> &x, const add_args &cppargs) {)
 
+**LaTeX source**
+
 ```tex
 \overline{MW}_{sol}=\sum_{j\in\mathcal S}x_{j}\,MW_{j}
 ```
+
+**Rendered formula**
+
+$$
+\overline{MW}_{sol}=\sum_{j\in\mathcal S}x_{j}\,MW_{j}
+$$
 
 #### `solvent_ion_sets`
 - Label: `eq:solvent_ion_sets`
@@ -55,9 +79,17 @@ The LaTeX document remains the current source of truth; this Markdown view and `
 - LaTeX: `docs/latex/equations.tex:60`
 - C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:104` (Scalar dielectric_constant_rule_scalar_cpp(int rule, const vector<Scalar> &x, const add_args &cppargs) {)
 
+**LaTeX source**
+
 ```tex
 \mathcal S=\{j:\,z_{j}=0\},\qquad \mathcal I=\{j:\,z_{j}\neq 0\}
 ```
+
+**Rendered formula**
+
+$$
+\mathcal S=\{j:\,z_{j}=0\},\qquad \mathcal I=\{j:\,z_{j}\neq 0\}
+$$
 
 #### `x_solvent_total`
 - Label: `eq:x_solvent_total`
@@ -68,9 +100,17 @@ The LaTeX document remains the current source of truth; this Markdown view and `
 - LaTeX: `docs/latex/equations.tex:71`
 - C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:104` (Scalar dielectric_constant_rule_scalar_cpp(int rule, const vector<Scalar> &x, const add_args &cppargs) {)
 
+**LaTeX source**
+
 ```tex
 x_{sol}=\sum_{j\in\mathcal S}x_{j}
 ```
+
+**Rendered formula**
+
+$$
+x_{sol}=\sum_{j\in\mathcal S}x_{j}
+$$
 
 ### Size and Diameter Rules
 
@@ -85,9 +125,17 @@ x_{sol}=\sum_{j\in\mathcal S}x_{j}
 - LaTeX: `docs/latex/equations.tex:89`
 - C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:554` (MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {)
 
+**LaTeX source**
+
 ```tex
 d_{i}=\sigma_{i}\left[1-0.12 \exp \left(-3 \frac{\epsilon_{i}}{k T}\right)\right]
 ```
+
+**Rendered formula**
+
+$$
+d_{i}=\sigma_{i}\left[1-0.12 \exp \left(-3 \frac{\epsilon_{i}}{k T}\right)\right]
+$$
 
 ##### `d_segment_dT`
 - Label: `eq:d_segment_dT`
@@ -98,11 +146,21 @@ d_{i}=\sigma_{i}\left[1-0.12 \exp \left(-3 \frac{\epsilon_{i}}{k T}\right)\right
 - LaTeX: `docs/latex/equations.tex:100`
 - C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:554` (MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {)
 
+**LaTeX source**
+
 ```tex
 \left(\frac{\partial d_i}{\partial T}\right)_{\rho,x}
     \equiv d_{i,T}
     =\sigma_{i}\left(3\frac{\epsilon_{i}}{kT^2}\right)\left[-0.12\exp\left(-3\frac{\epsilon_{i}}{kT}\right)\right]
 ```
+
+**Rendered formula**
+
+$$
+\left(\frac{\partial d_i}{\partial T}\right)_{\rho,x}
+    \equiv d_{i,T}
+    =\sigma_{i}\left(3\frac{\epsilon_{i}}{kT^2}\right)\left[-0.12\exp\left(-3\frac{\epsilon_{i}}{kT}\right)\right]
+$$
 
 ##### `half_d_identity`
 - Label: `eq:half_d_identity`
@@ -113,9 +171,17 @@ d_{i}=\sigma_{i}\left[1-0.12 \exp \left(-3 \frac{\epsilon_{i}}{k T}\right)\right
 - LaTeX: `docs/latex/equations.tex:113`
 - C++: Documentation-only: no direct native owner expected.
 
+**LaTeX source**
+
 ```tex
 \frac{1}{2}d_{i}=\left(\frac{d_{i}d_{i}}{d_{i}+d_{i}}\right)
 ```
+
+**Rendered formula**
+
+$$
+\frac{1}{2}d_{i}=\left(\frac{d_{i}d_{i}}{d_{i}+d_{i}}\right)
+$$
 
 #### Ion Diameter Rule
 
@@ -128,6 +194,8 @@ d_{i}=\sigma_{i}\left[1-0.12 \exp \left(-3 \frac{\epsilon_{i}}{k T}\right)\right
 - LaTeX: `docs/latex/equations.tex:127`
 - C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:554` (MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {)
 
+**LaTeX source**
+
 ```tex
 d_{\mathrm{ion},i}\equiv d_{i}=
     \begin{cases}
@@ -137,6 +205,18 @@ d_{\mathrm{ion},i}\equiv d_{i}=
     \end{cases}
     \qquad i\in\mathcal{I}
 ```
+
+**Rendered formula**
+
+$$
+d_{\mathrm{ion},i}\equiv d_{i}=
+    \begin{cases}
+        \sigma_{i}, & \text{sigma rule}, \\[6pt]
+        \left(1-0.12\right)\sigma_{i}=0.88\sigma_{i}, & \text{constant-factor rule}, \\[6pt]
+        \left[1-0.12 \exp \left(-3 \frac{\epsilon_{i}}{k T}\right)\right]\sigma_{i}, & \text{Barker-Henderson rule},
+    \end{cases}
+    \qquad i\in\mathcal{I}
+$$
 
 ### Pair Mixing Rules
 
@@ -149,9 +229,17 @@ d_{\mathrm{ion},i}\equiv d_{i}=
 - LaTeX: `docs/latex/equations.tex:147`
 - C++: Documentation-only: no direct native owner expected.
 
+**LaTeX source**
+
 ```tex
 d_{i j}=\left(d_{i i}+d_{j j}\right) / 2 .
 ```
+
+**Rendered formula**
+
+$$
+d_{i j}=\left(d_{i i}+d_{j j}\right) / 2 .
+$$
 
 #### `sigma_ij`
 - Label: `eq:sigma_ij`
@@ -162,9 +250,17 @@ d_{i j}=\left(d_{i i}+d_{j j}\right) / 2 .
 - LaTeX: `docs/latex/equations.tex:158`
 - C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:554` (MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {)
 
+**LaTeX source**
+
 ```tex
 \sigma_{i j}=\frac{1}{2}\left(\sigma_{i}+\sigma_{j}\right) \cdot \left(1- l_{ij} \right)
 ```
+
+**Rendered formula**
+
+$$
+\sigma_{i j}=\frac{1}{2}\left(\sigma_{i}+\sigma_{j}\right) \cdot \left(1- l_{ij} \right)
+$$
 
 #### `epsilon_ij_mixing`
 - Label: `eq:epsilon_ij_mixing`
@@ -175,11 +271,21 @@ d_{i j}=\left(d_{i i}+d_{j j}\right) / 2 .
 - LaTeX: `docs/latex/equations.tex:169`
 - C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:554` (MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {)
 
+**LaTeX source**
+
 ```tex
 \epsilon_{ij}^{\mathrm{base}}
     =
     \sqrt{\epsilon_{i}\,\epsilon_{j}}\left(1-k_{ij}\right)
 ```
+
+**Rendered formula**
+
+$$
+\epsilon_{ij}^{\mathrm{base}}
+    =
+    \sqrt{\epsilon_{i}\,\epsilon_{j}}\left(1-k_{ij}\right)
+$$
 
 #### `epsilon_ij_ionic_zero`
 - Label: `eq:epsilon_ij_ionic_zero`
@@ -190,10 +296,19 @@ d_{i j}=\left(d_{i i}+d_{j j}\right) / 2 .
 - LaTeX: `docs/latex/equations.tex:182`
 - C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:554` (MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {)
 
+**LaTeX source**
+
 ```tex
 \epsilon_{ij}=0
     \qquad \text{for } z_{i}z_{j}>0,
 ```
+
+**Rendered formula**
+
+$$
+\epsilon_{ij}=0
+    \qquad \text{for } z_{i}z_{j}>0,
+$$
 
 #### `epsilon_assoc_mixing`
 - Label: `eq:epsilon_assoc_mixing`
@@ -204,9 +319,17 @@ d_{i j}=\left(d_{i i}+d_{j j}\right) / 2 .
 - LaTeX: `docs/latex/equations.tex:196`
 - C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:412` (double association_volume_cpp(int comp_i, int comp_j, int ncomp, const vector<double> &s_ij, const add_args &cppargs) {)
 
+**LaTeX source**
+
 ```tex
 \varepsilon^{A_{i}B_{j}}=\frac{1}{2}(\varepsilon^{A_{i}B_{i}}+\varepsilon^{A_{j}B_{j}})(1-k_{ij}^{\mathrm{hb}})
 ```
+
+**Rendered formula**
+
+$$
+\varepsilon^{A_{i}B_{j}}=\frac{1}{2}(\varepsilon^{A_{i}B_{i}}+\varepsilon^{A_{j}B_{j}})(1-k_{ij}^{\mathrm{hb}})
+$$
 
 #### `kappa_assoc_mixing`
 - Label: `eq:kappa_assoc_mixing`
@@ -217,9 +340,17 @@ d_{i j}=\left(d_{i i}+d_{j j}\right) / 2 .
 - LaTeX: `docs/latex/equations.tex:207`
 - C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:412` (double association_volume_cpp(int comp_i, int comp_j, int ncomp, const vector<double> &s_ij, const add_args &cppargs) {)
 
+**LaTeX source**
+
 ```tex
 k^{A_{i}B_{j}}=\sqrt{k^{A_{i}B_{i}}k^{A_{j}B_{j}}}\quad\left(\frac{\sqrt{\sigma_{i}\sigma_{j}}}{1/2(\sigma_{i}+\sigma_{j})}\right)^3
 ```
+
+**Rendered formula**
+
+$$
+k^{A_{i}B_{j}}=\sqrt{k^{A_{i}B_{i}}k^{A_{j}B_{j}}}\quad\left(\frac{\sqrt{\sigma_{i}\sigma_{j}}}{1/2(\sigma_{i}+\sigma_{j})}\right)^3
+$$
 
 ### Relative Permittivity
 
@@ -232,6 +363,8 @@ k^{A_{i}B_{j}}=\sqrt{k^{A_{i}B_{i}}k^{A_{j}B_{j}}}\quad\left(\frac{\sqrt{\sigma_
 - LaTeX: `docs/latex/equations.tex:222`
 - C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:16` (Scalar mixed_dielectric_constant_scalar_cpp(const vector<Scalar> &x, const add_args &cppargs) {)
 
+**LaTeX source**
+
 ```tex
 \varepsilon_{r}=
     \begin{cases}
@@ -241,6 +374,18 @@ k^{A_{i}B_{j}}=\sqrt{k^{A_{i}B_{i}}k^{A_{j}B_{j}}}\quad\left(\frac{\sqrt{\sigma_
         \dfrac{\varepsilon_{r,\mathrm{solvent,mix}}^{\mathrm{salt-free}}}{1+7.01\,x_{\mathrm{ion}}}, & \text{ion-suppressed rule}.
     \end{cases}
 ```
+
+**Rendered formula**
+
+$$
+\varepsilon_{r}=
+    \begin{cases}
+        \sum_{j=1}^{N_{c}}\varepsilon_{r,j}x_{j}, & \text{mole-fraction rule}, \\[10pt]
+        \dfrac{\sum_{j=1}^{N_{c}}\varepsilon_{r,j}\,x_{j}\,MW_{j}}{\overline{MW}}, & \text{mass-fraction rule}, \\[12pt]
+        x_{sol}\,\varepsilon_{r,sol}^{(w)} + \sum_{j\in\mathcal I}\varepsilon_{r,j}\,x_{j}, & \text{solvent-ion rule}, \\[10pt]
+        \dfrac{\varepsilon_{r,\mathrm{solvent,mix}}^{\mathrm{salt-free}}}{1+7.01\,x_{\mathrm{ion}}}, & \text{ion-suppressed rule}.
+    \end{cases}
+$$
 
 #### Mole-Fraction Rule
 
@@ -253,10 +398,19 @@ k^{A_{i}B_{j}}=\sqrt{k^{A_{i}B_{i}}k^{A_{j}B_{j}}}\quad\left(\frac{\sqrt{\sigma_
 - LaTeX: `docs/latex/equations.tex:242`
 - C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:612` (vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs) {)
 
+**LaTeX source**
+
 ```tex
 \left(\frac{\partial \varepsilon_{r}}{\partial x_{i}}\right)_{x_{j\neq i}}
     = \varepsilon_{r, i}
 ```
+
+**Rendered formula**
+
+$$
+\left(\frac{\partial \varepsilon_{r}}{\partial x_{i}}\right)_{x_{j\neq i}}
+    = \varepsilon_{r, i}
+$$
 
 #### Mass-Fraction Rule
 
@@ -269,11 +423,21 @@ k^{A_{i}B_{j}}=\sqrt{k^{A_{i}B_{i}}k^{A_{j}B_{j}}}\quad\left(\frac{\sqrt{\sigma_
 - LaTeX: `docs/latex/equations.tex:257`
 - C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:612` (vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs) {)
 
+**LaTeX source**
+
 ```tex
 \left(\frac{\partial \varepsilon_{r}}{\partial x_{i}}\right)_{x_{j\neq i}}
     =
     \frac{MW_{i}}{\overline{MW}}\left(\varepsilon_{r,i}-\varepsilon_{r}\right)
 ```
+
+**Rendered formula**
+
+$$
+\left(\frac{\partial \varepsilon_{r}}{\partial x_{i}}\right)_{x_{j\neq i}}
+    =
+    \frac{MW_{i}}{\overline{MW}}\left(\varepsilon_{r,i}-\varepsilon_{r}\right)
+$$
 
 #### Solvent-Ion Rule
 
@@ -286,6 +450,8 @@ k^{A_{i}B_{j}}=\sqrt{k^{A_{i}B_{i}}k^{A_{j}B_{j}}}\quad\left(\frac{\sqrt{\sigma_
 - LaTeX: `docs/latex/equations.tex:273`
 - C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:612` (vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs) {)
 
+**LaTeX source**
+
 ```tex
 \left(\frac{\partial \varepsilon_{r}}{\partial x_{i}}\right)_{x_{j\neq i}}
     =
@@ -296,6 +462,18 @@ k^{A_{i}B_{j}}=\sqrt{k^{A_{i}B_{i}}k^{A_{j}B_{j}}}\quad\left(\frac{\sqrt{\sigma_
     \qquad i\in\mathcal S
 ```
 
+**Rendered formula**
+
+$$
+\left(\frac{\partial \varepsilon_{r}}{\partial x_{i}}\right)_{x_{j\neq i}}
+    =
+    \varepsilon_{r,sol}^{(w)}
+    +
+    x_{sol}\,\frac{MW_{i}}{\overline{MW}_{sol}}
+    \left(\varepsilon_{r,i}-\varepsilon_{r,sol}^{(w)}\right),
+    \qquad i\in\mathcal S
+$$
+
 ##### `epsr_solvent_mass`
 - Label: `eq:epsr_solvent_mass`
 - Source: \cite{Ascani2021}, Eq.~(13)
@@ -305,9 +483,17 @@ k^{A_{i}B_{j}}=\sqrt{k^{A_{i}B_{i}}k^{A_{j}B_{j}}}\quad\left(\frac{\sqrt{\sigma_
 - LaTeX: `docs/latex/equations.tex:290`
 - C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:104` (Scalar dielectric_constant_rule_scalar_cpp(int rule, const vector<Scalar> &x, const add_args &cppargs) {)
 
+**LaTeX source**
+
 ```tex
 \varepsilon_{r,sol}^{(w)} \equiv \sum_{j\in\mathcal S}\varepsilon_{r,j}\,w_{j}^{sol} = \frac{\sum_{j\in\mathcal S}\varepsilon_{r,j}\,x_{j}\,MW_{j}}{\sum_{j\in\mathcal S}x_{j}\,MW_{j}} = \frac{\sum_{j\in\mathcal S}\varepsilon_{r,j}\,x_{j}\,MW_{j}}{\overline{MW}_{sol}}
 ```
+
+**Rendered formula**
+
+$$
+\varepsilon_{r,sol}^{(w)} \equiv \sum_{j\in\mathcal S}\varepsilon_{r,j}\,w_{j}^{sol} = \frac{\sum_{j\in\mathcal S}\varepsilon_{r,j}\,x_{j}\,MW_{j}}{\sum_{j\in\mathcal S}x_{j}\,MW_{j}} = \frac{\sum_{j\in\mathcal S}\varepsilon_{r,j}\,x_{j}\,MW_{j}}{\overline{MW}_{sol}}
+$$
 
 #### Ion-Suppressed Empirical Rule
 
@@ -320,9 +506,17 @@ k^{A_{i}B_{j}}=\sqrt{k^{A_{i}B_{i}}k^{A_{j}B_{j}}}\quad\left(\frac{\sqrt{\sigma_
 - LaTeX: `docs/latex/equations.tex:304`
 - C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:104` (Scalar dielectric_constant_rule_scalar_cpp(int rule, const vector<Scalar> &x, const add_args &cppargs) {)
 
+**LaTeX source**
+
 ```tex
 \varepsilon_{r,\mathrm{solvent,mix}}^{\mathrm{salt-free}}=\sum_{\mathrm{solvent}}w_{\mathrm{solvent}}^{\mathrm{salt-free}}\cdot\varepsilon_{r,\mathrm{solvent}}
 ```
+
+**Rendered formula**
+
+$$
+\varepsilon_{r,\mathrm{solvent,mix}}^{\mathrm{salt-free}}=\sum_{\mathrm{solvent}}w_{\mathrm{solvent}}^{\mathrm{salt-free}}\cdot\varepsilon_{r,\mathrm{solvent}}
+$$
 
 ##### `epsr_mix_suppressed`
 - Label: `eq:epsr_mix_suppressed`
@@ -333,6 +527,8 @@ k^{A_{i}B_{j}}=\sqrt{k^{A_{i}B_{i}}k^{A_{j}B_{j}}}\quad\left(\frac{\sqrt{\sigma_
 - LaTeX: `docs/latex/equations.tex:315`
 - C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:16` (Scalar mixed_dielectric_constant_scalar_cpp(const vector<Scalar> &x, const add_args &cppargs) {)
 
+**LaTeX source**
+
 ```tex
 \varepsilon_{r,\mathrm{mix}}(\mathbf{x})
     =
@@ -340,6 +536,16 @@ k^{A_{i}B_{j}}=\sqrt{k^{A_{i}B_{i}}k^{A_{j}B_{j}}}\quad\left(\frac{\sqrt{\sigma_
     \qquad
     \varepsilon_{sf}\equiv \varepsilon_{r,\mathrm{solvent,mix}}^{\mathrm{salt\text{-}free}} .
 ```
+
+**Rendered formula**
+
+$$
+\varepsilon_{r,\mathrm{mix}}(\mathbf{x})
+    =
+    \frac{\varepsilon_{sf}(\mathbf{x})}{1+7.01\,x_{\mathrm{ion}}(\mathbf{x})},
+    \qquad
+    \varepsilon_{sf}\equiv \varepsilon_{r,\mathrm{solvent,mix}}^{\mathrm{salt\text{-}free}} .
+$$
 
 ##### `epsr_sf`
 - Label: `eq:epsr_sf`
@@ -349,6 +555,8 @@ k^{A_{i}B_{j}}=\sqrt{k^{A_{i}B_{i}}k^{A_{j}B_{j}}}\quad\left(\frac{\sqrt{\sigma_
 - Change note: Mapped manually to the salt-free solvent dielectric mixture definition.
 - LaTeX: `docs/latex/equations.tex:330`
 - C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:104` (Scalar dielectric_constant_rule_scalar_cpp(int rule, const vector<Scalar> &x, const add_args &cppargs) {)
+
+**LaTeX source**
 
 ```tex
 \varepsilon_{sf}(\mathbf{x})
@@ -362,6 +570,20 @@ k^{A_{i}B_{j}}=\sqrt{k^{A_{i}B_{i}}k^{A_{j}B_{j}}}\quad\left(\frac{\sqrt{\sigma_
     D\equiv \sum_{m\in\mathcal{S}} x_{m} M_{m} .
 ```
 
+**Rendered formula**
+
+$$
+\varepsilon_{sf}(\mathbf{x})
+    =
+    \sum_{s\in\mathcal{S}} w_{s}^{sf}\,\varepsilon_{r,s},
+    \qquad
+    w_{s}^{sf}
+    =
+    \frac{x_{s} M_{s}}{\displaystyle \sum_{m\in\mathcal{S}} x_{m} M_{m}},
+    \qquad
+    D\equiv \sum_{m\in\mathcal{S}} x_{m} M_{m} .
+$$
+
 ##### `x_ion_total`
 - Label: `eq:x_ion_total`
 - Source: \cite{Figiel2025}, Eq.~(11) (derived helper)
@@ -370,6 +592,8 @@ k^{A_{i}B_{j}}=\sqrt{k^{A_{i}B_{i}}k^{A_{j}B_{j}}}\quad\left(\frac{\sqrt{\sigma_
 - Change note: Ion-fraction helper used in the Eq. (11) differential form.
 - LaTeX: `docs/latex/equations.tex:349`
 - C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:104` (Scalar dielectric_constant_rule_scalar_cpp(int rule, const vector<Scalar> &x, const add_args &cppargs) {)
+
+**LaTeX source**
 
 ```tex
 x_{\mathrm{ion}}(\mathbf{x})=\sum_{m\in\mathcal{I}} x_{m},
@@ -382,6 +606,19 @@ x_{\mathrm{ion}}(\mathbf{x})=\sum_{m\in\mathcal{I}} x_{m},
     \end{cases}
 ```
 
+**Rendered formula**
+
+$$
+x_{\mathrm{ion}}(\mathbf{x})=\sum_{m\in\mathcal{I}} x_{m},
+    \qquad
+    \left(\frac{\partial x_{\mathrm{ion}}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
+    =
+    \begin{cases}
+        1, & i\in\mathcal{I},    \\
+        0, & i\notin\mathcal{I}.
+    \end{cases}
+$$
+
 ##### `depsr_sf_dxi`
 - Label: `eq:depsr_sf_dxi`
 - Source: \cite{Figiel2025}, Eq.~(12) (derived differential)
@@ -390,6 +627,8 @@ x_{\mathrm{ion}}(\mathbf{x})=\sum_{m\in\mathcal{I}} x_{m},
 - Change note: Derivative of solvent-mixture dielectric expression in Eq. (12).
 - LaTeX: `docs/latex/equations.tex:366`
 - C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:612` (vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs) {)
+
+**LaTeX source**
 
 ```tex
 \left(\frac{\partial \varepsilon_{sf}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
@@ -403,6 +642,20 @@ x_{\mathrm{ion}}(\mathbf{x})=\sum_{m\in\mathcal{I}} x_{m},
     \end{cases}
 ```
 
+**Rendered formula**
+
+$$
+\left(\frac{\partial \varepsilon_{sf}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
+    =
+    \sum_{s\in\mathcal{S}} \varepsilon_{r,s}
+    \left(\frac{\partial w_{s}^{sf}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
+    =
+    \begin{cases}
+        \dfrac{M_{i}}{D}\left(\varepsilon_{r,i}-\varepsilon_{sf}\right), & i\in\mathcal{S},    \\[10pt]
+        0,                                                             & i\notin\mathcal{S}.
+    \end{cases}
+$$
+
 ##### `depsr_mix_dxi`
 - Label: `eq:depsr_mix_dxi`
 - Source: \cite{Figiel2025}, Eq.~(11)-Eq.~(12) (derived differential)
@@ -411,6 +664,8 @@ x_{\mathrm{ion}}(\mathbf{x})=\sum_{m\in\mathcal{I}} x_{m},
 - Change note: Derivative of the 2025 dielectric mixing rule via chain rule.
 - LaTeX: `docs/latex/equations.tex:385`
 - C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:612` (vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs) {)
+
+**LaTeX source**
 
 ```tex
 \left(\frac{\partial \varepsilon_{r,\mathrm{mix}}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
@@ -421,6 +676,17 @@ x_{\mathrm{ion}}(\mathbf{x})=\sum_{m\in\mathcal{I}} x_{m},
     \left(\frac{\partial x_{\mathrm{ion}}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}} .
 ```
 
+**Rendered formula**
+
+$$
+\left(\frac{\partial \varepsilon_{r,\mathrm{mix}}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
+    =
+    \frac{1}{1+7.01\,x_{\mathrm{ion}}}
+    \left(\frac{\partial \varepsilon_{sf}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
+    -\frac{7.01\,\varepsilon_{sf}}{\left(1+7.01\,x_{\mathrm{ion}}\right)^2}
+    \left(\frac{\partial x_{\mathrm{ion}}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}} .
+$$
+
 ##### `depsr_mix_dxi_piecewise`
 - Label: `eq:depsr_mix_dxi_piecewise`
 - Source: \cite{Figiel2025}, Eq.~(11)-Eq.~(12) (derived closed form)
@@ -429,6 +695,8 @@ x_{\mathrm{ion}}(\mathbf{x})=\sum_{m\in\mathcal{I}} x_{m},
 - Change note: Piecewise closed-form derivative obtained by combining Eq. (11) and Eq. (12).
 - LaTeX: `docs/latex/equations.tex:401`
 - C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:612` (vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs) {)
+
+**LaTeX source**
 
 ```tex
 \left(\frac{\partial \varepsilon_{r,\mathrm{mix}}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
@@ -443,6 +711,21 @@ x_{\mathrm{ion}}(\mathbf{x})=\sum_{m\in\mathcal{I}} x_{m},
     \end{cases}
 ```
 
+**Rendered formula**
+
+$$
+\left(\frac{\partial \varepsilon_{r,\mathrm{mix}}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
+    =
+    \begin{cases}
+        \dfrac{1}{1+7.01\,x_{\mathrm{ion}}}\;
+        \dfrac{M_{i}}{\displaystyle \sum_{m\in\mathcal{S}} x_{m} M_{m}}
+        \left(\varepsilon_{r,i}-\varepsilon_{sf}\right),
+         & i\in\mathcal{S}, \\[14pt]
+        -\dfrac{7.01\,\varepsilon_{sf}}{\left(1+7.01\,x_{\mathrm{ion}}\right)^{2}},
+         & i\in\mathcal{I}.
+    \end{cases}
+$$
+
 ## Density
 
 ### Packing-Fraction Moments
@@ -456,9 +739,17 @@ x_{\mathrm{ion}}(\mathbf{x})=\sum_{m\in\mathcal{I}} x_{m},
 - LaTeX: `docs/latex/equations.tex:429`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_hc.cpp:32` (static HardChainStateScalar<Scalar> hard_chain_state_scalar_cpp(double den, const vector<double> &d, const vector<Scalar> &x, const add_args &cppargs) {)
 
+**LaTeX source**
+
 ```tex
 \zeta_{n}=\frac{\pi}{6} \rho \sum_{i} x_{i} m_{i} d_{i}^n \quad n \in\{0,1,2,3\}
 ```
+
+**Rendered formula**
+
+$$
+\zeta_{n}=\frac{\pi}{6} \rho \sum_{i} x_{i} m_{i} d_{i}^n \quad n \in\{0,1,2,3\}
+$$
 
 #### `zeta_n_xk`
 - Label: `eq:zeta_n_xk`
@@ -469,9 +760,17 @@ x_{\mathrm{ion}}(\mathbf{x})=\sum_{m\in\mathcal{I}} x_{m},
 - LaTeX: `docs/latex/equations.tex:440`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_hc.cpp:32` (static HardChainStateScalar<Scalar> hard_chain_state_scalar_cpp(double den, const vector<double> &d, const vector<Scalar> &x, const add_args &cppargs) {)
 
+**LaTeX source**
+
 ```tex
 \zeta_{n,xk}=\left(\frac{\partial\zeta_{n}}{\partial x_{k}}\right)_{T,\boldsymbol{\rho},x_{j\neq k}}=\frac{\pi}{6}\rho m_{k}(d_{k})^{n}\quad n\in\{0,1,2,3\}
 ```
+
+**Rendered formula**
+
+$$
+\zeta_{n,xk}=\left(\frac{\partial\zeta_{n}}{\partial x_{k}}\right)_{T,\boldsymbol{\rho},x_{j\neq k}}=\frac{\pi}{6}\rho m_{k}(d_{k})^{n}\quad n\in\{0,1,2,3\}
+$$
 
 #### `zeta_n_dT`
 - Label: `eq:zeta_n_dT`
@@ -482,9 +781,17 @@ x_{\mathrm{ion}}(\mathbf{x})=\sum_{m\in\mathcal{I}} x_{m},
 - LaTeX: `docs/latex/equations.tex:451`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_hc.cpp:213` (vector<double> dzeta_dt_cpp(const MixtureState &thermo, const vector<double> &x, const add_args &cppargs) {)
 
+**LaTeX source**
+
 ```tex
 \zeta_{n,T}=\frac{\partial\zeta_{n}}{\partial T}=\frac{\pi}{6}\rho\sum_{i}x_{i}m_{i}nd_{i,T}\left(d_{i}\right)^{n-1}\quad n\in\{1,2,3\}
 ```
+
+**Rendered formula**
+
+$$
+\zeta_{n,T}=\frac{\partial\zeta_{n}}{\partial T}=\frac{\pi}{6}\rho\sum_{i}x_{i}m_{i}nd_{i,T}\left(d_{i}\right)^{n-1}\quad n\in\{1,2,3\}
+$$
 
 ### Packing Fraction
 
@@ -497,9 +804,17 @@ x_{\mathrm{ion}}(\mathbf{x})=\sum_{m\in\mathcal{I}} x_{m},
 - LaTeX: `docs/latex/equations.tex:465`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_hc.cpp:32` (static HardChainStateScalar<Scalar> hard_chain_state_scalar_cpp(double den, const vector<double> &d, const vector<Scalar> &x, const add_args &cppargs) {)
 
+**LaTeX source**
+
 ```tex
 \eta=\zeta_{3}
 ```
+
+**Rendered formula**
+
+$$
+\eta=\zeta_{3}
+$$
 
 ### Density Conversion
 
@@ -512,9 +827,17 @@ x_{\mathrm{ion}}(\mathbf{x})=\sum_{m\in\mathcal{I}} x_{m},
 - LaTeX: `docs/latex/equations.tex:479`
 - C++: `src/epcsaft/native/epcsaft_density.cpp:644` (double reduced_density_to_molar(double nu, double t, int ncomp, vector<double> x, const add_args &cppargs) {)
 
+**LaTeX source**
+
 ```tex
 \rho=\frac{6}{\pi} \eta\left(\sum_{i} x_{i} m_{i} d_{i}^3\right)^{-1}
 ```
+
+**Rendered formula**
+
+$$
+\rho=\frac{6}{\pi} \eta\left(\sum_{i} x_{i} m_{i} d_{i}^3\right)^{-1}
+$$
 
 #### `rho_reduced`
 - Label: `eq:rho_reduced`
@@ -525,11 +848,21 @@ x_{\mathrm{ion}}(\mathbf{x})=\sum_{m\in\mathcal{I}} x_{m},
 - LaTeX: `docs/latex/equations.tex:490`
 - C++: `src/epcsaft/native/epcsaft_density.cpp:644` (double reduced_density_to_molar(double nu, double t, int ncomp, vector<double> x, const add_args &cppargs) {)
 
+**LaTeX source**
+
 ```tex
 \rho_{N}=N_{\mathrm{AV}}\rho,
     \qquad
     \hat{\rho}=\rho_{N}\cdot 10^{-30}
 ```
+
+**Rendered formula**
+
+$$
+\rho_{N}=N_{\mathrm{AV}}\rho,
+    \qquad
+    \hat{\rho}=\rho_{N}\cdot 10^{-30}
+$$
 
 ### Pressure-Density Closure
 
@@ -542,9 +875,17 @@ x_{\mathrm{ion}}(\mathbf{x})=\sum_{m\in\mathcal{I}} x_{m},
 - LaTeX: `docs/latex/equations.tex:506`
 - C++: `src/epcsaft/native/epcsaft_Z.cpp:79` (double p_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
 
+**LaTeX source**
+
 ```tex
 P = ZRT\rho = Zk_{B}T\rho_{N}
 ```
+
+**Rendered formula**
+
+$$
+P = ZRT\rho = Zk_{B}T\rho_{N}
+$$
 
 #### `z_from_rho`
 - Label: `eq:z_from_rho`
@@ -555,6 +896,8 @@ P = ZRT\rho = Zk_{B}T\rho_{N}
 - LaTeX: `docs/latex/equations.tex:517`
 - C++: `src/epcsaft/native/epcsaft_Z.cpp:66` (CompressibilityFactorResult compressibility_factor_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
 
+**LaTeX source**
+
 ```tex
 Z
     =
@@ -562,6 +905,16 @@ Z
     =
     1+\rho\left(\frac{\partial\tilde{a}^\mathrm{res}}{\partial\rho}\right)_{T,x_{i}}
 ```
+
+**Rendered formula**
+
+$$
+Z
+    =
+    1+\eta\left(\frac{\partial\tilde{a}^\mathrm{res}}{\partial\eta}\right)_{T,x_{i}}
+    =
+    1+\rho\left(\frac{\partial\tilde{a}^\mathrm{res}}{\partial\rho}\right)_{T,x_{i}}
+$$
 
 #### `density_solve_residual`
 - Label: `eq:density_solve_residual`
@@ -572,6 +925,8 @@ Z
 - LaTeX: `docs/latex/equations.tex:534`
 - C++: `src/epcsaft/native/epcsaft_density.cpp:796` (double density_root_residual_cpp(double rhomolar, double t, double p, vector<double> x, const add_args &cppargs){)
 
+**LaTeX source**
+
 ```tex
 R_{\rho}\!\left(T,\rho,\mathbf{x};P^{\mathrm{spec}}\right)
     =
@@ -581,6 +936,18 @@ R_{\rho}\!\left(T,\rho,\mathbf{x};P^{\mathrm{spec}}\right)
     =
     0
 ```
+
+**Rendered formula**
+
+$$
+R_{\rho}\!\left(T,\rho,\mathbf{x};P^{\mathrm{spec}}\right)
+    =
+    P^{\mathrm{spec}}
+    -
+    Z(T,\rho,\mathbf{x})RT\rho
+    =
+    0
+$$
 
 ## Contribution Intermediates
 
@@ -597,6 +964,8 @@ R_{\rho}\!\left(T,\rho,\mathbf{x};P^{\mathrm{spec}}\right)
 - LaTeX: `docs/latex/equations.tex:562`
 - C++: `src/epcsaft/native/epcsaft_ares.cpp:416` (template <typename Scalar>)
 
+**LaTeX source**
+
 ```tex
 \begin{aligned}
         \tilde{a}^{\mathrm{hs}}
@@ -610,6 +979,21 @@ R_{\rho}\!\left(T,\rho,\mathbf{x};P^{\mathrm{spec}}\right)
     \end{aligned}
 ```
 
+**Rendered formula**
+
+$$
+\begin{aligned}
+        \tilde{a}^{\mathrm{hs}}
+        &=
+        \frac{1}{\zeta_{0}}
+        \left[
+            \frac{3 \zeta_{1} \zeta_{2}}{\left(1-\zeta_{3}\right)}
+            +\frac{\zeta_{2}^3}{\zeta_{3}\left(1-\zeta_{3}\right)^2}
+            +\left(\frac{\zeta_{2}^3}{\zeta_{3}^2}-\zeta_{0}\right) \ln \left(1-\zeta_{3}\right)
+        \right]
+    \end{aligned}
+$$
+
 ##### `hs_ares_dadrho`
 - Label: `eq:hs_ares_dadrho`
 - Source: \cite{Gross2001}, Eq.~(A.26)
@@ -618,6 +1002,8 @@ R_{\rho}\!\left(T,\rho,\mathbf{x};P^{\mathrm{spec}}\right)
 - Change note: Renamed and re-homed so the hard-sphere density differential sits directly below the owning hard-sphere expression.
 - LaTeX: `docs/latex/equations.tex:582`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_hc.cpp:90` (static double dadrho_hs_cpp(const HardChainState &hc_state) {)
+
+**LaTeX source**
 
 ```tex
 \begin{aligned}
@@ -629,6 +1015,18 @@ R_{\rho}\!\left(T,\rho,\mathbf{x};P^{\mathrm{spec}}\right)
     \end{aligned}
 ```
 
+**Rendered formula**
+
+$$
+\begin{aligned}
+        \rho\left(\frac{\partial\tilde{a}^{hs}}{\partial\rho}\right)_{T,x}
+        &=
+        \frac{\zeta_{3}}{(1-\zeta_{3})}
+        +\frac{3\zeta_{1}\zeta_{2}}{\zeta_{0}(1-\zeta_{3})^{2}}
+        +\frac{3\zeta_{2}^{3}-\zeta_{3}\zeta_{2}^{3}}{\zeta_{0}(1-\zeta_{3})^{3}}
+    \end{aligned}
+$$
+
 ##### `hs_ares_dxk`
 - Label: `eq:hs_ares_dxk`
 - Source: \cite{Gross2001}, Eq.~(A.36)
@@ -637,6 +1035,8 @@ R_{\rho}\!\left(T,\rho,\mathbf{x};P^{\mathrm{spec}}\right)
 - Change note: Renamed and re-homed so the hard-sphere composition differential sits directly below the owning hard-sphere expression.
 - LaTeX: `docs/latex/equations.tex:599`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_hc.cpp:111` (static vector<double> dadx_hs_cpp(const MixtureState &thermo, const HardChainState &hc_state, const add_args &cppargs) {)
+
+**LaTeX source**
 
 ```tex
 \begin{aligned}
@@ -658,6 +1058,28 @@ R_{\rho}\!\left(T,\rho,\mathbf{x};P^{\mathrm{spec}}\right)
     \end{aligned}
 ```
 
+**Rendered formula**
+
+$$
+\begin{aligned}
+        \left(\frac{\partial\tilde{a}^{\mathrm{hs}}}{\partial x_{k}}\right)_{T,\boldsymbol{\rho},x_{j\neq k}}
+        &=- \frac{\zeta_{0,xk}}{\zeta_{0}}\tilde{a}^{\mathrm{hs}}+\frac{1}{\zeta_{0}}\biggl[
+        \frac{3(\zeta_{1,xk}\zeta_{2}+\zeta_{1}\zeta_{2,xk})}{(1-\zeta_{3})}
+        +\frac{3\zeta_{1}\zeta_{2}\zeta_{3,xk}}{\left(1-\zeta_{3}\right)^{2}}
+        \\
+        &\quad +\frac{3\zeta_{2}^{2}\zeta_{2,xk}}{\zeta_{3}(1-\zeta_{3})^{2}}
+        +\frac{\zeta_{2}^{3}\zeta_{3,xk}(3\zeta_{3}-1)}{\zeta_{3}^{2}(1-\zeta_{3})^{3}}
+        \\
+        &\quad +\left(
+        \frac{3{\zeta_{2}}^{2}{\zeta_{2,xk}}{\zeta_{3}}-2{\zeta_{2}}^{3}{\zeta_{3,xk}}}{{\zeta_{3}}^{3}}
+        -{\zeta_{0,xk}}
+        \right)\ln(1-{\zeta_{3}})
+        \\
+        &\quad +\left(\zeta_{0}-\frac{\zeta_{2}^{3}}{\zeta_{3}^{2}}\right)\frac{\zeta_{3,xk}}{(1-\zeta_{3})}
+        \biggr]
+    \end{aligned}
+$$
+
 ##### `hs_ares_dT`
 - Label: `eq:hs_ares_dT`
 - Source: \cite{Gross2001}, Eq.~(A.55)
@@ -666,6 +1088,8 @@ R_{\rho}\!\left(T,\rho,\mathbf{x};P^{\mathrm{spec}}\right)
 - Change note: Renamed and re-homed so the hard-sphere temperature differential sits directly below the owning hard-sphere expression.
 - LaTeX: `docs/latex/equations.tex:626`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_hc.cpp:98` (static double dadt_hs_cpp(const HardChainState &hc_state, const vector<double> &dzeta_dt) {)
+
+**LaTeX source**
 
 ```tex
 \begin{aligned}
@@ -685,6 +1109,26 @@ R_{\rho}\!\left(T,\rho,\mathbf{x};P^{\mathrm{spec}}\right)
     \end{aligned}
 ```
 
+**Rendered formula**
+
+$$
+\begin{aligned}
+        \left(\frac{\partial\tilde{a}^{hs}}{\partial T}\right)_{\rho,x_{i}}
+        &=\frac{1}{\zeta_{0}}\Bigg[
+        \frac{3(\zeta_{1,T}\zeta_{2}+\zeta_{1}\zeta_{2,T})}{(1-\zeta_{3})}
+        +\frac{3\zeta_{1}\zeta_{2}\zeta_{3,T}}{(1-\zeta_{3})^{2}}
+        \\
+        &\quad
+        +\frac{3{\zeta_{2}}^{2}{\zeta_{2,T}}}{\zeta_{3}{(1-\zeta_{3})}^{2}}
+        +\frac{{\zeta_{2}}^{3}{\zeta_{3,T}}(3{\zeta_{3}}-1)}{{\zeta_{3}}^{2}{(1-\zeta_{3})}^{3}}
+        \\
+        &\quad
+        +\left(\frac{3{\zeta_{2}}^{2}{\zeta_{2,T}}{\zeta_{3}}-2{\zeta_{2}}^{3}{\zeta_{3,T}}}{{\zeta_{3}}^{3}}\right)\ln(1-{\zeta_{3}})
+        +\left({\zeta_{0}}-\frac{{\zeta_{2}}^{3}}{{\zeta_{3}}^{2}}\right)\frac{\zeta_{3,T}}{(1-\zeta_{3})}
+        \Bigg]
+    \end{aligned}
+$$
+
 #### Hard-Sphere Contact Value \texorpdfstring{\(\mathrm{g
 
 ##### `g_hs_contact`
@@ -696,9 +1140,17 @@ R_{\rho}\!\left(T,\rho,\mathbf{x};P^{\mathrm{spec}}\right)
 - LaTeX: `docs/latex/equations.tex:654`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_hc.cpp:63` (double hs_contact_value_cpp(double pair_diameter, double zeta2, double zeta3) {)
 
+**LaTeX source**
+
 ```tex
 \mathrm{g}_{i j}^{\mathrm{hs}}=\frac{1}{\left(1-\zeta_{3}\right)}+\left(\frac{d_{i} d_{j}}{d_{i}+d_{j}}\right) \frac{3 \zeta_{2}}{\left(1-\zeta_{3}\right)^2} + \left(\frac{d_{i} d_{j}}{d_{i}+d_{j}}\right)^2 \frac{2 \xi_{2}{ }^2}{\left(1-\xi_{3}\right)^3}
 ```
+
+**Rendered formula**
+
+$$
+\mathrm{g}_{i j}^{\mathrm{hs}}=\frac{1}{\left(1-\zeta_{3}\right)}+\left(\frac{d_{i} d_{j}}{d_{i}+d_{j}}\right) \frac{3 \zeta_{2}}{\left(1-\zeta_{3}\right)^2} + \left(\frac{d_{i} d_{j}}{d_{i}+d_{j}}\right)^2 \frac{2 \xi_{2}{ }^2}{\left(1-\xi_{3}\right)^3}
+$$
 
 ##### `ghs_contact_dadrho`
 - Label: `eq:ghs_contact_dadrho`
@@ -708,6 +1160,8 @@ R_{\rho}\!\left(T,\rho,\mathbf{x};P^{\mathrm{spec}}\right)
 - Change note: Renamed and re-homed so the contact-value density differential sits directly below the owning contact-value relation.
 - LaTeX: `docs/latex/equations.tex:665`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_hc.cpp:172` (double hs_contact_density_derivative_cpp(double pair_diameter, double zeta2, double zeta3) {)
+
+**LaTeX source**
 
 ```tex
 \begin{aligned}
@@ -732,6 +1186,31 @@ R_{\rho}\!\left(T,\rho,\mathbf{x};P^{\mathrm{spec}}\right)
     \end{aligned}
 ```
 
+**Rendered formula**
+
+$$
+\begin{aligned}
+        \rho\left(\frac{\partial g_{ij}^{\mathrm{hs}}}{\partial\rho}\right)_{T,x}
+        &=
+        \frac{\zeta_{3}}{\left(1-\zeta_{3}\right)^{2}}
+        +
+        \left(\frac{d_{i}d_{j}}{d_{i}+d_{j}}\right)
+        \left(
+            \frac{3\zeta_{2}}{\left(1-\zeta_{3}\right)^{2}}
+            +
+            \frac{6\zeta_{2}\zeta_{3}}{\left(1-\zeta_{3}\right)^{3}}
+        \right)
+        \\
+        &\quad +
+        \left(\frac{d_{i}d_{j}}{d_{i}+d_{j}}\right)^{2}
+        \left(
+            \frac{4{\zeta_{2}}^{2}}{\left(1-{\zeta_{3}}\right)^{3}}
+            +
+            \frac{6{\zeta_{2}}^{2}\zeta_{3}}{\left(1-{\zeta_{3}}\right)^{4}}
+        \right)
+    \end{aligned}
+$$
+
 ##### `ghs_contact_dxk`
 - Label: `eq:ghs_contact_dxk`
 - Source: \cite{Gross2001}, Eq.~(A.37)
@@ -740,6 +1219,8 @@ R_{\rho}\!\left(T,\rho,\mathbf{x};P^{\mathrm{spec}}\right)
 - Change note: Renamed and re-homed so the contact-value composition differential sits directly below the owning contact-value relation.
 - LaTeX: `docs/latex/equations.tex:695`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_hc.cpp:194` (double hs_contact_composition_derivative_cpp()
+
+**LaTeX source**
 
 ```tex
 \begin{aligned}
@@ -753,6 +1234,20 @@ R_{\rho}\!\left(T,\rho,\mathbf{x};P^{\mathrm{spec}}\right)
     \end{aligned}
 ```
 
+**Rendered formula**
+
+$$
+\begin{aligned}
+        \left(\frac{\partial g_{ij}^{\mathrm{hs}}}{\partial x_{k}}\right)_{T,\boldsymbol{\rho},\boldsymbol{\rho}_{j\neq k}}
+        &=\frac{\zeta_{3,x,k}}{\left(1-\zeta_{3}\right)^{2}}
+        +\left(\frac{d_{i}d_{j}}{d_{i}+d_{j}}\right)
+        \left(\frac{3\zeta_{2,x,k}}{(1-\zeta_{3})^{2}}+\frac{6\zeta_{2}\zeta_{3,x,k}}{(1-\zeta_{3})^{3}}\right)
+        \\
+        &\quad +\left(\frac{d_{i}d_{j}}{d_{i}+d_{j}}\right)^{2}
+        \left(\frac{4\zeta_{2}\zeta_{2,x,k}}{(1-\zeta_{3})^{3}}+\frac{6\zeta_{2}^{2}\zeta_{3,x,k}}{(1-\zeta_{3})^{4}}\right)
+    \end{aligned}
+$$
+
 ##### `ghs_contact_dT`
 - Label: `eq:ghs_contact_dT`
 - Source: \cite{Gross2001}, Eq.~(A.57)
@@ -761,6 +1256,8 @@ R_{\rho}\!\left(T,\rho,\mathbf{x};P^{\mathrm{spec}}\right)
 - Change note: Renamed and re-homed so the contact-value temperature differential sits directly below the owning contact-value relation.
 - LaTeX: `docs/latex/equations.tex:714`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_hc.cpp:179` (double hs_contact_time_derivative_cpp()
+
+**LaTeX source**
 
 ```tex
 \begin{aligned}
@@ -775,6 +1272,21 @@ R_{\rho}\!\left(T,\rho,\mathbf{x};P^{\mathrm{spec}}\right)
     \end{aligned}
 ```
 
+**Rendered formula**
+
+$$
+\begin{aligned}
+        \left(\frac{\partial g_{ii}^{\mathrm{hs}}}{\partial T}\right)_{\rho,x}
+        &=\frac{\zeta_{3,T}}{\left(1-\zeta_{3}\right)^{2}}
+        +\left(\frac{1}{2}d_{i,T}\right)\frac{3\zeta_{2}}{\left(1-\zeta_{3}\right)^{2}}
+        \\
+        &\quad +\left(\frac{1}{2}d_{i}\right)\left(\frac{3\zeta_{2,T}}{\left(1-\zeta_{3}\right)^{2}}+\frac{6\zeta_{2}\zeta_{3,T}}{\left(1-\zeta_{3}\right)^{3}}\right)
+        +\left(\frac{1}{2}d_{i}d_{i,T}\right)\frac{2\zeta_{2}^{2}}{\left(1-\zeta_{3}\right)^{3}}
+        \\
+        &\quad +\left(\frac{1}{2}d_{i}\right)^{2}\left(\frac{4\xi_{2}\xi_{2,T}}{\left(1-\xi_{3}\right)^{3}}+\frac{6\xi_{2}{}^{2}\xi_{3,T}}{\left(1-\xi_{3}\right)^{4}}\right)
+    \end{aligned}
+$$
+
 ### Dispersion
 
 #### First-Order Compressibility Prefactor
@@ -788,9 +1300,17 @@ R_{\rho}\!\left(T,\rho,\mathbf{x};P^{\mathrm{spec}}\right)
 - LaTeX: `docs/latex/equations.tex:742`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_disp.cpp:13` (DispersionPolynomialState dispersion_polynomials_cpp(double m_avg, double eta) {)
 
+**LaTeX source**
+
 ```tex
 C_{1} = \left(1+\bar{m} \frac{8 \eta-2 \eta^2}{(1-\eta)^4}+\right.\left.\quad(1-\bar{m}) \frac{20 \eta-27 \eta^2+12 \eta^3-2 \eta^4}{[(1-\eta)(2-\eta)]^2}\right)
 ```
+
+**Rendered formula**
+
+$$
+C_{1} = \left(1+\bar{m} \frac{8 \eta-2 \eta^2}{(1-\eta)^4}+\right.\left.\quad(1-\bar{m}) \frac{20 \eta-27 \eta^2+12 \eta^3-2 \eta^4}{[(1-\eta)(2-\eta)]^2}\right)
+$$
 
 ##### `c2_disp`
 - Label: `eq:c2_disp`
@@ -801,6 +1321,8 @@ C_{1} = \left(1+\bar{m} \frac{8 \eta-2 \eta^2}{(1-\eta)^4}+\right.\left.\quad(1-
 - LaTeX: `docs/latex/equations.tex:753`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_disp.cpp:13` (DispersionPolynomialState dispersion_polynomials_cpp(double m_avg, double eta) {)
 
+**LaTeX source**
+
 ```tex
 C_{2}
     =\frac{\partial C_{1}}{\partial\eta}
@@ -809,6 +1331,17 @@ C_{2}
     +(1-\bar{m})\frac{2\eta^{3}+12\eta^{2}-48\eta+40}{\left[(1-\eta)(2-\eta)\right]^{3}}
     \biggr)
 ```
+
+**Rendered formula**
+
+$$
+C_{2}
+    =\frac{\partial C_{1}}{\partial\eta}
+    =- C_{1}^{2}\biggl(
+    \bar{m}\frac{-4\eta^{2}+20\eta+8}{\left(1-\eta\right)^{5}}
+    +(1-\bar{m})\frac{2\eta^{3}+12\eta^{2}-48\eta+40}{\left[(1-\eta)(2-\eta)\right]^{3}}
+    \biggr)
+$$
 
 ##### `c1_xk`
 - Label: `eq:c1_xk`
@@ -819,11 +1352,21 @@ C_{2}
 - LaTeX: `docs/latex/equations.tex:769`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_disp.cpp:63` (ContributionDadxResult dadx_disp_cpp(const MixtureState &thermo, const HardChainState &hc_state, const DispersionPolynomialState &dispersion, double t, double rho, const vector<double> &x, const add_args &cppargs) {)
 
+**LaTeX source**
+
 ```tex
 \left(\frac{\partial C_{1}}{\partial x_{k}}\right)_{T,\rho,x_{j\neq k}}
     \equiv C_{1,xk}
     =C_{2}\zeta_{3,xk}-C_{1}^{2}\left\{m_{k}\frac{8\eta-2\eta^{2}}{\left(1-\eta\right)^{4}}-m_{k}\frac{20\eta-27\eta^{2}+12\eta^{3}-2\eta^{4}}{\left[(1-\eta)(2-\eta)\right]^{2}}\right\}
 ```
+
+**Rendered formula**
+
+$$
+\left(\frac{\partial C_{1}}{\partial x_{k}}\right)_{T,\rho,x_{j\neq k}}
+    \equiv C_{1,xk}
+    =C_{2}\zeta_{3,xk}-C_{1}^{2}\left\{m_{k}\frac{8\eta-2\eta^{2}}{\left(1-\eta\right)^{4}}-m_{k}\frac{20\eta-27\eta^{2}+12\eta^{3}-2\eta^{4}}{\left[(1-\eta)(2-\eta)\right]^{2}}\right\}
+$$
 
 #### First Mixed Dispersion Moment
 
@@ -836,9 +1379,17 @@ C_{2}
 - LaTeX: `docs/latex/equations.tex:785`
 - C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:554` (MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {)
 
+**LaTeX source**
+
 ```tex
 \overline{m^2 \epsilon \sigma^3}=\sum_{i} \sum_{j} x_{i} x_{j} m_{i} m_{j}\left(\frac{\epsilon_{i j}}{k T}\right) \sigma_{i j}^3
 ```
+
+**Rendered formula**
+
+$$
+\overline{m^2 \epsilon \sigma^3}=\sum_{i} \sum_{j} x_{i} x_{j} m_{i} m_{j}\left(\frac{\epsilon_{i j}}{k T}\right) \sigma_{i j}^3
+$$
 
 ##### `m2epssigma3_xk`
 - Label: `eq:m2epssigma3_xk`
@@ -849,11 +1400,21 @@ C_{2}
 - LaTeX: `docs/latex/equations.tex:796`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_disp.cpp:63` (ContributionDadxResult dadx_disp_cpp(const MixtureState &thermo, const HardChainState &hc_state, const DispersionPolynomialState &dispersion, double t, double rho, const vector<double> &x, const add_args &cppargs) {)
 
+**LaTeX source**
+
 ```tex
 \left(\frac{\partial\overline{m^{2}\epsilon\sigma^{3}}}{\partial x_{k}}\right)_{T,\rho,x_{j\neq k}}
     \equiv \overline{(m^{2}\epsilon\sigma^{3})}_{xk}
     =2m_{k}\sum_{j}x_{j}m_{j}\left(\frac{\epsilon_{kj}}{kT}\right)\sigma_{kj}^{3}
 ```
+
+**Rendered formula**
+
+$$
+\left(\frac{\partial\overline{m^{2}\epsilon\sigma^{3}}}{\partial x_{k}}\right)_{T,\rho,x_{j\neq k}}
+    \equiv \overline{(m^{2}\epsilon\sigma^{3})}_{xk}
+    =2m_{k}\sum_{j}x_{j}m_{j}\left(\frac{\epsilon_{kj}}{kT}\right)\sigma_{kj}^{3}
+$$
 
 #### Second Mixed Dispersion Moment
 
@@ -866,9 +1427,17 @@ C_{2}
 - LaTeX: `docs/latex/equations.tex:812`
 - C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:554` (MixtureState mixture_state_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs, bool include_dt) {)
 
+**LaTeX source**
+
 ```tex
 \overline{m^2 \epsilon^2 \sigma^3}=\sum_{i} \sum_{j} x_{i} x_{j} m_{i} m_{j}\left(\frac{\epsilon_{i j}}{k T}\right)^2 \sigma_{i j}{ }^3
 ```
+
+**Rendered formula**
+
+$$
+\overline{m^2 \epsilon^2 \sigma^3}=\sum_{i} \sum_{j} x_{i} x_{j} m_{i} m_{j}\left(\frac{\epsilon_{i j}}{k T}\right)^2 \sigma_{i j}{ }^3
+$$
 
 ##### `m2eps2sigma3_xk`
 - Label: `eq:m2eps2sigma3_xk`
@@ -879,11 +1448,21 @@ C_{2}
 - LaTeX: `docs/latex/equations.tex:823`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_disp.cpp:63` (ContributionDadxResult dadx_disp_cpp(const MixtureState &thermo, const HardChainState &hc_state, const DispersionPolynomialState &dispersion, double t, double rho, const vector<double> &x, const add_args &cppargs) {)
 
+**LaTeX source**
+
 ```tex
 \left(\frac{\partial\overline{m^{2}\epsilon^{2}\sigma^{3}}}{\partial x_{k}}\right)_{T,\rho,x_{j\neq k}}
     \equiv (\overline{m^2\epsilon^2\sigma^3})_{xk}
     =2m_{k}\sum_{j}x_{j}m_{j}\left(\frac{\epsilon_{kj}}{kT}\right)^2\sigma_{kj}^3
 ```
+
+**Rendered formula**
+
+$$
+\left(\frac{\partial\overline{m^{2}\epsilon^{2}\sigma^{3}}}{\partial x_{k}}\right)_{T,\rho,x_{j\neq k}}
+    \equiv (\overline{m^2\epsilon^2\sigma^3})_{xk}
+    =2m_{k}\sum_{j}x_{j}m_{j}\left(\frac{\epsilon_{kj}}{kT}\right)^2\sigma_{kj}^3
+$$
 
 #### First Packing Polynomial
 
@@ -896,9 +1475,17 @@ C_{2}
 - LaTeX: `docs/latex/equations.tex:839`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_disp.cpp:13` (DispersionPolynomialState dispersion_polynomials_cpp(double m_avg, double eta) {)
 
+**LaTeX source**
+
 ```tex
 I_{1}(\eta, \bar{m})=\sum_{i=0}^6 a_{i}(\bar{m}) \eta^i
 ```
+
+**Rendered formula**
+
+$$
+I_{1}(\eta, \bar{m})=\sum_{i=0}^6 a_{i}(\bar{m}) \eta^i
+$$
 
 ##### `deta_i1_deta`
 - Label: `eq:deta_i1_deta`
@@ -909,9 +1496,17 @@ I_{1}(\eta, \bar{m})=\sum_{i=0}^6 a_{i}(\bar{m}) \eta^i
 - LaTeX: `docs/latex/equations.tex:850`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_disp.cpp:13` (DispersionPolynomialState dispersion_polynomials_cpp(double m_avg, double eta) {)
 
+**LaTeX source**
+
 ```tex
 \frac{\partial(\eta I_{1})}{\partial\eta}=\sum_{j=0}^6a_{j}(\bar{m})(j+1)\eta^j
 ```
+
+**Rendered formula**
+
+$$
+\frac{\partial(\eta I_{1})}{\partial\eta}=\sum_{j=0}^6a_{j}(\bar{m})(j+1)\eta^j
+$$
 
 ##### `i1_xk`
 - Label: `eq:i1_xk`
@@ -922,11 +1517,21 @@ I_{1}(\eta, \bar{m})=\sum_{i=0}^6 a_{i}(\bar{m}) \eta^i
 - LaTeX: `docs/latex/equations.tex:861`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_disp.cpp:63` (ContributionDadxResult dadx_disp_cpp(const MixtureState &thermo, const HardChainState &hc_state, const DispersionPolynomialState &dispersion, double t, double rho, const vector<double> &x, const add_args &cppargs) {)
 
+**LaTeX source**
+
 ```tex
 \left(\frac{\partial I_{1}}{\partial x_{k}}\right)_{T,\rho,x_{j\neq k}}
     \equiv I_{1,xk}
     =\sum_{i=0}^{6}[a_{\mathrm{i}}(\bar{m})i\zeta_{3,xk}\eta^{i-1}+a_{\mathrm{i,x}k}\eta^{i}]
 ```
+
+**Rendered formula**
+
+$$
+\left(\frac{\partial I_{1}}{\partial x_{k}}\right)_{T,\rho,x_{j\neq k}}
+    \equiv I_{1,xk}
+    =\sum_{i=0}^{6}[a_{\mathrm{i}}(\bar{m})i\zeta_{3,xk}\eta^{i-1}+a_{\mathrm{i,x}k}\eta^{i}]
+$$
 
 #### Second Packing Polynomial
 
@@ -939,9 +1544,17 @@ I_{1}(\eta, \bar{m})=\sum_{i=0}^6 a_{i}(\bar{m}) \eta^i
 - LaTeX: `docs/latex/equations.tex:877`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_disp.cpp:13` (DispersionPolynomialState dispersion_polynomials_cpp(double m_avg, double eta) {)
 
+**LaTeX source**
+
 ```tex
 I_{2}(\eta, \bar{m})=\sum_{i=0}^6 b_{i}(\bar{m}) \eta^i
 ```
+
+**Rendered formula**
+
+$$
+I_{2}(\eta, \bar{m})=\sum_{i=0}^6 b_{i}(\bar{m}) \eta^i
+$$
 
 ##### `deta_i2_deta`
 - Label: `eq:deta_i2_deta`
@@ -952,9 +1565,17 @@ I_{2}(\eta, \bar{m})=\sum_{i=0}^6 b_{i}(\bar{m}) \eta^i
 - LaTeX: `docs/latex/equations.tex:888`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_disp.cpp:13` (DispersionPolynomialState dispersion_polynomials_cpp(double m_avg, double eta) {)
 
+**LaTeX source**
+
 ```tex
 \frac{\partial(\eta I_{2})}{\partial\eta}=\sum_{i=0}^6b_{j}(\bar{m})(j+1)\eta^i
 ```
+
+**Rendered formula**
+
+$$
+\frac{\partial(\eta I_{2})}{\partial\eta}=\sum_{i=0}^6b_{j}(\bar{m})(j+1)\eta^i
+$$
 
 ##### `i2_xk`
 - Label: `eq:i2_xk`
@@ -965,11 +1586,21 @@ I_{2}(\eta, \bar{m})=\sum_{i=0}^6 b_{i}(\bar{m}) \eta^i
 - LaTeX: `docs/latex/equations.tex:899`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_disp.cpp:63` (ContributionDadxResult dadx_disp_cpp(const MixtureState &thermo, const HardChainState &hc_state, const DispersionPolynomialState &dispersion, double t, double rho, const vector<double> &x, const add_args &cppargs) {)
 
+**LaTeX source**
+
 ```tex
 \left(\frac{\partial I_{2}}{\partial x_{k}}\right)_{T,\rho,x_{j\neq k}}
     \equiv I_{2,xk}
     =\sum_{i=0}^{6}[b_{\mathrm{i}}(\bar{m})i\zeta_{3,xk}\eta^{i-1}+b_{\mathrm{i,xk}}\eta^{i}]
 ```
+
+**Rendered formula**
+
+$$
+\left(\frac{\partial I_{2}}{\partial x_{k}}\right)_{T,\rho,x_{j\neq k}}
+    \equiv I_{2,xk}
+    =\sum_{i=0}^{6}[b_{\mathrm{i}}(\bar{m})i\zeta_{3,xk}\eta^{i-1}+b_{\mathrm{i,xk}}\eta^{i}]
+$$
 
 #### Dispersion Polynomial Coefficients \(a_i(\bar m)\)
 
@@ -982,9 +1613,17 @@ I_{2}(\eta, \bar{m})=\sum_{i=0}^6 b_{i}(\bar{m}) \eta^i
 - LaTeX: `docs/latex/equations.tex:915`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_disp.cpp:13` (DispersionPolynomialState dispersion_polynomials_cpp(double m_avg, double eta) {)
 
+**LaTeX source**
+
 ```tex
 a_{i}(\bar{m})=a_{0 i}+\frac{\bar{m}-1}{\bar{m}} a_{1 i}+\frac{\bar{m}-1}{\bar{m}} \frac{\bar{m}-2}{\bar{m}} a_{2 i}
 ```
+
+**Rendered formula**
+
+$$
+a_{i}(\bar{m})=a_{0 i}+\frac{\bar{m}-1}{\bar{m}} a_{1 i}+\frac{\bar{m}-1}{\bar{m}} \frac{\bar{m}-2}{\bar{m}} a_{2 i}
+$$
 
 ##### `a_i_xk`
 - Label: `eq:a_i_xk`
@@ -995,11 +1634,21 @@ a_{i}(\bar{m})=a_{0 i}+\frac{\bar{m}-1}{\bar{m}} a_{1 i}+\frac{\bar{m}-1}{\bar{m
 - LaTeX: `docs/latex/equations.tex:926`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_disp.cpp:63` (ContributionDadxResult dadx_disp_cpp(const MixtureState &thermo, const HardChainState &hc_state, const DispersionPolynomialState &dispersion, double t, double rho, const vector<double> &x, const add_args &cppargs) {)
 
+**LaTeX source**
+
 ```tex
 \left(\frac{\partial a_{i}}{\partial x_{k}}\right)_{T,\rho,x_{j\neq k}}
     \equiv a_{\mathrm{i},xk}
     =\frac{m_{k}}{\bar{m}^{2}}a_{1i}+\frac{m_{k}}{\bar{m}^{2}}\left(3-\frac{4}{\bar{m}}\right)a_{2i}
 ```
+
+**Rendered formula**
+
+$$
+\left(\frac{\partial a_{i}}{\partial x_{k}}\right)_{T,\rho,x_{j\neq k}}
+    \equiv a_{\mathrm{i},xk}
+    =\frac{m_{k}}{\bar{m}^{2}}a_{1i}+\frac{m_{k}}{\bar{m}^{2}}\left(3-\frac{4}{\bar{m}}\right)a_{2i}
+$$
 
 #### Dispersion Polynomial Coefficients \(b_i(\bar m)\)
 
@@ -1012,9 +1661,17 @@ a_{i}(\bar{m})=a_{0 i}+\frac{\bar{m}-1}{\bar{m}} a_{1 i}+\frac{\bar{m}-1}{\bar{m
 - LaTeX: `docs/latex/equations.tex:942`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_disp.cpp:13` (DispersionPolynomialState dispersion_polynomials_cpp(double m_avg, double eta) {)
 
+**LaTeX source**
+
 ```tex
 b_{i}(\bar{m})=b_{0 i}+\frac{\bar{m}-1}{\bar{m}} b_{1 i}+\frac{\bar{m}-1}{\bar{m}} \frac{\bar{m}-2}{\bar{m}} b_{2 i}
 ```
+
+**Rendered formula**
+
+$$
+b_{i}(\bar{m})=b_{0 i}+\frac{\bar{m}-1}{\bar{m}} b_{1 i}+\frac{\bar{m}-1}{\bar{m}} \frac{\bar{m}-2}{\bar{m}} b_{2 i}
+$$
 
 ##### `b_i_xk`
 - Label: `eq:b_i_xk`
@@ -1025,11 +1682,21 @@ b_{i}(\bar{m})=b_{0 i}+\frac{\bar{m}-1}{\bar{m}} b_{1 i}+\frac{\bar{m}-1}{\bar{m
 - LaTeX: `docs/latex/equations.tex:953`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_disp.cpp:63` (ContributionDadxResult dadx_disp_cpp(const MixtureState &thermo, const HardChainState &hc_state, const DispersionPolynomialState &dispersion, double t, double rho, const vector<double> &x, const add_args &cppargs) {)
 
+**LaTeX source**
+
 ```tex
 \left(\frac{\partial b_{i}}{\partial x_{k}}\right)_{T,\rho,x_{j\neq k}}
     \equiv b_{\mathrm{i},xk}
     =\frac{m_{k}}{\bar{m}^{2}}b_{1i}+\frac{m_{k}}{\bar{m}^{2}}\left(3-\frac{4}{\bar{m}}\right)b_{2i}
 ```
+
+**Rendered formula**
+
+$$
+\left(\frac{\partial b_{i}}{\partial x_{k}}\right)_{T,\rho,x_{j\neq k}}
+    \equiv b_{\mathrm{i},xk}
+    =\frac{m_{k}}{\bar{m}^{2}}b_{1i}+\frac{m_{k}}{\bar{m}^{2}}\left(3-\frac{4}{\bar{m}}\right)b_{2i}
+$$
 
 ### Association
 
@@ -1044,6 +1711,8 @@ b_{i}(\bar{m})=b_{0 i}+\frac{\bar{m}-1}{\bar{m}} b_{1 i}+\frac{\bar{m}-1}{\bar{m
 - LaTeX: `docs/latex/equations.tex:974`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp:14` (static vector<double> association_site_fractions_cpp(vector<double> XA_guess, vector<double> delta_ij, double den, vector<double> x) {)
 
+**LaTeX source**
+
 ```tex
 \begin{aligned}
         X^{\mathrm{A}_{i}}
@@ -1055,6 +1724,19 @@ b_{i}(\bar{m})=b_{0 i}+\frac{\bar{m}-1}{\bar{m}} b_{1 i}+\frac{\bar{m}-1}{\bar{m
     \end{aligned}
 ```
 
+**Rendered formula**
+
+$$
+\begin{aligned}
+        X^{\mathrm{A}_{i}}
+        &=\left[1+ \sum_{j} \sum_{\mathrm{B}_{j}} \rho x_{j}X^{\mathrm{B}_{j}} \Delta^{\mathrm{A}_{i} \mathrm{~B}_{j}}\right]^{-1},
+        \\
+        &\text{with }\sum_{\mathrm{B}_{j}}\text{ over all sites on molecule }j\ (\mathrm{A}_{j},\mathrm{B}_{j},\mathrm{C}_{j},\ldots),
+        \\
+        &\text{and }\sum_{j}\text{ over all components.}
+    \end{aligned}
+$$
+
 ##### `dx_assoc_drho`
 - Label: `eq:dx_assoc_drho`
 - Source: \cite{Chapman1990} (exact equation number not available in local PDFs)
@@ -1063,6 +1745,8 @@ b_{i}(\bar{m})=b_{0 i}+\frac{\bar{m}-1}{\bar{m}} b_{1 i}+\frac{\bar{m}-1}{\bar{m
 - Change note: Site-fraction density derivative closure used in association compressibility calculations; exact numbered reference unavailable locally.
 - LaTeX: `docs/latex/equations.tex:992`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp:32` (static vector<double> association_site_fraction_dt_cpp(vector<double> delta_ij, double den, vector<double> XA, vector<double> ddelta_dt, vector<double> x) {)
+
+**LaTeX source**
 
 ```tex
 \begin{aligned}
@@ -1079,6 +1763,23 @@ b_{i}(\bar{m})=b_{0 i}+\frac{\bar{m}-1}{\bar{m}} b_{1 i}+\frac{\bar{m}-1}{\bar{m
     \end{aligned}
 ```
 
+**Rendered formula**
+
+$$
+\begin{aligned}
+        \left(\frac{\partial X^{A_{i}}}{\partial\rho}\right)_{T,x}
+        &=-(X^{A_{i}})^{2}\sum_{j}\sum_{B_{j}}x_{j}
+        \Bigg[
+        X^{B_{j}}\Delta^{A_{i}B_{j}}
+        \\
+        &\quad +\rho\Bigg(
+        \Delta^{A_{i}B_{j}}\left(\frac{\partial X^{B_{j}}}{\partial\rho}\right)_{T,x}
+        +X^{B_{j}}\left(\frac{\partial\Delta^{A_{i}B_{j}}}{\partial\rho}\right)_{T,x}
+        \Bigg)
+        \Bigg]
+    \end{aligned}
+$$
+
 ##### `dx_assoc_dxk`
 - Label: `eq:dx_assoc_dxk`
 - Source: \cite{Chapman1990} (exact equation number not available in local PDFs)
@@ -1087,6 +1788,8 @@ b_{i}(\bar{m})=b_{0 i}+\frac{\bar{m}-1}{\bar{m}} b_{1 i}+\frac{\bar{m}-1}{\bar{m
 - Change note: Site-fraction composition derivative closure from SAFT association machinery; local progression PDFs do not provide this as a numbered equation.
 - LaTeX: `docs/latex/equations.tex:1014`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp:58` (static vector<double> association_site_fraction_dx_cpp(vector<int> assoc_num, vector<double> delta_ij, double den, vector<double> XA, vector<double> ddelta_dx, vector<double> x) {)
+
+**LaTeX source**
 
 ```tex
 \begin{aligned}
@@ -1107,6 +1810,27 @@ b_{i}(\bar{m})=b_{0 i}+\frac{\bar{m}-1}{\bar{m}} b_{1 i}+\frac{\bar{m}-1}{\bar{m
     \end{aligned}
 ```
 
+**Rendered formula**
+
+$$
+\begin{aligned}
+        \left(\frac{\partial X^{A_{i}}}{\partial x_{k}}\right)_{T,v,x_{j\neq k}}
+        &=
+        -(X^{A_{i}})^{2}\,\rho
+        \Bigg[
+        \sum_{B_{k}}X^{B_{k}}\Delta^{A_{i}B_{k}}
+        \\
+        &\quad +
+        \sum_{j}x_{j}\sum_{B_{j}}
+        \left(
+        \Delta^{A_{i}B_{j}}\left(\frac{\partial X^{B_{j}}}{\partial x_{k}}\right)_{T,v,x_{j\neq k}}
+        +
+        X^{B_{j}}\left(\frac{\partial \Delta^{A_{i}B_{j}}}{\partial x_{k}}\right)_{T,v,x_{j\neq k}}
+        \right)
+        \Bigg]
+    \end{aligned}
+$$
+
 #### Component Site Density
 
 ##### `rho_j_assoc`
@@ -1118,9 +1842,17 @@ b_{i}(\bar{m})=b_{0 i}+\frac{\bar{m}-1}{\bar{m}} b_{1 i}+\frac{\bar{m}-1}{\bar{m
 - LaTeX: `docs/latex/equations.tex:1043`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp:126` (AssociationSetup association_setup_cpp(const vector<double> &x, const add_args &cppargs, const vector<double> &s_ij, const vector<double> &ghs, double t) {)
 
+**LaTeX source**
+
 ```tex
 \rho_{j}=x_{j}\rho_{\mathrm{mixture}}
 ```
+
+**Rendered formula**
+
+$$
+\rho_{j}=x_{j}\rho_{\mathrm{mixture}}
+$$
 
 #### Association Strength
 
@@ -1133,9 +1865,17 @@ b_{i}(\bar{m})=b_{0 i}+\frac{\bar{m}-1}{\bar{m}} b_{1 i}+\frac{\bar{m}-1}{\bar{m
 - LaTeX: `docs/latex/equations.tex:1057`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp:126` (AssociationSetup association_setup_cpp(const vector<double> &x, const add_args &cppargs, const vector<double> &s_ij, const vector<double> &ghs, double t) {)
 
+**LaTeX source**
+
 ```tex
 \Delta^{\mathrm{A}, \mathrm{~B}_{j}}=d_{i j}{ }^3 \mathrm{g}_{i j}^{\mathrm{hs}}\left[\exp \left(\frac{\epsilon^{\mathrm{A}, \mathrm{~B}_{j}}}{k T}\right)-1\right]
 ```
+
+**Rendered formula**
+
+$$
+\Delta^{\mathrm{A}, \mathrm{~B}_{j}}=d_{i j}{ }^3 \mathrm{g}_{i j}^{\mathrm{hs}}\left[\exp \left(\frac{\epsilon^{\mathrm{A}, \mathrm{~B}_{j}}}{k T}\right)-1\right]
+$$
 
 ##### `ddelta_assoc_drho`
 - Label: `eq:ddelta_assoc_drho`
@@ -1146,9 +1886,17 @@ b_{i}(\bar{m})=b_{0 i}+\frac{\bar{m}-1}{\bar{m}} b_{1 i}+\frac{\bar{m}-1}{\bar{m
 - LaTeX: `docs/latex/equations.tex:1068`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp:163` (static vector<double> association_site_fraction_density_terms_cpp()
 
+**LaTeX source**
+
 ```tex
 \left(\frac{\partial\Delta^{A_{i}B_{j}}}{\partial\rho}\right)_{T,x}=d_{ij}^3\kappa^{A_{i}B_{j}}\left[\exp(\epsilon^{A_{i}B_{j}}/kT)-1\right]\left(\frac{\partial g_{ij}^{hs}}{\partial\rho}\right)_{T,x}
 ```
+
+**Rendered formula**
+
+$$
+\left(\frac{\partial\Delta^{A_{i}B_{j}}}{\partial\rho}\right)_{T,x}=d_{ij}^3\kappa^{A_{i}B_{j}}\left[\exp(\epsilon^{A_{i}B_{j}}/kT)-1\right]\left(\frac{\partial g_{ij}^{hs}}{\partial\rho}\right)_{T,x}
+$$
 
 ##### `ddelta_assoc_dxk`
 - Label: `eq:ddelta_assoc_dxk`
@@ -1159,6 +1907,8 @@ b_{i}(\bar{m})=b_{0 i}+\frac{\bar{m}-1}{\bar{m}} b_{1 i}+\frac{\bar{m}-1}{\bar{m
 - LaTeX: `docs/latex/equations.tex:1079`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp:196` (static vector<double> association_site_fraction_composition_terms_cpp()
 
+**LaTeX source**
+
 ```tex
 \left(\frac{\partial \Delta^{A_{i}B_{j}}}{\partial x_{k}}\right)_{T,v,x_{j\neq k}}
     =
@@ -1166,6 +1916,16 @@ b_{i}(\bar{m})=b_{0 i}+\frac{\bar{m}-1}{\bar{m}} b_{1 i}+\frac{\bar{m}-1}{\bar{m
     \left[\exp\!\left(\frac{\epsilon^{A_{i}B_{j}}}{kT}\right)-1\right]
     \left(\frac{\partial g_{ij}^{hs}}{\partial x_{k}}\right)_{T,\rho,x_{j\neq k}}
 ```
+
+**Rendered formula**
+
+$$
+\left(\frac{\partial \Delta^{A_{i}B_{j}}}{\partial x_{k}}\right)_{T,v,x_{j\neq k}}
+    =
+    d_{ij}^{3}\kappa^{A_{i}B_{j}}
+    \left[\exp\!\left(\frac{\epsilon^{A_{i}B_{j}}}{kT}\right)-1\right]
+    \left(\frac{\partial g_{ij}^{hs}}{\partial x_{k}}\right)_{T,\rho,x_{j\neq k}}
+$$
 
 ### Debye Huckel
 
@@ -1180,9 +1940,17 @@ b_{i}(\bar{m})=b_{0 i}+\frac{\bar{m}-1}{\bar{m}} b_{1 i}+\frac{\bar{m}-1}{\bar{m
 - LaTeX: `docs/latex/equations.tex:1102`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_ion.cpp:9` (double dh_kappa_cpp(double den, double t, double eps, double q2_sum) {)
 
+**LaTeX source**
+
 ```tex
 \kappa=\sqrt{\frac{\rho e^{2}}{k_{B}T\varepsilon_{0}\varepsilon_{r}}\sum_{j}x_{j}z_{j}^{2}}
 ```
+
+**Rendered formula**
+
+$$
+\kappa=\sqrt{\frac{\rho e^{2}}{k_{B}T\varepsilon_{0}\varepsilon_{r}}\sum_{j}x_{j}z_{j}^{2}}
+$$
 
 ##### `dkappa_dh_drho`
 - Label: `eq:dkappa_dh_drho`
@@ -1192,6 +1960,8 @@ b_{i}(\bar{m})=b_{0 i}+\frac{\bar{m}-1}{\bar{m}} b_{1 i}+\frac{\bar{m}-1}{\bar{m
 - Change note: Re-homed under the screening-parameter definition so the \(\kappa\) density derivative is owned locally.
 - LaTeX: `docs/latex/equations.tex:1113`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_ion.cpp:9` (double dh_kappa_cpp(double den, double t, double eps, double q2_sum) {)
+
+**LaTeX source**
 
 ```tex
 \begin{aligned}
@@ -1226,6 +1996,41 @@ b_{i}(\bar{m})=b_{0 i}+\frac{\bar{m}-1}{\bar{m}} b_{1 i}+\frac{\bar{m}-1}{\bar{m
     \end{aligned}
 ```
 
+**Rendered formula**
+
+$$
+\begin{aligned}
+        \rho\left(\frac{\partial \kappa}{\partial \rho}\right)_{T,x}
+        &=
+        \frac{\rho}{2}
+        \left[
+            \frac{\rho e^{2}}{k_{B}T\varepsilon_{0}\varepsilon_{r}}
+            \sum_{j}x_{j}z_{j}^{2}
+        \right]^{-1/2}
+        \Biggl[
+            \frac{e^{2}}{k_{B}T\varepsilon_{0}\varepsilon_{r}}\sum_{j}x_{j}z_{j}^{2}
+            -
+            \frac{\rho e^{2}}{k_{B}T\varepsilon_{0}\varepsilon_{r}^{2}}
+            \left(\frac{\partial \varepsilon_{r}}{\partial \rho}\right)_{T,x}
+            \sum_{j}x_{j}z_{j}^{2}
+        \Biggr]
+        \\
+        &=
+        \frac{\kappa}{2}
+        \left[
+            1
+            -
+            \frac{\rho}{\varepsilon_{r}}
+            \left(\frac{\partial \varepsilon_{r}}{\partial \rho}\right)_{T,x}
+        \right]
+        \\
+        &=
+        \frac{\kappa}{2}
+        \qquad
+        \text{when }\left(\frac{\partial \varepsilon_{r}}{\partial \rho}\right)_{T,x}=0
+    \end{aligned}
+$$
+
 ##### `dkappa_dh_dxi`
 - Label: `eq:dkappa_dh_dxi`
 - Source: \cite{Bulow2019}, Eq.~(13)
@@ -1234,6 +2039,8 @@ b_{i}(\bar{m})=b_{0 i}+\frac{\bar{m}-1}{\bar{m}} b_{1 i}+\frac{\bar{m}-1}{\bar{m
 - Change note: Re-homed under the screening-parameter definition so the \(\kappa\) composition differential is owned locally.
 - LaTeX: `docs/latex/equations.tex:1153`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_ion.cpp:23` (IonIntermediateState ion_intermediate_state_cpp()
+
+**LaTeX source**
 
 ```tex
 \begin{aligned}
@@ -1266,6 +2073,39 @@ b_{i}(\bar{m})=b_{0 i}+\frac{\bar{m}-1}{\bar{m}} b_{1 i}+\frac{\bar{m}-1}{\bar{m
     \end{aligned}
 ```
 
+**Rendered formula**
+
+$$
+\begin{aligned}
+        \left(\frac{\partial\kappa}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
+        &=
+        \frac12
+        \left(\frac{\rho_{N}e^{2}}{k_{B}T\varepsilon_{0}\varepsilon_{r}}\sum_{j}x_{j}z_{j}^{2}\right)^{-\frac12}
+        \Biggl\{
+            -\frac{\rho_{N}e^2}{k_{B}T\left(\varepsilon_{0}\varepsilon_{r}\right)^2}
+            \varepsilon_{0}\frac{\partial\left(\varepsilon_{r}\right)}{\partial x_{i}}
+            \sum_{j}x_{j}z_{j}^2
+            +
+            \frac{\rho_{N}e^2}{k_{B}T\varepsilon_{0}\varepsilon_{r}}
+            \alpha_{i}z_{i}^2
+        \Biggr\}
+        \\
+        &=
+        \left(\frac{\rho_{N}e^{2}}{k_{B}T}\right)^{\frac{1}{2}}
+        \Biggl\{
+            -\frac{1}{2}\left(\varepsilon_{0}\varepsilon_{r}\right)^{-\frac{3}{2}}
+            \varepsilon_{0}\frac{\partial\left(\varepsilon_{r}\right)}{\partial x_{i}}
+            \left[\sum_{j}x_{j}z_{j}^{2}\right]^{\frac{1}{2}}
+            \\
+            &\qquad\qquad
+            +
+            \frac{1}{2\sqrt{\varepsilon_{0}\varepsilon_{r}}}
+            \Biggl[\sum_{j}x_{j}z_{j}^2\Biggr]^{-\frac{1}{2}}
+            \alpha_{i}z_{i}^2
+        \Biggr\}
+    \end{aligned}
+$$
+
 #### Finite-Size Correction \(\chi_i\)
 
 ##### `chi_dh`
@@ -1277,9 +2117,17 @@ b_{i}(\bar{m})=b_{0 i}+\frac{\bar{m}-1}{\bar{m}} b_{1 i}+\frac{\bar{m}-1}{\bar{m
 - LaTeX: `docs/latex/equations.tex:1194`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_ion.cpp:16` (double dh_chi_cpp(double kappa, double diameter) {)
 
+**LaTeX source**
+
 ```tex
 \chi_{i}=\frac{3}{\left(\kappa d_{i}\right)^3}\left[\frac{3}{2}+\ln(1+\kappa d_{i})-2(1+\kappa d_{i})+\frac{1}{2}\left(1+\kappa d_{i}\right)^2\right]
 ```
+
+**Rendered formula**
+
+$$
+\chi_{i}=\frac{3}{\left(\kappa d_{i}\right)^3}\left[\frac{3}{2}+\ln(1+\kappa d_{i})-2(1+\kappa d_{i})+\frac{1}{2}\left(1+\kappa d_{i}\right)^2\right]
+$$
 
 ##### `sigma_dh`
 - Label: `eq:sigma_dh`
@@ -1290,9 +2138,17 @@ b_{i}(\bar{m})=b_{0 i}+\frac{\bar{m}-1}{\bar{m}} b_{1 i}+\frac{\bar{m}-1}{\bar{m
 - LaTeX: `docs/latex/equations.tex:1205`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_ion.cpp:16` (double dh_chi_cpp(double kappa, double diameter) {)
 
+**LaTeX source**
+
 ```tex
 \sigma_{i}=\left(\frac{\partial(\kappa\chi_{i})}{\partial\kappa}\right)_{T,\mathrm{x}}=-2\chi_{i}+\frac{3}{1+\kappa a_{i}}
 ```
+
+**Rendered formula**
+
+$$
+\sigma_{i}=\left(\frac{\partial(\kappa\chi_{i})}{\partial\kappa}\right)_{T,\mathrm{x}}=-2\chi_{i}+\frac{3}{1+\kappa a_{i}}
+$$
 
 ##### `dchi_dh_drho`
 - Label: `eq:dchi_dh_drho`
@@ -1303,11 +2159,21 @@ b_{i}(\bar{m})=b_{0 i}+\frac{\bar{m}-1}{\bar{m}} b_{1 i}+\frac{\bar{m}-1}{\bar{m
 - LaTeX: `docs/latex/equations.tex:1216`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_ion.cpp:16` (double dh_chi_cpp(double kappa, double diameter) {)
 
+**LaTeX source**
+
 ```tex
 \rho\left(\frac{\partial \chi_i}{\partial \rho}\right)_{T,x}
     =
     \frac{\sigma_i-\chi_i}{2}
 ```
+
+**Rendered formula**
+
+$$
+\rho\left(\frac{\partial \chi_i}{\partial \rho}\right)_{T,x}
+    =
+    \frac{\sigma_i-\chi_i}{2}
+$$
 
 ##### `dchi_dh_dxi`
 - Label: `eq:dchi_dh_dxi`
@@ -1317,6 +2183,8 @@ b_{i}(\bar{m})=b_{0 i}+\frac{\bar{m}-1}{\bar{m}} b_{1 i}+\frac{\bar{m}-1}{\bar{m
 - Change note: Re-homed under the finite-size-correction definition so the \(\chi_i\) composition differential is owned locally.
 - LaTeX: `docs/latex/equations.tex:1229`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_ion.cpp:23` (IonIntermediateState ion_intermediate_state_cpp()
+
+**LaTeX source**
 
 ```tex
 \begin{aligned}
@@ -1349,6 +2217,39 @@ b_{i}(\bar{m})=b_{0 i}+\frac{\bar{m}-1}{\bar{m}} b_{1 i}+\frac{\bar{m}-1}{\bar{m
     \end{aligned}
 ```
 
+**Rendered formula**
+
+$$
+\begin{aligned}
+        \left(\frac{\partial\chi_{i}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
+        &=
+        -\frac{9}{\left(\kappa d_{i}\right)^{4}}
+        \Biggl[
+            \frac{3}{2}+\ln(1+\kappa d_{i})-2(1+\kappa d_{i})
+            +\frac{1}{2}\left(1+\kappa d_{i}\right)^{2}
+        \Biggr]
+        d_{i}\frac{\partial\kappa}{\partial x_{i}}
+        \\
+        &\quad +
+        \frac{3}{\left(\kappa d_{i}\right)^{3}}
+        \Biggl[
+            \frac{1}{1+\kappa d_{i}}-1+\kappa d_{i}
+        \Biggr]
+        d_{i}\frac{\partial\kappa}{\partial x_{i}}
+        \\
+        &=
+        3\frac{\partial\kappa}{\partial x_{i}}
+        \left\{
+            -\frac{\chi_{i}}{\kappa}
+            +
+            \frac{d_{i}}{\left(\kappa d_{i}\right)^{3}}
+            \Biggl[
+                \frac{1}{1+\kappa d_{i}}-1+\kappa d_{i}
+            \Biggr]
+        \right\}
+    \end{aligned}
+$$
+
 ### Born
 
 #### Born Diameter Rule
@@ -1362,6 +2263,8 @@ b_{i}(\bar{m})=b_{0 i}+\frac{\bar{m}-1}{\bar{m}} b_{1 i}+\frac{\bar{m}-1}{\bar{m
 - LaTeX: `docs/latex/equations.tex:1275`
 - C++: `src/epcsaft/native/epcsaft_parameter_setup.cpp:459` (double ion_born_radius_cpp(int i, double t, const add_args &cppargs) {)
 
+**LaTeX source**
+
 ```tex
 d^{\text{Born}}_{i}
     =
@@ -1371,6 +2274,18 @@ d^{\text{Born}}_{i}
     \end{cases}
     \qquad i\in\mathcal{I}
 ```
+
+**Rendered formula**
+
+$$
+d^{\text{Born}}_{i}
+    =
+    \begin{cases}
+        d_{i}, & \text{default Born-diameter rule}, \\
+        d^{\text{Born, fitted}}_{i}, & \text{fitted Born-diameter rule},
+    \end{cases}
+    \qquad i\in\mathcal{I}
+$$
 
 #### Born Mixing Function
 
@@ -1383,9 +2298,17 @@ d^{\text{Born}}_{i}
 - LaTeX: `docs/latex/equations.tex:1295`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_born.cpp:14` (BornSSMDSData born_shell_data_cpp(vector<double> x, const add_args &cppargs, double t, double eps_r, double eps_r_ion) {)
 
+**LaTeX source**
+
 ```tex
 f_{mix}=\sum_{k}x_{k}f_{k}
 ```
+
+**Rendered formula**
+
+$$
+f_{mix}=\sum_{k}x_{k}f_{k}
+$$
 
 #### Born Shell Shift
 
@@ -1398,9 +2321,17 @@ f_{mix}=\sum_{k}x_{k}f_{k}
 - LaTeX: `docs/latex/equations.tex:1309`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_born.cpp:14` (BornSSMDSData born_shell_data_cpp(vector<double> x, const add_args &cppargs, double t, double eps_r, double eps_r_ion) {)
 
+**LaTeX source**
+
 ```tex
 \Delta d_{i}=\frac{(f_{mix}-1)}{|z_{i}|}\cdot d_{i}^{\mathrm{Born}}
 ```
+
+**Rendered formula**
+
+$$
+\Delta d_{i}=\frac{(f_{mix}-1)}{|z_{i}|}\cdot d_{i}^{\mathrm{Born}}
+$$
 
 ##### `ddelta_d_dxi`
 - Label: `eq:ddelta_d_dxi`
@@ -1411,11 +2342,21 @@ f_{mix}=\sum_{k}x_{k}f_{k}
 - LaTeX: `docs/latex/equations.tex:1320`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_born.cpp:14` (BornSSMDSData born_shell_data_cpp(vector<double> x, const add_args &cppargs, double t, double eps_r, double eps_r_ion) {)
 
+**LaTeX source**
+
 ```tex
 \left(\frac{\partial \Delta d_{j}}{\partial x_{i}}\right)_{T,\rho,x_{k\neq i}}
     =\frac{d_{j}^{\text {Born }}}{\left|z_{j}\right|} \left(\frac{\partial f_{\text {mix }}}{\partial x_{i}}\right)_{T,\rho,x_{k\neq i}}
     =\frac{d_{j}^{\text {Born }}}{\left|z_{j}\right|} f_{i},
 ```
+
+**Rendered formula**
+
+$$
+\left(\frac{\partial \Delta d_{j}}{\partial x_{i}}\right)_{T,\rho,x_{k\neq i}}
+    =\frac{d_{j}^{\text {Born }}}{\left|z_{j}\right|} \left(\frac{\partial f_{\text {mix }}}{\partial x_{i}}\right)_{T,\rho,x_{k\neq i}}
+    =\frac{d_{j}^{\text {Born }}}{\left|z_{j}\right|} f_{i},
+$$
 
 #### Base Inverse-Diameter Term
 
@@ -1428,11 +2369,21 @@ f_{mix}=\sum_{k}x_{k}f_{k}
 - LaTeX: `docs/latex/equations.tex:1336`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_born.cpp:14` (BornSSMDSData born_shell_data_cpp(vector<double> x, const add_args &cppargs, double t, double eps_r, double eps_r_ion) {)
 
+**LaTeX source**
+
 ```tex
 D_{i,\mathrm{Born}}^{(\mathrm{bulk})}
 =
 \frac{1}{d_i^{\mathrm{Born}}},
 ```
+
+**Rendered formula**
+
+$$
+D_{i,\mathrm{Born}}^{(\mathrm{bulk})}
+=
+\frac{1}{d_i^{\mathrm{Born}}},
+$$
 
 #### Solvation-Shell Inverse-Diameter Term
 
@@ -1445,6 +2396,8 @@ D_{i,\mathrm{Born}}^{(\mathrm{bulk})}
 - LaTeX: `docs/latex/equations.tex:1352`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_born.cpp:14` (BornSSMDSData born_shell_data_cpp(vector<double> x, const add_args &cppargs, double t, double eps_r, double eps_r_ion) {)
 
+**LaTeX source**
+
 ```tex
 D_{i,\mathrm{SSM}}^{(\mathrm{bulk})}
 =
@@ -1452,6 +2405,16 @@ D_{i,\mathrm{SSM}}^{(\mathrm{bulk})}
 -
 \frac{1}{d_i^{\mathrm{Born}}},
 ```
+
+**Rendered formula**
+
+$$
+D_{i,\mathrm{SSM}}^{(\mathrm{bulk})}
+=
+\frac{1}{d_i^{\mathrm{Born}}+\Delta d_i}
+-
+\frac{1}{d_i^{\mathrm{Born}}},
+$$
 
 #### Dielectric-Saturation Inverse-Diameter Term
 
@@ -1464,6 +2427,8 @@ D_{i,\mathrm{SSM}}^{(\mathrm{bulk})}
 - LaTeX: `docs/latex/equations.tex:1370`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_born.cpp:14` (BornSSMDSData born_shell_data_cpp(vector<double> x, const add_args &cppargs, double t, double eps_r, double eps_r_ion) {)
 
+**LaTeX source**
+
 ```tex
 D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 =
@@ -1471,6 +2436,16 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 -
 \frac{1}{d_i^{\mathrm{Born}}+\Delta d_i}.
 ```
+
+**Rendered formula**
+
+$$
+D_{i,\mathrm{DS}}^{(\mathrm{ion})}
+=
+\frac{1}{d_i^{\mathrm{Born}}}
+-
+\frac{1}{d_i^{\mathrm{Born}}+\Delta d_i}.
+$$
 
 ## Residual Helmholtz Energy
 
@@ -1483,9 +2458,17 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 - LaTeX: `docs/latex/equations.tex:1390`
 - C++: `src/epcsaft/native/epcsaft_ares.cpp:1506` (AresContributions ares_contributions_cpp(double t, double rho, const vector<double> &x, const add_args &cppargs) {)
 
+**LaTeX source**
+
 ```tex
 \tilde{a}^{\mathrm{res}}=\tilde{a}^{h c}+\tilde{a}^{\text {disp }}+\tilde{a}^{\text {assoc }}+\tilde{a}^{\text {DH }}+\tilde{a}^{\text {Born }}
 ```
+
+**Rendered formula**
+
+$$
+\tilde{a}^{\mathrm{res}}=\tilde{a}^{h c}+\tilde{a}^{\text {disp }}+\tilde{a}^{\text {assoc }}+\tilde{a}^{\text {DH }}+\tilde{a}^{\text {Born }}
+$$
 
 ### `dares_dT`
 - Label: `eq:dares_dT`
@@ -1496,12 +2479,23 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 - LaTeX: `docs/latex/equations.tex:1402`
 - C++: `src/epcsaft/native/epcsaft_ares.cpp:2893` (ScalarContributionTerms temperature_derivative_residual_helmholtz_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
 
+**LaTeX source**
+
 ```tex
 \left(\frac{\partial\tilde{a}^\mathrm{res}}{\partial T}\right)_{\rho,x_{i}} =\left(\frac{\partial\tilde{a}^\mathrm{hc}}{\partial T}\right)_{\rho,x_{i}} +\left(\frac{\partial\tilde{a}^\mathrm{disp}}{\partial T}\right)_{\rho,x_{i}}
     +\left(\frac{\partial\tilde{a}^\mathrm{assoc}}{\partial T}\right)_{\rho,x_{i}}
     +\left(\frac{\partial\tilde{a}^\mathrm{DH}}{\partial T}\right)_{\rho,x_{i}}
     +\left(\frac{\partial\tilde{a}^\mathrm{Born}}{\partial T}\right)_{\rho,x_{i}}
 ```
+
+**Rendered formula**
+
+$$
+\left(\frac{\partial\tilde{a}^\mathrm{res}}{\partial T}\right)_{\rho,x_{i}} =\left(\frac{\partial\tilde{a}^\mathrm{hc}}{\partial T}\right)_{\rho,x_{i}} +\left(\frac{\partial\tilde{a}^\mathrm{disp}}{\partial T}\right)_{\rho,x_{i}}
+    +\left(\frac{\partial\tilde{a}^\mathrm{assoc}}{\partial T}\right)_{\rho,x_{i}}
+    +\left(\frac{\partial\tilde{a}^\mathrm{DH}}{\partial T}\right)_{\rho,x_{i}}
+    +\left(\frac{\partial\tilde{a}^\mathrm{Born}}{\partial T}\right)_{\rho,x_{i}}
+$$
 
 ### Hard-Chain Reference Contribution
 
@@ -1514,6 +2508,8 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 - LaTeX: `docs/latex/equations.tex:1418`
 - C++: `src/epcsaft/native/epcsaft_ares.cpp:427` (template <typename Scalar>)
 
+**LaTeX source**
+
 ```tex
 \begin{aligned}
         \mathmakebox[11.5em][l]{\tilde{a}^{\mathrm{hc}}}
@@ -1522,6 +2518,17 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
         -\sum_{i} x_{i}\left(m_{i}-1\right) \ln \mathrm{g}_{i i}^{\mathrm{hs}}\left(\sigma_{i i}\right)
     \end{aligned}
 ```
+
+**Rendered formula**
+
+$$
+\begin{aligned}
+        \mathmakebox[11.5em][l]{\tilde{a}^{\mathrm{hc}}}
+        &=
+        \bar{m} \tilde{a}^{\mathrm{hs}}
+        -\sum_{i} x_{i}\left(m_{i}-1\right) \ln \mathrm{g}_{i i}^{\mathrm{hs}}\left(\sigma_{i i}\right)
+    \end{aligned}
+$$
 
 #### `hc_ares_dadrho`
 - Label: `eq:hc_ares_dadrho`
@@ -1532,6 +2539,8 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 - LaTeX: `docs/latex/equations.tex:1435`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_hc.cpp:251` (double dadrho_hc_cpp(const MixtureState &thermo, const HardChainState &hc_state, const vector<double> &x, const add_args &cppargs) {)
 
+**LaTeX source**
+
 ```tex
 \begin{aligned}
         \mathmakebox[11.5em][l]{\rho\left(\frac{\partial\tilde{a}^{hc}}{\partial\rho}\right)_{T,x}}
@@ -1541,6 +2550,17 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
     \end{aligned}
 ```
 
+**Rendered formula**
+
+$$
+\begin{aligned}
+        \mathmakebox[11.5em][l]{\rho\left(\frac{\partial\tilde{a}^{hc}}{\partial\rho}\right)_{T,x}}
+        &=
+        \bar{m}\rho\left(\frac{\partial\tilde{a}^{hs}}{\partial\rho}\right)_{T,x}
+        -\sum_{i}x_{\mathrm{i}}(m_{i}-1)(g_{ii}^\mathrm{hs})^{-1}\rho\frac{\partial g_{ii}^\mathrm{hs}}{\partial\rho}
+    \end{aligned}
+$$
+
 #### `hc_ares_dxk`
 - Label: `eq:hc_ares_dxk`
 - Source: \cite{Gross2001}, Eq.~(A.35) (appendix sequence inference)
@@ -1549,6 +2569,8 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 - Change note: Moved back under the hard-chain Helmholtz contribution so Section 4 owns all equations carrying the hard-chain contribution label.
 - LaTeX: `docs/latex/equations.tex:1451`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_hc.cpp:274` (ContributionDadxResult dadx_hc_cpp(const MixtureState &thermo, const HardChainState &hc_state, double t, double rho, const vector<double> &x, const add_args &cppargs) {)
+
+**LaTeX source**
 
 ```tex
 \begin{aligned}
@@ -1561,6 +2583,19 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
     \end{aligned}
 ```
 
+**Rendered formula**
+
+$$
+\begin{aligned}
+        \mathmakebox[11.5em][l]{\left(\frac{\partial\tilde{a}^{\mathrm{hc}}}{\partial x_{k}}\right)_{T,\boldsymbol{\rho},x_{j\neq k}}}
+        &=m_{k}\tilde{a}^{\mathrm{hs}}
+        +\bar{m}\left(\frac{\partial\tilde{a}^{\mathrm{hs}}}{\partial x_{k}}\right)_{T,\boldsymbol{\rho},x_{j\neq k}}
+        \\
+        &\quad -\sum_{i}x_{i}(m_{i}-1)(g_{ii}^{\mathrm{hs}})^{-1}
+        \left(\frac{\partial g_{ii}^{\mathrm{hs}}}{\partial x_{k}}\right)_{T,\boldsymbol{\rho},x_{j\neq k}}
+    \end{aligned}
+$$
+
 #### `hc_ares_dT`
 - Label: `eq:hc_ares_dT`
 - Source: \cite{Gross2001}, Eq.~(A.54)
@@ -1570,6 +2605,8 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 - LaTeX: `docs/latex/equations.tex:1469`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_hc.cpp:263` (double dadt_hc_cpp(const MixtureState &thermo, const HardChainState &hc_state, const vector<double> &dzeta_dt, const vector<double> &x, const add_args &cppargs) {)
 
+**LaTeX source**
+
 ```tex
 \begin{aligned}
         \mathmakebox[11.5em][l]{\left(\frac{\partial\tilde{a}^{\mathrm{hc}}}{\partial T}\right)_{\rho,x_{i}}}
@@ -1578,6 +2615,17 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
         -\sum_{i}x_{\mathrm{i}}(m_{\mathrm{i}}-1)(g_{ii}^{\mathrm{hs}})^{-1}\left(\frac{\partial g_{ii}^{\mathrm{hs}}}{\partial T}\right)_{\rho,x_{i}}
     \end{aligned}
 ```
+
+**Rendered formula**
+
+$$
+\begin{aligned}
+        \mathmakebox[11.5em][l]{\left(\frac{\partial\tilde{a}^{\mathrm{hc}}}{\partial T}\right)_{\rho,x_{i}}}
+        &=
+        \bar{m}\left(\frac{\partial\tilde{a}^{\mathrm{hs}}}{\partial T}\right)_{\rho,x_{i}}
+        -\sum_{i}x_{\mathrm{i}}(m_{\mathrm{i}}-1)(g_{ii}^{\mathrm{hs}})^{-1}\left(\frac{\partial g_{ii}^{\mathrm{hs}}}{\partial T}\right)_{\rho,x_{i}}
+    \end{aligned}
+$$
 
 ### Dispersion Contribution
 
@@ -1590,9 +2638,17 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 - LaTeX: `docs/latex/equations.tex:1488`
 - C++: `src/epcsaft/native/epcsaft_ares.cpp:438` (template <typename Scalar>)
 
+**LaTeX source**
+
 ```tex
 \tilde{a}^{\mathrm{disp}}=-2 \pi \rho I_{1}(\eta, \bar{m}) \overline{m^2 \epsilon \sigma^3}-\pi \rho \bar{m} C_{1} I_{2}(\eta, \bar{m}) \overline{m^2 \epsilon^2 \sigma^3}
 ```
+
+**Rendered formula**
+
+$$
+\tilde{a}^{\mathrm{disp}}=-2 \pi \rho I_{1}(\eta, \bar{m}) \overline{m^2 \epsilon \sigma^3}-\pi \rho \bar{m} C_{1} I_{2}(\eta, \bar{m}) \overline{m^2 \epsilon^2 \sigma^3}
+$$
 
 #### `disp_ares_dadrho`
 - Label: `eq:disp_ares_dadrho`
@@ -1603,6 +2659,8 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 - LaTeX: `docs/latex/equations.tex:1500`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_disp.cpp:41` (double dadrho_disp_cpp(const MixtureState &thermo, const HardChainState &hc_state, const DispersionPolynomialState &dispersion) {)
 
+**LaTeX source**
+
 ```tex
 \begin{aligned}
         \rho\left(\frac{\partial\tilde{a}^{disp}}{\partial\rho}\right)_{T,x}
@@ -1611,6 +2669,17 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
         &\quad -\pi\rho\bar{m}\left[C_{1}\frac{\partial(\eta I_{2})}{\partial\eta}+C_{2}\eta I_{2}\right]\overline{m^{2}\epsilon^{2}\sigma^{3}}
     \end{aligned}
 ```
+
+**Rendered formula**
+
+$$
+\begin{aligned}
+        \rho\left(\frac{\partial\tilde{a}^{disp}}{\partial\rho}\right)_{T,x}
+        &=-2\pi\rho\frac{\partial(\eta I_{1})}{\partial\eta}\overline{m^{2}\epsilon\sigma^{3}}
+        \\
+        &\quad -\pi\rho\bar{m}\left[C_{1}\frac{\partial(\eta I_{2})}{\partial\eta}+C_{2}\eta I_{2}\right]\overline{m^{2}\epsilon^{2}\sigma^{3}}
+    \end{aligned}
+$$
 
 #### `disp_ares_dxk`
 - Label: `eq:disp_ares_dxk`
@@ -1621,6 +2690,8 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 - LaTeX: `docs/latex/equations.tex:1516`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_disp.cpp:63` (ContributionDadxResult dadx_disp_cpp(const MixtureState &thermo, const HardChainState &hc_state, const DispersionPolynomialState &dispersion, double t, double rho, const vector<double> &x, const add_args &cppargs) {)
 
+**LaTeX source**
+
 ```tex
 \begin{aligned}
         \left(\frac{\partial \tilde{a}^{\mathrm{disp}}}{\partial x_k}\right)_{T,\boldsymbol{\rho},x_{j \neq k}}
@@ -1629,6 +2700,17 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
         \left.\bar{m} C_1 I_2\left(\bar{m}^2 \epsilon^2 \sigma^3\right)_{x k}\right\}
     \end{aligned}
 ```
+
+**Rendered formula**
+
+$$
+\begin{aligned}
+        \left(\frac{\partial \tilde{a}^{\mathrm{disp}}}{\partial x_k}\right)_{T,\boldsymbol{\rho},x_{j \neq k}}
+        =& -2 \pi \rho\left[I_{1, x k} \overline{m^2 \epsilon \sigma^3}+I_1 \overline{\left(m^2 \epsilon \sigma^3\right)_{x k}}\right] \\
+        &- \pi \rho\left\{\left[m_k C_1 I_2+\bar{m} C_{1, x k} I_2+\bar{m} C_1 I_{2, x k}\right] \overline{m^2 \epsilon^2 \sigma^3}+\right.
+        \left.\bar{m} C_1 I_2\left(\bar{m}^2 \epsilon^2 \sigma^3\right)_{x k}\right\}
+    \end{aligned}
+$$
 
 #### `disp_ares_dT`
 - Label: `eq:disp_ares_dT`
@@ -1639,6 +2721,8 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 - LaTeX: `docs/latex/equations.tex:1532`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_disp.cpp:47` (double dadt_disp_cpp(const MixtureState &thermo, double deta_dt, double t, const DispersionPolynomialState &dispersion) {)
 
+**LaTeX source**
+
 ```tex
 \left(\frac{\partial\tilde{a}^{disp}}{\partial T}\right)_{\rho,x_{i}}
     =
@@ -1646,6 +2730,16 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
     -\pi\rho\bar{m}\left(C_{1,T}I_{2}+C_{1}I_{2,T}\right)\overline{m^{2}\epsilon^{2}\sigma^{3}}
     -\pi\rho\bar{m}C_{1}I_{2}\overline{m^{2}\epsilon^{2}\sigma^{3}}_{,T}
 ```
+
+**Rendered formula**
+
+$$
+\left(\frac{\partial\tilde{a}^{disp}}{\partial T}\right)_{\rho,x_{i}}
+    =
+    -2\pi\rho\left(I_{1,T}\overline{m^{2}\epsilon\sigma^{3}}+I_{1}\overline{m^{2}\epsilon\sigma^{3}}_{,T}\right)
+    -\pi\rho\bar{m}\left(C_{1,T}I_{2}+C_{1}I_{2,T}\right)\overline{m^{2}\epsilon^{2}\sigma^{3}}
+    -\pi\rho\bar{m}C_{1}I_{2}\overline{m^{2}\epsilon^{2}\sigma^{3}}_{,T}
+$$
 
 ### Association Contribution
 
@@ -1658,9 +2752,17 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 - LaTeX: `docs/latex/equations.tex:1550`
 - C++: `src/epcsaft/native/epcsaft_ares.cpp:486` (template <typename Scalar>)
 
+**LaTeX source**
+
 ```tex
 \tilde{a}^{\mathrm{assoc}}= \sum_{i} x_{i}\sum_{\mathrm{A}_{i}}\left(\ln X^{\mathrm{A}_{i}}-\frac{X^{\mathrm{A}_{i}}}{2}+\frac{1}{2}\right)
 ```
+
+**Rendered formula**
+
+$$
+\tilde{a}^{\mathrm{assoc}}= \sum_{i} x_{i}\sum_{\mathrm{A}_{i}}\left(\ln X^{\mathrm{A}_{i}}-\frac{X^{\mathrm{A}_{i}}}{2}+\frac{1}{2}\right)
+$$
 
 #### `assoc_ares_dadrho`
 - Label: `eq:assoc_ares_dadrho`
@@ -1671,10 +2773,19 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 - LaTeX: `docs/latex/equations.tex:1562`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp:323` (double dadrho_assoc_cpp()
 
+**LaTeX source**
+
 ```tex
 \rho\left(\frac{\partial\tilde{a}^{assoc}}{\partial\rho}\right)_{T,x}
     =\rho\sum_{i}x_{i}\sum_{A_{i}}\left(\frac{1}{X^{A_{i}}}-\frac{1}{2}\right)\left(\frac{\partial X^{A_{i}}}{\partial\rho}\right)_{T,x}.
 ```
+
+**Rendered formula**
+
+$$
+\rho\left(\frac{\partial\tilde{a}^{assoc}}{\partial\rho}\right)_{T,x}
+    =\rho\sum_{i}x_{i}\sum_{A_{i}}\left(\frac{1}{X^{A_{i}}}-\frac{1}{2}\right)\left(\frac{\partial X^{A_{i}}}{\partial\rho}\right)_{T,x}.
+$$
 
 #### `assoc_ares_dxk`
 - Label: `eq:assoc_ares_dxk`
@@ -1684,6 +2795,8 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 - Change note: Moved back under the association Helmholtz contribution so Section 4 owns all equations carrying the association contribution label.
 - LaTeX: `docs/latex/equations.tex:1574`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp:385` (ContributionDadxResult dadx_assoc_cpp(const MixtureState &thermo, const HardChainState &hc_state, const AssociationIntermediateState &assoc_state, double t, double rho, const vector<double> &x, const add_args &cppargs) {)
+
+**LaTeX source**
 
 ```tex
 \left(\frac{\partial \tilde a^{assoc}}{\partial x_{k}}\right)_{T,v,x_{i\neq k}}
@@ -1695,6 +2808,18 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
     \left(\frac{\partial X^{A_{i}}}{\partial x_{k}}\right)_{T,v,x_{i\neq k}}
 ```
 
+**Rendered formula**
+
+$$
+\left(\frac{\partial \tilde a^{assoc}}{\partial x_{k}}\right)_{T,v,x_{i\neq k}}
+    =
+    \sum_{A_{k}}\left(\ln X^{A_{k}}-\frac{X^{A_{k}}}{2}+\frac{1}{2}\right)
+    +
+    \sum_{i} x_{i}\sum_{A_{i}}
+    \left(\frac{1}{X^{A_{i}}}-\frac{1}{2}\right)
+    \left(\frac{\partial X^{A_{i}}}{\partial x_{k}}\right)_{T,v,x_{i\neq k}}
+$$
+
 #### `assoc_ares_dT`
 - Label: `eq:assoc_ares_dT`
 - Source: Native implementation owner \texttt{dadt\_assoc\_cpp(...)}
@@ -1704,6 +2829,8 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 - LaTeX: `docs/latex/equations.tex:1591`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_assoc.cpp:373` (double dadt_assoc_cpp(const AssociationIntermediateState &assoc_state, const vector<double> &x) {)
 
+**LaTeX source**
+
 ```tex
 \left(\frac{\partial\tilde{a}^{\mathrm{assoc}}}{\partial T}\right)_{\rho,x_i}
     =
@@ -1711,6 +2838,16 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
     \left(\frac{1}{X^{A_i}}-\frac{1}{2}\right)
     \left(\frac{\partial X^{A_i}}{\partial T}\right)_{\rho,x_i}
 ```
+
+**Rendered formula**
+
+$$
+\left(\frac{\partial\tilde{a}^{\mathrm{assoc}}}{\partial T}\right)_{\rho,x_i}
+    =
+    \sum_i x_i \sum_{A_i}
+    \left(\frac{1}{X^{A_i}}-\frac{1}{2}\right)
+    \left(\frac{\partial X^{A_i}}{\partial T}\right)_{\rho,x_i}
+$$
 
 ### Debye and Huckel Contribution
 
@@ -1723,9 +2860,17 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 - LaTeX: `docs/latex/equations.tex:1609`
 - C++: `src/epcsaft/native/epcsaft_ares.cpp:824` (template <typename Scalar, typename TemperatureScalar>)
 
+**LaTeX source**
+
 ```tex
 \tilde{a}^{DH}=-\frac{\kappa e^{2}}{12\pi\varepsilon_{0}\varepsilon_{r}k_{B}T}\sum_{i}x_{i}z_{i}^{2}\chi_{i}
 ```
+
+**Rendered formula**
+
+$$
+\tilde{a}^{DH}=-\frac{\kappa e^{2}}{12\pi\varepsilon_{0}\varepsilon_{r}k_{B}T}\sum_{i}x_{i}z_{i}^{2}\chi_{i}
+$$
 
 #### `dh_ares_dadrho`
 - Label: `eq:dh_ares_dadrho`
@@ -1735,6 +2880,8 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 - Change note: Moved back under the Debye-Huckel Helmholtz contribution so Section 4 owns all equations carrying the Debye-Huckel contribution label.
 - LaTeX: `docs/latex/equations.tex:1621`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_ion.cpp:79` (double dadrho_ion_cpp(double t, const IonIntermediateState &ion_state) {)
+
+**LaTeX source**
 
 ```tex
 \rho\left(\frac{\partial\tilde{a}^{DH}}{\partial\rho}\right)_{T,x}
@@ -1747,6 +2894,19 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
     \right]
 ```
 
+**Rendered formula**
+
+$$
+\rho\left(\frac{\partial\tilde{a}^{DH}}{\partial\rho}\right)_{T,x}
+    =
+    -\frac{e^2}{12\pi\varepsilon_0\varepsilon_r k_B T}
+    \left[
+        \rho\left(\frac{\partial \kappa}{\partial \rho}\right)_{T,x}\sum_i x_i z_i^2 \chi_i
+        +
+        \kappa\sum_i x_i z_i^2 \rho\left(\frac{\partial \chi_i}{\partial \rho}\right)_{T,x}
+    \right]
+$$
+
 #### `dh_ares_dxi`
 - Label: `eq:dh_ares_dxi`
 - Source: \cite{Bulow2019} (equation number unresolved in local corpus)
@@ -1755,6 +2915,8 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 - Change note: Moved back under the Debye-Huckel Helmholtz contribution so Section 4 owns all equations carrying the Debye-Huckel contribution label.
 - LaTeX: `docs/latex/equations.tex:1639`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_ion.cpp:104` (ContributionDadxResult dadx_ion_cpp(const IonIntermediateState &ion_state, double t, double rho, const vector<double> &x, const add_args &cppargs) {)
+
+**LaTeX source**
 
 ```tex
 \begin{aligned}
@@ -1780,6 +2942,32 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
     \end{aligned}
 ```
 
+**Rendered formula**
+
+$$
+\begin{aligned}
+        \left(\frac{\partial \tilde{a}^{DH}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
+        =
+        -\frac{e^{2}}{12\pi\varepsilon_{0}k_{B}T}
+        \Bigg[
+          & \frac{1}{\varepsilon_{r}}\left(\frac{\partial\kappa}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
+            \sum_{j}x_{j}z_{j}^{2}\chi_{j}
+        \\
+        - & \frac{\kappa}{\varepsilon_{r}^{2}}
+            \left(\frac{\partial\varepsilon_{r}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
+            \sum_{j}x_{j}z_{j}^{2}\chi_{j}
+        \\
+        + & \frac{\kappa}{\varepsilon_{r}}
+            \sum_{j}\chi_{j}z_{j}^{2}
+            \left(\frac{\partial x_{j}}{\partial x_{i}}\right)_{T,v,x_{k\neq i}}
+        \\
+        + & \frac{\kappa}{\varepsilon_{r}}
+            \sum_{j}x_{j}z_{j}^{2}
+            \left(\frac{\partial\chi_{j}}{\partial x_{i}}\right)_{T,v,x_{k\neq i}}
+            \Bigg]
+    \end{aligned}
+$$
+
 #### `dh_ares_dT`
 - Label: `eq:dh_ares_dT`
 - Source: \cite{Cameretti2005}, Eq.~(13)-Eq.~(14) (derived temperature differential)
@@ -1789,11 +2977,21 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 - LaTeX: `docs/latex/equations.tex:1670`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_ion.cpp:87` (double dadt_ion_cpp(const IonIntermediateState &ion_state, double t, const vector<double> &x, const add_args &cppargs) {)
 
+**LaTeX source**
+
 ```tex
 \left(\frac{\partial \tilde{a}^{DH}}{\partial T}\right)_{\rho,x_i}
     \approx
     -\frac{\tilde{a}^{DH}}{T}
 ```
+
+**Rendered formula**
+
+$$
+\left(\frac{\partial \tilde{a}^{DH}}{\partial T}\right)_{\rho,x_i}
+    \approx
+    -\frac{\tilde{a}^{DH}}{T}
+$$
 
 ### Born Contribution
 
@@ -1805,6 +3003,8 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 - Change note: Moderate-to-high similarity; notation/arrangement appears adapted from the cited equation.
 - LaTeX: `docs/latex/equations.tex:1686`
 - C++: `src/epcsaft/native/epcsaft_ares.cpp:897` (template <typename Scalar, typename TemperatureScalar>)
+
+**LaTeX source**
 
 ```tex
 \tilde{a}^{\mathrm{Born}}
@@ -1818,6 +3018,20 @@ D_{i,\mathrm{DS}}^{(\mathrm{ion})}
 D_{i,\delta}^{(m_\delta)},
 ```
 
+**Rendered formula**
+
+$$
+\tilde{a}^{\mathrm{Born}}
+=
+-\frac{e^2}{4\pi\varepsilon_0 k_{\mathrm{B}} T}
+\sum_i x_i z_i^2
+\sum_{\delta \in \mathcal{D}}
+\left(
+1-\frac{1}{\varepsilon_{r,m_\delta}}
+\right)
+D_{i,\delta}^{(m_\delta)},
+$$
+
 #### `born_ares_dadrho`
 - Label: `eq:born_ares_dadrho`
 - Source: \cite{Bulow2021a}, Eq.~(4)
@@ -1827,9 +3041,17 @@ D_{i,\delta}^{(m_\delta)},
 - LaTeX: `docs/latex/equations.tex:1706`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_born.cpp:211` (double dadrho_born_cpp() {)
 
+**LaTeX source**
+
 ```tex
 \rho\left(\frac{\partial\tilde{a}^{Born}}{\partial\rho}\right)_{T,x}= 0
 ```
+
+**Rendered formula**
+
+$$
+\rho\left(\frac{\partial\tilde{a}^{Born}}{\partial\rho}\right)_{T,x}= 0
+$$
 
 #### `born_ares_dxi`
 - Label: `eq:born_ares_dxi`
@@ -1839,6 +3061,8 @@ D_{i,\delta}^{(m_\delta)},
 - Change note: Moved back under the Born Helmholtz contribution so Section 4 owns all equations carrying the Born contribution label.
 - LaTeX: `docs/latex/equations.tex:1717`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_born.cpp:234` (ContributionDadxResult dadx_born_cpp(const BornIntermediateState &born_state, double t, double rho, const vector<double> &x, const add_args &cppargs) {)
+
+**LaTeX source**
 
 ```tex
 \begin{aligned}
@@ -1856,6 +3080,24 @@ D_{i,\delta}^{(m_\delta)},
     \end{aligned}
 ```
 
+**Rendered formula**
+
+$$
+\begin{aligned}
+        \left(\frac{\partial \tilde{a}^{Born}}{\partial x_{i}}\right)_{T,v_{N},x_{j\neq i}}
+        &=
+        -\frac{e^{2}}{4\pi k_{B}T\varepsilon_{0}}
+        \Biggl[
+            \left(1-\frac{1}{\varepsilon_{r}}\right)\frac{z_{i}^{2}}{d^{\text{Born}}_{i}}
+            \\
+            &\qquad\qquad
+            +
+            \left(\frac{1}{\varepsilon_{r}^{2}}\right)\sum_{j} \frac{x_{j} z_{j}^2}{d^{\text{Born}}_{j}}
+            \left(\frac{\partial\varepsilon_{r}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
+        \Biggr]
+    \end{aligned}
+$$
+
 #### `born_ares_ssmds_dxi`
 - Label: `eq:born_ares_ssmds_dxi`
 - Source: \cite{Figiel2025} (equation number unresolved in local corpus)
@@ -1864,6 +3106,8 @@ D_{i,\delta}^{(m_\delta)},
 - Change note: Moved back under the Born Helmholtz contribution so Section 4 owns all equations carrying the Born contribution label.
 - LaTeX: `docs/latex/equations.tex:1740`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_born.cpp:234` (ContributionDadxResult dadx_born_cpp(const BornIntermediateState &born_state, double t, double rho, const vector<double> &x, const add_args &cppargs) {)
+
+**LaTeX source**
 
 ```tex
 \begin{aligned}
@@ -1901,6 +3145,44 @@ D_{i,\delta}^{(m_\delta)},
     \end{aligned}
 ```
 
+**Rendered formula**
+
+$$
+\begin{aligned}
+        \left(\frac{\partial \tilde{a}^{\mathrm{Born}}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
+         & =
+        -\frac{e^2}{4\pi\varepsilon_{0} k_{B} T}
+        \Bigg[
+            z_{i}^2\!\left(
+            \left(1-\frac{1}{\varepsilon_{r,\mathrm{bulk}}}\right)
+            \left[D_{i,\mathrm{Born}}^{(\mathrm{bulk})}+D_{i,\mathrm{SSM}}^{(\mathrm{bulk})}\right]
+            +
+            \left(1-\frac{1}{\varepsilon_{r,\mathrm{ion}}}\right)D_{i,\mathrm{DS}}^{(\mathrm{ion})}
+            \right)
+        \\
+         & \qquad\qquad
+            +\sum_{j} x_{j} z_{j}^2
+            \Bigg(
+            \frac{1}{\varepsilon_{r,\mathrm{bulk}}^2}
+            \frac{\partial \varepsilon_{r,\mathrm{bulk}}}{\partial x_{i}}
+            \left[D_{j,\mathrm{Born}}^{(\mathrm{bulk})}+D_{j,\mathrm{SSM}}^{(\mathrm{bulk})}\right]
+            \\
+         & \qquad\qquad\qquad\qquad
+            +
+            \frac{1}{\varepsilon_{r,\mathrm{ion}}^2}
+            \frac{\partial \varepsilon_{r,\mathrm{ion}}}{\partial x_{i}}
+            D_{j,\mathrm{DS}}^{(\mathrm{ion})}
+            \\
+         & \qquad\qquad\qquad\qquad
+            +
+            \left(\frac{1}{\varepsilon_{r,\mathrm{ion}}}-\frac{1}{\varepsilon_{r,\mathrm{bulk}}}\right)
+            \frac{1}{\left(d_{j}^{\mathrm{Born}}+\Delta d_{j}\right)^2}
+            \frac{\partial \Delta d_{j}}{\partial x_{i}}
+            \Bigg)
+            \Bigg],
+    \end{aligned}
+$$
+
 #### `born_ares_dT`
 - Label: `eq:born_ares_dT`
 - Source: \cite{Bulow2021a}, Eq.~(2) (derived temperature differential)
@@ -1909,6 +3191,8 @@ D_{i,\delta}^{(m_\delta)},
 - Change note: Moved back under the Born Helmholtz contribution so Section 4 owns all equations carrying the Born contribution label.
 - LaTeX: `docs/latex/equations.tex:1783`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_born.cpp:216` (double dadt_born_cpp(double t, const BornIntermediateState &born_state) {)
+
+**LaTeX source**
 
 ```tex
 \begin{aligned}
@@ -1929,6 +3213,27 @@ D_{i,\delta}^{(m_\delta)},
     \end{aligned}
 ```
 
+**Rendered formula**
+
+$$
+\begin{aligned}
+        \left(\frac{\partial\tilde{a}^{\mathrm{Born}}}{\partial T}\right)_{\rho,x_i}
+        &=
+        -\frac{\tilde{a}^{\mathrm{Born}}}{T}
+        \\
+        &\quad -\frac{e^2}{4\pi\varepsilon_0 k_{\mathrm{B}} T}
+        \sum_i x_i z_i^2
+        \sum_{\delta \in \mathcal{D}}
+        \left[
+            \frac{D_{i,\delta}^{(m_\delta)}}{\varepsilon_{r,m_\delta}^{2}}
+            \left(\frac{\partial \varepsilon_{r,m_\delta}}{\partial T}\right)_{\rho,x}
+            +
+            \left(1-\frac{1}{\varepsilon_{r,m_\delta}}\right)
+            \left(\frac{\partial D_{i,\delta}^{(m_\delta)}}{\partial T}\right)_{\rho,x}
+        \right]
+    \end{aligned}
+$$
+
 #### `born_mode_set`
 - Label: `eq:born_mode_set`
 - Source: \cite{Figiel2025}, Eq.~(7) (option-driven reformulation)
@@ -1937,6 +3242,8 @@ D_{i,\delta}^{(m_\delta)},
 - Change note: Documents the current option-driven Born-term set directly rather than the legacy version naming.
 - LaTeX: `docs/latex/equations.tex:1812`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_born.cpp:168` (BornIntermediateState born_intermediate_state_cpp()
+
+**LaTeX source**
 
 ```tex
 \mathcal{D}
@@ -1950,6 +3257,20 @@ D_{i,\delta}^{(m_\delta)},
 \{\mathrm{SSM},\mathrm{DS}\},
 ```
 
+**Rendered formula**
+
+$$
+\mathcal{D}
+=
+\{\mathrm{Born}\}
+\cup
+\mathcal{D}_{\mathrm{add}},
+\qquad
+\mathcal{D}_{\mathrm{add}}
+\subseteq
+\{\mathrm{SSM},\mathrm{DS}\},
+$$
+
 #### `born_mode_medium`
 - Label: `eq:born_mode_medium`
 - Source: \cite{Bulow2021a}, Eq.~(2); \cite{Figiel2025}, Eq.~(7) (option-driven reformulation)
@@ -1959,6 +3280,8 @@ D_{i,\delta}^{(m_\delta)},
 - LaTeX: `docs/latex/equations.tex:1831`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_born.cpp:168` (BornIntermediateState born_intermediate_state_cpp()
 
+**LaTeX source**
+
 ```tex
 m_\delta
     =
@@ -1967,6 +3290,17 @@ m_\delta
         \mathrm{ion},  & \delta=\mathrm{DS}.
     \end{cases}
 ```
+
+**Rendered formula**
+
+$$
+m_\delta
+    =
+    \begin{cases}
+        \mathrm{bulk}, & \delta\in\{\mathrm{Born},\mathrm{SSM}\}, \\
+        \mathrm{ion},  & \delta=\mathrm{DS}.
+    \end{cases}
+$$
 
 ## Compressibility Factor
 
@@ -1979,6 +3313,8 @@ m_\delta
 - LaTeX: `docs/latex/equations.tex:1860`
 - C++: `src/epcsaft/native/epcsaft_Z.cpp:66` (CompressibilityFactorResult compressibility_factor_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
 
+**LaTeX source**
+
 ```tex
 Z = 1
     + \rho\left(\frac{\partial\tilde{a}^{hc}}{\partial\rho}\right)_{T,x}
@@ -1987,6 +3323,17 @@ Z = 1
     + \rho\left(\frac{\partial\tilde{a}^{DH}}{\partial\rho}\right)_{T,x}
     + \rho\left(\frac{\partial\tilde{a}^{Born}}{\partial\rho}\right)_{T,x}
 ```
+
+**Rendered formula**
+
+$$
+Z = 1
+    + \rho\left(\frac{\partial\tilde{a}^{hc}}{\partial\rho}\right)_{T,x}
+    + \rho\left(\frac{\partial\tilde{a}^{disp}}{\partial\rho}\right)_{T,x}
+    + \rho\left(\frac{\partial\tilde{a}^{assoc}}{\partial\rho}\right)_{T,x}
+    + \rho\left(\frac{\partial\tilde{a}^{DH}}{\partial\rho}\right)_{T,x}
+    + \rho\left(\frac{\partial\tilde{a}^{Born}}{\partial\rho}\right)_{T,x}
+$$
 
 ### `z_alpha`
 - Label: `eq:z_alpha`
@@ -1997,6 +3344,8 @@ Z = 1
 - LaTeX: `docs/latex/equations.tex:1876`
 - C++: `src/epcsaft/native/epcsaft_Z.cpp:53` (ScalarContributionTerms compressibility_terms_from_dadrho_cpp(const DadrhoResult &result) {)
 
+**LaTeX source**
+
 ```tex
 Z^{\alpha}
     =
@@ -2005,6 +3354,17 @@ Z^{\alpha}
     \qquad
     \alpha\in\{hc,disp,assoc,DH,Born\}
 ```
+
+**Rendered formula**
+
+$$
+Z^{\alpha}
+    =
+    \rho\left(\frac{\partial\tilde{a}^{\alpha}}{\partial\rho}\right)_{T,x}
+    ,
+    \qquad
+    \alpha\in\{hc,disp,assoc,DH,Born\}
+$$
 
 ## Chemical Potential
 
@@ -2017,9 +3377,17 @@ Z^{\alpha}
 - LaTeX: `docs/latex/equations.tex:1897`
 - C++: `src/epcsaft/native/epcsaft_mu.cpp:58` (ResidualChemicalPotentialResult residual_chemical_potential_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
 
+**LaTeX source**
+
 ```tex
 \tilde{\mu_{k}}^{\mathrm{res}}=\frac{\mu_{k}^\mathrm{res}}{kT} = \frac{\hat{\mu}_{k}^\mathrm{res}}{RT}
 ```
+
+**Rendered formula**
+
+$$
+\tilde{\mu_{k}}^{\mathrm{res}}=\frac{\mu_{k}^\mathrm{res}}{kT} = \frac{\hat{\mu}_{k}^\mathrm{res}}{RT}
+$$
 
 ### `mu_res_from_ares`
 - Label: `eq:mu_res_from_ares`
@@ -2029,6 +3397,8 @@ Z^{\alpha}
 - Change note: High textual similarity to a tagged equation in the cited local paper export.
 - LaTeX: `docs/latex/equations.tex:1908`
 - C++: `src/epcsaft/native/epcsaft_mu.cpp:6` (static vector<double> mu_contribution_cpp()
+
+**LaTeX source**
 
 ```tex
 \begin{aligned}
@@ -2040,6 +3410,18 @@ Z^{\alpha}
     \end{aligned}
 ```
 
+**Rendered formula**
+
+$$
+\begin{aligned}
+        \tilde{\mu_{k}}^{\mathrm{res}}
+        &=\tilde{a}^{\mathrm{res}}+(\mathrm{Z}-1)
+        +\left(\frac{\partial\tilde{a}^{\mathrm{res}}}{\partial x_{k}}\right)_{T,\nu,x_{i\neq k}}
+        \\
+        &\quad -\sum_{j=1}^{N}\left[x_{j}\left(\frac{\partial\tilde{a}^{\mathrm{res}}}{\partial x_{j}}\right)_{T,\nu,x_{i\neq j}}\right]
+    \end{aligned}
+$$
+
 ### `mu_res_sum`
 - Label: `eq:mu_res_sum`
 - Source: \cite{Gross2001}, Eq.~(A.33)
@@ -2049,9 +3431,17 @@ Z^{\alpha}
 - LaTeX: `docs/latex/equations.tex:1925`
 - C++: `src/epcsaft/native/epcsaft_mu.cpp:58` (ResidualChemicalPotentialResult residual_chemical_potential_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
 
+**LaTeX source**
+
 ```tex
 \tilde{\mu_{k}}^{\mathrm{res}}=\tilde{\mu_{k}}^{\mathrm{hc}}+\tilde{\mu_{k}}^{\mathrm{disp}}+\tilde{\mu_{k}}^{\mathrm{assoc}}+\tilde{\mu_{k}}^{\mathrm{DH}}+\tilde{\mu_{k}}^{\mathrm{Born}}
 ```
+
+**Rendered formula**
+
+$$
+\tilde{\mu_{k}}^{\mathrm{res}}=\tilde{\mu_{k}}^{\mathrm{hc}}+\tilde{\mu_{k}}^{\mathrm{disp}}+\tilde{\mu_{k}}^{\mathrm{assoc}}+\tilde{\mu_{k}}^{\mathrm{DH}}+\tilde{\mu_{k}}^{\mathrm{Born}}
+$$
 
 ### `mu_alpha`
 - Label: `eq:mu_alpha`
@@ -2061,6 +3451,8 @@ Z^{\alpha}
 - Change note: Replaces the five redundant contribution-specific chemical-potential equations with one generic \(\alpha\)-form covering \(\alpha\in\{hc,disp,assoc,DH,Born\}\).
 - LaTeX: `docs/latex/equations.tex:1936`
 - C++: `src/epcsaft/native/epcsaft_mu.cpp:20` (static vector<double> mu_hc_cpp(const CompositionContributionResult &composition) {)
+
+**LaTeX source**
 
 ```tex
 \begin{aligned}
@@ -2077,6 +3469,23 @@ Z^{\alpha}
     \end{aligned}
 ```
 
+**Rendered formula**
+
+$$
+\begin{aligned}
+        \tilde{\mu}^{\alpha}_{k}
+        &=
+        \tilde{a}^{\alpha}
+        + Z^{\alpha}
+        +\left(\frac{\partial\tilde{a}^{\alpha}}{\partial x_{k}}\right)_{T,\nu,x_{i\neq k}}
+        \\
+        &\quad
+        -\sum_{j=1}^{N}\left[x_{j}\left(\frac{\partial\tilde{a}^{\alpha}}{\partial x_{j}}\right)_{T,\nu,x_{i\neq j}}\right],
+        \qquad
+        \alpha\in\{hc,disp,assoc,DH,Born\}
+    \end{aligned}
+$$
+
 ## Fugacity Coefficient
 
 ### `lnphi_total`
@@ -2087,6 +3496,8 @@ Z^{\alpha}
 - Change note: Mapped manually to the residual-chemical-potential form used in the PC-SAFT appendix.
 - LaTeX: `docs/latex/equations.tex:1962`
 - C++: `src/epcsaft/native/epcsaft_fugcoef.cpp:88` (FugacityContributionResult fugacity_coefficient_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
+
+**LaTeX source**
 
 ```tex
 \ln\varphi_{k}
@@ -2100,6 +3511,20 @@ Z^{\alpha}
     \ln Z
 ```
 
+**Rendered formula**
+
+$$
+\ln\varphi_{k}
+    =
+    \tilde{\mu}_{k}^{\mathrm{res}}
+    -
+    \ln Z
+    =
+    \frac{\mu_{k}^{\mathrm{res}}}{kT}
+    -
+    \ln Z
+$$
+
 ### `lnphi_total_sum`
 - Label: `eq:lnphi_total_sum`
 - Source: Project decomposition based on Eq.~\eqref{eq:lnphi_total}
@@ -2108,6 +3533,8 @@ Z^{\alpha}
 - Change note: Written in explicit non-summation form to match the contribution-by-contribution structure used throughout this section.
 - LaTeX: `docs/latex/equations.tex:1983`
 - C++: `src/epcsaft/native/epcsaft_fugcoef.cpp:88` (FugacityContributionResult fugacity_coefficient_result_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
+
+**LaTeX source**
 
 ```tex
 \ln\varphi_{k}
@@ -2123,6 +3550,22 @@ Z^{\alpha}
     \ln\varphi_{k}^{Born}
 ```
 
+**Rendered formula**
+
+$$
+\ln\varphi_{k}
+    =
+    \ln\varphi_{k}^{hc}
+    +
+    \ln\varphi_{k}^{disp}
+    +
+    \ln\varphi_{k}^{assoc}
+    +
+    \ln\varphi_{k}^{DH}
+    +
+    \ln\varphi_{k}^{Born}
+$$
+
 ### `lnphi_alpha`
 - Label: `eq:lnphi_alpha`
 - Source: Project decomposition based on Eq.~\eqref{eq:lnphi_total}
@@ -2131,6 +3574,8 @@ Z^{\alpha}
 - Change note: Uses only the explicit $Z^\alpha$ allocation requested for the contribution-resolved fugacity-coefficient terms.
 - LaTeX: `docs/latex/equations.tex:2004`
 - C++: `src/epcsaft/native/epcsaft_fugcoef.cpp:38` (static vector<double> lnfug_contribution_cpp()
+
+**LaTeX source**
 
 ```tex
 \ln\varphi_{k}^{\alpha}
@@ -2142,6 +3587,18 @@ Z^{\alpha}
     \alpha\in\{hc,disp,assoc,DH,Born\}
 ```
 
+**Rendered formula**
+
+$$
+\ln\varphi_{k}^{\alpha}
+    =
+    \tilde{\mu}_{k}^{\alpha}
+    -
+    \frac{Z^{\alpha}}{Z-1}\ln Z,
+    \qquad
+    \alpha\in\{hc,disp,assoc,DH,Born\}
+$$
+
 ### `lnphi_alpha_near_ideal`
 - Label: `eq:lnphi_alpha_near_ideal`
 - Source: Derived from Eq.~\eqref{eq:lnphi_alpha}
@@ -2150,6 +3607,8 @@ Z^{\alpha}
 - Change note: Retained explicitly as an approximation only, using the $Z\rightarrow 1$ limit requested for documentation.
 - LaTeX: `docs/latex/equations.tex:2021`
 - C++: `src/epcsaft/native/epcsaft_fugcoef.cpp:14` (static double stable_logz_over_zminus1(double Z) {)
+
+**LaTeX source**
 
 ```tex
 \ln\varphi_{k}^{\alpha}
@@ -2160,6 +3619,18 @@ Z^{\alpha}
     \qquad
     \alpha\in\{hc,disp,assoc,DH,Born\}
 ```
+
+**Rendered formula**
+
+$$
+\ln\varphi_{k}^{\alpha}
+    \approx
+    \tilde{\mu}_{k}^{\alpha}
+    -
+    Z^{\alpha},
+    \qquad
+    \alpha\in\{hc,disp,assoc,DH,Born\}
+$$
 
 ## Activity Coefficient
 
@@ -2174,11 +3645,21 @@ Z^{\alpha}
 - LaTeX: `docs/latex/equations.tex:2047`
 - C++: `src/epcsaft/native/epcsaft_activity.cpp:60` (vector<double> miac_gamma_vector_cpp()
 
+**LaTeX source**
+
 ```tex
 \gamma_{i}
     =
     \frac{\varphi_{i}(T,p,\mathbf{x})}{\varphi_{0i}(T,p,x_{i}=1)}
 ```
+
+**Rendered formula**
+
+$$
+\gamma_{i}
+    =
+    \frac{\varphi_{i}(T,p,\mathbf{x})}{\varphi_{0i}(T,p,x_{i}=1)}
+$$
 
 #### `lngamma_sym`
 - Label: `eq:lngamma_sym`
@@ -2189,6 +3670,8 @@ Z^{\alpha}
 - LaTeX: `docs/latex/equations.tex:2060`
 - C++: `src/epcsaft/native/epcsaft_activity.cpp:60` (vector<double> miac_gamma_vector_cpp()
 
+**LaTeX source**
+
 ```tex
 \ln\gamma_{i}
     =
@@ -2196,6 +3679,16 @@ Z^{\alpha}
     -
     \ln\varphi_{0i}
 ```
+
+**Rendered formula**
+
+$$
+\ln\gamma_{i}
+    =
+    \ln\varphi_{i}
+    -
+    \ln\varphi_{0i}
+$$
 
 ### Infinite-Dilution Reference
 
@@ -2208,11 +3701,21 @@ Z^{\alpha}
 - LaTeX: `docs/latex/equations.tex:2077`
 - C++: `src/epcsaft/native/epcsaft_activity.cpp:468` (ActivityCoefficientNative activity_coefficient_values_cpp()
 
+**LaTeX source**
+
 ```tex
 \gamma_{i}^{*}
     =
     \frac{\varphi_{i}(T,p,\mathbf{x})}{\varphi_{i}^{\infty}(T,p,x_{i}\to 0)}
 ```
+
+**Rendered formula**
+
+$$
+\gamma_{i}^{*}
+    =
+    \frac{\varphi_{i}(T,p,\mathbf{x})}{\varphi_{i}^{\infty}(T,p,x_{i}\to 0)}
+$$
 
 #### `lngamma_asym_inf`
 - Label: `eq:lngamma_asym_inf`
@@ -2223,6 +3726,8 @@ Z^{\alpha}
 - LaTeX: `docs/latex/equations.tex:2090`
 - C++: `src/epcsaft/native/epcsaft_activity.cpp:468` (ActivityCoefficientNative activity_coefficient_values_cpp()
 
+**LaTeX source**
+
 ```tex
 \ln\gamma_{i}^{*}
     =
@@ -2230,6 +3735,16 @@ Z^{\alpha}
     -
     \ln\varphi_{i}^{\infty}
 ```
+
+**Rendered formula**
+
+$$
+\ln\gamma_{i}^{*}
+    =
+    \ln\varphi_{i}
+    -
+    \ln\varphi_{i}^{\infty}
+$$
 
 #### `lngamma_asym_sum`
 - Label: `eq:lngamma_asym_sum`
@@ -2239,6 +3754,8 @@ Z^{\alpha}
 - Change note: Written in explicit non-summation form to mirror the fugacity-coefficient decomposition.
 - LaTeX: `docs/latex/equations.tex:2107`
 - C++: `src/epcsaft/native/epcsaft_activity.cpp:409` (ActivityCoefficientNative activity_coefficient_values_impl_cpp()
+
+**LaTeX source**
 
 ```tex
 \ln\gamma_{k}^{*}
@@ -2254,6 +3771,22 @@ Z^{\alpha}
     \ln\gamma_{k}^{Born,*}
 ```
 
+**Rendered formula**
+
+$$
+\ln\gamma_{k}^{*}
+    =
+    \ln\gamma_{k}^{hc,*}
+    +
+    \ln\gamma_{k}^{disp,*}
+    +
+    \ln\gamma_{k}^{assoc,*}
+    +
+    \ln\gamma_{k}^{DH,*}
+    +
+    \ln\gamma_{k}^{Born,*}
+$$
+
 #### `gamma_alpha_asym`
 - Label: `eq:gamma_alpha_asym`
 - Source: Project decomposition based on Eq.~\eqref{eq:gamma_asym_inf}
@@ -2263,11 +3796,21 @@ Z^{\alpha}
 - LaTeX: `docs/latex/equations.tex:2128`
 - C++: `src/epcsaft/native/epcsaft_activity.cpp:409` (ActivityCoefficientNative activity_coefficient_values_impl_cpp()
 
+**LaTeX source**
+
 ```tex
 \gamma_{k}^{\alpha,*}
     =
     \frac{\varphi_{k}^{\alpha}}{\varphi_{k}^{\alpha,\infty}}
 ```
+
+**Rendered formula**
+
+$$
+\gamma_{k}^{\alpha,*}
+    =
+    \frac{\varphi_{k}^{\alpha}}{\varphi_{k}^{\alpha,\infty}}
+$$
 
 #### `lngamma_alpha_asym`
 - Label: `eq:lngamma_alpha_asym`
@@ -2278,6 +3821,8 @@ Z^{\alpha}
 - LaTeX: `docs/latex/equations.tex:2141`
 - C++: `src/epcsaft/native/epcsaft_activity.cpp:409` (ActivityCoefficientNative activity_coefficient_values_impl_cpp()
 
+**LaTeX source**
+
 ```tex
 \ln\gamma_{k}^{\alpha,*}
     =
@@ -2285,6 +3830,16 @@ Z^{\alpha}
     -
     \ln\varphi_{k}^{\alpha,\infty}
 ```
+
+**Rendered formula**
+
+$$
+\ln\gamma_{k}^{\alpha,*}
+    =
+    \ln\varphi_{k}^{\alpha}
+    -
+    \ln\varphi_{k}^{\alpha,\infty}
+$$
 
 ### Mean Ionic Activity Coefficient
 
@@ -2297,6 +3852,8 @@ Z^{\alpha}
 - LaTeX: `docs/latex/equations.tex:2158`
 - C++: `src/epcsaft/native/epcsaft_activity.cpp:409` (ActivityCoefficientNative activity_coefficient_values_impl_cpp()
 
+**LaTeX source**
+
 ```tex
 \gamma_{\pm}^{*}
     =
@@ -2305,6 +3862,17 @@ Z^{\alpha}
     \left(\gamma_{a}^{*}\right)^{\nu_{a}}
     \right)^{\frac{1}{\nu_{c}+\nu_{a}}}
 ```
+
+**Rendered formula**
+
+$$
+\gamma_{\pm}^{*}
+    =
+    \left(
+    \left(\gamma_{c}^{*}\right)^{\nu_{c}}
+    \left(\gamma_{a}^{*}\right)^{\nu_{a}}
+    \right)^{\frac{1}{\nu_{c}+\nu_{a}}}
+$$
 
 #### `lngamma_pm_asym`
 - Label: `eq:lngamma_pm_asym`
@@ -2315,11 +3883,21 @@ Z^{\alpha}
 - LaTeX: `docs/latex/equations.tex:2174`
 - C++: `src/epcsaft/native/epcsaft_activity.cpp:409` (ActivityCoefficientNative activity_coefficient_values_impl_cpp()
 
+**LaTeX source**
+
 ```tex
 \ln\gamma_{\pm}^{*}
     =
     \frac{\nu_{c}\ln\gamma_{c}^{*}+\nu_{a}\ln\gamma_{a}^{*}}{\nu_{c}+\nu_{a}}
 ```
+
+**Rendered formula**
+
+$$
+\ln\gamma_{\pm}^{*}
+    =
+    \frac{\nu_{c}\ln\gamma_{c}^{*}+\nu_{a}\ln\gamma_{a}^{*}}{\nu_{c}+\nu_{a}}
+$$
 
 #### `lngamma_pm_alpha_asym`
 - Label: `eq:lngamma_pm_alpha_asym`
@@ -2330,11 +3908,21 @@ Z^{\alpha}
 - LaTeX: `docs/latex/equations.tex:2187`
 - C++: `src/epcsaft/native/epcsaft_activity.cpp:409` (ActivityCoefficientNative activity_coefficient_values_impl_cpp()
 
+**LaTeX source**
+
 ```tex
 \ln\gamma_{\pm}^{\alpha,*}
     =
     \frac{\nu_{c}\ln\gamma_{c}^{\alpha,*}+\nu_{a}\ln\gamma_{a}^{\alpha,*}}{\nu_{c}+\nu_{a}}
 ```
+
+**Rendered formula**
+
+$$
+\ln\gamma_{\pm}^{\alpha,*}
+    =
+    \frac{\nu_{c}\ln\gamma_{c}^{\alpha,*}+\nu_{a}\ln\gamma_{a}^{\alpha,*}}{\nu_{c}+\nu_{a}}
+$$
 
 ## Enthalpy, Entropy, and Gibbs Free Energy
 
@@ -2349,9 +3937,17 @@ Z^{\alpha}
 - LaTeX: `docs/latex/equations.tex:2208`
 - C++: `src/epcsaft/native/epcsaft_thermo.cpp:4` (double hres_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
 
+**LaTeX source**
+
 ```tex
 \tilde{h}^{\mathrm{res}} = \frac{\hat{h}^{\mathrm{res}}}{RT}=-T\left(\frac{\partial\tilde{a}^{\mathrm{res}}}{\partial T}\right)_{\rho,x_{i}}+(Z-1)
 ```
+
+**Rendered formula**
+
+$$
+\tilde{h}^{\mathrm{res}} = \frac{\hat{h}^{\mathrm{res}}}{RT}=-T\left(\frac{\partial\tilde{a}^{\mathrm{res}}}{\partial T}\right)_{\rho,x_{i}}+(Z-1)
+$$
 
 #### `s_res_from_s_vol`
 - Label: `eq:s_res_from_s_vol`
@@ -2362,9 +3958,17 @@ Z^{\alpha}
 - LaTeX: `docs/latex/equations.tex:2221`
 - C++: Documentation-only: no direct native owner expected.
 
+**LaTeX source**
+
 ```tex
 \tilde{s}^{\mathrm{res}} = \frac{\hat{s}^{\mathrm{res}}(P,T)}{R}=\frac{\hat{s}^{\mathrm{res}}(\nu,T)}{R}+\ln(Z)
 ```
+
+**Rendered formula**
+
+$$
+\tilde{s}^{\mathrm{res}} = \frac{\hat{s}^{\mathrm{res}}(P,T)}{R}=\frac{\hat{s}^{\mathrm{res}}(\nu,T)}{R}+\ln(Z)
+$$
 
 #### `s_res`
 - Label: `eq:s_res`
@@ -2375,9 +3979,17 @@ Z^{\alpha}
 - LaTeX: `docs/latex/equations.tex:2232`
 - C++: `src/epcsaft/native/epcsaft_thermo.cpp:18` (double sres_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
 
+**LaTeX source**
+
 ```tex
 \tilde{s}^{\mathrm{res}} = \frac{\hat{s}^{\mathrm{res}}(P,T)}{R}=-T\left[\left(\frac{\partial\tilde{a}^{\mathrm{res}}}{\partial T}\right)_{\rho,x_{i}}+\frac{\tilde{a}^{\mathrm{res}}}{T}\right]+\ln(Z)
 ```
+
+**Rendered formula**
+
+$$
+\tilde{s}^{\mathrm{res}} = \frac{\hat{s}^{\mathrm{res}}(P,T)}{R}=-T\left[\left(\frac{\partial\tilde{a}^{\mathrm{res}}}{\partial T}\right)_{\rho,x_{i}}+\frac{\tilde{a}^{\mathrm{res}}}{T}\right]+\ln(Z)
+$$
 
 ### Gibbs Free Energy
 
@@ -2390,9 +4002,17 @@ Z^{\alpha}
 - LaTeX: `docs/latex/equations.tex:2245`
 - C++: Documentation-only: no direct native owner expected.
 
+**LaTeX source**
+
 ```tex
 \tilde{g}^{\mathrm{res}}=\frac{\hat{g}^{\mathrm{res}}}{RT}=\frac{\hat{h}^{\mathrm{res}}}{RT}-\frac{\hat{s}^{\mathrm{res}}(P,T)}{R}
 ```
+
+**Rendered formula**
+
+$$
+\tilde{g}^{\mathrm{res}}=\frac{\hat{g}^{\mathrm{res}}}{RT}=\frac{\hat{h}^{\mathrm{res}}}{RT}-\frac{\hat{s}^{\mathrm{res}}(P,T)}{R}
+$$
 
 #### `g_res_from_ares`
 - Label: `eq:g_res_from_ares`
@@ -2403,9 +4023,17 @@ Z^{\alpha}
 - LaTeX: `docs/latex/equations.tex:2256`
 - C++: `src/epcsaft/native/epcsaft_thermo.cpp:11` (double gres_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {)
 
+**LaTeX source**
+
 ```tex
 \tilde{g}^{\mathrm{res}}=\tilde{a}^{\mathrm{res}}+(Z-1)-\ln(Z)
 ```
+
+**Rendered formula**
+
+$$
+\tilde{g}^{\mathrm{res}}=\tilde{a}^{\mathrm{res}}+(Z-1)-\ln(Z)
+$$
 
 #### `delta_g_solv_inf_x`
 - Label: `eq:delta_g_solv_inf_x`
@@ -2416,9 +4044,17 @@ Z^{\alpha}
 - LaTeX: `docs/latex/equations.tex:2269`
 - C++: `src/epcsaft/native/epcsaft_activity.cpp:104` (vector<double> gsolv_values_cpp()
 
+**LaTeX source**
+
 ```tex
 \Delta^{\mathrm{solv},x}G_{i}^{\infty}(T,p,x_{j\neq i},x_{i}\to0)=RT\ln(\varphi_{i}^{\infty}(T,p,x_{j\neq i},x_{i}\to0))
 ```
+
+**Rendered formula**
+
+$$
+\Delta^{\mathrm{solv},x}G_{i}^{\infty}(T,p,x_{j\neq i},x_{i}\to0)=RT\ln(\varphi_{i}^{\infty}(T,p,x_{j\neq i},x_{i}\to0))
+$$
 
 #### `delta_g_transfer_inf`
 - Label: `eq:delta_g_transfer_inf`
@@ -2429,9 +4065,17 @@ Z^{\alpha}
 - LaTeX: `docs/latex/equations.tex:2281`
 - C++: `src/epcsaft/native/epcsaft_activity.cpp:104` (vector<double> gsolv_values_cpp()
 
+**LaTeX source**
+
 ```tex
 \Delta^{\mathrm{tr}}G_{i}^{\infty,\mathrm{S}1\to\mathrm{S}2}(T,p,x_{j\neq i},x_{i}\rightarrow0)=RT\ln\left(\frac{\varphi_{i}^{\infty,\mathrm{S}2}}{\varphi_{i}^{\infty,\mathrm{S}1}}\right)
 ```
+
+**Rendered formula**
+
+$$
+\Delta^{\mathrm{tr}}G_{i}^{\infty,\mathrm{S}1\to\mathrm{S}2}(T,p,x_{j\neq i},x_{i}\rightarrow0)=RT\ln\left(\frac{\varphi_{i}^{\infty,\mathrm{S}2}}{\varphi_{i}^{\infty,\mathrm{S}1}}\right)
+$$
 
 ## Conversions
 
@@ -2446,12 +4090,23 @@ Z^{\alpha}
 - LaTeX: `docs/latex/equations.tex:2298`
 - C++: Documentation-only: no direct native owner expected.
 
+**LaTeX source**
+
 ```tex
 \mu_{\pm}
     =
     \frac{\dfrac{1}{|z_{\mathrm{cat}}|}\mu_{\mathrm{cat}}+\dfrac{1}{|z_{\mathrm{an}}|}\mu_{\mathrm{an}}}
     {\dfrac{1}{|z_{\mathrm{cat}}|}+\dfrac{1}{|z_{\mathrm{an}}|}}
 ```
+
+**Rendered formula**
+
+$$
+\mu_{\pm}
+    =
+    \frac{\dfrac{1}{|z_{\mathrm{cat}}|}\mu_{\mathrm{cat}}+\dfrac{1}{|z_{\mathrm{an}}|}\mu_{\mathrm{an}}}
+    {\dfrac{1}{|z_{\mathrm{cat}}|}+\dfrac{1}{|z_{\mathrm{an}}|}}
+$$
 
 #### `f_pm_charge`
 - Label: `eq:f_pm_charge`
@@ -2462,6 +4117,8 @@ Z^{\alpha}
 - LaTeX: `docs/latex/equations.tex:2312`
 - C++: Documentation-only: no direct native owner expected.
 
+**LaTeX source**
+
 ```tex
 f_{\pm}
     =
@@ -2470,6 +4127,17 @@ f_{\pm}
         \left(f_{\mathrm{an}}\right)^{1/|z_{\mathrm{an}}|}
     \right]^{\!\left[\left(1/|z_{\mathrm{cat}}|\right)+\left(1/|z_{\mathrm{an}}|\right)\right]^{-1}}
 ```
+
+**Rendered formula**
+
+$$
+f_{\pm}
+    =
+    \left[
+        \left(f_{\mathrm{cat}}\right)^{1/|z_{\mathrm{cat}}|}
+        \left(f_{\mathrm{an}}\right)^{1/|z_{\mathrm{an}}|}
+    \right]^{\!\left[\left(1/|z_{\mathrm{cat}}|\right)+\left(1/|z_{\mathrm{an}}|\right)\right]^{-1}}
+$$
 
 #### `a_pm_charge`
 - Label: `eq:a_pm_charge`
@@ -2480,6 +4148,8 @@ f_{\pm}
 - LaTeX: `docs/latex/equations.tex:2328`
 - C++: Documentation-only: no direct native owner expected.
 
+**LaTeX source**
+
 ```tex
 a_{\pm}
     =
@@ -2488,6 +4158,17 @@ a_{\pm}
         \left(a_{\mathrm{an}}\right)^{1/|z_{\mathrm{an}}|}
     \right]^{\!\left[\left(1/|z_{\mathrm{cat}}|\right)+\left(1/|z_{\mathrm{an}}|\right)\right]^{-1}}
 ```
+
+**Rendered formula**
+
+$$
+a_{\pm}
+    =
+    \left[
+        \left(a_{\mathrm{cat}}\right)^{1/|z_{\mathrm{cat}}|}
+        \left(a_{\mathrm{an}}\right)^{1/|z_{\mathrm{an}}|}
+    \right]^{\!\left[\left(1/|z_{\mathrm{cat}}|\right)+\left(1/|z_{\mathrm{an}}|\right)\right]^{-1}}
+$$
 
 #### `phi_pm_charge`
 - Label: `eq:phi_pm_charge`
@@ -2498,6 +4179,8 @@ a_{\pm}
 - LaTeX: `docs/latex/equations.tex:2344`
 - C++: Documentation-only: no direct native owner expected.
 
+**LaTeX source**
+
 ```tex
 \varphi_{\pm}
     =
@@ -2506,6 +4189,17 @@ a_{\pm}
         \left(\varphi_{\mathrm{an}}\right)^{1/|z_{\mathrm{an}}|}
     \right]^{\!\left[\left(1/|z_{\mathrm{cat}}|\right)+\left(1/|z_{\mathrm{an}}|\right)\right]^{-1}}
 ```
+
+**Rendered formula**
+
+$$
+\varphi_{\pm}
+    =
+    \left[
+        \left(\varphi_{\mathrm{cat}}\right)^{1/|z_{\mathrm{cat}}|}
+        \left(\varphi_{\mathrm{an}}\right)^{1/|z_{\mathrm{an}}|}
+    \right]^{\!\left[\left(1/|z_{\mathrm{cat}}|\right)+\left(1/|z_{\mathrm{an}}|\right)\right]^{-1}}
+$$
 
 #### `gamma_pm_charge`
 - Label: `eq:gamma_pm_charge`
@@ -2516,6 +4210,8 @@ a_{\pm}
 - LaTeX: `docs/latex/equations.tex:2360`
 - C++: `src/epcsaft/native/epcsaft_activity.cpp:409` (ActivityCoefficientNative activity_coefficient_values_impl_cpp()
 
+**LaTeX source**
+
 ```tex
 \gamma_{\pm}
     =
@@ -2524,6 +4220,17 @@ a_{\pm}
         \left(\gamma_{\mathrm{an}}\right)^{1/|z_{\mathrm{an}}|}
     \right]^{\!\left[\left(1/|z_{\mathrm{cat}}|\right)+\left(1/|z_{\mathrm{an}}|\right)\right]^{-1}}
 ```
+
+**Rendered formula**
+
+$$
+\gamma_{\pm}
+    =
+    \left[
+        \left(\gamma_{\mathrm{cat}}\right)^{1/|z_{\mathrm{cat}}|}
+        \left(\gamma_{\mathrm{an}}\right)^{1/|z_{\mathrm{an}}|}
+    \right]^{\!\left[\left(1/|z_{\mathrm{cat}}|\right)+\left(1/|z_{\mathrm{an}}|\right)\right]^{-1}}
+$$
 
 ### Mole-Fraction and Molality Basis
 
@@ -2536,11 +4243,21 @@ a_{\pm}
 - LaTeX: `docs/latex/equations.tex:2380`
 - C++: `src/epcsaft/native/epcsaft_activity.cpp:409` (ActivityCoefficientNative activity_coefficient_values_impl_cpp()
 
+**LaTeX source**
+
 ```tex
 \gamma_{\pm}^{*,m}
     =
     \frac{\gamma_{\pm}^{*,x}}{1+M_{\mathrm{solvent}}\cdot\tilde{m}_{\mathrm{solute}}\cdot\sum_{i}\nu_{i,\mathrm{ion}}}
 ```
+
+**Rendered formula**
+
+$$
+\gamma_{\pm}^{*,m}
+    =
+    \frac{\gamma_{\pm}^{*,x}}{1+M_{\mathrm{solvent}}\cdot\tilde{m}_{\mathrm{solute}}\cdot\sum_{i}\nu_{i,\mathrm{ion}}}
+$$
 
 #### `lngamma_pm_molality`
 - Label: `eq:lngamma_pm_molality`
@@ -2551,6 +4268,8 @@ a_{\pm}
 - LaTeX: `docs/latex/equations.tex:2393`
 - C++: `src/epcsaft/native/epcsaft_activity.cpp:409` (ActivityCoefficientNative activity_coefficient_values_impl_cpp()
 
+**LaTeX source**
+
 ```tex
 \ln\gamma_{\pm}^{*,m}
     =
@@ -2558,6 +4277,16 @@ a_{\pm}
     -
     \ln\left(1+M_{\mathrm{solvent}}\cdot\tilde{m}_{\mathrm{solute}}\cdot\sum_{i}\nu_{i,\mathrm{ion}}\right)
 ```
+
+**Rendered formula**
+
+$$
+\ln\gamma_{\pm}^{*,m}
+    =
+    \ln\gamma_{\pm}^{*,x}
+    -
+    \ln\left(1+M_{\mathrm{solvent}}\cdot\tilde{m}_{\mathrm{solute}}\cdot\sum_{i}\nu_{i,\mathrm{ion}}\right)
+$$
 
 ## Supplemental
 
@@ -2574,10 +4303,19 @@ a_{\pm}
 - LaTeX: `docs/latex/equations.tex:2417`
 - C++: `src/epcsaft/native/contributions/epcsaft_contrib_ion.cpp:79` (double dadrho_ion_cpp(double t, const IonIntermediateState &ion_state) {)
 
+**LaTeX source**
+
 ```tex
 \rho\left(\frac{\partial\tilde{a}^{DH}}{\partial\rho}\right)_{T,x}
     =-\frac{\kappa e^2}{24\pi kT\epsilon}\sum_{i}x_{i}z_{i}{}^{2}\sigma_{i}
 ```
+
+**Rendered formula**
+
+$$
+\rho\left(\frac{\partial\tilde{a}^{DH}}{\partial\rho}\right)_{T,x}
+    =-\frac{\kappa e^2}{24\pi kT\epsilon}\sum_{i}x_{i}z_{i}{}^{2}\sigma_{i}
+$$
 
 #### Cameretti 2005 Chemical-Potential Forms
 
@@ -2590,9 +4328,17 @@ a_{\pm}
 - LaTeX: `docs/latex/equations.tex:2431`
 - C++: Documentation-only: no direct native owner expected.
 
+**LaTeX source**
+
 ```tex
 \tilde{\mu}^{DH}_{i}= -\frac{q_{i}^2 \kappa}{24 \pi k T \epsilon}\left[2 \chi_{i}+\frac{\sum_{j} x_{j} q_{j}^2 \sigma_{k}}{\sum_{j} x_{j} q_{j}^2}\right]
 ```
+
+**Rendered formula**
+
+$$
+\tilde{\mu}^{DH}_{i}= -\frac{q_{i}^2 \kappa}{24 \pi k T \epsilon}\left[2 \chi_{i}+\frac{\sum_{j} x_{j} q_{j}^2 \sigma_{k}}{\sum_{j} x_{j} q_{j}^2}\right]
+$$
 
 ##### `sigma_dh_2005`
 - Label: `eq:sigma_dh_2005`
@@ -2603,9 +4349,17 @@ a_{\pm}
 - LaTeX: `docs/latex/equations.tex:2442`
 - C++: Documentation-only: no direct native owner expected.
 
+**LaTeX source**
+
 ```tex
 \sigma_{k}=\left(\frac{\partial\left(\kappa \chi_{k}\right)}{\partial \kappa}\right)_{T, \mathrm{~N}}=-2 \chi_{k}+\frac{3}{1+\kappa d_{k}}
 ```
+
+**Rendered formula**
+
+$$
+\sigma_{k}=\left(\frac{\partial\left(\kappa \chi_{k}\right)}{\partial \kappa}\right)_{T, \mathrm{~N}}=-2 \chi_{k}+\frac{3}{1+\kappa d_{k}}
+$$
 
 ### Bjerrum Treatment
 
@@ -2620,6 +4374,8 @@ a_{\pm}
 - LaTeX: `docs/latex/equations.tex:2459`
 - C++: Documentation-only: no direct native owner expected.
 
+**LaTeX source**
+
 ```tex
 R_{i}=
     \begin{cases}
@@ -2627,6 +4383,16 @@ R_{i}=
         l_{B},              & d_{\mathrm{ion},i}<l_{B}.
     \end{cases}
 ```
+
+**Rendered formula**
+
+$$
+R_{i}=
+    \begin{cases}
+        d_{\mathrm{ion},i}, & d_{\mathrm{ion},i}>l_{B}, \\
+        l_{B},              & d_{\mathrm{ion},i}<l_{B}.
+    \end{cases}
+$$
 
 ##### `bjerrum_length`
 - Label: `eq:bjerrum_length`
@@ -2637,9 +4403,17 @@ R_{i}=
 - LaTeX: `docs/latex/equations.tex:2474`
 - C++: Documentation-only: no direct native owner expected.
 
+**LaTeX source**
+
 ```tex
 l_{B}=\frac{\left|z_{i}z_{j}\right|e^2}{8\pi\varepsilon_{0}\varepsilon_{r}k_{B}T}
 ```
+
+**Rendered formula**
+
+$$
+l_{B}=\frac{\left|z_{i}z_{j}\right|e^2}{8\pi\varepsilon_{0}\varepsilon_{r}k_{B}T}
+$$
 
 ##### `ares_dh_bjerrum`
 - Label: `eq:ares_dh_bjerrum`
@@ -2650,9 +4424,17 @@ l_{B}=\frac{\left|z_{i}z_{j}\right|e^2}{8\pi\varepsilon_{0}\varepsilon_{r}k_{B}T
 - LaTeX: `docs/latex/equations.tex:2485`
 - C++: Documentation-only: no direct native owner expected.
 
+**LaTeX source**
+
 ```tex
 \tilde{a}^{DH}=-\frac{\kappa e^{2}}{12\pi\varepsilon_{0}\varepsilon_{r}k_{B}T}\sum_{i}\alpha_{i}x_{i}z_{i}^{2}\chi_{i}
 ```
+
+**Rendered formula**
+
+$$
+\tilde{a}^{DH}=-\frac{\kappa e^{2}}{12\pi\varepsilon_{0}\varepsilon_{r}k_{B}T}\sum_{i}\alpha_{i}x_{i}z_{i}^{2}\chi_{i}
+$$
 
 ##### `kappa_dh_bjerrum`
 - Label: `eq:kappa_dh_bjerrum`
@@ -2663,9 +4445,17 @@ l_{B}=\frac{\left|z_{i}z_{j}\right|e^2}{8\pi\varepsilon_{0}\varepsilon_{r}k_{B}T
 - LaTeX: `docs/latex/equations.tex:2496`
 - C++: Documentation-only: no direct native owner expected.
 
+**LaTeX source**
+
 ```tex
 \kappa=\sqrt{\frac{\rho e^{2}}{k_{B}T\varepsilon_{0}\varepsilon_{r}}\sum_{j}\alpha_{j}x_{j}z_{j}^{2}}
 ```
+
+**Rendered formula**
+
+$$
+\kappa=\sqrt{\frac{\rho e^{2}}{k_{B}T\varepsilon_{0}\varepsilon_{r}}\sum_{j}\alpha_{j}x_{j}z_{j}^{2}}
+$$
 
 ##### `chi_dh_bjerrum`
 - Label: `eq:chi_dh_bjerrum`
@@ -2676,9 +4466,17 @@ l_{B}=\frac{\left|z_{i}z_{j}\right|e^2}{8\pi\varepsilon_{0}\varepsilon_{r}k_{B}T
 - LaTeX: `docs/latex/equations.tex:2507`
 - C++: Documentation-only: no direct native owner expected.
 
+**LaTeX source**
+
 ```tex
 \chi_{i}=\frac{3}{\left(\kappa R_{i}\right)^3}\left[\frac{3}{2}+\ln(1+\kappa R_{i})-2(1+\kappa R_{i})+\frac{1}{2}\left(1+\kappa R_{i}\right)^2\right]
 ```
+
+**Rendered formula**
+
+$$
+\chi_{i}=\frac{3}{\left(\kappa R_{i}\right)^3}\left[\frac{3}{2}+\ln(1+\kappa R_{i})-2(1+\kappa R_{i})+\frac{1}{2}\left(1+\kappa R_{i}\right)^2\right]
+$$
 
 #### Density Differential
 
@@ -2691,10 +4489,19 @@ l_{B}=\frac{\left|z_{i}z_{j}\right|e^2}{8\pi\varepsilon_{0}\varepsilon_{r}k_{B}T
 - LaTeX: `docs/latex/equations.tex:2520`
 - C++: Documentation-only: no direct native owner expected.
 
+**LaTeX source**
+
 ```tex
 \rho\left(\frac{\partial\tilde{a}^{DH}}{\partial\rho}\right)_{T,x}
     =-\frac{\kappa e^2}{24\pi kT\epsilon}\sum_{i}\alpha _{i}x_{i}z_{i}{}^{2}\sigma_{i}
 ```
+
+**Rendered formula**
+
+$$
+\rho\left(\frac{\partial\tilde{a}^{DH}}{\partial\rho}\right)_{T,x}
+    =-\frac{\kappa e^2}{24\pi kT\epsilon}\sum_{i}\alpha _{i}x_{i}z_{i}{}^{2}\sigma_{i}
+$$
 
 ##### `sigma_dh_bjerrum`
 - Label: `eq:sigma_dh_bjerrum`
@@ -2705,9 +4512,17 @@ l_{B}=\frac{\left|z_{i}z_{j}\right|e^2}{8\pi\varepsilon_{0}\varepsilon_{r}k_{B}T
 - LaTeX: `docs/latex/equations.tex:2532`
 - C++: Documentation-only: no direct native owner expected.
 
+**LaTeX source**
+
 ```tex
 \sigma_{i}=\left(\frac{\partial(\kappa\chi_{i})}{\partial\kappa}\right)_{T,\mathrm{x}}=-2\chi_{i}+\frac{3}{1+\kappa R_{i}}
 ```
+
+**Rendered formula**
+
+$$
+\sigma_{i}=\left(\frac{\partial(\kappa\chi_{i})}{\partial\kappa}\right)_{T,\mathrm{x}}=-2\chi_{i}+\frac{3}{1+\kappa R_{i}}
+$$
 
 #### Composition Differential
 
@@ -2719,6 +4534,8 @@ l_{B}=\frac{\left|z_{i}z_{j}\right|e^2}{8\pi\varepsilon_{0}\varepsilon_{r}k_{B}T
 - Change note: Grouped under the supplemental Bjerrum-treatment section so the composition-derivative variant stays with the rest of the extended Bjerrum relations.
 - LaTeX: `docs/latex/equations.tex:2545`
 - C++: Documentation-only: no direct native owner expected.
+
+**LaTeX source**
 
 ```tex
 \begin{aligned}
@@ -2742,6 +4559,30 @@ l_{B}=\frac{\left|z_{i}z_{j}\right|e^2}{8\pi\varepsilon_{0}\varepsilon_{r}k_{B}T
     \end{aligned}
 ```
 
+**Rendered formula**
+
+$$
+\begin{aligned}
+        \left(\frac{\partial \tilde{a}^{DH}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
+        =
+        -\frac{e^{2}}{12\pi\varepsilon_{0}k_{B}T}
+        \Bigg[
+          & \frac{1}{\varepsilon_{r}}\left(\frac{\partial\kappa}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
+            \sum_{j}\alpha_{j}x_{j}z_{j}^{2}\chi_{j}
+        \\
+        - & \frac{\kappa}{\varepsilon_{r}^{2}}
+            \left(\frac{\partial\varepsilon_{r}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}
+            \sum_{j}\alpha_{j}x_{j}z_{j}^{2}\chi_{j}
+        \\
+        + & \frac{\kappa}{\varepsilon_{r}}\alpha_{i}z_{i}^{2}\chi_{i}
+        \\
+        + & \frac{\kappa}{\varepsilon_{r}}
+            \sum_{j}\alpha_{j}x_{j}z_{j}^{2}
+            \left(\frac{\partial\chi_{j}}{\partial x_{i}}\right)_{T,v,x_{k\neq i}}
+            \Bigg]
+    \end{aligned}
+$$
+
 ##### `dkappa_dh_dxi_bjerrum`
 - Label: `eq:dkappa_dh_dxi_bjerrum`
 - Source: \cite{Bulow2021}, Eq.~(22)
@@ -2751,11 +4592,21 @@ l_{B}=\frac{\left|z_{i}z_{j}\right|e^2}{8\pi\varepsilon_{0}\varepsilon_{r}k_{B}T
 - LaTeX: `docs/latex/equations.tex:2574`
 - C++: Documentation-only: no direct native owner expected.
 
+**LaTeX source**
+
 ```tex
 \begin{aligned}
          & \left(\frac{\partial\kappa}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}=\frac12\left(\frac{\rho_{N}e^{2}}{k_{B}T\varepsilon_{0}\varepsilon_{r}}\sum_{j}\alpha_{j}x_{j}z_{j}^{2}\right)^{-\frac12} \\&\left\{-\frac{\rho_{N}e^2}{k_{B}T\left(\varepsilon_{0}\varepsilon_{r}\right)^2}\varepsilon_{0}\frac{\partial\left(\varepsilon_{r}\right)}{\partial x_{i}}\sum_{j}\alpha_{j}x_{j}z_{j}^2+\frac{\rho_{N}e^2}{k_{B}T\varepsilon_{0}\varepsilon_{r}}\alpha_{i}z_{i}^2\right\}\\&=\left(\frac{\rho_{N}e^{2}}{k_{B}T}\right)^{\frac{1}{2}}\left\{-\frac{1}{2}\left(\varepsilon_{0}\varepsilon_{r}\right)^{-\frac{3}{2}}\varepsilon_{0}\frac{\partial\left(\varepsilon_{r}\right)}{\partial x_{i}}\left[\sum_{j}\alpha_{j}x_{j}z_{j}^{2}\right]^{\frac{1}{2}}\right.\\&+\frac{1}{2\sqrt{\varepsilon_{0}\varepsilon_{r}}}\Bigg[\sum_{j}\alpha_{j}x_{j}z_{j}^2\Bigg]^{-\frac{1}{2}}\alpha_{i}z_{i}^2\Bigg\}
     \end{aligned}
 ```
+
+**Rendered formula**
+
+$$
+\begin{aligned}
+         & \left(\frac{\partial\kappa}{\partial x_{i}}\right)_{T,v,x_{j\neq i}}=\frac12\left(\frac{\rho_{N}e^{2}}{k_{B}T\varepsilon_{0}\varepsilon_{r}}\sum_{j}\alpha_{j}x_{j}z_{j}^{2}\right)^{-\frac12} \\&\left\{-\frac{\rho_{N}e^2}{k_{B}T\left(\varepsilon_{0}\varepsilon_{r}\right)^2}\varepsilon_{0}\frac{\partial\left(\varepsilon_{r}\right)}{\partial x_{i}}\sum_{j}\alpha_{j}x_{j}z_{j}^2+\frac{\rho_{N}e^2}{k_{B}T\varepsilon_{0}\varepsilon_{r}}\alpha_{i}z_{i}^2\right\}\\&=\left(\frac{\rho_{N}e^{2}}{k_{B}T}\right)^{\frac{1}{2}}\left\{-\frac{1}{2}\left(\varepsilon_{0}\varepsilon_{r}\right)^{-\frac{3}{2}}\varepsilon_{0}\frac{\partial\left(\varepsilon_{r}\right)}{\partial x_{i}}\left[\sum_{j}\alpha_{j}x_{j}z_{j}^{2}\right]^{\frac{1}{2}}\right.\\&+\frac{1}{2\sqrt{\varepsilon_{0}\varepsilon_{r}}}\Bigg[\sum_{j}\alpha_{j}x_{j}z_{j}^2\Bigg]^{-\frac{1}{2}}\alpha_{i}z_{i}^2\Bigg\}
+    \end{aligned}
+$$
 
 ##### `dchi_dh_dxi_bjerrum`
 - Label: `eq:dchi_dh_dxi_bjerrum`
@@ -2766,11 +4617,21 @@ l_{B}=\frac{\left|z_{i}z_{j}\right|e^2}{8\pi\varepsilon_{0}\varepsilon_{r}k_{B}T
 - LaTeX: `docs/latex/equations.tex:2587`
 - C++: Documentation-only: no direct native owner expected.
 
+**LaTeX source**
+
 ```tex
 \begin{aligned}
         \left(\frac{\partial\chi_{i}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}} & =-\frac{9}{\left(\kappa R_{i}\right)^{4}}\biggl[\frac{3}{2}+\ln(1+\kappa R_{i})-2(1+\kappa R_{i}) \\&+\frac{1}{2}\left(1+\kappa R_{i}\right)^{2}\bigg]R_{i}\frac{\partial\kappa}{\partial x_{i}}+\frac{3}{\left(\kappa R_{i}\right)^{3}}\bigg[\frac{1}{1+\kappa R_{i}}-1+\kappa R_{i}\bigg]\\R_{i}\frac{\partial\kappa}{\partial x_{i}}&= 3\frac{\partial\kappa}{\partial x_{i}}\left\{-\frac{\chi_{i}}{\kappa}+\frac{R_{i}}{\left(\kappa R_{i}\right)^{3}}\biggl[\frac{1}{1+\kappa R_{i}}-1+\kappa R_{i}\biggr]\right\}
     \end{aligned}
 ```
+
+**Rendered formula**
+
+$$
+\begin{aligned}
+        \left(\frac{\partial\chi_{i}}{\partial x_{i}}\right)_{T,v,x_{j\neq i}} & =-\frac{9}{\left(\kappa R_{i}\right)^{4}}\biggl[\frac{3}{2}+\ln(1+\kappa R_{i})-2(1+\kappa R_{i}) \\&+\frac{1}{2}\left(1+\kappa R_{i}\right)^{2}\bigg]R_{i}\frac{\partial\kappa}{\partial x_{i}}+\frac{3}{\left(\kappa R_{i}\right)^{3}}\bigg[\frac{1}{1+\kappa R_{i}}-1+\kappa R_{i}\bigg]\\R_{i}\frac{\partial\kappa}{\partial x_{i}}&= 3\frac{\partial\kappa}{\partial x_{i}}\left\{-\frac{\chi_{i}}{\kappa}+\frac{R_{i}}{\left(\kappa R_{i}\right)^{3}}\biggl[\frac{1}{1+\kappa R_{i}}-1+\kappa R_{i}\biggr]\right\}
+    \end{aligned}
+$$
 
 #### Ion-Pairing Relations
 
@@ -2783,9 +4644,17 @@ l_{B}=\frac{\left|z_{i}z_{j}\right|e^2}{8\pi\varepsilon_{0}\varepsilon_{r}k_{B}T
 - LaTeX: `docs/latex/equations.tex:2602`
 - C++: Documentation-only: no direct native owner expected.
 
+**LaTeX source**
+
 ```tex
 \alpha=\frac{-1+\sqrt{1+4x_{\pm} K_{ip}\frac{\left(\gamma_{\pm}^*\left(x_{f}\right)\right)^2}{\gamma_{ip}^*}}}{2x_{\pm} K_{ip}\frac{\left(\gamma_{\pm}^*\left(x_{f}\right)\right)^2}{\gamma_{ip}^*}}
 ```
+
+**Rendered formula**
+
+$$
+\alpha=\frac{-1+\sqrt{1+4x_{\pm} K_{ip}\frac{\left(\gamma_{\pm}^*\left(x_{f}\right)\right)^2}{\gamma_{ip}^*}}}{2x_{\pm} K_{ip}\frac{\left(\gamma_{\pm}^*\left(x_{f}\right)\right)^2}{\gamma_{ip}^*}}
+$$
 
 ##### `k_ion_pair`
 - Label: `eq:k_ion_pair`
@@ -2796,9 +4665,17 @@ l_{B}=\frac{\left|z_{i}z_{j}\right|e^2}{8\pi\varepsilon_{0}\varepsilon_{r}k_{B}T
 - LaTeX: `docs/latex/equations.tex:2613`
 - C++: Documentation-only: no direct native owner expected.
 
+**LaTeX source**
+
 ```tex
 K_{ip}(T)=\frac{(1-\alpha)\cdot\gamma_{ip}^{*}}{\alpha^{2}\cdot x_{\pm}\cdot\left(\gamma_{\pm}^{*}(x_{f}(\alpha))\right)^{2}} = 4\pi\rho_{N}\int_{a}^{l_{B}}\exp\left(\frac{\left|z_{i}z_{j}\right|e^2}{4\pi\varepsilon_{0}\varepsilon_{r}k_{B}T}\cdot\frac{1}{r}\right)r^2dr
 ```
+
+**Rendered formula**
+
+$$
+K_{ip}(T)=\frac{(1-\alpha)\cdot\gamma_{ip}^{*}}{\alpha^{2}\cdot x_{\pm}\cdot\left(\gamma_{\pm}^{*}(x_{f}(\alpha))\right)^{2}} = 4\pi\rho_{N}\int_{a}^{l_{B}}\exp\left(\frac{\left|z_{i}z_{j}\right|e^2}{4\pi\varepsilon_{0}\varepsilon_{r}k_{B}T}\cdot\frac{1}{r}\right)r^2dr
+$$
 
 ##### `gamma_ion_pair_unity`
 - Label: `eq:gamma_ion_pair_unity`
@@ -2809,9 +4686,17 @@ K_{ip}(T)=\frac{(1-\alpha)\cdot\gamma_{ip}^{*}}{\alpha^{2}\cdot x_{\pm}\cdot\lef
 - LaTeX: `docs/latex/equations.tex:2624`
 - C++: Documentation-only: no direct native owner expected.
 
+**LaTeX source**
+
 ```tex
 \gamma_{ip}^* \approx 1
 ```
+
+**Rendered formula**
+
+$$
+\gamma_{ip}^* \approx 1
+$$
 
 ##### `x_pm_balance`
 - Label: `eq:x_pm_balance`
@@ -2822,9 +4707,17 @@ K_{ip}(T)=\frac{(1-\alpha)\cdot\gamma_{ip}^{*}}{\alpha^{2}\cdot x_{\pm}\cdot\lef
 - LaTeX: `docs/latex/equations.tex:2635`
 - C++: Documentation-only: no direct native owner expected.
 
+**LaTeX source**
+
 ```tex
 x_{\pm} = x_{f} + x_{ip}
 ```
+
+**Rendered formula**
+
+$$
+x_{\pm} = x_{f} + x_{ip}
+$$
 
 ##### `x_free_ion_from_alpha`
 - Label: `eq:x_free_ion_from_alpha`
@@ -2835,9 +4728,17 @@ x_{\pm} = x_{f} + x_{ip}
 - LaTeX: `docs/latex/equations.tex:2646`
 - C++: Documentation-only: no direct native owner expected.
 
+**LaTeX source**
+
 ```tex
 x_{\pm} = \alpha x_{f}
 ```
+
+**Rendered formula**
+
+$$
+x_{\pm} = \alpha x_{f}
+$$
 
 ##### `x_ion_pair_from_alpha`
 - Label: `eq:x_ion_pair_from_alpha`
@@ -2848,9 +4749,17 @@ x_{\pm} = \alpha x_{f}
 - LaTeX: `docs/latex/equations.tex:2657`
 - C++: Documentation-only: no direct native owner expected.
 
+**LaTeX source**
+
 ```tex
 x_{\pm} = (1 - \alpha) x_{ip}
 ```
+
+**Rendered formula**
+
+$$
+x_{\pm} = (1 - \alpha) x_{ip}
+$$
 
 ##### `x_pm_stoich`
 - Label: `eq:x_pm_stoich`
@@ -2861,9 +4770,17 @@ x_{\pm} = (1 - \alpha) x_{ip}
 - LaTeX: `docs/latex/equations.tex:2668`
 - C++: Documentation-only: no direct native owner expected.
 
+**LaTeX source**
+
 ```tex
 x_{\pm}=(x_{c}^{\nu c}\cdot x_{a}^{\nu a})^{\frac{1}{\nu_{c}+\nu_{a}}}
 ```
+
+**Rendered formula**
+
+$$
+x_{\pm}=(x_{c}^{\nu c}\cdot x_{a}^{\nu a})^{\frac{1}{\nu_{c}+\nu_{a}}}
+$$
 
 ##### `mu_dh_infinite_dilution`
 - Label: `eq:mu_dh_infinite_dilution`
@@ -2874,9 +4791,17 @@ x_{\pm}=(x_{c}^{\nu c}\cdot x_{a}^{\nu a})^{\frac{1}{\nu_{c}+\nu_{a}}}
 - LaTeX: `docs/latex/equations.tex:2679`
 - C++: Documentation-only: no direct native owner expected.
 
+**LaTeX source**
+
 ```tex
 \mu_{i}^{DH}\left(x_{f}\right)=\left(\frac{\partial A^{DH}}{\partial\rho_{i}\left(x_{f}\right)}\right)_{T,V,N_{j\neq i}}=-\frac{e^{2}z_{i}^{2}\kappa}{24\pi\varepsilon_{0}\varepsilon_{r}}\left[2\chi_{i}+\frac{\sum_{k}x_{k,f}z_{k}^{2}\sigma_{k}}{\sum_{k}x_{k,f}z_{k}^{2}}\right]
 ```
+
+**Rendered formula**
+
+$$
+\mu_{i}^{DH}\left(x_{f}\right)=\left(\frac{\partial A^{DH}}{\partial\rho_{i}\left(x_{f}\right)}\right)_{T,V,N_{j\neq i}}=-\frac{e^{2}z_{i}^{2}\kappa}{24\pi\varepsilon_{0}\varepsilon_{r}}\left[2\chi_{i}+\frac{\sum_{k}x_{k,f}z_{k}^{2}\sigma_{k}}{\sum_{k}x_{k,f}z_{k}^{2}}\right]
+$$
 
 ##### `lngamma_i_infinite_dilution`
 - Label: `eq:lngamma_i_infinite_dilution`
@@ -2887,9 +4812,17 @@ x_{\pm}=(x_{c}^{\nu c}\cdot x_{a}^{\nu a})^{\frac{1}{\nu_{c}+\nu_{a}}}
 - LaTeX: `docs/latex/equations.tex:2690`
 - C++: Documentation-only: no direct native owner expected.
 
+**LaTeX source**
+
 ```tex
 \ln\gamma_{i}^{*}\left(x_{f,i}\right)=-\frac{e^{2}z_{i}^{2}\kappa}{24\pi\varepsilon_{0}\varepsilon_{r}}\left[2\chi_{i}+\frac{\sum_{k}x_{k,f}z_{k}^{2}\sigma_{k}}{\sum_{k}x_{k,f}z_{k}^{2}}\right]
 ```
+
+**Rendered formula**
+
+$$
+\ln\gamma_{i}^{*}\left(x_{f,i}\right)=-\frac{e^{2}z_{i}^{2}\kappa}{24\pi\varepsilon_{0}\varepsilon_{r}}\left[2\chi_{i}+\frac{\sum_{k}x_{k,f}z_{k}^{2}\sigma_{k}}{\sum_{k}x_{k,f}z_{k}^{2}}\right]
+$$
 
 ##### `gamma_pm_x`
 - Label: `eq:gamma_pm_x`
@@ -2900,6 +4833,14 @@ x_{\pm}=(x_{c}^{\nu c}\cdot x_{a}^{\nu a})^{\frac{1}{\nu_{c}+\nu_{a}}}
 - LaTeX: `docs/latex/equations.tex:2701`
 - C++: Documentation-only: no direct native owner expected.
 
+**LaTeX source**
+
 ```tex
 \gamma_{\pm}^{*}=(\gamma_{c}^{*,\nu c}\cdot\gamma_{a}^{*,\nu a})^{\frac{1}{\nu_{c}+\nu_{a}}}
 ```
+
+**Rendered formula**
+
+$$
+\gamma_{\pm}^{*}=(\gamma_{c}^{*,\nu c}\cdot\gamma_{a}^{*,\nu a})^{\frac{1}{\nu_{c}+\nu_{a}}}
+$$

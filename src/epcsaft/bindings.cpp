@@ -2204,6 +2204,7 @@ PYBIND11_MODULE(_core, m) {
             )
         );
     });
+    // AlgID: neutral_tp_flash_ipopt
     m.def("_native_neutral_tp_flash_eos_nlp_contract", [](
         const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
         double temperature,
@@ -2222,6 +2223,7 @@ PYBIND11_MODULE(_core, m) {
             )
         );
     });
+    // AlgID: neutral_lle_ipopt
     m.def("_native_neutral_lle_eos_nlp_contract", [](
         const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
         double temperature,
@@ -2240,6 +2242,7 @@ PYBIND11_MODULE(_core, m) {
             )
         );
     });
+    // AlgID: electrolyte_lle_ipopt
     m.def("_native_electrolyte_lle_eos_nlp_contract", [](
         const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
         double temperature,
@@ -2294,6 +2297,7 @@ PYBIND11_MODULE(_core, m) {
             )
         );
     });
+    // AlgID: reactive_lle_liquid_root_ipopt
     m.def("_native_reactive_lle_eos_nlp_contract", [](
         const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
         double temperature,
@@ -2330,6 +2334,7 @@ PYBIND11_MODULE(_core, m) {
             )
         );
     });
+    // AlgID: reactive_electrolyte_lle_liquid_root_ipopt
     m.def("_native_reactive_electrolyte_lle_eos_nlp_contract", [](
         const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
         double temperature,
@@ -2448,6 +2453,7 @@ PYBIND11_MODULE(_core, m) {
             )
         );
     });
+    // AlgID: bubble_dew_ipopt
     m.def("_native_neutral_bubble_p_eos_nlp_contract", [](
         const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
         double temperature,
@@ -2528,6 +2534,7 @@ PYBIND11_MODULE(_core, m) {
             )
         );
     });
+    // AlgID: stability_tpd_ipopt
     m.def("_native_neutral_stability_tpd_nlp_contract", [](
         const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
         double temperature,
@@ -2868,6 +2875,7 @@ PYBIND11_MODULE(_core, m) {
             )
         );
     });
+    // AlgID: neutral_tp_flash_ipopt
     m.def("_native_neutral_tp_flash_eos_route_result", [](
         const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
         double temperature,
@@ -2912,6 +2920,7 @@ PYBIND11_MODULE(_core, m) {
             )
         );
     });
+    // AlgID: neutral_lle_ipopt
     m.def("_native_neutral_lle_eos_route_result", [](
         const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
         double temperature,
@@ -2956,6 +2965,7 @@ PYBIND11_MODULE(_core, m) {
             )
         );
     });
+    // AlgID: electrolyte_lle_ipopt
     m.def("_native_electrolyte_lle_eos_route_result", [](
         const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
         double temperature,
@@ -3005,6 +3015,7 @@ PYBIND11_MODULE(_core, m) {
             )
         );
     });
+    // AlgID: bubble_dew_ipopt
     m.def("_native_neutral_bubble_p_eos_route_result", [](
         const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
         double temperature,
@@ -3210,6 +3221,7 @@ PYBIND11_MODULE(_core, m) {
             )
         );
     });
+    // AlgID: stability_tpd_ipopt
     m.def("_native_neutral_stability_tpd_route_result", [](
         const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
         double temperature,
@@ -3580,12 +3592,18 @@ PYBIND11_MODULE(_core, m) {
             py::arg("solvent_override_index") = -1
         );
 
+    // AlgID: pure_neutral_ceres_regression
     m.def("_fit_pure_neutral_native_ceres", &fit_pure_neutral_native_ceres_binding);
     m.def("_fit_pure_neutral_native_debug", &evaluate_pure_neutral_objective_debug_binding);
+    // AlgID: native_ceres_regression_adapter
+    // AlgID: pure_ion_ceres_regression
+    // AlgID: binary_kij_ceres_regression
     m.def("_fit_generic_native_ceres", &fit_generic_native_ceres_binding);
     m.def("_evaluate_generic_native_debug", &evaluate_generic_native_debug_binding);
     m.def("_evaluate_electrolyte_lle_residual_native", &evaluate_electrolyte_lle_residual_native_binding);
     m.def("_evaluate_reactive_phase_equilibrium_residual_native", &evaluate_reactive_phase_equilibrium_residual_native_binding);
+    // AlgID: ideal_speciation_ipopt
+    // AlgID: nonideal_speciation_ipopt
     m.def("_solve_chemical_equilibrium_native", &solve_chemical_equilibrium_native_binding);
     m.def("_evaluate_chemical_equilibrium_residual_native", &evaluate_chemical_equilibrium_residual_native_binding);
 }

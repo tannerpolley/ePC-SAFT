@@ -561,6 +561,7 @@ PureNeutralObjectiveEvaluation evaluate_pure_neutral_objective_cpp(
 }
 
 #ifdef EPCSAFT_HAS_CERES
+// AlgID: native_ceres_regression_adapter
 ceres::Solver::Options ceres_regression_options_cpp(int max_num_iterations) {
     ceres::Solver::Options options;
     options.linear_solver_type = ceres::DENSE_QR;
@@ -573,6 +574,7 @@ ceres::Solver::Options ceres_regression_options_cpp(int max_num_iterations) {
     return options;
 }
 
+// AlgID: pure_neutral_ceres_regression
 class PureNeutralCeresCostFunction final : public ceres::CostFunction {
 public:
     PureNeutralCeresCostFunction(
@@ -1531,6 +1533,7 @@ BinaryKijResidualEvaluation evaluate_binary_kij_residual_jacobian_cpp(
 }
 
 #ifdef EPCSAFT_HAS_CERES
+// AlgID: pure_ion_ceres_regression
 class PureIonCeresCostFunction final : public ceres::CostFunction {
 public:
     PureIonCeresCostFunction(
@@ -1653,6 +1656,7 @@ GenericRegressionResult solve_one_pure_ion_ceres_start_cpp(
     }
 }
 
+// AlgID: binary_kij_ceres_regression
 class BinaryKijCeresCostFunction final : public ceres::CostFunction {
 public:
     BinaryKijCeresCostFunction(

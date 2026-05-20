@@ -2955,6 +2955,8 @@ epcsaft::native::equilibrium_nlp::NeutralTwoPhaseEosNlpContract evaluate_reactiv
     return reactive_liquid_root_contract_from_problem(problem);
 }
 
+// AlgID: reactive_lle_liquid_root_ipopt
+// AlgID: reactive_electrolyte_lle_liquid_root_ipopt
 epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult solve_reactive_phase_liquid_root_route_native(
     const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
     double t,

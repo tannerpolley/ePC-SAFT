@@ -1859,6 +1859,7 @@ NeutralTwoPhaseEosPostsolve fixed_temperature_pressure_postsolve(
     return out;
 }
 
+// AlgID: bubble_dew_ipopt
 NeutralTwoPhaseEosRouteResult solve_pressure_route(
     const add_args& args,
     double temperature,
@@ -1994,6 +1995,7 @@ NeutralTwoPhaseEosRouteResult solve_pressure_route(
     return best;
 }
 
+// AlgID: bubble_dew_ipopt
 NeutralTwoPhaseEosRouteResult solve_temperature_route(
     const add_args& args,
     double target_pressure,
