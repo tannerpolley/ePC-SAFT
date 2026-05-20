@@ -1,0 +1,198 @@
+version: 2
+
+goal:
+  title: "Ipopt Tranche 1"
+  slug: "ipopt-tranche1"
+  kind: existing_plan
+  tranche: "Implement per-iteration diagnostics, scaling diagnostics, warm-start continuation state, and Hessian-mode behavior for native Ipopt equilibrium routes."
+  status: active
+  intake:
+    original_request: "PLEASE IMPLEMENT THIS PLAN: Ipopt Tranche 1 Shipshape Prep"
+    interpreted_outcome: "The score >= 9.0 Ipopt improvements are implemented, tested, and locally committed without branch-prune side effects."
+    input_shape: existing_plan
+    audience: "ePC-SAFT package maintainers and downstream consumers"
+    authority: requested
+    proof_type: test
+    completion_proof: "Focused native/Python tests pass, Ipopt-enabled proof is run or blocked with exact reason, cleanup passes, and tracked tranche changes are locally committed."
+    likely_misfire: "Diagnostics or option names are added without changing the native Ipopt adapter behavior, or exact Hessian requests silently fall back to limited-memory."
+    blind_spots_considered:
+      - "Exact Ipopt Hessian support requires Hessian-of-Lagrangian callbacks."
+      - "Fast dev builds do not prove native Ipopt behavior."
+      - "Route-level exact Hessian coverage may be uneven; exact mode must fail loudly when unavailable."
+      - "Continuation state must be route-compatible by route kind, dimensions, species order, and fixed specs."
+      - "Generated Graphify output should stay local/untracked by default."
+      - "Algorithm-registry branch/worktree cleanup is no longer part of this plan."
+    existing_plan_facts:
+      - "Implement score >= 9.0 items only: scaling, exact Hessian support, per-iteration diagnostics, and warm starts."
+      - "Recommended implementation order: diagnostics, scaling, warm starts, exact Hessian support."
+      - "Add typed public options: ipopt_iteration_history_limit, hessian_mode, continuation_state."
+      - "Preserve limited-memory as explicit selectable mode."
+      - "Default hessian_mode='auto' may select exact only when the route has verified Hessian coverage."
+      - "No branch pruning is part of this tranche."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: generated
+    url: "http://127.0.0.1:41737/ipopt-tranche1/"
+    command: "& C:\\Users\\Tanner\\Documents\\git\\codex-maintenance\\scripts\\start-goalbuddy-board.ps1 -Goal docs/goals/ipopt-tranche1 -Once -Json"
+  github_projects:
+    status: not_requested
+    url: null
+    command: "npx goalbuddy extend github-projects"
+    missing: []
+
+active_task: T010
+
+tasks:
+  - id: T001
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: low
+    objective: "Map GoalBuddy, Graphify, branch, and repo-control prerequisites before implementation."
+    inputs:
+      - "C:\\Users\\Tanner\\.codex\\GOALBUDDY.md"
+      - "C:\\Users\\Tanner\\.agents\\skills\\shipshape\\SKILL.md"
+      - "docs/plans/ipopt_branch_handoff.md"
+      - "docs/plans/ipopt_improvement_plan.md"
+      - "CONTEXT.md"
+      - "docs/roadmaps/FULL_ROADMAP.md"
+    constraints:
+      - "Read-only."
+      - "Do not prune branches or worktrees."
+    expected_output:
+      - "Prep commands"
+      - "Artifact policy"
+      - "Branch/worktree risk notes"
+    receipt:
+      result: done
+      summary: "GoalBuddy paths, Graphify markers, Ipopt handoff, and live branch state were inspected. The algorithm-registry branch prune guard was removed from tranche scope."
+      evidence:
+        - "GoalBuddy skill root resolves through codex-maintenance."
+        - "Graphify was not previously initialized in this checkout."
+        - "ipopt is ahead of origin/ipopt by the algorithm-registry handoff commit."
+        - "codex/algorithm-registry is out of scope for this tranche."
+
+  - id: T010
+    type: worker
+    assignee: Worker
+    status: active
+    reasoning_hint: high
+    objective: "Implement adapter-level Ipopt iteration diagnostics, scaling diagnostics, warm-start state, and Hessian-mode behavior with focused tests."
+    allowed_files:
+      - ".gitignore"
+      - ".graphifyignore"
+      - "docs/goals/ipopt-tranche1/goal.md"
+      - "docs/goals/ipopt-tranche1/state.yaml"
+      - "src/epcsaft/native/equilibrium_nlp/nlp_problem.h"
+      - "src/epcsaft/native/equilibrium_nlp/nlp_problem.cpp"
+      - "src/epcsaft/native/equilibrium_nlp/ipopt_adapter.h"
+      - "src/epcsaft/native/equilibrium_nlp/ipopt_adapter.cpp"
+      - "src/epcsaft/bindings.cpp"
+      - "tests/native/equilibrium/test_ipopt_adapter_contract.py"
+    verify:
+      - "uv run python run_pytest.py tests/native/equilibrium/test_ipopt_adapter_contract.py -q"
+      - "git diff --check"
+    stop_if:
+      - "Adapter changes require route-specific thermodynamic Hessian implementations before tests can pass."
+      - "Need files outside allowed_files for this slice."
+      - "Focused tests fail twice for unrelated native build reasons."
+    receipt: null
+
+  - id: T020
+    type: worker
+    assignee: Worker
+    status: queued
+    reasoning_hint: high
+    objective: "Propagate typed public EquilibriumOptions and route diagnostics for iteration history limit, hessian_mode, and continuation_state."
+    allowed_files:
+      - "src/epcsaft/equilibrium.py"
+      - "src/epcsaft/equilibrium_core/native_results.py"
+      - "src/epcsaft/bindings.cpp"
+      - "tests/equilibrium/core/"
+      - "tests/equilibrium/electrolyte/"
+      - "tests/api/reactive/"
+    verify:
+      - "uv run python run_pytest.py tests/equilibrium/core tests/equilibrium/electrolyte tests/api/reactive -q"
+      - "git diff --check"
+    stop_if:
+      - "Public continuation-state compatibility cannot be validated from route payloads."
+      - "Need native route files outside allowed_files."
+      - "Focused tests fail twice for unrelated native build reasons."
+    receipt: null
+
+  - id: T030
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: high
+    objective: "Audit exact-Hessian route coverage and decide the largest safe route-owned Hessian implementation or loud-failure gate."
+    inputs:
+      - "T010 receipt"
+      - "T020 receipt"
+      - "src/epcsaft/native/equilibrium_nlp/"
+      - "src/epcsaft/native/equilibrium/"
+    constraints:
+      - "Read-only."
+      - "Reject silent fallback under hessian_mode='exact'."
+      - "Do not claim route exact Hessian support without executable tests."
+    expected_output:
+      - "coverage matrix"
+      - "approved route implementation slice or blocked route list"
+      - "allowed_files"
+      - "verify"
+      - "stop_if"
+    receipt: null
+
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: high
+    objective: "Audit whether Ipopt tranche 1 is complete against the user plan."
+    inputs:
+      - "All done task receipts"
+      - "Last verification"
+      - "Current dirty diff"
+      - "Ipopt build/doctor result or exact blocker"
+    constraints:
+      - "Do not implement."
+      - "Reject completion if exact Hessian requests can silently fall back."
+      - "Reject completion if public diagnostics do not report selected Hessian mode and scaling/iteration metadata."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "missing evidence"
+      - "next task if not complete"
+    receipt: null
+
+checks:
+  dirty_fingerprint: "ipopt ahead of origin/ipopt by algorithm-registry handoff; unrelated concurrent .codex/docs/script edits are out of scope."
+  last_verification:
+    result: unknown
+    task: null
+    commands: []
