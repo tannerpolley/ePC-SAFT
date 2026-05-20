@@ -18,6 +18,7 @@
 #include "reaction_block.h"
 #include "result_builder.h"
 #include "route_builders.h"
+#include "route_result_bridge.h"
 #include "second_order.h"
 #include "stability_route_builders.h"
 
@@ -29,7 +30,9 @@ epcsaft::native::cppad_support::CppADDerivativeResult cppad_eos_contribution_der
 );
 epcsaft::native::cppad_support::CppADDerivativeResult cppad_pressure_density_derivative_cpp(
     double t,
-    double rho
+    double rho,
+    const std::vector<double>& x,
+    const add_args& cppargs
 );
 PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_composition_sensitivity_cpp(
     double t,
@@ -56,9 +59,14 @@ namespace py = pybind11;
 
 namespace {
 
+using epcsaft::native::equilibrium_nlp::route_result_bridge::apply_eos_route_metadata_fields;
+using epcsaft::native::equilibrium_nlp::route_result_bridge::apply_ipopt_route_solution_fields;
+using epcsaft::native::equilibrium_nlp::route_result_bridge::apply_ipopt_route_status_fields;
+
 py::dict cppad_smoke_to_dict(const epcsaft::native::cppad_support::CppADDerivativeResult& result) {
     py::dict out;
     out["cppad_compiled"] = epcsaft::native::cppad_support::cppad_compiled();
+    out["supported"] = result.supported;
     out["cppad_used"] = result.supported && result.backend == "cppad";
     out["status"] = epcsaft::native::cppad_support::cppad_build_status();
     out["derivative_backend"] = result.backend;
@@ -842,57 +850,10 @@ py::dict neutral_two_phase_eos_route_result_to_dict(
     const epcsaft::native::equilibrium_nlp::NeutralTwoPhaseEosRouteResult& result
 ) {
     py::dict out;
-    out["backend"] = result.backend;
-    out["compiled"] = result.compiled;
-    out["adapter_available"] = result.adapter_available;
-    out["adapter_kind"] = result.adapter_kind;
-    out["problem_name"] = result.problem_name;
-    out["derivative_backend"] = result.derivative_backend;
-    out["variable_model"] = result.variable_model;
-    out["density_backend"] = result.density_backend;
-    out["residual_families"] = result.residual_families;
-    out["constraint_families"] = result.constraint_families;
-    out["ran"] = result.ran;
-    out["solver_accepted"] = result.solver_accepted;
+    apply_ipopt_route_status_fields(out, result);
+    apply_eos_route_metadata_fields(out, result);
     out["solver_feasible_point"] = result.solver_feasible_point;
-    out["accepted"] = result.accepted;
-    out["exact_gradient_required"] = result.exact_gradient_required;
-    out["exact_jacobian_required"] = result.exact_jacobian_required;
-    out["gradient_approximation"] = result.gradient_approximation;
-    out["jacobian_approximation"] = result.jacobian_approximation;
-    out["hessian_approximation"] = result.hessian_approximation;
-    out["hessian_backend"] = result.hessian_backend;
-    out["scaling_method"] = result.scaling_method;
-    out["linear_solver_requested"] = result.linear_solver_requested;
-    out["linear_solver_selected"] = result.linear_solver_selected;
-    out["initial_point_strategy"] = result.initial_point_strategy;
-    out["seed_name"] = result.seed_name;
-    out["iteration_count"] = result.iteration_count;
-    out["iteration_history_limit"] = result.iteration_history_limit;
-    out["iteration_history_size"] = result.iteration_history_size;
-    out["variable_scaling_count"] = result.variable_scaling_count;
-    out["constraint_scaling_count"] = result.constraint_scaling_count;
-    out["eval_h_calls"] = result.eval_h_calls;
-    out["objective_scaling"] = result.objective_scaling;
-    out["acceptable_tolerance"] = result.acceptable_tolerance;
-    out["constraint_violation_tolerance"] = result.constraint_violation_tolerance;
-    out["dual_infeasibility_tolerance"] = result.dual_infeasibility_tolerance;
-    out["complementarity_tolerance"] = result.complementarity_tolerance;
-    out["variable_scaling_min"] = result.variable_scaling_min;
-    out["variable_scaling_max"] = result.variable_scaling_max;
-    out["constraint_scaling_min"] = result.constraint_scaling_min;
-    out["constraint_scaling_max"] = result.constraint_scaling_max;
-    out["exact_hessian_available"] = result.exact_hessian_available;
-    out["warm_start_requested"] = result.warm_start_requested;
-    out["warm_start_used"] = result.warm_start_used;
-    out["status"] = result.status;
-    out["solver_status"] = result.solver_status;
-    out["application_status"] = result.application_status;
-    out["last_callback_exception"] = result.last_callback_exception;
-    out["last_callback_failure"] = result.last_callback_failure;
-    out["objective"] = result.objective;
-    out["variables"] = result.variables;
-    out["constraints"] = result.constraints;
+    apply_ipopt_route_solution_fields(out, result);
     out["continuation_state"] = ipopt_continuation_state_to_dict(
         result.variables,
         result.bound_lower_multipliers,
@@ -945,61 +906,14 @@ py::dict reactive_two_phase_eos_route_result_to_dict(
     const epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult& result
 ) {
     py::dict out;
-    out["backend"] = result.backend;
-    out["compiled"] = result.compiled;
-    out["adapter_available"] = result.adapter_available;
-    out["adapter_kind"] = result.adapter_kind;
-    out["problem_name"] = result.problem_name;
-    out["derivative_backend"] = result.derivative_backend;
-    out["variable_model"] = result.variable_model;
-    out["density_backend"] = result.density_backend;
-    out["residual_families"] = result.residual_families;
-    out["constraint_families"] = result.constraint_families;
-    out["ran"] = result.ran;
-    out["solver_accepted"] = result.solver_accepted;
-    out["accepted"] = result.accepted;
-    out["exact_gradient_required"] = result.exact_gradient_required;
-    out["exact_jacobian_required"] = result.exact_jacobian_required;
-    out["gradient_approximation"] = result.gradient_approximation;
-    out["jacobian_approximation"] = result.jacobian_approximation;
-    out["hessian_approximation"] = result.hessian_approximation;
-    out["hessian_backend"] = result.hessian_backend;
-    out["scaling_method"] = result.scaling_method;
-    out["linear_solver_requested"] = result.linear_solver_requested;
-    out["linear_solver_selected"] = result.linear_solver_selected;
-    out["initial_point_strategy"] = result.initial_point_strategy;
-    out["seed_name"] = result.seed_name;
-    out["iteration_count"] = result.iteration_count;
-    out["iteration_history_limit"] = result.iteration_history_limit;
-    out["iteration_history_size"] = result.iteration_history_size;
-    out["variable_scaling_count"] = result.variable_scaling_count;
-    out["constraint_scaling_count"] = result.constraint_scaling_count;
-    out["eval_h_calls"] = result.eval_h_calls;
-    out["objective_scaling"] = result.objective_scaling;
-    out["acceptable_tolerance"] = result.acceptable_tolerance;
-    out["constraint_violation_tolerance"] = result.constraint_violation_tolerance;
-    out["dual_infeasibility_tolerance"] = result.dual_infeasibility_tolerance;
-    out["complementarity_tolerance"] = result.complementarity_tolerance;
-    out["variable_scaling_min"] = result.variable_scaling_min;
-    out["variable_scaling_max"] = result.variable_scaling_max;
-    out["constraint_scaling_min"] = result.constraint_scaling_min;
-    out["constraint_scaling_max"] = result.constraint_scaling_max;
-    out["exact_hessian_available"] = result.exact_hessian_available;
-    out["warm_start_requested"] = result.warm_start_requested;
-    out["warm_start_used"] = result.warm_start_used;
-    out["status"] = result.status;
-    out["solver_status"] = result.solver_status;
-    out["application_status"] = result.application_status;
-    out["last_callback_exception"] = result.last_callback_exception;
-    out["last_callback_failure"] = result.last_callback_failure;
+    apply_ipopt_route_status_fields(out, result);
+    apply_eos_route_metadata_fields(out, result);
     out["phase_count"] = result.phase_count;
     out["species_count"] = result.species_count;
     out["balance_row_count"] = result.balance_row_count;
     out["reaction_count"] = result.reaction_count;
-    out["objective"] = result.objective;
     out["standard_mu_rt"] = result.standard_mu_rt;
-    out["variables"] = result.variables;
-    out["constraints"] = result.constraints;
+    apply_ipopt_route_solution_fields(out, result);
     out["continuation_state"] = ipopt_continuation_state_to_dict(
         result.variables,
         result.bound_lower_multipliers,
@@ -1056,56 +970,12 @@ py::dict stability_route_result_to_dict(
     const epcsaft::native::equilibrium_nlp::StabilityRouteResult& result
 ) {
     py::dict out;
-    out["backend"] = result.backend;
-    out["compiled"] = result.compiled;
-    out["adapter_available"] = result.adapter_available;
-    out["adapter_kind"] = result.adapter_kind;
-    out["problem_name"] = result.problem_name;
-    out["derivative_backend"] = result.derivative_backend;
-    out["ran"] = result.ran;
-    out["solver_accepted"] = result.solver_accepted;
-    out["accepted"] = result.accepted;
+    apply_ipopt_route_status_fields(out, result);
     out["stable"] = result.stable;
-    out["exact_gradient_required"] = result.exact_gradient_required;
-    out["exact_jacobian_required"] = result.exact_jacobian_required;
-    out["gradient_approximation"] = result.gradient_approximation;
-    out["jacobian_approximation"] = result.jacobian_approximation;
-    out["hessian_approximation"] = result.hessian_approximation;
-    out["hessian_backend"] = result.hessian_backend;
-    out["scaling_method"] = result.scaling_method;
-    out["linear_solver_requested"] = result.linear_solver_requested;
-    out["linear_solver_selected"] = result.linear_solver_selected;
-    out["initial_point_strategy"] = result.initial_point_strategy;
-    out["iteration_count"] = result.iteration_count;
-    out["iteration_history_limit"] = result.iteration_history_limit;
-    out["iteration_history_size"] = result.iteration_history_size;
-    out["variable_scaling_count"] = result.variable_scaling_count;
-    out["constraint_scaling_count"] = result.constraint_scaling_count;
-    out["eval_h_calls"] = result.eval_h_calls;
-    out["objective_scaling"] = result.objective_scaling;
-    out["acceptable_tolerance"] = result.acceptable_tolerance;
-    out["constraint_violation_tolerance"] = result.constraint_violation_tolerance;
-    out["dual_infeasibility_tolerance"] = result.dual_infeasibility_tolerance;
-    out["complementarity_tolerance"] = result.complementarity_tolerance;
-    out["variable_scaling_min"] = result.variable_scaling_min;
-    out["variable_scaling_max"] = result.variable_scaling_max;
-    out["constraint_scaling_min"] = result.constraint_scaling_min;
-    out["constraint_scaling_max"] = result.constraint_scaling_max;
-    out["exact_hessian_available"] = result.exact_hessian_available;
-    out["warm_start_requested"] = result.warm_start_requested;
-    out["warm_start_used"] = result.warm_start_used;
-    out["status"] = result.status;
-    out["solver_status"] = result.solver_status;
-    out["application_status"] = result.application_status;
-    out["last_callback_exception"] = result.last_callback_exception;
-    out["last_callback_failure"] = result.last_callback_failure;
     out["parent_phase"] = result.parent_phase;
     out["trial_phase"] = result.trial_phase;
-    out["seed_name"] = result.seed_name;
-    out["objective"] = result.objective;
     out["min_tpd"] = result.min_tpd;
-    out["variables"] = result.variables;
-    out["constraints"] = result.constraints;
+    apply_ipopt_route_solution_fields(out, result);
     out["continuation_state"] = ipopt_continuation_state_to_dict(
         result.variables,
         result.bound_lower_multipliers,
@@ -3416,9 +3286,7 @@ PYBIND11_MODULE(_core, m) {
         return cppad_smoke_to_dict(cppad_eos_contribution_derivatives_cpp(t, rho, x, args));
     });
     m.def("_native_cppad_pressure_density", [](double t, double rho, const std::vector<double>& x, const add_args& args) {
-        (void)x;
-        (void)args;
-        return cppad_smoke_to_dict(cppad_pressure_density_derivative_cpp(t, rho));
+        return cppad_smoke_to_dict(cppad_pressure_density_derivative_cpp(t, rho, x, args));
     });
     m.def("_native_phase_state_ln_fugacity_composition_sensitivity", [](
         double t,

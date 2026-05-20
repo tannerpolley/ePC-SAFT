@@ -152,8 +152,9 @@ def test_fit_pure_neutral_rejects_non_ceres_backend():
     ],
 )
 def test_public_pure_neutral_regression_is_robust_to_distinct_initial_guesses(initial_guess):
+    records = _methane_like_records()
     result = fit_pure_neutral(
-        _methane_like_records(),
+        records,
         "Methane",
         assoc_scheme="",
         fixed_parameters=_minimal_neutral_metadata(16.043e-3),
@@ -172,6 +173,14 @@ def test_public_pure_neutral_regression_is_robust_to_distinct_initial_guesses(in
     assert result.fitted_values["m"] == pytest.approx(1.0, rel=0.0, abs=0.06)
     assert result.fitted_values["s"] == pytest.approx(3.7039, rel=0.0, abs=0.10)
     assert result.fitted_values["e"] == pytest.approx(150.03, rel=0.0, abs=4.0)
+    assert result.initial_parameters == initial_guess
+    assert result.final_parameters == result.fitted_values
+    assert result.parameter_movement == {
+        name: pytest.approx(result.fitted_values[name] - initial_guess[name]) for name in ("m", "s", "e")
+    }
+    assert result.source_summaries["records"]["record_count"] == len(records)
+    assert result.provenance_report["initial_parameters"] == initial_guess
+    assert result.provenance_report["final_parameters"] == result.fitted_values
 
 def test_fit_pure_ion_requires_composition_and_supported_records():
     with pytest.raises(InputError, match="composition"):

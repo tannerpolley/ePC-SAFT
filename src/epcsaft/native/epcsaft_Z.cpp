@@ -84,30 +84,34 @@ double p_cpp(double t, double rho, vector<double> x, const add_args &cppargs) {
 
 epcsaft::native::cppad_support::CppADDerivativeResult cppad_pressure_density_derivative_cpp(
     double t,
-    double rho
+    double rho,
+    const vector<double> &x,
+    const add_args &cppargs
 ) {
-    using CppADScalar = CppAD::AD<double>;
-    std::vector<CppADScalar> ax(1);
-    ax[0] = rho;
-    CppAD::Independent(ax);
-
-    std::vector<CppADScalar> ay(1);
-    ay[0] = ax[0] * (kb * t * N_AV);
-
-    CppAD::ADFun<double> function(ax, ay);
-    std::vector<double> point{rho};
-    auto value = function.Forward(0, point);
-    auto jacobian = function.Jacobian(point);
-
     epcsaft::native::cppad_support::CppADDerivativeResult result;
-    result.supported = true;
-    result.backend = "cppad";
-    result.message = "CppAD pressure-density closure derivative available";
-    result.value = std::move(value);
-    result.jacobian_row_major = std::move(jacobian);
     result.outputs = {"pressure"};
     result.variables = {"rho"};
     result.rows = 1;
     result.cols = 1;
+    if (!(std::isfinite(rho) && rho > 0.0)) {
+        result.supported = false;
+        result.backend = "unsupported";
+        result.message = "EOS pressure-density derivative requires a positive finite density.";
+        return result;
+    }
+
+    double total_amount = 0.0;
+    for (double amount : x) {
+        total_amount += amount;
+    }
+    const double volume = total_amount / rho;
+    EosPhasePressureDerivativeResult pressure = eos_phase_pressure_derivatives_cpp(t, x, volume, cppargs);
+    result.supported = pressure.supported;
+    result.backend = pressure.backend;
+    result.message = pressure.supported
+        ? "CppAD pressure-density derivative includes compressibility-factor density dependence."
+        : pressure.message;
+    result.value = {p_cpp(t, rho, x, cppargs)};
+    result.jacobian_row_major = {pressure.pressure_density_derivative};
     return result;
 }

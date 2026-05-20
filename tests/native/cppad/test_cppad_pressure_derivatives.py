@@ -36,6 +36,13 @@ def _pure_neutral_state():
     return mix.state(T=233.15, x=np.asarray([1.0]), rho=1000.0)
 
 
+def _centered_pressure_slope(state, step):
+    mix = state._mixture
+    plus = mix.state(T=state._T, x=state._x, rho=state.molar_density() + step, phase=state._phase).pressure()
+    minus = mix.state(T=state._T, x=state._x, rho=state.molar_density() - step, phase=state._phase).pressure()
+    return (plus - minus) / (2.0 * step)
+
+
 def test_pressure_density_derivative_result_reports_backend_contract() -> None:
     state = _state()
 
@@ -46,6 +53,19 @@ def test_pressure_density_derivative_result_reports_backend_contract() -> None:
     assert result["shape"] == [1, 1]
     if result["supported"]:
         assert np.asarray(result["jacobian"], dtype=float).shape == (1, 1)
+
+
+def test_pressure_density_derivative_result_includes_compressibility_density_dependence() -> None:
+    state = _neutral_binary_state()
+
+    result = state.pressure_density_derivative_result()
+
+    reported = float(np.asarray(result["jacobian"], dtype=float)[0, 0])
+    step = state.molar_density() * 1.0e-4
+    expected = _centered_pressure_slope(state, step)
+    ideal_slope = 8.31446261815324 * state._T
+    assert not np.isclose(expected, ideal_slope, rtol=1.0e-3, atol=1.0e-6)
+    np.testing.assert_allclose(reported, expected, rtol=5.0e-4, atol=1.0e-2)
 
 
 def test_pressure_unsupported_derivative_routes_raise() -> None:

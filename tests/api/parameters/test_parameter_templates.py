@@ -97,6 +97,22 @@ def test_canonical_parameter_template_loads_through_dataset_seam(tmp_path):
     ]
     payload["runtime_options"] = {"source_tag": "canonical-template-test"}
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    (root / "user_options.json").write_text(
+        json.dumps(
+            {
+                "canonical_user_options": {
+                    "elec_model": {
+                        "preset": "legacy-shorthand",
+                        "base": "legacy-base",
+                        "rel_perm": {"rule": "constant"},
+                    }
+                }
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
 
     params = ParameterSet.from_dataset(root, ["H2O", "Ethanol"], np.asarray([0.5, 0.5]), 298.15)
     mixture = ePCSAFTMixture.from_dataset(root, ["H2O", "Ethanol"], np.asarray([0.5, 0.5]), 298.15)
@@ -104,6 +120,9 @@ def test_canonical_parameter_template_loads_through_dataset_seam(tmp_path):
     assert params.components == ("H2O", "Ethanol")
     assert params.to_runtime_dict()["k_ij"][0, 1] == pytest.approx(0.021)
     assert params.to_runtime_dict()["source_tag"] == "canonical-template-test"
+    assert "preset" not in params.runtime_options["elec_model"]
+    assert "base" not in params.runtime_options["elec_model"]
+    assert params.runtime_options["elec_model"]["rel_perm"]["rule"] == "constant"
     assert mixture.species == ["H2O", "Ethanol"]
     assert mixture.parameters["k_ij"][0, 1] == pytest.approx(0.021)
 

@@ -18,13 +18,17 @@ from __future__ import annotations
 
 import copy
 import csv
-import json
 import math
 import re
 from collections.abc import Iterable
 from pathlib import Path
 
 import numpy as np
+
+from .parameter_sources import (
+    deep_update_parameter_mapping as _deep_update,
+    load_canonical_user_options as _load_canonical_user_options,
+)
 
 DATASET_ROOT = Path(__file__).resolve().parents[2] / "data" / "reference" / "epcsaft_parameters"
 
@@ -355,16 +359,6 @@ def _coerce_bool(value) -> bool:
     raise ValueError(f"Cannot coerce value '{value}' to bool.")
 
 
-def _deep_update(base: dict, updates: dict) -> dict:
-    merged = copy.deepcopy(base)
-    for key, value in updates.items():
-        if isinstance(value, dict) and isinstance(merged.get(key), dict):
-            merged[key] = _deep_update(merged[key], value)
-        else:
-            merged[key] = value
-    return merged
-
-
 def _prune_default_overrides(payload, defaults):
     if isinstance(payload, dict):
         if not isinstance(defaults, dict):
@@ -670,32 +664,6 @@ def _load_mixed_rel_perm_tables(rel_perm_dir: Path) -> dict[str, list[dict]]:
         if table:
             tables[table_file.stem] = table
     return tables
-
-
-def _load_canonical_user_options(dataset_dir: Path) -> dict:
-    path = dataset_dir / "user_options.json"
-    if not path.exists():
-        return {}
-    payload = json.loads(path.read_text(encoding="utf-8"))
-
-    if isinstance(payload, dict) and "canonical_user_options" in payload:
-        canonical = payload.get("canonical_user_options", {})
-    else:
-        canonical = payload
-
-    if not isinstance(canonical, dict):
-        return {}
-    elec_model = canonical.get("elec_model", {})
-    if isinstance(elec_model, dict) and "polar_model" in elec_model:
-        raise ValueError(
-            f"Dataset '{dataset_dir}' canonical_user_options still contains removed key 'elec_model.polar_model'."
-        )
-    cleaned = copy.deepcopy(canonical)
-    elec = cleaned.get("elec_model")
-    if isinstance(elec, dict):
-        elec.pop("preset", None)
-        elec.pop("base", None)
-    return cleaned
 
 
 def _load_dataset(dataset_name_or_path) -> dict:

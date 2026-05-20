@@ -117,3 +117,25 @@ def test_public_equilibrium_does_not_expose_python_backend_tokens() -> None:
     assert '"python"' not in source
     assert "Python-first" not in equilibrium_source
     assert "np.linalg." + "lstsq" not in equilibrium_source
+
+
+def test_native_route_result_serialization_uses_bridge_module() -> None:
+    bridge = REPO_ROOT / "src" / "epcsaft" / "native" / "equilibrium_nlp" / "route_result_bridge.h"
+    bindings = (REPO_ROOT / "src" / "epcsaft" / "bindings.cpp").read_text(encoding="utf-8")
+
+    assert bridge.exists()
+    assert '#include "route_result_bridge.h"' in bindings
+    assert "apply_eos_route_metadata_fields(out, result);" in bindings
+    assert "apply_ipopt_route_status_fields(out, result);" in bindings
+    assert "apply_ipopt_route_solution_fields(out, result);" in bindings
+
+
+def test_seeded_route_campaign_selection_has_dedicated_owner() -> None:
+    campaign = REPO_ROOT / "src" / "epcsaft" / "native" / "equilibrium_nlp" / "route_campaign.h"
+    source = (REPO_ROOT / "src" / "epcsaft" / "native" / "equilibrium_nlp" / "route_builders.cpp").read_text(
+        encoding="utf-8"
+    )
+
+    assert campaign.exists()
+    assert '#include "route_campaign.h"' in source
+    assert "RouteCampaign<NeutralTwoPhaseEosRouteResult, RouteSeedAttempt>" in source

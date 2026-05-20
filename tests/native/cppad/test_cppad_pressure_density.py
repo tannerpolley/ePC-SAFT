@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 
 from epcsaft import _core
+from epcsaft import ePCSAFTMixture
 from epcsaft.epcsaft import create_struct
 
 
@@ -12,9 +13,10 @@ def _single_component_args():
 
 
 def test_cppad_pressure_density_closure_records_density_dependence() -> None:
-    args = _single_component_args()
+    params = {"m": np.asarray([1.0]), "s": np.asarray([3.7039]), "e": np.asarray([150.03])}
+    args = create_struct(params)
     t = 300.0
-    rho = 12.5
+    rho = 1000.0
 
     result = _core._native_cppad_pressure_density(t, rho, [1.0], args)
 
@@ -23,5 +25,12 @@ def test_cppad_pressure_density_closure_records_density_dependence() -> None:
     assert result["outputs"] == ["pressure"]
     assert result["variables"] == ["rho"]
     assert result["shape"] == (1, 1)
-    assert result["value"][0] == pytest.approx(1.380649e-23 * t * rho * 6.02214076e23)
-    assert result["jacobian_row_major"][0] == pytest.approx(1.380649e-23 * t * 6.02214076e23)
+    mix = ePCSAFTMixture.from_params(params, species=["A"])
+    state = mix.state(T=t, x=np.asarray([1.0]), rho=rho)
+    step = rho * 1.0e-4
+    slope = (
+        mix.state(T=t, x=np.asarray([1.0]), rho=rho + step).pressure()
+        - mix.state(T=t, x=np.asarray([1.0]), rho=rho - step).pressure()
+    ) / (2.0 * step)
+    assert result["value"][0] == pytest.approx(state.pressure())
+    assert result["jacobian_row_major"][0] == pytest.approx(slope, rel=5.0e-4)

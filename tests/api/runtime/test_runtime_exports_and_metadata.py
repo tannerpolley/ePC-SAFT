@@ -17,6 +17,7 @@ from tests.helpers.runtime_cases import (
 def test_package_exports_are_available():
     assert hasattr(epcsaft, "ePCSAFTMixture")
     assert hasattr(epcsaft, "ePCSAFTState")
+    assert hasattr(epcsaft, "StateDiagnosticsView")
     assert hasattr(epcsaft, "ActivityCoefficientResult")
     assert isinstance(epcsaft.__version__, str)
     assert epcsaft.__version__ != "0+unknown"
@@ -36,6 +37,7 @@ def test_organized_public_import_modules_are_available():
     assert epcsaft.eos.ePCSAFTMixture is epcsaft.ePCSAFTMixture
     assert epcsaft.eos.Mixture is epcsaft.ePCSAFTMixture
     assert epcsaft.eos.State is epcsaft.ePCSAFTState
+    assert epcsaft.eos.StateDiagnosticsView is epcsaft.StateDiagnosticsView
     assert epcsaft.electrolyte.ElectrolyteLLEProblem is epcsaft.ElectrolyteLLEProblem
     assert epcsaft.reactive.ReactiveSpeciationProblem is epcsaft.ReactiveSpeciationProblem
     assert epcsaft.diagnostics.capabilities is epcsaft.capabilities

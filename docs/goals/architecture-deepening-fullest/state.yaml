@@ -1,0 +1,456 @@
+version: 2
+
+goal:
+  title: "Architecture Deepening Fullest"
+  slug: "architecture-deepening-fullest"
+  kind: existing_plan
+  tranche: "continuous execution: implement all five latest architecture candidates through safe verified slices until complete or explicitly blocked"
+  status: done
+  intake:
+    original_request: "/goal Implement all the candidates to their fullest"
+    interpreted_outcome: "Implement the five latest architecture-deepening candidates with durable code, tests, docs where useful, and honest completion evidence."
+    input_shape: existing_plan
+    audience: "ePC-SAFT package maintainers and downstream consumers"
+    authority: requested
+    proof_type: test
+    completion_proof: "All five candidate lanes have implemented or explicitly blocked receipts, focused tests pass, capability claims remain evidence-backed, cleanup passes, and tracked repo changes are committed locally unless redirected."
+    likely_misfire: "Repeating completed earlier architecture boards, producing only planning artifacts, or adding shallow wrappers without improving Locality and Leverage at the real seams."
+    blind_spots_considered:
+      - "The previous architecture-deepening board is complete and covered an older six-candidate set."
+      - "The architecture-deepening-followup board is complete but does not fully cover the five latest candidates."
+      - "Native _core rebuild and clean actions must be coordinated by the main thread."
+      - "Public API behavior and downstream consumer expectations must remain stable unless tests justify a change."
+      - "Capability Contract claims must not broaden without Completion Evidence."
+      - "Derivative Path and route-diagnostics changes need focused native or API validation."
+    existing_plan_facts:
+      - "Candidate 1: Native Route Bridge Module."
+      - "Candidate 2: Equilibrium Route Recipe Module."
+      - "Candidate 3: Regression Problem Assembly Module."
+      - "Candidate 4: Parameter Source Resolution Module."
+      - "Candidate 5: EOS Harness State View Module."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://127.0.0.1:41737/architecture-deepening-fullest/"
+    command: "pwsh -NoProfile -ExecutionPolicy Bypass -File C:\\Users\\Tanner\\Documents\\git\\codex-maintenance\\scripts\\start-goalbuddy-board.ps1 -Goal docs/goals/architecture-deepening-fullest"
+  github_projects:
+    status: not_requested
+    url: null
+    command: "npx goalbuddy extend github-projects"
+    missing: []
+
+active_task: null
+
+tasks:
+  - id: T001
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: high
+    objective: "Map the five latest architecture-deepening candidates into safe implementation work packages."
+    inputs:
+      - "Latest improve-codebase-architecture candidate list from the current thread."
+      - "docs/goals/architecture-deepening/state.yaml"
+      - "docs/goals/architecture-deepening-followup/state.yaml"
+      - "CONTEXT.md"
+      - "docs/adr/0001-architecture-deepening-public-api-boundaries.md"
+      - "docs/roadmaps/FULL_ROADMAP.md"
+      - "docs/roadmaps/unified_equilibrium_core_algorithm.md"
+    constraints:
+      - "Read-only."
+      - "Do not edit implementation files."
+      - "Avoid duplicating completed board work unless a new deeper slice remains."
+      - "Assign disjoint write ownership for future Worker slices."
+      - "Main thread owns native rebuild coordination."
+    expected_output:
+      - "Candidate-to-existing-work coverage map."
+      - "Recommended Worker slices with allowed_files, verify commands, and stop_if conditions."
+      - "First largest safe useful slice."
+    receipt:
+      result: done
+      summary: "Owner scouts mapped the five latest candidates against the completed architecture-deepening and followup boards. Remaining work is real but uneven: route/result typed views and ParameterSource adoption are partly complete; native producer-side route bridge, route campaign recipes, regression assembly, parameter-source consolidation, and EOS Harness state views remain. EOS scout found a correctness-first public derivative bug: pressure_density_derivative_result currently reports an ideal-only derivative as supported."
+      evidence: "Candidate coverage was cross-checked against the prior completed boards and owner scout receipts before selecting implementation slices."
+      recommended_slices:
+        - "Repair public pressure-density derivative contract before architectural extraction."
+        - "Extract reactive liquid-root route campaign module."
+        - "Consolidate regression FitProblem/FitResult assembly."
+        - "Unify parameter source dataset/runtime-option resolution."
+        - "Extract EOS state-view helpers and typed state diagnostics."
+  - id: T002
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Select the first safe useful implementation slice from T001."
+    inputs:
+      - "T001 receipt"
+    constraints:
+      - "Do not implement."
+      - "Pick the largest safe reversible slice that improves a real Module seam."
+      - "Reject wrapper-only or docs-only work unless it is blocking implementation."
+    expected_output:
+      - "Decision."
+      - "Worker objective."
+      - "allowed_files."
+      - "verify."
+      - "stop_if."
+    receipt:
+      result: done
+      decision: "Start with correctness-first EOS derivative repair."
+      rationale: "The pressure-density derivative is public Capability Contract evidence. Fixing it is higher priority than extraction because deeper EOS views should not preserve a thermodynamically dishonest payload."
+      next_active_task: T003
+  - id: T003
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Repair the public pressure-density derivative contract so it differentiates the actual ePC-SAFT pressure expression rather than the ideal-density term."
+    allowed_files:
+      - "src/epcsaft/native/epcsaft_Z.cpp"
+      - "src/epcsaft/native/epcsaft_core_internal.h"
+      - "src/epcsaft/bindings.cpp"
+      - "src/epcsaft/epcsaft.py"
+      - "tests/native/cppad/test_cppad_pressure_derivatives.py"
+      - "tests/native/cppad/test_cppad_pressure_density.py"
+      - "tests/native/contracts/test_property_derivative_backend_contract.py"
+    verify:
+      - "uv run python scripts/dev/build_epcsaft.py --build-only --parallel 10"
+      - "uv run python run_pytest.py tests/native/cppad/test_cppad_pressure_derivatives.py tests/native/contracts/test_property_derivative_backend_contract.py -q"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "Behavior requires owner policy decision."
+      - "Native _core rebuild is required before PM coordination."
+      - "Verification fails twice for different root causes."
+    receipt:
+      result: done
+      summary: "Repaired pressure_density_derivative_result so the public derivative differentiates the actual ePC-SAFT pressure closure P = rho R T Z, including compressibility-factor density dependence, instead of reporting the ideal-density slope. Low-level CppAD payload now exposes supported and uses the EOS phase pressure derivative machinery."
+      changed_files:
+        - "src/epcsaft/native/epcsaft_Z.cpp"
+        - "src/epcsaft/native/epcsaft_core_internal.h"
+        - "src/epcsaft/bindings.cpp"
+        - "src/epcsaft/epcsaft.py"
+        - "tests/native/cppad/test_cppad_pressure_derivatives.py"
+        - "tests/native/cppad/test_cppad_pressure_density.py"
+      commands:
+        - command: "uv run python run_pytest.py tests/native/cppad/test_cppad_pressure_derivatives.py::test_pressure_density_derivative_result_includes_compressibility_density_dependence -q"
+          status: pass
+          result: "expected red"
+          summary: "reported derivative was ideal-only and differed from centered pressure slope"
+        - command: "uv run python scripts/dev/build_epcsaft.py --build-only --parallel 10"
+          status: pass
+          result: "passed"
+          summary: "native extension rebuilt"
+        - command: "uv run python run_pytest.py tests/native/cppad/test_cppad_pressure_derivatives.py tests/native/cppad/test_cppad_pressure_density.py tests/native/contracts/test_property_derivative_backend_contract.py -q"
+          status: pass
+          result: "passed"
+          summary: "9 passed"
+      blockers: []
+  - id: T004
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Extract EOS Harness state-view helpers into a dedicated Python Module and add a typed state diagnostics view without changing stable dict serialization."
+    allowed_files:
+      - "src/epcsaft/epcsaft.py"
+      - "src/epcsaft/eos.py"
+      - "src/epcsaft/eos_views.py"
+      - "src/epcsaft/__init__.py"
+      - "tests/api/runtime/test_runtime_neutral_methods.py"
+      - "tests/api/runtime/test_runtime_ionic_methods.py"
+      - "tests/native/contracts/test_derivative_coverage_matrix.py"
+      - "tests/api/runtime/test_runtime_exports_and_metadata.py"
+      - "docs/pages/diagnostics.rst"
+    verify:
+      - "uv run python run_pytest.py tests/api/runtime/test_runtime_neutral_methods.py tests/api/runtime/test_runtime_ionic_methods.py tests/native/contracts/test_derivative_coverage_matrix.py tests/api/runtime/test_runtime_exports_and_metadata.py::test_organized_public_import_modules_are_available -q"
+    stop_if:
+      - "No safe follow-up slice remains without owner input."
+      - "A previous slice invalidates candidate assumptions."
+      - "Native _core rebuild is required before PM coordination."
+    receipt:
+      result: done
+      summary: "Extracted EOS Harness state-view helpers into src/epcsaft/eos_views.py, added StateDiagnosticsView, preserved state_diagnostics() dict serialization, and exposed the typed view through state.state_diagnostics_view(), epcsaft.eos, and the lazy package surface."
+      changed_files:
+        - "src/epcsaft/eos_views.py"
+        - "src/epcsaft/epcsaft.py"
+        - "src/epcsaft/eos.py"
+        - "src/epcsaft/__init__.py"
+        - "tests/api/runtime/test_runtime_neutral_methods.py"
+        - "tests/api/runtime/test_runtime_exports_and_metadata.py"
+        - "docs/pages/diagnostics.rst"
+      commands:
+        - command: "uv run python run_pytest.py tests/api/runtime/test_runtime_neutral_methods.py tests/api/runtime/test_runtime_ionic_methods.py tests/native/contracts/test_derivative_coverage_matrix.py tests/api/runtime/test_runtime_exports_and_metadata.py::test_organized_public_import_modules_are_available -q"
+          status: pass
+          result: "passed"
+          summary: "33 passed"
+      blockers: []
+  - id: T005
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Consolidate regression FitProblem/FitResult evidence assembly behind internal helpers without changing solver math or native payload schemas."
+    allowed_files:
+      - "src/epcsaft/regression.py"
+      - "tests/api/regression/test_regression_problem_schema.py"
+      - "tests/api/regression/test_regression_api_native_backends.py"
+      - "tests/api/regression/test_regression_api_results_and_errors.py"
+      - "tests/api/regression/test_regression_api_public_contracts.py"
+      - "docs/pages/parameter_regression.rst"
+    verify:
+      - "uv run python run_pytest.py tests/api/regression/test_regression_problem_schema.py tests/api/regression/test_regression_api_native_backends.py tests/api/regression/test_regression_api_results_and_errors.py tests/api/regression/test_regression_api_public_contracts.py -q"
+    stop_if:
+      - "FitProblem or FitResult public fields would change."
+      - "The slice requires native _core payload changes."
+      - "Reactive regression evidence-shape changes become necessary in the same slice."
+    receipt:
+      result: done
+      summary: "Consolidated native regression FitResult evidence assembly behind shared internal helpers. Pure-neutral, pure-ion, binary-pair, and liquid-electrolyte native Ceres paths now build parameter movement, source summaries, target-family summaries, residual-block norms, active bounds, and provenance payloads through one path without changing solver math or native result schemas."
+      changed_files:
+        - "src/epcsaft/regression.py"
+        - "tests/api/regression/test_regression_api_native_backends.py"
+      commands:
+        - command: "uv run python run_pytest.py tests/api/regression/test_regression_api_native_backends.py::test_public_pure_neutral_regression_is_robust_to_distinct_initial_guesses -q"
+          status: pass
+          result: "expected red"
+          summary: "pure-neutral FitResult lacked initial/final parameter and provenance evidence"
+        - command: "uv run python run_pytest.py tests/api/regression/test_regression_api_native_backends.py::test_public_pure_neutral_regression_is_robust_to_distinct_initial_guesses -q"
+          status: pass
+          result: "passed"
+          summary: "3 passed"
+        - command: "uv run python run_pytest.py tests/api/regression/test_regression_problem_schema.py tests/api/regression/test_regression_api_native_backends.py tests/api/regression/test_regression_api_results_and_errors.py tests/api/regression/test_regression_api_public_contracts.py -q"
+          status: pass
+          result: "passed"
+          summary: "36 passed"
+      blockers: []
+  - id: T006
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Consolidate remaining parameter source resolution duplication between parameter schema identity and runtime dataset-option normalization."
+    allowed_files:
+      - "src/epcsaft/parameter_sources.py"
+      - "src/epcsaft/parameter_schema.py"
+      - "src/epcsaft/parameters.py"
+      - "src/epcsaft/regression.py"
+      - "tests/api/parameters/test_parameter_schema.py"
+      - "tests/api/parameters/test_parameter_templates.py"
+      - "tests/api/regression/test_regression_problem_schema.py"
+      - "docs/pages/parameters.rst"
+      - "docs/pages/parameter_regression.rst"
+    verify:
+      - "uv run python run_pytest.py tests/api/parameters/test_parameter_schema.py tests/api/parameters/test_parameter_templates.py tests/api/regression/test_regression_problem_schema.py -q"
+    stop_if:
+      - "ParameterSource public labels would change."
+      - "Built-in dataset resolution behavior would change without a focused compatibility test."
+      - "The slice requires moving parameter template files or generated data."
+    receipt:
+      result: done
+      summary: "Added a shared parameter_sources module for parameter-source copying, deep runtime-option merging, and canonical user_options loading. Canonical ParameterSet folder loading and the legacy runtime dataset loader now share the same sanitization for removed electrolyte shorthand keys instead of carrying duplicated loaders."
+      changed_files:
+        - "src/epcsaft/parameter_sources.py"
+        - "src/epcsaft/parameter_schema.py"
+        - "src/epcsaft/parameters.py"
+        - "tests/api/parameters/test_parameter_templates.py"
+      commands:
+        - command: "uv run python run_pytest.py tests/api/parameters/test_parameter_templates.py::test_canonical_parameter_template_loads_through_dataset_seam -q"
+          status: pass
+          result: "expected red"
+          summary: "canonical ParameterSet folder loading still passed legacy preset/base keys through runtime_options"
+        - command: "uv run python run_pytest.py tests/api/parameters/test_parameter_templates.py::test_canonical_parameter_template_loads_through_dataset_seam -q"
+          status: pass
+          result: "passed"
+          summary: "1 passed"
+        - command: "uv run python run_pytest.py tests/api/parameters/test_parameter_schema.py tests/api/parameters/test_parameter_templates.py tests/api/regression/test_regression_problem_schema.py -q"
+          status: pass
+          result: "passed"
+          summary: "33 passed"
+      blockers: []
+  - id: T007
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Extract native route-result payload assembly into a bridge module so pybind bindings serialize route diagnostics through one typed producer-side seam."
+    allowed_files:
+      - "src/epcsaft/bindings.cpp"
+      - "src/epcsaft/native/equilibrium_nlp/route_result_bridge.h"
+      - "src/epcsaft/native/equilibrium_nlp/route_metadata.h"
+      - "tests/native/contracts/test_equilibrium_native_contracts.py"
+    verify:
+      - "uv run python scripts/dev/build_epcsaft.py --build-only --parallel 10"
+      - "uv run python run_pytest.py --native-contracts -q"
+    stop_if:
+      - "Route payload keys or existing Python RouteDiagnosticsView fields would change."
+      - "The slice requires changing solver selection behavior."
+      - "Native _core rebuild fails twice for unrelated reasons."
+    receipt:
+      result: done
+      summary: "Added a producer-side route_result_bridge header and routed neutral EOS, reactive EOS, and stability pybind result serializers through shared status, metadata, and solution-field bridge helpers. Existing payload keys are preserved while the repeated RouteDiagnostics serialization fields now have one C++ owner."
+      changed_files:
+        - "src/epcsaft/native/equilibrium_nlp/route_result_bridge.h"
+        - "src/epcsaft/bindings.cpp"
+        - "tests/native/contracts/test_equilibrium_native_contracts.py"
+      commands:
+        - command: "uv run python run_pytest.py tests/native/contracts/test_equilibrium_native_contracts.py::test_native_route_result_serialization_uses_bridge_module -q"
+          status: pass
+          result: "expected red"
+          summary: "bridge header and shared serializer calls did not exist"
+        - command: "uv run python run_pytest.py tests/native/contracts/test_equilibrium_native_contracts.py::test_native_route_result_serialization_uses_bridge_module -q"
+          status: pass
+          result: "passed"
+          summary: "1 passed"
+        - command: "uv run python scripts/dev/build_epcsaft.py --build-only --parallel 10"
+          status: pass
+          result: "passed"
+          summary: "native extension rebuilt"
+        - command: "uv run python run_pytest.py --native-contracts -q"
+          status: pass
+          result: "passed"
+          summary: "9 passed"
+      blockers: []
+  - id: T008
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Extract route campaign/recipe helpers for native seeded equilibrium routes so seed sweep, continuation-state replay, and best-result selection have one owner."
+    allowed_files:
+      - "src/epcsaft/native/equilibrium_nlp/route_builders.cpp"
+      - "src/epcsaft/native/equilibrium_nlp/route_builders.h"
+      - "src/epcsaft/native/equilibrium_nlp/route_campaign.h"
+      - "tests/native/equilibrium/test_route_metadata_contracts.py"
+      - "tests/native/equilibrium/test_native_route_diagnostics_contract.py"
+      - "tests/native/contracts/test_equilibrium_native_contracts.py"
+    verify:
+      - "uv run python scripts/dev/build_epcsaft.py --build-only --parallel 10"
+      - "uv run python run_pytest.py --native-contracts -q"
+    stop_if:
+      - "The slice would change route solve ordering, route labels, or acceptance criteria."
+      - "The slice would alter numerical seed values instead of only moving campaign assembly."
+      - "Native _core rebuild fails twice for unrelated reasons."
+    receipt:
+      result: done
+      summary: "Added a route_campaign helper module and routed seeded neutral/electrolyte two-phase route attempts through RouteCampaign. Seed generation, solve ordering, continuation-state replay, route quality ordering, and accepted-result stopping behavior are preserved; attempt recording and best-result finishing now have one owner."
+      changed_files:
+        - "src/epcsaft/native/equilibrium_nlp/route_campaign.h"
+        - "src/epcsaft/native/equilibrium_nlp/route_builders.cpp"
+        - "tests/native/contracts/test_equilibrium_native_contracts.py"
+      commands:
+        - command: "uv run python run_pytest.py tests/native/contracts/test_equilibrium_native_contracts.py::test_seeded_route_campaign_selection_has_dedicated_owner -q"
+          status: pass
+          result: "expected red"
+          summary: "dedicated route campaign owner did not exist"
+        - command: "uv run python run_pytest.py tests/native/contracts/test_equilibrium_native_contracts.py::test_seeded_route_campaign_selection_has_dedicated_owner -q"
+          status: pass
+          result: "passed"
+          summary: "1 passed"
+        - command: "uv run python scripts/dev/build_epcsaft.py --build-only --parallel 10"
+          status: pass
+          result: "passed"
+          summary: "native extension rebuilt"
+        - command: "uv run python run_pytest.py --native-contracts -q"
+          status: pass
+          result: "passed"
+          summary: "9 passed"
+      blockers: []
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit whether all five architecture candidates are implemented to the fullest safe extent."
+    inputs:
+      - "All done task receipts."
+      - "Current git diff."
+      - "Last validation output."
+      - "docs/goals/architecture-deepening-fullest/goal.md"
+      - "docs/goals/architecture-deepening-fullest/state.yaml"
+    constraints:
+      - "Do not implement."
+      - "Reject completion if safe implementation slices remain."
+      - "Reject completion if capability claims exceed executable evidence."
+      - "Require focused validation and cleanup receipts."
+    expected_output:
+      - "complete | not_complete."
+      - "full_outcome_complete: true | false."
+      - "candidate coverage map."
+      - "missing evidence."
+      - "next task if not complete."
+    receipt:
+      result: done
+      decision: "complete"
+      full_outcome_complete: true
+      summary: "All five latest architecture-deepening candidates have implementation receipts and focused validation. The work repaired a public derivative correctness issue before extraction, then added durable module seams for EOS state views, regression result assembly, parameter source resolution, pybind route result bridging, and route campaign orchestration."
+      candidate_coverage:
+        - candidate: "Native Route Bridge Module"
+          status: implemented
+          receipt: T007
+          evidence: "route_result_bridge.h owns shared pybind route status, metadata, and solution serialization; native route contracts pass."
+        - candidate: "Equilibrium Route Recipe Module"
+          status: implemented
+          receipt: T008
+          evidence: "route_campaign.h owns seeded route attempt recording and best-result finishing for seeded neutral/electrolyte two-phase routes; native route contracts pass."
+        - candidate: "Regression Problem Assembly Module"
+          status: implemented
+          receipt: T005
+          evidence: "native regression FitResult evidence assembly is centralized; regression focus tests pass."
+        - candidate: "Parameter Source Resolution Module"
+          status: implemented
+          receipt: T006
+          evidence: "parameter_sources.py owns shared runtime-option copy, merge, and canonical user-option loading; parameter focus tests pass."
+        - candidate: "EOS Harness State View Module"
+          status: implemented
+          receipt: T004
+          evidence: "eos_views.py owns state diagnostic payload/view construction; runtime diagnostic tests pass."
+      missing_evidence: []
+      commands:
+        - command: "uv run python run_pytest.py tests/native/contracts/test_equilibrium_native_contracts.py tests/api/parameters/test_parameter_schema.py tests/api/parameters/test_parameter_templates.py tests/api/regression/test_regression_problem_schema.py tests/api/regression/test_regression_api_native_backends.py tests/api/regression/test_regression_api_results_and_errors.py tests/api/regression/test_regression_api_public_contracts.py tests/api/runtime/test_runtime_neutral_methods.py tests/api/runtime/test_runtime_ionic_methods.py tests/api/runtime/test_runtime_exports_and_metadata.py tests/native/cppad/test_cppad_pressure_derivatives.py tests/native/cppad/test_cppad_pressure_density.py tests/native/contracts/test_property_derivative_backend_contract.py -q"
+          status: pass
+          result: "passed"
+          summary: "115 passed"
+        - command: "uv run python scripts/dev/validate_project.py quick"
+          status: pass
+          result: "passed"
+          summary: "doctor passed and 49 quick tests passed"
+        - command: "pwsh.exe -NoProfile -ExecutionPolicy Bypass -File \"$env:USERPROFILE\\.codex\\hooks\\codex-cleanup.ps1\" -RepoRoot ."
+          status: pass
+          result: "passed"
+          summary: "No matching leftover Codex processes"
+      blockers: []
+
+checks:
+  dirty_fingerprint: unknown
+  last_verification:
+    result: pass
+    task: T999
+    commands:
+      - "uv run python run_pytest.py tests/native/contracts/test_equilibrium_native_contracts.py tests/api/parameters/test_parameter_schema.py tests/api/parameters/test_parameter_templates.py tests/api/regression/test_regression_problem_schema.py tests/api/regression/test_regression_api_native_backends.py tests/api/regression/test_regression_api_results_and_errors.py tests/api/regression/test_regression_api_public_contracts.py tests/api/runtime/test_runtime_neutral_methods.py tests/api/runtime/test_runtime_ionic_methods.py tests/api/runtime/test_runtime_exports_and_metadata.py tests/native/cppad/test_cppad_pressure_derivatives.py tests/native/cppad/test_cppad_pressure_density.py tests/native/contracts/test_property_derivative_backend_contract.py -q"
+      - "uv run python scripts/dev/validate_project.py quick"
+      - "pwsh.exe -NoProfile -ExecutionPolicy Bypass -File \"$env:USERPROFILE\\.codex\\hooks\\codex-cleanup.ps1\" -RepoRoot ."

@@ -33,6 +33,14 @@ derivative flags, residual families, constraint families, selected seed name,
 and normalized seed-attempt counts without changing the underlying diagnostics
 payload.
 
+EOS state diagnostics keep the same JSON-like ``state.state_diagnostics()``
+dictionary for serialization. Code that wants a typed view over the stable
+payload can use ``state.state_diagnostics_view()`` or
+``epcsaft.eos.StateDiagnosticsView``. The view exposes temperature, phase,
+composition, pressure, molar density, compressibility factor, ionic-output
+presence, and fugacity-contribution terms while leaving the serialized
+``state_diagnostics()`` keys unchanged.
+
 For reactive electrolyte regression, the
 ``mixed_pressure_speciation_residual_context`` capability advertises the
 diagnostic residual context, its supported target families, and the fact that it

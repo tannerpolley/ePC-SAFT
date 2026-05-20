@@ -4,6 +4,22 @@ import numpy as np
 
 from . import _core
 from ._types import ActivityCoefficientResult, InputError, SolutionError, phase_to_int, vector_to_array
+from .eos_views import (
+    CONTRIBUTION_NAMES as _CONTRIBUTION_NAMES,
+    GAS_CONSTANT as _GAS_CONSTANT,
+    STATE_METHOD_ALIAS_LOOKUP as _STATE_METHOD_ALIAS_LOOKUP,
+    STATE_METHOD_ALIAS_MAP,
+    StateDiagnosticsView,
+    backend_from_contribution_details as _backend_from_contribution_details,
+    composition_derivative_residual_helmholtz_result as _composition_derivative_residual_helmholtz_result_payload,
+    derivative_result_payload as _derivative_result_payload,
+    fugacity_coefficient_term_result as _fugacity_coefficient_term_result_payload,
+    public_contribution_terms as _public_contribution_terms,
+    scalar_terms_dict as _scalar_terms_dict,
+    state_diagnostics_payload,
+    unsupported_derivative as _unsupported_derivative,
+    vector_terms_dict as _vector_terms_dict,
+)
 
 _NATIVE_CALL_ERRORS = (
     InputError,
@@ -23,153 +39,11 @@ _DERIVATIVE_VALUE_ERRORS = (
     ArithmeticError,
 )
 
-STATE_METHOD_ALIAS_MAP = {
-    "pressure": "p",
-    "density": "rho",
-    "molar_density": "rho_molar",
-    "mass_density": "rho_mass",
-    "compressibility_factor": "z",
-    "residual_helmholtz": "ares",
-    "temperature_derivative_residual_helmholtz": "dadt",
-    "composition_derivative_residual_helmholtz": "dadx",
-    "residual_enthalpy": "hres",
-    "residual_entropy": "sres",
-    "residual_gibbs": "gres",
-    "residual_chemical_potential": "mures",
-    "activity_coefficient": "gamma",
-    "fugacity_coefficient": "fugcoef",
-    "relative_permittivity": "epsr",
-    "osmotic_coefficient": "osmotic_coef",
-    "state_diagnostics": "diag",
-    "solvation_free_energy": "gsolv",
-}
-_STATE_METHOD_ALIAS_LOOKUP = {alias: name for name, alias in STATE_METHOD_ALIAS_MAP.items()}
-_CONTRIBUTION_NAMES = ("hc", "disp", "assoc", "ion", "born")
-_CONTRIBUTION_PUBLIC_NAMES = {
-    "hc": "hard_chain",
-    "disp": "dispersion",
-    "assoc": "association",
-    "ion": "ionic",
-    "born": "born",
-}
-_GAS_CONSTANT = 8.31446261815324
-
-
 def _state_construction_error_message(T, x, phase, ncomp, mode_name, variable_name, variable_value, exc):
     return (
         f"{mode_name}-based state solve failed for "
         f"T={float(T)}, {variable_name}={float(variable_value)}, phase={phase}, ncomp={ncomp}, x={x.tolist()}: {exc}"
     )
-
-
-def _sum_vector_terms(terms):
-    total = None
-    for name in _CONTRIBUTION_NAMES:
-        value = np.asarray(terms[name], dtype=float)
-        total = value.copy() if total is None else total + value
-    return total
-
-
-def _public_contribution_terms(terms):
-    out = {}
-    for internal, public in _CONTRIBUTION_PUBLIC_NAMES.items():
-        out[public] = terms[internal]
-    if "ideal" in terms:
-        out["ideal"] = terms["ideal"]
-    return out
-
-
-def _scalar_terms_dict(terms):
-    return {
-        "hc": float(terms.hc),
-        "disp": float(terms.disp),
-        "assoc": float(terms.assoc),
-        "ion": float(terms.ion),
-        "born": float(terms.born),
-        "total": float(terms.total),
-    }
-
-
-def _vector_terms_dict(terms, expected_size, label):
-    out = {}
-    blocks = {
-        "hc": vector_to_array(terms.hc),
-        "disp": vector_to_array(terms.disp),
-        "assoc": vector_to_array(terms.assoc),
-        "ion": vector_to_array(terms.ion),
-        "born": vector_to_array(terms.born),
-        "total": vector_to_array(terms.total),
-    }
-    for name, arr in blocks.items():
-        arr = np.asarray(arr, dtype=float)
-        if arr.size != expected_size:
-            raise SolutionError(
-                f"Unexpected {label} payload size for {name}: expected {int(expected_size)}, got {int(arr.size)}."
-            )
-        out[name] = arr
-    return out
-
-
-def _derivative_result_payload(
-    *,
-    supported,
-    backend,
-    message,
-    value,
-    jacobian,
-    shape=None,
-    outputs=None,
-    variables=None,
-    **extra,
-):
-    value_arr = np.asarray(value, dtype=float)
-    jac_arr = np.asarray(jacobian, dtype=float)
-    if shape is None:
-        if jac_arr.ndim == 2:
-            shape = [int(jac_arr.shape[0]), int(jac_arr.shape[1])]
-        elif value_arr.ndim == 0:
-            shape = [1, int(jac_arr.size)]
-        else:
-            shape = [int(value_arr.size), int(jac_arr.size // max(int(value_arr.size), 1))]
-    if outputs is None:
-        outputs = extra.get("output_order", extra.get("component_order", ()))
-    if variables is None:
-        variables = extra.get("variable_order", extra.get("parameter_order", ()))
-    payload = {
-        "supported": bool(supported),
-        "backend": str(backend),
-        "derivative_backend": str(backend),
-        "message": str(message),
-        "value": value_arr,
-        "jacobian": jac_arr.reshape(tuple(shape)) if bool(supported) and jac_arr.size else jac_arr,
-        "outputs": [str(item) for item in (outputs or [])],
-        "variables": [str(item) for item in (variables or [])],
-        "shape": [int(shape[0]), int(shape[1])],
-    }
-    payload.update(extra)
-    return payload
-
-
-def _backend_from_contribution_details(details, *, available=True, reason=""):
-    if not available:
-        _unsupported_derivative(reason or "composition derivative contribution backend is unsupported")
-    labels = {str(v) for v in dict(details).values()}
-    if "unsupported" in labels:
-        _unsupported_derivative(reason or "composition derivative contribution backend is unsupported")
-    if "cppad" in labels:
-        return "cppad", "mixed CppAD/analytic derivative contributions"
-    if "cppad_implicit" in labels:
-        return "cppad_implicit", "mixed implicit CppAD/analytic derivative contributions"
-    if "analytic_implicit" in labels:
-        return "analytic_implicit", "mixed implicit analytic/analytic derivative contributions"
-    return "analytic", "analytic derivative contributions"
-
-
-def _unsupported_derivative(message):
-    text = str(message)
-    if not text.startswith("unsupported:"):
-        text = f"unsupported: {text}"
-    raise InputError(text)
 
 
 def _as_rule_number(value, aliases, default):
@@ -1053,7 +927,7 @@ class ePCSAFTState:
         if not bool(raw.get("cppad_compiled", False)):
             _unsupported_derivative("CppAD derivative backend did not report required compiled support.")
         return _derivative_result_payload(
-            supported=bool(raw.get("cppad_used", False)),
+            supported=bool(raw.get("supported", raw.get("cppad_used", False))),
             backend=str(raw.get("derivative_backend", "cppad")),
             message=str(raw.get("message", "CppAD pressure-density derivative available")),
             value=[self.pressure()],
@@ -1517,76 +1391,10 @@ class ePCSAFTState:
         return _scalar_terms_dict(result)
 
     def _composition_derivative_residual_helmholtz_result(self):
-        ncomp = int(self._x.size)
-        result = self._native.composition_derivative_residual_helmholtz_result()
-        dadx = _vector_terms_dict(result.dadx, ncomp, "dadx")
-        ares = _scalar_terms_dict(result.ares)
-        sum_x = _scalar_terms_dict(result.sum_x_dadx)
-        z_raw = _scalar_terms_dict(result.z_raw)
-        z_terms = _scalar_terms_dict(result.z)
-        terms = {name: np.asarray(dadx[name], dtype=float) for name in _CONTRIBUTION_NAMES}
-        return {
-            "total": _sum_vector_terms(terms),
-            "terms": terms,
-            "ares_terms": {name: float(ares[name]) for name in _CONTRIBUTION_NAMES},
-            "sum_x_terms": {name: float(sum_x[name]) for name in _CONTRIBUTION_NAMES},
-            "z_raw_terms": {name: float(z_raw[name]) for name in _CONTRIBUTION_NAMES},
-            "z_terms": {name: float(z_terms[name]) for name in _CONTRIBUTION_NAMES},
-            "z_total": float(z_terms["total"]),
-            "derivative_backend": {str(k): str(v) for k, v in dict(result.derivative_backend).items()},
-            "derivative_available": bool(result.derivative_available),
-        }
+        return _composition_derivative_residual_helmholtz_result_payload(self)
 
     def _fugacity_coefficient_term_result(self):
-        ncomp = int(self._x.size)
-        result = self._native.fugacity_coefficient_result()
-        mu = _vector_terms_dict(result.mu, ncomp, "mu")
-        lnfug = _vector_terms_dict(result.lnfugcoef, ncomp, "lnfugcoef")
-        dadx = _vector_terms_dict(result.composition.dadx, ncomp, "dadx")
-        ares = _scalar_terms_dict(result.composition.ares)
-        sum_x = _scalar_terms_dict(result.composition.sum_x_dadx)
-        z_raw = _scalar_terms_dict(result.composition.z_raw)
-        z_terms = _scalar_terms_dict(result.composition.z)
-        return {
-            "mu_hc": mu["hc"],
-            "mu_disp": mu["disp"],
-            "mu_assoc": mu["assoc"],
-            "mu_ion": mu["ion"],
-            "mu_born": mu["born"],
-            "mu_total": mu["total"],
-            "lnfugcoef_total": lnfug["total"],
-            "lnfugcoef_hc": lnfug["hc"],
-            "lnfugcoef_disp": lnfug["disp"],
-            "lnfugcoef_assoc": lnfug["assoc"],
-            "lnfugcoef_ion": lnfug["ion"],
-            "lnfugcoef_born": lnfug["born"],
-            "dadx_hc": dadx["hc"],
-            "dadx_disp": dadx["disp"],
-            "dadx_assoc": dadx["assoc"],
-            "dadx_ion": dadx["ion"],
-            "dadx_born": dadx["born"],
-            "a_hc": ares["hc"],
-            "a_disp": ares["disp"],
-            "a_assoc": ares["assoc"],
-            "a_ion": ares["ion"],
-            "a_born": ares["born"],
-            "sum_x_dadx_hc": sum_x["hc"],
-            "sum_x_dadx_disp": sum_x["disp"],
-            "sum_x_dadx_assoc": sum_x["assoc"],
-            "sum_x_dadx_ion": sum_x["ion"],
-            "sum_x_dadx_born": sum_x["born"],
-            "z_raw_hc": z_raw["hc"],
-            "z_raw_disp": z_raw["disp"],
-            "z_raw_assoc": z_raw["assoc"],
-            "z_raw_ion": z_raw["ion"],
-            "z_raw_born": z_raw["born"],
-            "z_hc": z_terms["hc"],
-            "z_disp": z_terms["disp"],
-            "z_assoc": z_terms["assoc"],
-            "z_ion": z_terms["ion"],
-            "z_born": z_terms["born"],
-            "z_total": z_terms["total"],
-        }
+        return _fugacity_coefficient_term_result_payload(self)
 
     def compressibility_factor(self, return_contribution_terms=False):
         """Return the compressibility factor."""
@@ -1848,57 +1656,11 @@ class ePCSAFTState:
 
     def state_diagnostics(self, species=None):
         """Return a diagnostic dictionary of the main state properties."""
-        mix = self._mixture
-        species = self._mixture.species if species is None else species
-        z = np.asarray(mix._params.get("z", []), dtype=float).flatten()
-        has_ions = bool(np.any(np.abs(z) > 1e-12))
-        terms = self._fugacity_coefficient_term_result()
-        fugacity_coefficient = self.fugacity_coefficient(natural_log=False)
-        if has_ions:
-            activity_coefficient = self.activity_coefficient(species=species, mean_ionic_form=False)
-            relative_permittivity = self.relative_permittivity()
-            osmotic_coefficient = self.osmotic_coefficient()
-            mean_ionic_activity_coefficient_molality = self.activity_coefficient(
-                species=species,
-                mean_ionic_form=True,
-                basis="molality",
-            )
-            mean_ionic_activity_coefficient_mole = self.activity_coefficient(
-                species=species,
-                mean_ionic_form=True,
-                basis="mole",
-            )
-            solvation_free_energy = self.solvation_free_energy(species=species)
-        else:
-            activity_coefficient = {}
-            relative_permittivity = None
-            osmotic_coefficient = None
-            mean_ionic_activity_coefficient_molality = {}
-            mean_ionic_activity_coefficient_mole = {}
-            solvation_free_energy = {}
-        return {
-            "T": self._T,
-            "phase": self._phase,
-            "x": np.asarray(self._x, dtype=float),
-            "pressure": self.pressure(),
-            "density": self.molar_density(),
-            "density_molar": self.molar_density(),
-            "mass_density": self.mass_density() if np.asarray(mix._params.get("MW", []), dtype=float).size else None,
-            "compressibility_factor": self.compressibility_factor(),
-            "residual_helmholtz": self.residual_helmholtz(),
-            "residual_enthalpy": self.residual_enthalpy(),
-            "residual_entropy": self.residual_entropy(),
-            "residual_gibbs": self.residual_gibbs(),
-            "residual_chemical_potential": self.residual_chemical_potential(),
-            "fugacity_coefficient": fugacity_coefficient,
-            "activity_coefficient": activity_coefficient,
-            "fugacity_coefficient_terms": terms,
-            "relative_permittivity": relative_permittivity,
-            "osmotic_coefficient": osmotic_coefficient,
-            "mean_ionic_activity_coefficient_molality": mean_ionic_activity_coefficient_molality,
-            "mean_ionic_activity_coefficient_mole": mean_ionic_activity_coefficient_mole,
-            "solvation_free_energy": solvation_free_energy,
-        }
+        return state_diagnostics_payload(self, species=species)
+
+    def state_diagnostics_view(self, species=None):
+        """Return a typed view over the stable state diagnostics payload."""
+        return StateDiagnosticsView(self.state_diagnostics(species=species))
 
     def solvation_free_energy(self, species=None):
         """Return ion solvation free-energy values keyed by species."""

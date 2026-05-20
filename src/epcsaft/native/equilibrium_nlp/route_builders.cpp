@@ -5,6 +5,7 @@
 #include "ipopt_adapter.h"
 #include "nlp_problem.h"
 #include "reaction_block.h"
+#include "route_campaign.h"
 #include "route_metadata.h"
 #include "second_order.h"
 
@@ -2593,10 +2594,12 @@ NeutralTwoPhaseEosRouteResult solve_seeded_neutral_two_phase_route(
         phase_kinds
     );
 
-    NeutralTwoPhaseEosRouteResult best;
-    bool have_best = false;
-    std::vector<RouteSeedAttempt> attempts;
-    attempts.reserve(seeds.size() + (options.initial_variables.empty() ? 0 : 1));
+    RouteCampaign<NeutralTwoPhaseEosRouteResult, RouteSeedAttempt> campaign(
+        neutral_route_quality,
+        "deterministic_seed_sweep",
+        seeds.empty() ? "problem_initial_point" : seeds.front().seed_name
+    );
+    campaign.reserve(seeds.size() + (options.initial_variables.empty() ? 0 : 1));
 
     auto run_attempt = [&](const std::string& seed_name, const IpoptSolveOptions& attempt_options) {
         const auto& base_variables = attempt_options.initial_variables.empty()
@@ -2625,11 +2628,7 @@ NeutralTwoPhaseEosRouteResult solve_seeded_neutral_two_phase_route(
         );
         result.initial_point_strategy = "deterministic_seed_sweep";
         result.seed_name = seed_name;
-        attempts.push_back(neutral_seed_attempt_from_result(result));
-        if (!have_best || neutral_route_quality(result) > neutral_route_quality(best)) {
-            best = result;
-            have_best = true;
-        }
+        campaign.record_attempt(result, neutral_seed_attempt_from_result(result));
         return result;
     };
 
@@ -2638,8 +2637,7 @@ NeutralTwoPhaseEosRouteResult solve_seeded_neutral_two_phase_route(
         const NeutralTwoPhaseEosRouteResult continuation =
             run_attempt("continuation_state", continuation_options);
         if (continuation.accepted) {
-            best.seed_attempts = attempts;
-            return best;
+            return campaign.finish_result();
         }
     }
 
@@ -2655,12 +2653,7 @@ NeutralTwoPhaseEosRouteResult solve_seeded_neutral_two_phase_route(
         }
     }
 
-    if (!have_best) {
-        best.initial_point_strategy = "deterministic_seed_sweep";
-        best.seed_name = seeds.empty() ? "problem_initial_point" : seeds.front().seed_name;
-    }
-    best.seed_attempts = attempts;
-    return best;
+    return campaign.finish_result();
 }
 
 // AlgID: neutral_tp_flash_ipopt

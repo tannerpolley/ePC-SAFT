@@ -6,6 +6,7 @@ import pytest
 import epcsaft
 import epcsaft.epcsaft as epcsaft_module
 from epcsaft import ePCSAFTMixture
+from epcsaft.eos import StateDiagnosticsView
 from tests.helpers.numeric import assert_allclose
 from tests.helpers.runtime_cases import (
     _assert_array,
@@ -95,6 +96,22 @@ def test_state_method_aliases_match_canonical_methods():
         _ = state.fugacity_coefficient_terms
     with pytest.raises(AttributeError):
         _ = state.lnfug_terms
+
+
+def test_state_diagnostics_view_wraps_stable_payload():
+    state, species = _ionic_state()
+
+    payload = state.state_diagnostics(species=species)
+    view = state.state_diagnostics_view(species=species)
+
+    assert isinstance(view, StateDiagnosticsView)
+    assert view.as_dict()["pressure"] == pytest.approx(payload["pressure"])
+    assert view.pressure == pytest.approx(payload["pressure"])
+    assert view.density == pytest.approx(payload["density_molar"])
+    assert view.compressibility_factor == pytest.approx(payload["compressibility_factor"])
+    assert view.has_ionic_outputs is True
+    assert set(view.fugacity_coefficient_terms) == set(payload["fugacity_coefficient_terms"])
+
 
 def test_state_contribution_term_payloads_match_totals():
     state, _species = _ionic_state()

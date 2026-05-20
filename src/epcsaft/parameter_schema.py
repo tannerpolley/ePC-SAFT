@@ -11,6 +11,12 @@ from typing import Any
 import numpy as np
 
 from ._types import InputError
+from .parameter_sources import (
+    copy_parameter_mapping as _copy_payload_mapping,
+    copy_parameter_value as _copy_payload_value,
+    deep_update_parameter_mapping as _deep_update_mapping,
+    load_canonical_user_options as _load_canonical_user_options,
+)
 
 _PURE_PARAMETER_KEYS = {
     "MW",
@@ -638,46 +644,6 @@ def _parameter_set_with_runtime_options(
         metadata=params.metadata,
         runtime_options=_deep_update_mapping(params.runtime_options, user_options),
     )
-
-
-def _load_canonical_user_options(dataset_dir: Path) -> dict[str, Any]:
-    path = dataset_dir / "user_options.json"
-    if not path.exists():
-        return {}
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    if isinstance(payload, Mapping) and "canonical_user_options" in payload:
-        payload = payload.get("canonical_user_options", {})
-    if not isinstance(payload, Mapping):
-        return {}
-    return _copy_payload_mapping(payload)
-
-
-def _copy_payload_value(value: Any) -> Any:
-    if isinstance(value, np.ndarray):
-        return np.asarray(value).copy()
-    if isinstance(value, Mapping):
-        return {str(key): _copy_payload_value(item) for key, item in value.items()}
-    if isinstance(value, list):
-        return [_copy_payload_value(item) for item in value]
-    if isinstance(value, tuple):
-        return tuple(_copy_payload_value(item) for item in value)
-    return value
-
-
-def _copy_payload_mapping(payload: Mapping[str, Any] | None) -> dict[str, Any]:
-    if payload is None:
-        return {}
-    return {str(key): _copy_payload_value(value) for key, value in payload.items()}
-
-
-def _deep_update_mapping(base: Mapping[str, Any] | None, updates: Mapping[str, Any] | None) -> dict[str, Any]:
-    merged = _copy_payload_mapping(base)
-    for key, value in _copy_payload_mapping(updates).items():
-        if isinstance(merged.get(key), Mapping) and isinstance(value, Mapping):
-            merged[key] = _deep_update_mapping(merged[key], value)
-        else:
-            merged[key] = value
-    return merged
 
 
 def _runtime_options_from_payload(payload: Mapping[str, Any]) -> dict[str, Any]:

@@ -923,6 +923,111 @@ def _parameter_movement(
     return {str(name): float(fitted_map[name]) - float(initial_map[name]) for name in names}
 
 
+def _fit_records_source_summary(
+    *,
+    dataset: str | Path | ParameterSet | None,
+    records: Sequence[Mapping[str, Any]],
+    terms: Sequence[FitTerm],
+    extra: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    summary: dict[str, Any] = {
+        "dataset": _source_dataset_label(dataset),
+        "record_count": len(records),
+        "row_families": tuple(term.term_type for term in terms),
+    }
+    summary.update(_copy_mapping(extra))
+    return summary
+
+
+def _native_fit_result_evidence(
+    *,
+    problem: FitProblem,
+    parameter_names: Sequence[str],
+    initial_map: Mapping[str, float],
+    vector_map: Mapping[str, float],
+    lower: Sequence[float],
+    upper: Sequence[float],
+    metrics_by_term: Mapping[str, Any],
+    source_summary_extra: Mapping[str, Any] | None = None,
+    provenance_report: Mapping[str, Any] | None = None,
+    provenance_extra: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    parameter_movement = _parameter_movement(parameter_names, initial_map, vector_map)
+    source_summary = _fit_records_source_summary(
+        dataset=problem.dataset,
+        records=problem.records,
+        terms=problem.terms,
+        extra=source_summary_extra,
+    )
+    target_family_summaries = _target_family_summaries_from_terms(problem.terms, metrics_by_term)
+    provenance_payload = _copy_mapping(provenance_report)
+    provenance_payload["parameter_movement"] = parameter_movement
+    provenance_payload["initial_parameters"] = dict(initial_map)
+    provenance_payload["final_parameters"] = dict(vector_map)
+    provenance_payload.update(_copy_mapping(provenance_extra))
+    provenance_payload["source_summary"] = source_summary
+    provenance_payload["source_summaries"] = {"records": source_summary}
+    provenance_payload["target_family_summaries"] = target_family_summaries
+    provenance_payload["residual_block_norms"] = dict(metrics_by_term)
+    return {
+        "parameter_map": dict(vector_map),
+        "initial_parameters": dict(initial_map),
+        "final_parameters": dict(vector_map),
+        "parameter_movement": parameter_movement,
+        "row_diagnostics": _row_diagnostics_from_metrics(metrics_by_term),
+        "active_bounds": _active_bounds_from_arrays(parameter_names, vector_map, lower, upper),
+        "source_summaries": {"records": source_summary},
+        "target_family_summaries": target_family_summaries,
+        "residual_block_norms": dict(metrics_by_term),
+        "provenance_report": provenance_payload,
+    }
+
+
+def _fit_result_from_native_payload(
+    *,
+    problem: FitProblem,
+    result: Mapping[str, Any],
+    parameter_names: Sequence[str],
+    initial_map: Mapping[str, float],
+    vector_map: Mapping[str, float],
+    lower: Sequence[float],
+    upper: Sequence[float],
+    rendered_values: Mapping[str, str | float],
+    metrics_by_term: Mapping[str, Any],
+    source_summary_extra: Mapping[str, Any] | None = None,
+    provenance_report: Mapping[str, Any] | None = None,
+    provenance_extra: Mapping[str, Any] | None = None,
+    derivative_metadata: Mapping[str, Any] | None = None,
+) -> FitResult:
+    metrics = {str(name): float(value) for name, value in metrics_by_term.items()}
+    return FitResult(
+        problem=problem,
+        fitted_values=dict(vector_map),
+        rendered_values=dict(rendered_values),
+        metrics_by_term=metrics,
+        cost=float(result["cost"]),
+        residual_norm=float(result["residual_norm"]),
+        success=bool(result["success"]),
+        status=int(result["status"]),
+        message=str(result["message"]),
+        nfev=int(result["nfev"]),
+        backend=str(result["backend"]),
+        **(dict(derivative_metadata) if derivative_metadata is not None else _fit_derivative_metadata(result)),
+        **_native_fit_result_evidence(
+            problem=problem,
+            parameter_names=parameter_names,
+            initial_map=initial_map,
+            vector_map=vector_map,
+            lower=lower,
+            upper=upper,
+            metrics_by_term=metrics,
+            source_summary_extra=source_summary_extra,
+            provenance_report=provenance_report,
+            provenance_extra=provenance_extra,
+        ),
+    )
+
+
 def load_regression_records(records: Any) -> list[dict[str, Any]]:
     """Load flat regression records from CSV, tabular objects, or mappings."""
 
@@ -1912,44 +2017,17 @@ def _fit_pure_ion_internal(
         component=normalized_component,
     )
     vector_map = _normalize_vector_map(optimization_names, result["x"])
-    provenance_payload = _copy_mapping(provenance_report)
-    parameter_movement = _parameter_movement(optimization_names, initial_map, vector_map)
-    source_summary = {
-        "dataset": _source_dataset_label(dataset),
-        "record_count": len(normalized_records),
-        "row_families": tuple(term.term_type for term in terms),
-    }
-    target_family_summaries = _target_family_summaries_from_terms(terms, result["metrics_by_term"])
-    provenance_payload["parameter_movement"] = parameter_movement
-    provenance_payload["initial_parameters"] = dict(initial_map)
-    provenance_payload["final_parameters"] = dict(vector_map)
-    provenance_payload["source_summary"] = source_summary
-    provenance_payload["source_summaries"] = {"records": source_summary}
-    provenance_payload["target_family_summaries"] = target_family_summaries
-    provenance_payload["residual_block_norms"] = dict(result["metrics_by_term"])
-    return FitResult(
+    return _fit_result_from_native_payload(
         problem=problem,
-        fitted_values=vector_map,
+        result=result,
+        parameter_names=optimization_names,
+        initial_map=initial_map,
+        vector_map=vector_map,
+        lower=lower,
+        upper=upper,
         rendered_values={name: float(vector_map[name]) for name in normalized_fit_targets},
         metrics_by_term=result["metrics_by_term"],
-        cost=float(result["cost"]),
-        residual_norm=float(result["residual_norm"]),
-        success=bool(result["success"]),
-        status=int(result["status"]),
-        message=str(result["message"]),
-        nfev=int(result["nfev"]),
-        backend=str(result["backend"]),
-        **_fit_derivative_metadata(result),
-        parameter_map=vector_map,
-        initial_parameters=initial_map,
-        final_parameters=vector_map,
-        parameter_movement=parameter_movement,
-        row_diagnostics=_row_diagnostics_from_metrics(result["metrics_by_term"]),
-        active_bounds=_active_bounds_from_arrays(optimization_names, vector_map, lower, upper),
-        source_summaries={"records": source_summary},
-        target_family_summaries=target_family_summaries,
-        residual_block_norms=result["metrics_by_term"],
-        provenance_report=provenance_payload,
+        provenance_report=provenance_report,
     )
 
 
@@ -2071,44 +2149,17 @@ def _fit_binary_pair_internal(
     else:
         raise InputError(GENERIC_NATIVE_OPTIMIZER_UNSUPPORTED_REASON)
     vector_map = _normalize_vector_map(optimization_names, result["x"])
-    provenance_payload = _copy_mapping(provenance_report)
-    parameter_movement = _parameter_movement(optimization_names, initial_map, vector_map)
-    source_summary = {
-        "dataset": _source_dataset_label(dataset),
-        "record_count": len(normalized_records),
-        "row_families": tuple(term.term_type for term in terms),
-    }
-    target_family_summaries = _target_family_summaries_from_terms(terms, result["metrics_by_term"])
-    provenance_payload["parameter_movement"] = parameter_movement
-    provenance_payload["initial_parameters"] = dict(initial_map)
-    provenance_payload["final_parameters"] = dict(vector_map)
-    provenance_payload["source_summary"] = source_summary
-    provenance_payload["source_summaries"] = {"records": source_summary}
-    provenance_payload["target_family_summaries"] = target_family_summaries
-    provenance_payload["residual_block_norms"] = dict(result["metrics_by_term"])
-    return FitResult(
+    return _fit_result_from_native_payload(
         problem=problem,
-        fitted_values=vector_map,
+        result=result,
+        parameter_names=optimization_names,
+        initial_map=initial_map,
+        vector_map=vector_map,
+        lower=lower,
+        upper=upper,
         rendered_values=_render_binary_values(vector_map, normalized_fit_targets, normalized_temperature_model),
         metrics_by_term=result["metrics_by_term"],
-        cost=float(result["cost"]),
-        residual_norm=float(result["residual_norm"]),
-        success=bool(result["success"]),
-        status=int(result["status"]),
-        message=str(result["message"]),
-        nfev=int(result["nfev"]),
-        backend=str(result["backend"]),
-        **_fit_derivative_metadata(result),
-        parameter_map=vector_map,
-        initial_parameters=initial_map,
-        final_parameters=vector_map,
-        parameter_movement=parameter_movement,
-        row_diagnostics=_row_diagnostics_from_metrics(result["metrics_by_term"]),
-        active_bounds=_active_bounds_from_arrays(optimization_names, vector_map, lower, upper),
-        source_summaries={"records": source_summary},
-        target_family_summaries=target_family_summaries,
-        residual_block_norms=result["metrics_by_term"],
-        provenance_report=provenance_payload,
+        provenance_report=provenance_report,
     )
 
 
@@ -2336,34 +2387,20 @@ def _fit_pure_neutral_internal_with_native(
         pure_file_hint=payload["pure_file_hint"],
     )
     rendered = {name: float(vector_map[name]) for name in normalized_fit_targets}
-    row_diagnostics = [
-        {"row_family": TERM_DENSITY, "metric": float(native_result["density_metric"])},
-        {"row_family": TERM_PURE_VLE, "metric": float(native_result["pure_vle_metric"])},
-    ]
-    fit_result = FitResult(
+    metrics_by_term = {
+        TERM_DENSITY: float(native_result["density_metric"]),
+        TERM_PURE_VLE: float(native_result["pure_vle_metric"]),
+    }
+    fit_result = _fit_result_from_native_payload(
         problem=problem,
-        fitted_values=vector_map,
+        result=native_result,
+        parameter_names=payload["optimization_names"],
+        initial_map=payload["initial_map"],
+        vector_map=vector_map,
+        lower=payload["lower"],
+        upper=payload["upper"],
         rendered_values=rendered,
-        metrics_by_term={
-            TERM_DENSITY: float(native_result["density_metric"]),
-            TERM_PURE_VLE: float(native_result["pure_vle_metric"]),
-        },
-        cost=float(native_result["cost"]),
-        residual_norm=float(native_result["residual_norm"]),
-        success=bool(native_result["success"]),
-        status=int(native_result["status"]),
-        message=str(native_result["message"]),
-        nfev=int(native_result["nfev"]),
-        backend=str(native_result["backend"]),
-        parameter_map=vector_map,
-        row_diagnostics=row_diagnostics,
-        active_bounds=[
-            name
-            for name in payload["optimization_names"]
-            if math.isclose(vector_map[name], float(payload["lower"][payload["optimization_names"].index(name)]))
-            or math.isclose(vector_map[name], float(payload["upper"][payload["optimization_names"].index(name)]))
-        ],
-        **_fit_derivative_metadata(native_result),
+        metrics_by_term=metrics_by_term,
     )
     return fit_result, native_result
 
@@ -3095,23 +3132,6 @@ def fit_liquid_electrolyte_parameters(
         max_nfev=int((solver_options or {}).get("max_nfev", 200)),
     )
     vector_map = _normalize_vector_map(targets, result["x"])
-    parameter_movement = _parameter_movement(targets, initial_map, vector_map)
-    source_summary = {
-        "dataset": _source_dataset_label(parameter_set),
-        "record_count": len(records),
-        "row_families": tuple(term.term_type for term in terms),
-        "target_components": dict(target_components),
-    }
-    target_family_summaries = _target_family_summaries_from_terms(terms, result["metrics_by_term"])
-    provenance_payload = _copy_mapping(provenance_report)
-    provenance_payload["parameter_movement"] = parameter_movement
-    provenance_payload["initial_parameters"] = dict(initial_map)
-    provenance_payload["final_parameters"] = dict(vector_map)
-    provenance_payload["target_components"] = dict(target_components)
-    provenance_payload["source_summary"] = source_summary
-    provenance_payload["source_summaries"] = {"records": source_summary}
-    provenance_payload["target_family_summaries"] = target_family_summaries
-    provenance_payload["residual_block_norms"] = dict(result["metrics_by_term"])
     problem = FitProblem(
         mode=LIQUID_ELECTROLYTE_MODE,
         records=tuple(records),
@@ -3131,29 +3151,19 @@ def fit_liquid_electrolyte_parameters(
         output_report=output_report,
         terms=terms,
     )
-    return FitResult(
+    return _fit_result_from_native_payload(
         problem=problem,
-        fitted_values=vector_map,
+        result=result,
+        parameter_names=targets,
+        initial_map=initial_map,
+        vector_map=vector_map,
+        lower=lower,
+        upper=upper,
         rendered_values={name: float(vector_map[name]) for name in targets},
         metrics_by_term=result["metrics_by_term"],
-        cost=float(result["cost"]),
-        residual_norm=float(result["residual_norm"]),
-        success=bool(result["success"]),
-        status=int(result["status"]),
-        message=str(result["message"]),
-        nfev=int(result["nfev"]),
-        backend=str(result["backend"]),
-        **_fit_derivative_metadata(result),
-        parameter_map=vector_map,
-        initial_parameters=initial_map,
-        final_parameters=vector_map,
-        parameter_movement=parameter_movement,
-        row_diagnostics=_row_diagnostics_from_metrics(result["metrics_by_term"]),
-        active_bounds=_active_bounds_from_arrays(targets, vector_map, lower, upper),
-        source_summaries={"records": source_summary},
-        target_family_summaries=target_family_summaries,
-        residual_block_norms=result["metrics_by_term"],
-        provenance_report=provenance_payload,
+        source_summary_extra={"target_components": dict(target_components)},
+        provenance_report=provenance_report,
+        provenance_extra={"target_components": dict(target_components)},
     )
 
 

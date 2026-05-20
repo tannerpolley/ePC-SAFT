@@ -28,6 +28,7 @@ if TYPE_CHECKING:
     from epcsaft._types import ActivityCoefficientResult, InputError, SolutionError
     from epcsaft.dataset_validation import validate_dataset_bundle
     from epcsaft.electrolyte_bubble import ElectrolyteBubbleOptions, ElectrolyteBubbleResult
+    from epcsaft.eos_views import StateDiagnosticsView
     from epcsaft.epcsaft import ePCSAFTMixture, ePCSAFTState
     from epcsaft.equilibrium import (
         BubblePoint,
@@ -136,6 +137,7 @@ _EXPORT_GROUPS = {
     "epcsaft._types": ("ActivityCoefficientResult", "InputError", "SolutionError"),
     "epcsaft.dataset_validation": ("validate_dataset_bundle",),
     "epcsaft.electrolyte_bubble": ("ElectrolyteBubbleOptions", "ElectrolyteBubbleResult"),
+    "epcsaft.eos_views": ("StateDiagnosticsView",),
     "epcsaft.epcsaft": ("ePCSAFTMixture", "ePCSAFTState"),
     "epcsaft.equilibrium": (
         "BubblePoint",
