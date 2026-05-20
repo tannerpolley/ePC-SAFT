@@ -3,6 +3,7 @@
 #include "eos_phase_block.h"
 #include "epcsaft_core_internal.h"
 #include "nlp_problem.h"
+#include "route_metadata.h"
 #include "second_order.h"
 
 #include <algorithm>
@@ -22,6 +23,26 @@ constexpr double kMaximumLiquidVolume = 5.0e-4;
 constexpr double kMinimumVaporVolume = 1.0e-3;
 constexpr double kMaximumVaporVolume = 1.0e6;
 constexpr double kMinimumPhaseVolumeGap = 1.0e-7;
+
+void apply_route_metadata(NeutralTwoPhaseEosNlpContract& out, const RouteMetadata& metadata) {
+    out.variable_model = metadata.variable_model;
+    out.density_backend = metadata.density_backend;
+    out.residual_families = metadata.residual_families;
+    out.constraint_families = metadata.constraint_families;
+}
+
+void apply_route_metadata(NeutralTwoPhaseEosPostsolve& out, const RouteMetadata& metadata) {
+    out.density_backend = metadata.density_backend;
+    out.residual_families = metadata.residual_families;
+    out.constraint_families = metadata.constraint_families;
+}
+
+void apply_route_metadata(NeutralTwoPhaseEosRouteResult& out, const RouteMetadata& metadata) {
+    out.variable_model = metadata.variable_model;
+    out.density_backend = metadata.density_backend;
+    out.residual_families = metadata.residual_families;
+    out.constraint_families = metadata.constraint_families;
+}
 
 enum class DensitySeedMode {
     PhasePressureRoot,
@@ -1216,6 +1237,10 @@ public:
         return out;
     }
 
+    std::map<std::string, std::string> diagnostics() const override {
+        return route_metadata_diagnostics(fixed_temperature_pressure_route_metadata(!charges_.empty()));
+    }
+
     int species_count() const {
         return species_count_;
     }
@@ -1676,6 +1701,10 @@ public:
         return out;
     }
 
+    std::map<std::string, std::string> diagnostics() const override {
+        return route_metadata_diagnostics(fixed_pressure_temperature_route_metadata());
+    }
+
     int species_count() const {
         return species_count_;
     }
@@ -1765,6 +1794,7 @@ NeutralTwoPhaseEosNlpContract make_contract(const NlpProblem& problem, int phase
     NeutralTwoPhaseEosNlpContract out;
     out.problem_name = problem.name();
     out.derivative_backend = "analytic_cppad";
+    apply_route_metadata(out, route_metadata_from_diagnostics(problem.diagnostics()));
     out.phase_count = phase_count;
     out.species_count = species_count;
     out.variable_count = problem.variable_count();
@@ -1811,6 +1841,7 @@ NeutralTwoPhaseEosPostsolve fixed_temperature_pressure_postsolve(
         chemical_potential_tolerance,
         phase_distance_tolerance
     );
+    apply_route_metadata(out, fixed_temperature_pressure_route_metadata(!charges.empty()));
     out.fixed_composition_norm = fixed_composition_norm(phase_amounts, fixed_phase_index, fixed_composition);
     out.phase_amount_total_norm = phase_total_norm(phase_amounts);
     out.charge_balance_norm = phase_charge_norm(phase_amounts, charges);
@@ -1850,6 +1881,7 @@ NeutralTwoPhaseEosRouteResult solve_pressure_route(
     best.exact_gradient_required = adapter.exact_gradient_required;
     best.exact_jacobian_required = adapter.exact_jacobian_required;
     best.problem_name = problem_name;
+    apply_route_metadata(best, fixed_temperature_pressure_route_metadata(!charges.empty()));
     if (!adapter.compiled) {
         best.status = "ipopt_dependency_required";
         return best;
@@ -1982,6 +2014,7 @@ NeutralTwoPhaseEosRouteResult solve_temperature_route(
     best.exact_gradient_required = adapter.exact_gradient_required;
     best.exact_jacobian_required = adapter.exact_jacobian_required;
     best.problem_name = problem_name;
+    apply_route_metadata(best, fixed_pressure_temperature_route_metadata());
     if (!adapter.compiled) {
         best.status = "ipopt_dependency_required";
         return best;

@@ -14,6 +14,8 @@ struct NeutralTwoPhaseEosNlpContract {
     std::string derivative_backend;
     std::string variable_model;
     std::string density_backend;
+    std::vector<std::string> residual_families;
+    std::vector<std::string> constraint_families;
     int phase_count = 0;
     int species_count = 0;
     int balance_row_count = 0;
@@ -39,6 +41,8 @@ struct NeutralTwoPhaseEosPostsolve {
     bool accepted = false;
     std::string rejection_reason;
     std::string derivative_backend;
+    std::vector<std::string> residual_families;
+    std::vector<std::string> constraint_families;
     int phase_count = 0;
     int species_count = 0;
     double material_balance_norm = 0.0;
@@ -76,6 +80,10 @@ struct NeutralTwoPhaseEosRouteResult {
     std::string adapter_kind = "native_tnlp_adapter";
     std::string problem_name = "neutral_two_phase_eos";
     std::string derivative_backend = "analytic_cppad";
+    std::string variable_model;
+    std::string density_backend;
+    std::vector<std::string> residual_families;
+    std::vector<std::string> constraint_families;
     std::string gradient_approximation = "exact";
     std::string jacobian_approximation = "exact";
     std::string hessian_approximation = "unknown";
@@ -126,6 +134,8 @@ struct ReactiveTwoPhaseEosPostsolve {
     std::string rejection_reason;
     std::string derivative_backend = "analytic_cppad";
     std::string density_backend;
+    std::vector<std::string> residual_families;
+    std::vector<std::string> constraint_families;
     int phase_count = 0;
     int species_count = 0;
     int balance_row_count = 0;
@@ -161,6 +171,10 @@ struct ReactiveTwoPhaseEosRouteResult {
     std::string adapter_kind = "native_tnlp_adapter";
     std::string problem_name = "reactive_two_phase_eos";
     std::string derivative_backend = "analytic_cppad";
+    std::string variable_model;
+    std::string density_backend;
+    std::vector<std::string> residual_families;
+    std::vector<std::string> constraint_families;
     std::string gradient_approximation = "exact";
     std::string jacobian_approximation = "exact";
     std::string hessian_approximation = "unknown";

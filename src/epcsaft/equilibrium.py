@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from numbers import Integral, Real
 from typing import Any, Literal
 
@@ -26,6 +26,8 @@ from .equilibrium_core.native_results import (
     native_route_diagnostics,
     neutral_two_phase_payload_to_result,
     raise_native_route_rejected,
+    raise_with_equilibrium_route_diagnostics,
+    with_equilibrium_route_diagnostics,
 )
 
 _ASCANI_2022_REFERENCE = {
@@ -86,17 +88,11 @@ def _classify_problem_route(mixture: Any, kind: str) -> dict[str, str]:
 
 
 def _with_route_diagnostics(result: Any, route: Mapping[str, str]) -> Any:
-    diagnostics = dict(result.diagnostics)
-    diagnostics["equilibrium_route"] = route["route"]
-    diagnostics["route_reason"] = route["reason"]
-    return replace(result, diagnostics=diagnostics)
+    return with_equilibrium_route_diagnostics(result, route)
 
 
 def _raise_with_route_diagnostics(exc: SolutionError, route: Mapping[str, str]) -> None:
-    diagnostics = dict(getattr(exc, "diagnostics", None) or {})
-    diagnostics["equilibrium_route"] = route["route"]
-    diagnostics["route_reason"] = route["reason"]
-    raise SolutionError(exc.message, diagnostics) from exc
+    raise_with_equilibrium_route_diagnostics(exc, route)
 
 
 def _solve_problem_route(mixture: Any, kind: str, solve) -> Any:
@@ -480,6 +476,90 @@ class ElectrolyteBubblePoint(EquilibriumProblem):
                 options=self.options,
             ),
         )
+
+
+@dataclass(frozen=True, slots=True)
+class EquilibriumRequest:
+    """Normalized public non-reactive equilibrium request."""
+
+    kind: str
+    problem: EquilibriumProblem
+    route: Mapping[str, str]
+
+    def solve(self, mixture):
+        return solve_equilibrium_request(mixture, self)
+
+
+def equilibrium_request_from_request(
+    mixture: Any,
+    *,
+    kind: str,
+    T: Any = None,
+    P: Any = None,
+    z: Any = None,
+    x_liq: Any = None,
+    volatile_species: Any = None,
+    vapor_species: Any = None,
+    nonvolatile_species: Any = None,
+    solvent_feed: Any = None,
+    salt_molality: Any = None,
+    options: Any = None,
+    parent_phase: Any = None,
+    trial_phases: Any = None,
+) -> EquilibriumRequest:
+    """Convert a public non-reactive request into one typed problem plus route metadata."""
+    token = str(kind).strip().lower()
+    route = _classify_problem_route(mixture, token)
+    if token == "auto":
+        if route["route"] == "electrolyte_lle":
+            problem = ElectrolyteLLEProblem(
+                T=T,
+                P=P,
+                z=z,
+                solvent_feed=solvent_feed,
+                salt_molality=salt_molality,
+                options=options,
+            )
+        elif route["route"] == "neutral_vle":
+            _reject_phase_controls_for_kind(
+                token,
+                x_liq=x_liq,
+                volatile_species=volatile_species,
+                vapor_species=vapor_species,
+                nonvolatile_species=nonvolatile_species,
+            )
+            _reject_parent_controls_for_phase_equilibrium(parent_phase, trial_phases)
+            if solvent_feed is not None or salt_molality is not None:
+                raise InputError("solvent_feed and salt_molality are only supported for electrolyte equilibrium routes.")
+            problem = TPFlash(T=T, P=P, z=z, options=options)
+        else:
+            raise InputError(f"kind='auto' resolved to unsupported equilibrium route '{route['route']}'.")
+    else:
+        problem = equilibrium_problem_from_request(
+            kind=token,
+            T=T,
+            P=P,
+            z=z,
+            x_liq=x_liq,
+            volatile_species=volatile_species,
+            vapor_species=vapor_species,
+            nonvolatile_species=nonvolatile_species,
+            solvent_feed=solvent_feed,
+            salt_molality=salt_molality,
+            options=options,
+            parent_phase=parent_phase,
+            trial_phases=trial_phases,
+        )
+    return EquilibriumRequest(kind=token, problem=problem, route=route)
+
+
+def solve_equilibrium_request(mixture: Any, request: EquilibriumRequest) -> Any:
+    """Solve a normalized public equilibrium request and stamp canonical route diagnostics."""
+    try:
+        result = request.problem.solve(mixture)
+    except SolutionError as exc:
+        raise_with_equilibrium_route_diagnostics(exc, request.route)
+    return with_equilibrium_route_diagnostics(result, request.route)
 
 
 @dataclass(frozen=True, slots=True)

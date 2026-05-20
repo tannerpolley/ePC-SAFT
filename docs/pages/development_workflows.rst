@@ -38,7 +38,7 @@ Command matrix
      - Before claiming repo runtime confidence. This includes doctor and the confidence slice.
    * - Fast generic validation
      - ``uv run python scripts/dev/validate_project.py quick``
-     - Quick checks for Python/runtime/regression API changes when native contract coverage is not required yet.
+     - Quick checks for Python/runtime/regression API changes plus cheap native metadata contracts.
    * - Python API work
      - ``uv run python run_pytest.py --api -q``
      - Public wrapper, parameter-template, or regression API edits.
@@ -51,6 +51,9 @@ Command matrix
    * - Native contract only
      - ``uv run python run_pytest.py --native -q``
      - Fast check for pressure-vs-density and contribution-map contracts.
+   * - Native route metadata/result contracts
+     - ``uv run python run_pytest.py --native-contracts -q``
+     - Fast check for native route ``variable_model``, ``density_backend``, residual-family payloads, and Python route diagnostics. Use this instead of the full route-builder suite for architecture or metadata edits.
    * - Electrolyte LLE confidence
      - ``uv run python run_pytest.py --equilibrium-confidence -q -s``
      - Bounded Khudaida fixture plus cached fixed-phase residual contract. Native confidence solving and full report generation remain explicit opt-ins.
@@ -191,8 +194,16 @@ Test selection rules
 
 Use the smallest relevant test first, then run ``uv run python scripts/dev/validate_project.py confidence`` before release, merge, or broad runtime claims. Use ``uv run python run_pytest.py --all -q`` only when you explicitly need the exhaustive historical suite.
 
+Before running ``run_pytest.py``, direct ``pytest``, or any ``validate_project.py``
+mode that runs pytest, read this command matrix and the test-selection rules in
+this section. Also read the relevant domain documentation for the slice: for
+example, read ``docs/roadmaps/unified_equilibrium_core_algorithm.md`` before
+native/equilibrium route tests. If the right target is unclear, run
+``uv run python run_pytest.py --list-slices`` before choosing a command.
+
 - Python wrapper/API changes: ``uv run python run_pytest.py --api -q`` first, then ``uv run python run_pytest.py --confidence -q``.
 - Native/equation changes: ``uv run python scripts/dev/build_epcsaft.py --build-only --parallel 10`` first, then ``uv run python run_pytest.py --runtime -q``, then ``uv run python run_pytest.py --confidence -q``.
+- Native route metadata, result-adapter diagnostics, or pybind payload-shape changes: run ``uv run python run_pytest.py --native-contracts -q`` first. Do not run the whole ``tests/native/equilibrium/test_route_builders.py`` file for these changes; the wrapper rejects that broad target unless ``--allow-long-native-tests`` or ``EPCSAFT_ALLOW_LONG_NATIVE_TESTS=1`` is set.
 - Equation traceability changes: ``uv run python scripts/docs/sync_equation_registry.py --check --strict-traceability`` then ``uv run python run_pytest.py tests/native/contracts/test_equation_registry.py -q``.
 - Performance claims: ``uv run python run_pytest.py --profile -q -s`` is the quick runtime-only profile; use ``uv run python run_pytest.py --profile-full -q -s`` only for broad speed claims. Read the generated ``build/runtime_profile/*.md`` reports. Do not rely on skipped profile tests or code inspection alone.
 - Plot asset changes: run the owning ``analyses/<category>/<short_id>/scripts`` coordinator or the figure-local ``analyses/<category>/<short_id>/figures/<figure_id>/scripts`` entrypoint, plus any targeted opt-in test under ``analyses/package_validation/package_plot_smokes/tests``, only when regenerating local plot outputs is explicitly part of the task.
@@ -203,6 +214,9 @@ Use the smallest relevant test first, then run ``uv run python scripts/dev/valid
 Keep generated plot assets and generated CSV workflows out of normal validation unless the task explicitly asks for them. There is no named plot validation slice; target the owning script or test file directly when plot output work is in scope.
 
 Use ``uv run python run_pytest.py --list-slices`` when you need to inspect what each named slice runs before choosing a validation command.
+The named slices and ``scripts/dev/validate_project.py`` modes are adapted from
+``epcsaft.capability_evidence``. Add new executable evidence there first, then
+let the CLI wrappers expose it through the existing command surfaces.
 
 For parallel sessions, leave the default repo-local temp behavior alone unless it causes contention. When running concurrent pytest lanes, set ``EPCSAFT_PYTEST_TEMP_ROOT`` to an external temp root for the extra lanes so each run gets an isolated ``pytest-temp`` child.
 
@@ -248,6 +262,9 @@ The inventory reports each issue-scope literature anchor with a classification
 such as ``already_supported_with_tests`` or ``blocker_requires_followup`` plus
 the owning package/test surfaces. Use it to keep benchmark claims honest and to
 avoid silently treating blocked literature routes as complete.
+The JSON payload also records the registered validation lanes and pytest slices
+from ``epcsaft.capability_evidence`` so benchmark inventory output can be read
+against the same executable evidence registry used by the development CLIs.
 
 Troubleshooting
 ---------------

@@ -15,6 +15,16 @@ from pathlib import Path
 from urllib.parse import unquote, urlparse
 from urllib.request import url2pathname
 
+from .capability_evidence import (
+    DERIVATIVE_COVERAGE_ROWS,
+    EQUILIBRIUM_PROBLEM_OBJECT_CLASSES,
+    IPOPT_EQUILIBRIUM_ROUTE_EVIDENCE,
+    REGRESSION_CAPABILITY_KEYS,
+    TEST_SLICES,
+    VALIDATION_LANES,
+    registered_ipopt_public_routes,
+)
+
 
 def _package_version() -> str:
     try:
@@ -262,158 +272,6 @@ def runtime_build_info() -> dict[str, object]:
     }
 
 
-_REACTIVE_SPECIATION_STANDARD_STATES = (
-    "ideal_mole_fraction",
-    "mole_fraction_activity",
-    "concentration",
-)
-_IPOPT_EQUILIBRIUM_ROUTE_EVIDENCE = (
-    {
-        "key": "reactive_speciation",
-        "public_routes": tuple(f"reactive_speciation:{state}" for state in _REACTIVE_SPECIATION_STANDARD_STATES),
-        "payload": {
-            "backend": "native_ipopt_equilibrium_nlp",
-            "sweep_available_from_ipopt": True,
-            "activity_output_modes": ("auto", "always", "never"),
-            "jacobian_auto_policy": "ideal_analytic_nonideal_cppad_explicit_density_else_raise",
-            "jacobian_auto_supported_standard_states": _REACTIVE_SPECIATION_STANDARD_STATES,
-            "implemented_standard_states": _REACTIVE_SPECIATION_STANDARD_STATES,
-            "auto_request": "implemented_standard_states_route_to_native_ipopt",
-            "solver_backends": ("auto", "ipopt"),
-            "explicit_ipopt_request": "implemented_standard_states_route_to_native_ipopt_when_compiled",
-            "ipopt_formulation": "thermodynamic_constrained_nlp",
-            "ideal_speciation_nlp_available_from_ipopt": True,
-            "nonideal_speciation_nlp_available_from_ipopt": True,
-            "nonideal_derivative_backend": "cppad_explicit_density",
-            "mixed_standard_state_policy": "raise_until_single_objective_is_specified",
-        },
-    },
-    {
-        "key": "neutral_tp_flash",
-        "public_routes": ("neutral_tp_flash",),
-        "payload": {
-            "backend": "native_ipopt_equilibrium_nlp",
-            "methods": ("tp_flash", "flash_tp"),
-            "ipopt_formulation": "thermodynamic_constrained_nlp",
-        },
-    },
-    {
-        "key": "neutral_stability",
-        "public_routes": ("neutral_stability",),
-        "payload": {
-            "backend": "native_ipopt_equilibrium_nlp",
-            "methods": ("stability_tp",),
-            "ipopt_formulation": "thermodynamic_constrained_nlp",
-            "route": "tangent_plane_distance",
-        },
-    },
-    {
-        "key": "electrolyte_stability",
-        "public_routes": ("electrolyte_stability",),
-        "payload": {
-            "backend": "native_ipopt_equilibrium_nlp",
-            "methods": ("electrolyte_stability_tp",),
-            "ipopt_formulation": "thermodynamic_constrained_nlp",
-            "route": "charge_constrained_tangent_plane_distance",
-        },
-    },
-    {
-        "key": "neutral_lle_flash",
-        "public_routes": ("neutral_lle_flash",),
-        "payload": {
-            "backend": "native_ipopt_equilibrium_nlp",
-            "methods": ("lle_flash", "lle_tp"),
-            "ipopt_formulation": "thermodynamic_constrained_nlp",
-        },
-    },
-    {
-        "key": "neutral_bubble_dew",
-        "public_routes": ("neutral_bubble_p", "neutral_bubble_t", "neutral_dew_p", "neutral_dew_t"),
-        "payload": {
-            "backend": "native_ipopt_equilibrium_nlp",
-            "methods": ("bubble_p", "bubble_t", "dew_p", "dew_t"),
-        },
-    },
-    {
-        "key": "electrolyte_lle",
-        "public_routes": ("electrolyte_lle",),
-        "payload": {
-            "backend": "native_ipopt_equilibrium_nlp",
-            "methods": ("electrolyte_lle", "electrolyte_lle_tp"),
-            "solver_backends": ("auto", "ipopt"),
-            "explicit_ipopt_request": "routes_to_native_ipopt_when_compiled",
-            "ipopt_formulation": "thermodynamic_constrained_nlp",
-        },
-    },
-    {
-        "key": "electrolyte_bubble_pressure",
-        "public_routes": ("electrolyte_bubble_pressure",),
-        "payload": {
-            "backend": "native_ipopt_equilibrium_nlp",
-            "scope": "fixed liquid composition with neutral vapor species; ions remain liquid-only",
-        },
-    },
-)
-_EQUILIBRIUM_PROBLEM_OBJECT_CLASSES = (
-    "TPFlash",
-    "StabilityAnalysis",
-    "BubblePoint",
-    "DewPoint",
-    "LLEProblem",
-    "ElectrolyteLLEProblem",
-    "ElectrolyteBubblePoint",
-    "ReactiveSpeciationProblem",
-    "ReactivePhaseEquilibriumProblem",
-    "ReactiveElectrolyteBubbleProblem",
-)
-_DERIVATIVE_COVERAGE_ROWS = (
-    {
-        "row_family": "regression",
-        "subsystem": "regression",
-        "quantity": "pure_neutral_parameters",
-        "derivative": "objective_jacobian",
-        "backend": "cppad_implicit",
-        "supported": True,
-        "classification": "production_supported",
-        "reason": "validated CppAD plus implicit density-sensitivity regression slice",
-        "tests": ("tests/native/ceres/test_ceres_pure_regression.py",),
-    },
-    {
-        "row_family": "regression",
-        "subsystem": "regression",
-        "quantity": "binary_kij",
-        "derivative": "objective_jacobian",
-        "backend": "cppad_implicit",
-        "supported": True,
-        "classification": "production_supported",
-        "reason": "validated Ceres route with CppAD and implicit density/association sensitivities",
-        "tests": (
-            "tests/native/ceres/test_ceres_binary_regression.py",
-            "tests/regression/literature/test_literature_binary_kij_regression.py",
-        ),
-    },
-    {
-        "row_family": "electrolyte_property",
-        "subsystem": "electrolyte",
-        "quantity": "ssmds_born_liquid",
-        "derivative": "parameter_sensitivity",
-        "backend": "analytic",
-        "supported": True,
-        "classification": "production_supported",
-        "reason": "liquid electrolyte SSM+DS Born derivatives are analytic; vapor Born derivatives are not claimed",
-        "tests": ("tests/api/runtime/test_runtime_ionic_methods.py",),
-    },
-)
-_REGRESSION_CAPABILITY_KEYS = (
-    "pure_neutral",
-    "pure_ion",
-    "binary_pair",
-    "mea_co2_h2o_electrolyte_benchmark",
-    "reactive_electrolyte_residuals",
-    "reactive_electrolyte_batch_context",
-)
-
-
 def _capability_value(value: object) -> object:
     if isinstance(value, tuple):
         return [_capability_value(item) for item in value]
@@ -423,11 +281,7 @@ def _capability_value(value: object) -> object:
 
 
 def _registered_ipopt_public_routes() -> list[str]:
-    return [
-        str(route)
-        for evidence in _IPOPT_EQUILIBRIUM_ROUTE_EVIDENCE
-        for route in evidence["public_routes"]
-    ]
+    return registered_ipopt_public_routes()
 
 
 def _registered_equilibrium_route_capabilities(
@@ -436,7 +290,7 @@ def _registered_equilibrium_route_capabilities(
     ipopt: dict[str, object],
 ) -> dict[str, dict[str, object]]:
     routes: dict[str, dict[str, object]] = {}
-    for evidence in _IPOPT_EQUILIBRIUM_ROUTE_EVIDENCE:
+    for evidence in IPOPT_EQUILIBRIUM_ROUTE_EVIDENCE:
         payload = _capability_value(evidence["payload"])
         assert isinstance(payload, dict)
         route_payload: dict[str, object] = {
@@ -465,18 +319,23 @@ def _capability_evidence_summary(derivative_coverage: dict[str, object]) -> dict
     derivative_rows = derivative_coverage.get("rows", [])
     return {
         "source": "registered_capability_evidence",
-        "equilibrium_keys": [str(item["key"]) for item in _IPOPT_EQUILIBRIUM_ROUTE_EVIDENCE],
+        "equilibrium_keys": [str(item["key"]) for item in IPOPT_EQUILIBRIUM_ROUTE_EVIDENCE],
         "ipopt_public_routes": _registered_ipopt_public_routes(),
-        "problem_object_classes": list(_EQUILIBRIUM_PROBLEM_OBJECT_CLASSES),
-        "regression_keys": list(_REGRESSION_CAPABILITY_KEYS),
+        "problem_object_classes": list(EQUILIBRIUM_PROBLEM_OBJECT_CLASSES),
+        "regression_keys": list(REGRESSION_CAPABILITY_KEYS),
         "derivative_row_count": len(derivative_rows) if isinstance(derivative_rows, list) else 0,
+        "pytest_slices": list(TEST_SLICES),
+        "validation_lanes": list(VALIDATION_LANES),
+        "cheap_validation_lanes": [
+            name for name, lane in VALIDATION_LANES.items() if bool(lane["cheap_by_default"])
+        ],
     }
 
 
 def _derivative_coverage_capabilities(cppad: dict[str, object], ceres: dict[str, object]) -> dict[str, object]:
     cppad_available = bool(cppad.get("available", False))
     ceres_available = bool(ceres.get("available", False))
-    coverage_rows = [_capability_value(row) for row in _DERIVATIVE_COVERAGE_ROWS]
+    coverage_rows = [_capability_value(row) for row in DERIVATIVE_COVERAGE_ROWS]
     return {
         "derivative_coverage_matrix_available": True,
         "implemented_routes_only": True,
@@ -650,7 +509,7 @@ def capabilities() -> dict[str, object]:
             "problem_objects": {
                 "available": True,
                 "backend": "public_python_facade",
-                "classes": list(_EQUILIBRIUM_PROBLEM_OBJECT_CLASSES),
+                "classes": list(EQUILIBRIUM_PROBLEM_OBJECT_CLASSES),
                 "entrypoint": "mixture.solve_equilibrium(problem)",
             },
             "contribution_maps": {

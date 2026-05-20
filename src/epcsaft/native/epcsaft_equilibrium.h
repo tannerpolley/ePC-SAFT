@@ -15,6 +15,9 @@ struct EquilibriumOptionsNative {
 
 struct ElectrolyteLLEResidualEvaluationNative {
     std::string variable_model = "ascani_transformed_salt_pairs";
+    std::string density_backend;
+    std::vector<std::string> residual_families;
+    std::vector<std::string> constraint_families;
     std::vector<double> variables;
     std::vector<double> lower_bounds;
     std::vector<double> upper_bounds;
@@ -44,6 +47,9 @@ struct ElectrolyteLLEResidualEvaluationNative {
 
 struct ReactivePhaseResidualEvaluationNative {
     std::string variable_model = "log_phase_species_amounts";
+    std::string density_backend;
+    std::vector<std::string> residual_families;
+    std::vector<std::string> constraint_families;
     std::vector<double> variables;
     std::vector<double> lower_bounds;
     std::vector<double> upper_bounds;
@@ -77,6 +83,59 @@ struct ReactivePhaseResidualEvaluationNative {
     std::map<std::string, std::string> diagnostics_string;
     std::map<std::string, std::vector<double>> diagnostics_vector;
 };
+
+namespace epcsaft::native {
+
+struct NativeRouteMetadata {
+    std::string variable_model;
+    std::string density_backend;
+    std::vector<std::string> residual_families;
+    std::vector<std::string> constraint_families;
+};
+
+NativeRouteMetadata electrolyte_liquid_root_route_metadata(const std::string& variable_model);
+
+NativeRouteMetadata reactive_liquid_root_route_metadata(
+    bool phase_tagged_reaction_constraints_active,
+    bool phase_charge_constraints_active
+);
+
+void apply_route_metadata(
+    ::ElectrolyteLLEResidualEvaluationNative& out,
+    const NativeRouteMetadata& metadata
+);
+
+void apply_route_metadata(
+    ::ReactivePhaseResidualEvaluationNative& out,
+    const NativeRouteMetadata& metadata
+);
+
+void apply_route_metadata(
+    epcsaft::native::equilibrium_nlp::NeutralTwoPhaseEosNlpContract& out,
+    const NativeRouteMetadata& metadata
+);
+
+void apply_route_metadata(
+    epcsaft::native::equilibrium_nlp::NeutralTwoPhaseEosPostsolve& out,
+    const NativeRouteMetadata& metadata
+);
+
+void apply_route_metadata(
+    epcsaft::native::equilibrium_nlp::NeutralTwoPhaseEosRouteResult& out,
+    const NativeRouteMetadata& metadata
+);
+
+void apply_route_metadata(
+    epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosPostsolve& out,
+    const NativeRouteMetadata& metadata
+);
+
+void apply_route_metadata(
+    epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult& out,
+    const NativeRouteMetadata& metadata
+);
+
+}  // namespace epcsaft::native
 
 ElectrolyteLLEResidualEvaluationNative evaluate_electrolyte_lle_residual_native(
     const std::shared_ptr<ePCSAFTMixtureNative>& mixture,

@@ -35,6 +35,14 @@ def test_electrolyte_lle_residual_surface_returns_transformed_payload() -> None:
     diagnostics = payload["diagnostics"]
 
     assert payload["variable_model"] == "ascani_transformed_salt_pairs_explicit_density"
+    assert payload["density_backend"] == "explicit_log_density_pressure_constraint"
+    assert payload["residual_families"] == ["phase_equilibrium", "material_balance"]
+    assert payload["constraint_families"] == [
+        "phase_equilibrium",
+        "phase_pressure_consistency",
+        "phase_distance",
+        "formula_feasibility",
+    ]
     assert len(payload["variables"]) == 5
     assert len(payload["lower_bounds"]) == len(payload["variables"])
     assert len(payload["upper_bounds"]) == len(payload["variables"])

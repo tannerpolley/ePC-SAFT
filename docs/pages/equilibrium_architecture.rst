@@ -42,6 +42,23 @@ Example
        epcsaft.TPFlash(T=220.0, P=1.0e5, z=[0.1, 0.3, 0.6])
    )
 
+Request Normalization
+---------------------
+
+``mixture.equilibrium(kind=...)`` is a compatibility facade over the same typed
+problem objects. The facade normalizes non-reactive string requests into one
+typed problem plus route diagnostics before solving, so ``kind="auto"``,
+explicit neutral routes, electrolyte LLE, electrolyte stability, bubble/dew,
+and fixed-liquid electrolyte bubble pressure share the same result-stamping
+contract as ``mixture.solve_equilibrium(problem)``.
+
+Reactive convenience routes remain explicit. ``chemical_equilibrium``,
+``reactive_staged_equilibrium``, ``reactive_lle``,
+``reactive_electrolyte_lle``, ``reactive_stability``, and
+``reactive_electrolyte_bubble_pressure`` are selected before non-reactive
+normalization so their specialized option checks and native route boundaries do
+not become implicit fallback behavior.
+
 Solver Selection
 ----------------
 

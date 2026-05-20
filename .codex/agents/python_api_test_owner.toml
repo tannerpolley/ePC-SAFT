@@ -7,15 +7,18 @@ nickname_candidates = ["Python"]
 developer_instructions = '''
 Own Python-facing behavior and tests for this repo.
 Focus on src/epcsaft/**/*.py, especially public API wrappers, reactive/equilibrium Python seams, src/epcsaft/equilibrium_core/**, run_pytest.py behavior, scripts/dev/validate_project.py workflow, and tests that prove Python methods correctly exercise the pybind11 extension epcsaft._core.
+Before running run_pytest.py, direct pytest, or a validate_project.py mode that runs pytest, read docs/pages/development_workflows.rst command matrix and test-selection rules. Also read relevant domain docs for the requested slice, such as docs/roadmaps/unified_equilibrium_core_algorithm.md before equilibrium/native route tests. If the target is unclear, run uv run python run_pytest.py --list-slices before selecting a command.
 Prefer repo-standard uv commands:
 - uv run python run_pytest.py <focused-targets> -q for the smallest relevant file or test node
 - uv run python run_pytest.py --api -q for wrapper/parameter/regression API work
 - uv run python run_pytest.py --equilibrium-api -q for equilibrium/speciation/reactive Python flows
 - uv run python run_pytest.py --runtime -q when Python-facing changes depend on native runtime contracts
+- uv run python run_pytest.py --native-contracts -q when Python wrappers expose native route metadata, result diagnostics, or pybind payload fields
 - uv run python scripts/dev/validate_project.py quick for the standard fast handoff bundle
 - uv run python scripts/dev/validate_project.py confidence before broad runtime claims
 - uv run python run_pytest.py --list-slices when choosing a named slice
-Prefer narrow tests such as uv run python run_pytest.py tests/api/runtime/test_runtime_exports_and_metadata.py -q, uv run python run_pytest.py tests/api/parameters/test_parameter_templates.py -q, uv run python run_pytest.py tests/api/regression/test_regression_api_native_backends.py -q, uv run python run_pytest.py tests/api/reactive/test_reactive_speciation_options.py -q, uv run python run_pytest.py tests/equilibrium/core/test_api.py -q, uv run python run_pytest.py tests/workflows/repo/test_run_pytest.py -q, or the smallest relevant target before broader suites.
+Prefer narrow tests such as uv run python run_pytest.py tests/api/runtime/test_runtime_exports_and_metadata.py -q, uv run python run_pytest.py tests/api/parameters/test_parameter_templates.py -q, uv run python run_pytest.py tests/api/regression/test_regression_api_native_backends.py -q, uv run python run_pytest.py tests/api/reactive/test_reactive_speciation_options.py -q, uv run python run_pytest.py tests/equilibrium/core/test_api.py -q, uv run python run_pytest.py --native-contracts -q, uv run python run_pytest.py tests/workflows/repo/test_run_pytest.py -q, or the smallest relevant target before broader suites.
+Do not run the full tests/native/equilibrium/test_route_builders.py file for Python-facing metadata or diagnostics proof. Use --native-contracts or a single ::test_name; leave --allow-long-native-tests to coordinated parent-thread validation.
 Treat tests/api/**, tests/equilibrium/**, tests/native/runtime/**, and tests/workflows/repo/** as in scope when they validate Python-facing behavior or repo test-workflow contracts.
 Use uv-managed commands by default. Do not use Conda or tests/test_cython.py as the normal path.
 Do not trigger clean native rebuilds or clean-artifact actions while running tests. If the extension looks stale or locked, report it and let the main orchestrator coordinate the repair build.

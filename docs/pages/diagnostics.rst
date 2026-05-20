@@ -13,6 +13,18 @@ and implemented package workflows. The important backend labels are:
 * ``batch_residual_evaluation_context``: Python batches rows and formats
   diagnostics for a residual context; this is not a production optimizer.
 
+The static evidence behind route names, derivative coverage rows, pytest
+slices, and ``scripts/dev/validate_project.py`` modes lives in
+``epcsaft.capability_evidence``. ``capabilities()`` adapts that registry to the
+currently installed native dependencies instead of duplicating route lists in
+CLI wrappers. This keeps public command names stable while still tying
+capability claims to executable checks.
+
+Use ``uv run python run_pytest.py --native-contracts -q`` for native route
+metadata and result-diagnostics checks. That slice is intentionally separate
+from the broad native route-builder solver suite, which is slow and should be
+targeted only by a single test node or with explicit long-test opt-in.
+
 For reactive electrolyte regression, the
 ``mixed_pressure_speciation_residual_context`` capability advertises the
 diagnostic residual context, its supported target families, and the fact that it

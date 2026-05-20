@@ -22,6 +22,7 @@ The active package architecture is:
 - exact gradients and exact Jacobians are required for production routes, with exact Lagrangian Hessians as the default when a route is exposed as production native Ipopt;
 - `limited-memory` Hessians are an explicit opt-out mode, not an automatic fallback from `auto`;
 - route implementations declare variables, residual families, constraints, phase eligibility, and seed recipes, while shared modules own phase-state adapters, derivative carriers, Lagrangian assembly, Ipopt metadata, diagnostics, and result normalization;
+- native route contract payloads should expose their active `variable_model`, `density_backend`, `residual_families`, and `constraint_families` directly rather than leaving that evidence implicit in ad hoc diagnostics strings;
 - completed GoalBuddy boards, tranche handoffs, and audit reports are not source-of-truth package documentation once their current facts are captured here or in `FULL_ROADMAP.md`.
 
 ## Governing decisions

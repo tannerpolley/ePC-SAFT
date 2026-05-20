@@ -223,6 +223,37 @@ def test_fit_problem_can_carry_target_dataset_schema_without_optimizer_internals
     assert problem.target_dataset.to_records()[1]["parameter"] == "m"
 
 
+def test_fit_result_builds_evidence_from_target_dataset_schema():
+    dataset = TargetDataset(
+        rows=(
+            TargetRow(
+                "p_rho_t",
+                {"T": 300.0, "P": 101325.0, "rho": 55000.0},
+                source="source-a",
+            ),
+            TargetRow("regularization", {"parameter": "m", "target_value": 1.0}, weight=0.1),
+        ),
+        name="schema-only",
+        parameter_set="in-memory",
+    )
+    result = FitResult(
+        problem=FitProblem(mode="generic", target_dataset=dataset),
+        metrics_by_term={"p_rho_t": 0.25, "regularization": 0.1},
+    )
+
+    assert result.target_family_summaries == {
+        "p_rho_t": {"record_count": 1, "residual_block_norm": pytest.approx(0.25)},
+        "regularization": {"record_count": 1, "residual_block_norm": pytest.approx(0.1)},
+    }
+    assert result.residual_block_norms == {"p_rho_t": pytest.approx(0.25), "regularization": pytest.approx(0.1)}
+    assert result.source_summaries["target_dataset"] == {
+        "name": "schema-only",
+        "dataset": "in-memory",
+        "record_count": 2,
+        "row_families": ("p_rho_t", "regularization"),
+    }
+
+
 @pytest.mark.parametrize(
     "function, kwargs",
     [

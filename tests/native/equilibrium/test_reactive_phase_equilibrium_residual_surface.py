@@ -53,6 +53,18 @@ def test_reactive_phase_residual_surface_exposes_single_coupled_state() -> None:
     diagnostics = payload["diagnostics"]
 
     assert payload["variable_model"] == "log_phase_species_amounts_plus_log_density"
+    assert payload["density_backend"] == "explicit_log_density_pressure_constraint"
+    assert payload["residual_families"] == [
+        "conserved_balance",
+        "reaction_stationarity",
+        "phase_equilibrium",
+        "phase_charge",
+    ]
+    assert payload["constraint_families"] == [
+        "conserved_balance",
+        "phase_pressure_consistency",
+        "phase_distance",
+    ]
     assert len(payload["variables"]) == 2 * mix.ncomp + 2
     assert payload["jacobian_shape"] == (len(payload["residual"]), len(payload["variables"]))
     assert len(payload["jacobian_row_major"]) == len(payload["residual"]) * len(payload["variables"])
@@ -141,6 +153,19 @@ def test_reactive_electrolyte_residual_surface_includes_ion_and_charge_blocks() 
     payload = _core._evaluate_reactive_phase_equilibrium_residual_native(mix._native, request)
     diagnostics = payload["diagnostics"]
 
+    assert payload["density_backend"] == "explicit_log_density_pressure_constraint"
+    assert payload["residual_families"] == [
+        "conserved_balance",
+        "reaction_stationarity",
+        "phase_equilibrium",
+        "phase_charge",
+    ]
+    assert payload["constraint_families"] == [
+        "conserved_balance",
+        "phase_charge",
+        "phase_pressure_consistency",
+        "phase_distance",
+    ]
     assert diagnostics["component_count"] == 4
     assert diagnostics["reaction_count"] == 1
     assert diagnostics["element_balance_residual_size"] == 4

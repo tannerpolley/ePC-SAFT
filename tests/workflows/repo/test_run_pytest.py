@@ -3,6 +3,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import epcsaft.capability_evidence as capability_evidence
 import run_pytest
 from scripts.dev import doctor, validate_project
 
@@ -60,6 +61,10 @@ def test_all_shortcut_is_the_explicit_exhaustive_pytest_route():
 
 
 def test_validate_project_modes_route_to_standard_validation_bundles():
+    assert validate_project.CHECK_COMMANDS == {
+        name: capability_evidence.validation_lane_commands(name)
+        for name in capability_evidence.VALIDATION_LANES
+    }
     assert validate_project.CHECK_COMMANDS["quick"] == (
         ("scripts/dev/doctor.py",),
         ("run_pytest.py", "-q"),
@@ -83,6 +88,16 @@ def test_validate_project_modes_route_to_standard_validation_bundles():
             "-q",
         ),
     )
+
+
+def test_pytest_slices_are_adapted_from_capability_evidence_registry():
+    assert run_pytest.SLICE_TARGETS == {
+        name: capability_evidence.registry_targets(name)
+        for name in capability_evidence.TEST_SLICES
+    }
+    assert run_pytest.GENERIC_TEST_TARGETS == capability_evidence.registry_targets("generic")
+    assert run_pytest.CONFIDENCE_TEST_TARGETS == capability_evidence.registry_targets("confidence")
+    assert run_pytest.NATIVE_CONTRACT_TEST_TARGETS == capability_evidence.registry_targets("native-contracts")
 
 
 def test_doctor_tracks_native_symbols_added_by_recent_workflows():
@@ -146,6 +161,7 @@ def test_named_shortcuts_expand_to_expected_targets_and_keep_pytest_arg_ordering
     runtime_args = run_pytest._pytest_args(["-q"], pytest_temp, runtime=True)
     api_args = run_pytest._pytest_args(["-q"], pytest_temp, api=True)
     native_args = run_pytest._pytest_args(["-q"], pytest_temp, native=True)
+    native_contract_args = run_pytest._pytest_args(["-q"], pytest_temp, native_contracts=True)
     equilibrium_confidence_args = run_pytest._pytest_args(["-q"], pytest_temp, equilibrium_confidence=True)
     equilibrium_api_args = run_pytest._pytest_args(["-q"], pytest_temp, equilibrium_api=True)
     profile_args = run_pytest._pytest_args(["-q"], pytest_temp, profile=True)
@@ -154,6 +170,9 @@ def test_named_shortcuts_expand_to_expected_targets_and_keep_pytest_arg_ordering
     assert runtime_args[: len(run_pytest.RUNTIME_TEST_TARGETS)] == list(run_pytest.RUNTIME_TEST_TARGETS)
     assert api_args[: len(run_pytest.API_TEST_TARGETS)] == list(run_pytest.API_TEST_TARGETS)
     assert native_args[: len(run_pytest.NATIVE_TEST_TARGETS)] == list(run_pytest.NATIVE_TEST_TARGETS)
+    assert native_contract_args[: len(run_pytest.NATIVE_CONTRACT_TEST_TARGETS)] == list(
+        run_pytest.NATIVE_CONTRACT_TEST_TARGETS
+    )
     assert equilibrium_confidence_args[: len(run_pytest.EQUILIBRIUM_CONFIDENCE_TEST_TARGETS)] == list(
         run_pytest.EQUILIBRIUM_CONFIDENCE_TEST_TARGETS
     )
@@ -165,6 +184,7 @@ def test_named_shortcuts_expand_to_expected_targets_and_keep_pytest_arg_ordering
     assert runtime_args[-3:] == ["-q", "--basetemp", str(pytest_temp)]
     assert api_args[-3:] == ["-q", "--basetemp", str(pytest_temp)]
     assert native_args[-3:] == ["-q", "--basetemp", str(pytest_temp)]
+    assert native_contract_args[-3:] == ["-q", "--basetemp", str(pytest_temp)]
     assert equilibrium_confidence_args[-3:] == ["-q", "--basetemp", str(pytest_temp)]
     assert equilibrium_api_args[-3:] == ["-q", "--basetemp", str(pytest_temp)]
     assert profile_args[-3:] == ["-q", "--basetemp", str(pytest_temp)]
@@ -185,6 +205,7 @@ def test_slice_targets_use_grouped_test_subpackages():
         *run_pytest.RUNTIME_TEST_TARGETS,
         *run_pytest.API_TEST_TARGETS,
         *run_pytest.NATIVE_TEST_TARGETS,
+        *run_pytest.NATIVE_CONTRACT_TEST_TARGETS,
         *run_pytest.EQUILIBRIUM_CONFIDENCE_TEST_TARGETS,
         *run_pytest.EQUILIBRIUM_API_TEST_TARGETS,
         *run_pytest.PROFILE_TEST_TARGETS,
@@ -208,6 +229,40 @@ def test_slice_targets_use_grouped_test_subpackages():
         run_pytest.GENERIC_TEST_TARGETS
     )
     assert "tests/workflows/repo/test_run_pytest.py" not in run_pytest.GENERIC_TEST_TARGETS
+
+
+def test_native_contract_slice_uses_small_metadata_files_not_full_route_builder_suite():
+    assert "tests/native/equilibrium/test_route_metadata_contracts.py" in run_pytest.NATIVE_CONTRACT_TEST_TARGETS
+    assert "tests/native/equilibrium/test_route_builders.py" not in run_pytest.NATIVE_CONTRACT_TEST_TARGETS
+
+
+def test_broad_native_route_builder_targets_require_explicit_opt_in():
+    pytest_temp = Path("build") / "pytest-temp" / "run-test"
+
+    try:
+        run_pytest._pytest_args(["tests/native/equilibrium/test_route_builders.py", "-q"], pytest_temp)
+    except SystemExit as exc:
+        message = str(exc)
+    else:
+        raise AssertionError("Expected broad route-builder file target to be rejected")
+
+    assert "--native-contracts" in message
+    allowed = run_pytest._pytest_args(
+        ["tests/native/equilibrium/test_route_builders.py", "-q"],
+        pytest_temp,
+        allow_long_native_tests=True,
+    )
+    single_node = run_pytest._pytest_args(
+        [
+            "tests/native/equilibrium/test_route_builders.py::"
+            "test_neutral_two_phase_eos_nlp_contract_uses_phase_system_blocks",
+            "-q",
+        ],
+        pytest_temp,
+    )
+
+    assert allowed[:2] == ["tests/native/equilibrium/test_route_builders.py", "-q"]
+    assert single_node[0].endswith("::test_neutral_two_phase_eos_nlp_contract_uses_phase_system_blocks")
 
 
 def test_profile_shortcut_sets_perf_environment_flag(monkeypatch):

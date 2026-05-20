@@ -18,6 +18,117 @@ PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_explicit_density_
     const add_args &cppargs
 );
 
+namespace epcsaft::native {
+
+NativeRouteMetadata electrolyte_liquid_root_route_metadata(const std::string& variable_model) {
+    NativeRouteMetadata out;
+    out.variable_model = variable_model;
+    out.density_backend = "explicit_log_density_pressure_constraint";
+    out.residual_families = {"phase_equilibrium", "material_balance"};
+    out.constraint_families = {
+        "phase_equilibrium",
+        "phase_pressure_consistency",
+        "phase_distance",
+        "formula_feasibility",
+    };
+    return out;
+}
+
+NativeRouteMetadata reactive_liquid_root_route_metadata(
+    bool phase_tagged_reaction_constraints_active,
+    bool phase_charge_constraints_active
+) {
+    NativeRouteMetadata out;
+    out.variable_model = "log_phase_species_amounts_plus_log_density";
+    out.density_backend = "explicit_log_density_pressure_constraint";
+    out.residual_families = {
+        "conserved_balance",
+        "reaction_stationarity",
+        "phase_equilibrium",
+        "phase_charge",
+    };
+    out.constraint_families = {"conserved_balance"};
+    if (phase_tagged_reaction_constraints_active) {
+        out.constraint_families.push_back("reaction_stationarity");
+    }
+    if (phase_charge_constraints_active) {
+        out.constraint_families.push_back("phase_charge");
+    }
+    out.constraint_families.push_back("phase_pressure_consistency");
+    out.constraint_families.push_back("phase_distance");
+    return out;
+}
+
+void apply_route_metadata(
+    ElectrolyteLLEResidualEvaluationNative& out,
+    const NativeRouteMetadata& metadata
+) {
+    out.variable_model = metadata.variable_model;
+    out.density_backend = metadata.density_backend;
+    out.residual_families = metadata.residual_families;
+    out.constraint_families = metadata.constraint_families;
+}
+
+void apply_route_metadata(
+    ReactivePhaseResidualEvaluationNative& out,
+    const NativeRouteMetadata& metadata
+) {
+    out.variable_model = metadata.variable_model;
+    out.density_backend = metadata.density_backend;
+    out.residual_families = metadata.residual_families;
+    out.constraint_families = metadata.constraint_families;
+}
+
+void apply_route_metadata(
+    equilibrium_nlp::NeutralTwoPhaseEosNlpContract& out,
+    const NativeRouteMetadata& metadata
+) {
+    out.variable_model = metadata.variable_model;
+    out.density_backend = metadata.density_backend;
+    out.residual_families = metadata.residual_families;
+    out.constraint_families = metadata.constraint_families;
+}
+
+void apply_route_metadata(
+    equilibrium_nlp::NeutralTwoPhaseEosPostsolve& out,
+    const NativeRouteMetadata& metadata
+) {
+    out.density_backend = metadata.density_backend;
+    out.residual_families = metadata.residual_families;
+    out.constraint_families = metadata.constraint_families;
+}
+
+void apply_route_metadata(
+    equilibrium_nlp::NeutralTwoPhaseEosRouteResult& out,
+    const NativeRouteMetadata& metadata
+) {
+    out.variable_model = metadata.variable_model;
+    out.density_backend = metadata.density_backend;
+    out.residual_families = metadata.residual_families;
+    out.constraint_families = metadata.constraint_families;
+}
+
+void apply_route_metadata(
+    equilibrium_nlp::ReactiveTwoPhaseEosPostsolve& out,
+    const NativeRouteMetadata& metadata
+) {
+    out.density_backend = metadata.density_backend;
+    out.residual_families = metadata.residual_families;
+    out.constraint_families = metadata.constraint_families;
+}
+
+void apply_route_metadata(
+    equilibrium_nlp::ReactiveTwoPhaseEosRouteResult& out,
+    const NativeRouteMetadata& metadata
+) {
+    out.variable_model = metadata.variable_model;
+    out.density_backend = metadata.density_backend;
+    out.residual_families = metadata.residual_families;
+    out.constraint_families = metadata.constraint_families;
+}
+
+}  // namespace epcsaft::native
+
 namespace {
 
 using namespace epcsaft::native::equilibrium;
@@ -1278,8 +1389,12 @@ ElectrolyteLLEResidualEvaluationNative evaluate_electrolyte_lle_residual_native(
         }
     }
 
+    const epcsaft::native::NativeRouteMetadata metadata =
+        epcsaft::native::electrolyte_liquid_root_route_metadata(
+            basis.variable_model + "_explicit_density"
+        );
     ElectrolyteLLEResidualEvaluationNative out;
-    out.variable_model = basis.variable_model + "_explicit_density";
+    epcsaft::native::apply_route_metadata(out, metadata);
     out.variables = eval_variables;
     out.lower_bounds.assign(eval_variables.size(), -100.0);
     out.upper_bounds.assign(eval_variables.size(), 100.0);
@@ -2332,11 +2447,14 @@ equilibrium_nlp::NeutralTwoPhaseEosNlpContract liquid_root_contract_from_problem
     const equilibrium_nlp::NlpBounds bounds = problem.bounds();
     const equilibrium_nlp::NlpJacobianStructure structure = problem.jacobian_structure();
 
+    const epcsaft::native::NativeRouteMetadata metadata =
+        epcsaft::native::electrolyte_liquid_root_route_metadata(
+            problem.basis().variable_model + "_explicit_density"
+        );
     equilibrium_nlp::NeutralTwoPhaseEosNlpContract out;
     out.problem_name = problem.name();
     out.derivative_backend = "cppad_explicit_density";
-    out.variable_model = problem.basis().variable_model + "_explicit_density";
-    out.density_backend = "explicit_log_density_pressure_constraint";
+    epcsaft::native::apply_route_metadata(out, metadata);
     out.phase_count = 2;
     out.species_count = static_cast<int>(problem.feed().size());
     out.variable_count = problem.variable_count();
@@ -2364,8 +2482,13 @@ equilibrium_nlp::NeutralTwoPhaseEosPostsolve liquid_root_postsolve_from_candidat
     double chemical_potential_tolerance,
     double phase_distance_tolerance
 ) {
+    const epcsaft::native::NativeRouteMetadata metadata =
+        epcsaft::native::electrolyte_liquid_root_route_metadata(
+            problem.basis().variable_model + "_explicit_density"
+        );
     equilibrium_nlp::NeutralTwoPhaseEosPostsolve out;
     out.derivative_backend = "cppad_explicit_density";
+    epcsaft::native::apply_route_metadata(out, metadata);
     out.phase_count = 2;
     out.species_count = static_cast<int>(candidate.aq_comp.size());
     out.material_balance_norm = candidate.material_error;
@@ -2379,7 +2502,6 @@ equilibrium_nlp::NeutralTwoPhaseEosPostsolve liquid_root_postsolve_from_candidat
     out.gibbs_split = candidate.gibbs_split;
     out.gibbs_delta = candidate.gibbs_delta;
     out.minimum_phase_fraction = problem.minimum_phase_fraction();
-    out.density_backend = "explicit_log_density_pressure_constraint";
     out.constraints = electrolyte_lle_residual_vector_from_candidate(candidate);
     out.constraints.push_back(problem.pressure_consistency_norm(candidate));
     out.phase_amount_totals = {1.0 - candidate.beta_org, candidate.beta_org};
@@ -2541,6 +2663,10 @@ equilibrium_nlp::NeutralTwoPhaseEosRouteResult solve_electrolyte_lle_liquid_root
     double phase_distance_tolerance
 ) {
     const equilibrium_nlp::IpoptAdapterInfo adapter = equilibrium_nlp::native_ipopt_adapter_info();
+    const epcsaft::native::NativeRouteMetadata metadata =
+        epcsaft::native::electrolyte_liquid_root_route_metadata(
+            "ascani_transformed_salt_pairs_explicit_density"
+        );
     equilibrium_nlp::NeutralTwoPhaseEosRouteResult best;
     best.compiled = adapter.compiled;
     best.adapter_available = adapter.adapter_available;
@@ -2550,6 +2676,7 @@ equilibrium_nlp::NeutralTwoPhaseEosRouteResult solve_electrolyte_lle_liquid_root
     best.problem_name = "electrolyte_lle_eos";
     best.derivative_backend = "cppad_explicit_density";
     best.postsolve.derivative_backend = "cppad_explicit_density";
+    epcsaft::native::apply_route_metadata(best, metadata);
     if (!adapter.compiled) {
         best.status = "ipopt_dependency_required";
         return best;
@@ -2596,6 +2723,7 @@ equilibrium_nlp::NeutralTwoPhaseEosRouteResult solve_electrolyte_lle_liquid_root
         result.problem_name = "electrolyte_lle_eos";
         result.derivative_backend = "cppad_explicit_density";
         result.postsolve.derivative_backend = "cppad_explicit_density";
+        epcsaft::native::apply_route_metadata(result, metadata);
         result.initial_point_strategy = "deterministic_seed_sweep";
         result.seed_name = seed_name;
         result.ran = solve.solver_ran;

@@ -780,6 +780,8 @@ py::dict neutral_two_phase_eos_nlp_contract_to_dict(
     out["derivative_backend"] = result.derivative_backend;
     out["variable_model"] = result.variable_model;
     out["density_backend"] = result.density_backend;
+    out["residual_families"] = result.residual_families;
+    out["constraint_families"] = result.constraint_families;
     out["phase_count"] = result.phase_count;
     out["species_count"] = result.species_count;
     out["balance_row_count"] = result.balance_row_count;
@@ -809,6 +811,8 @@ py::dict neutral_two_phase_eos_postsolve_to_dict(
     out["accepted"] = result.accepted;
     out["rejection_reason"] = result.rejection_reason;
     out["derivative_backend"] = result.derivative_backend;
+    out["residual_families"] = result.residual_families;
+    out["constraint_families"] = result.constraint_families;
     out["phase_count"] = result.phase_count;
     out["species_count"] = result.species_count;
     out["material_balance_norm"] = result.material_balance_norm;
@@ -844,6 +848,10 @@ py::dict neutral_two_phase_eos_route_result_to_dict(
     out["adapter_kind"] = result.adapter_kind;
     out["problem_name"] = result.problem_name;
     out["derivative_backend"] = result.derivative_backend;
+    out["variable_model"] = result.variable_model;
+    out["density_backend"] = result.density_backend;
+    out["residual_families"] = result.residual_families;
+    out["constraint_families"] = result.constraint_families;
     out["ran"] = result.ran;
     out["solver_accepted"] = result.solver_accepted;
     out["solver_feasible_point"] = result.solver_feasible_point;
@@ -907,6 +915,8 @@ py::dict reactive_two_phase_eos_postsolve_to_dict(
     out["rejection_reason"] = result.rejection_reason;
     out["derivative_backend"] = result.derivative_backend;
     out["density_backend"] = result.density_backend;
+    out["residual_families"] = result.residual_families;
+    out["constraint_families"] = result.constraint_families;
     out["phase_count"] = result.phase_count;
     out["species_count"] = result.species_count;
     out["balance_row_count"] = result.balance_row_count;
@@ -941,6 +951,10 @@ py::dict reactive_two_phase_eos_route_result_to_dict(
     out["adapter_kind"] = result.adapter_kind;
     out["problem_name"] = result.problem_name;
     out["derivative_backend"] = result.derivative_backend;
+    out["variable_model"] = result.variable_model;
+    out["density_backend"] = result.density_backend;
+    out["residual_families"] = result.residual_families;
+    out["constraint_families"] = result.constraint_families;
     out["ran"] = result.ran;
     out["solver_accepted"] = result.solver_accepted;
     out["accepted"] = result.accepted;
@@ -1258,6 +1272,9 @@ py::dict native_chemical_residual_evaluation_to_dict(const ChemicalResidualEvalu
 py::dict native_electrolyte_lle_residual_evaluation_to_dict(const ElectrolyteLLEResidualEvaluationNative& result) {
     py::dict out;
     out["variable_model"] = result.variable_model;
+    out["density_backend"] = result.density_backend;
+    out["residual_families"] = result.residual_families;
+    out["constraint_families"] = result.constraint_families;
     out["variables"] = result.variables;
     out["lower_bounds"] = result.lower_bounds;
     out["upper_bounds"] = result.upper_bounds;
@@ -1293,6 +1310,9 @@ py::dict native_electrolyte_lle_residual_evaluation_to_dict(const ElectrolyteLLE
 py::dict native_reactive_phase_residual_evaluation_to_dict(const ReactivePhaseResidualEvaluationNative& result) {
     py::dict out;
     out["variable_model"] = result.variable_model;
+    out["density_backend"] = result.density_backend;
+    out["residual_families"] = result.residual_families;
+    out["constraint_families"] = result.constraint_families;
     out["variables"] = result.variables;
     out["lower_bounds"] = result.lower_bounds;
     out["upper_bounds"] = result.upper_bounds;

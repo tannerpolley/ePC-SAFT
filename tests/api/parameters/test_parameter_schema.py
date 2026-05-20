@@ -79,6 +79,30 @@ def test_parameter_set_compiles_runtime_payload_with_binary_hb_and_options() -> 
     assert params.validate()["runtime_option_count"] == 2
 
 
+def test_parameter_set_runtime_payload_is_copied_and_blocks_parameter_overrides() -> None:
+    options = {"elec_model": {"include_born_model": False}, "tags": ["unit"]}
+    params = epcsaft.ParameterSet.from_records(
+        [epcsaft.PureRecord("A", molar_mass=10.0e-3, m=1.0, sigma=3.0, epsilon_k=200.0)],
+        runtime_options=options,
+    )
+    runtime = params.to_runtime_dict()
+
+    runtime["m"][0] = 99.0
+    runtime["elec_model"]["include_born_model"] = True
+    runtime["tags"].append("mutated")
+
+    fresh = params.to_runtime_dict()
+    assert fresh["m"][0] == pytest.approx(1.0)
+    assert fresh["elec_model"] == {"include_born_model": False}
+    assert fresh["tags"] == ["unit"]
+
+    with pytest.raises(epcsaft.InputError, match="runtime_options cannot override"):
+        epcsaft.ParameterSet.from_records(
+            [epcsaft.PureRecord("A", molar_mass=10.0e-3, m=1.0, sigma=3.0, epsilon_k=200.0)],
+            runtime_options={"k_ij": np.zeros((1, 1))},
+        )
+
+
 def test_parameter_set_from_dataset_preserves_runtime_options_for_mixture() -> None:
     species = ["H2O", "Na+", "Cl-"]
     x = np.asarray([0.98, 0.01, 0.01], dtype=float)

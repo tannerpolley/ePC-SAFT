@@ -18,6 +18,7 @@ from . import reactive_electrolyte as reactive_electrolyte_module
 from . import reactive_speciation as reactive_speciation_module
 from ._types import InputError
 from .epcsaft import ePCSAFTMixture
+from .parameter_schema import ParameterSet
 from .reactive_electrolyte import ReactiveElectrolyteBubbleOptions, ReactiveElectrolyteBubbleResult
 from .regression import _compile_target_family_summaries
 from .reactive_speciation import ReactionDefinition, ReactiveSpeciationOptions, ReactiveSpeciationResult
@@ -297,6 +298,12 @@ class ReactiveElectrolyteBatch:
         object.__setattr__(self, "vapor_species", _sequence_str(self.vapor_species))
         object.__setattr__(self, "volatile_species", _sequence_str(self.volatile_species))
         object.__setattr__(self, "nonvolatile_species", _sequence_str(self.nonvolatile_species))
+        if isinstance(self.base_parameters, ParameterSet):
+            if tuple(str(label) for label in self.species) != self.base_parameters.components:
+                raise InputError("ParameterSet species order must match ReactiveElectrolyteBatch.species.")
+            object.__setattr__(self, "base_parameters", self.base_parameters.to_runtime_dict())
+        elif self.base_parameters is not None:
+            object.__setattr__(self, "base_parameters", _copy_parameter_payload(self.base_parameters))
         object.__setattr__(self, "user_options", dict(self.user_options or {}))
 
 
@@ -862,6 +869,19 @@ def summarize_regression_result(result: ReactiveRegressionObjectiveResult) -> di
                 "residual_norm": float(np.linalg.norm(np.asarray(values, dtype=float))) if values else 0.0,
             }
             for split, values in split_counter.items()
+        },
+        "target_family_summaries": _json_like(
+            batch.diagnostics.get("target_family_summaries", {})
+            if isinstance(batch.diagnostics, Mapping)
+            else {}
+        ),
+        "residual_block_norms": {
+            family: float(summary.get("residual_block_norm", 0.0))
+            for family, summary in (
+                batch.diagnostics.get("target_family_summaries", {})
+                if isinstance(batch.diagnostics, Mapping)
+                else {}
+            ).items()
         },
         "cache_stats": _json_like(batch.cache_stats),
         "timing_summary": _json_like(batch.timing_summary),

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 
 import epcsaft
+import epcsaft.capability_evidence as capability_evidence
 
 
 def test_derivative_coverage_matrix_has_required_contract_and_no_nonexact_derivative() -> None:
@@ -80,3 +81,24 @@ def test_capability_contract_is_derived_from_registered_evidence() -> None:
     assert evidence["problem_object_classes"] == capabilities["equilibrium"]["problem_objects"]["classes"]
     assert set(evidence["regression_keys"]).issubset(capabilities["regression"])
     assert evidence["derivative_row_count"] == len(capabilities["derivatives"]["coverage_matrix"]["rows"])
+    assert evidence["validation_lanes"] == list(capability_evidence.VALIDATION_LANES)
+    assert evidence["pytest_slices"] == list(capability_evidence.TEST_SLICES)
+    assert evidence["cheap_validation_lanes"] == [
+        name for name, lane in capability_evidence.VALIDATION_LANES.items() if lane["cheap_by_default"]
+    ]
+
+
+def test_registered_evidence_links_capability_rows_to_executable_checks() -> None:
+    for row in capability_evidence.DERIVATIVE_COVERAGE_ROWS:
+        assert row["tests"]
+        assert all(str(target).startswith("tests/") for target in row["tests"])
+
+    for lane in capability_evidence.VALIDATION_LANES.values():
+        commands = lane["commands"]
+        assert commands
+        assert all(command for command in commands)
+
+    for slice_payload in capability_evidence.TEST_SLICES.values():
+        targets = slice_payload["targets"]
+        assert targets
+        assert all(str(target).startswith("tests") for target in targets)

@@ -5,6 +5,7 @@
 #include "ipopt_adapter.h"
 #include "nlp_problem.h"
 #include "reaction_block.h"
+#include "route_metadata.h"
 #include "second_order.h"
 
 #include <algorithm>
@@ -16,6 +17,19 @@
 namespace epcsaft::native::equilibrium_nlp {
 
 void apply_ipopt_solve_metadata(NeutralTwoPhaseEosRouteResult& out, const IpoptSolveResult& solve) {
+    const RouteMetadata route_metadata = route_metadata_from_diagnostics(solve.diagnostics_string);
+    if (!route_metadata.variable_model.empty()) {
+        out.variable_model = route_metadata.variable_model;
+    }
+    if (!route_metadata.density_backend.empty()) {
+        out.density_backend = route_metadata.density_backend;
+    }
+    if (!route_metadata.residual_families.empty()) {
+        out.residual_families = route_metadata.residual_families;
+    }
+    if (!route_metadata.constraint_families.empty()) {
+        out.constraint_families = route_metadata.constraint_families;
+    }
     out.solver_feasible_point = solve.feasible_point;
     out.gradient_approximation = solve_diagnostic_string(solve, "gradient_approximation", "exact");
     out.jacobian_approximation = solve_diagnostic_string(solve, "jacobian_approximation", "exact");
@@ -54,6 +68,19 @@ void apply_ipopt_solve_metadata(NeutralTwoPhaseEosRouteResult& out, const IpoptS
 }
 
 void apply_ipopt_solve_metadata(ReactiveTwoPhaseEosRouteResult& out, const IpoptSolveResult& solve) {
+    const RouteMetadata route_metadata = route_metadata_from_diagnostics(solve.diagnostics_string);
+    if (!route_metadata.variable_model.empty()) {
+        out.variable_model = route_metadata.variable_model;
+    }
+    if (!route_metadata.density_backend.empty()) {
+        out.density_backend = route_metadata.density_backend;
+    }
+    if (!route_metadata.residual_families.empty()) {
+        out.residual_families = route_metadata.residual_families;
+    }
+    if (!route_metadata.constraint_families.empty()) {
+        out.constraint_families = route_metadata.constraint_families;
+    }
     out.gradient_approximation = solve_diagnostic_string(solve, "gradient_approximation", "exact");
     out.jacobian_approximation = solve_diagnostic_string(solve, "jacobian_approximation", "exact");
     out.hessian_approximation = solve_diagnostic_string(solve, "hessian_approximation", out.hessian_approximation);
@@ -94,6 +121,39 @@ namespace {
 
 constexpr double kGasConstant = 8.31446261815324;
 constexpr double kContractPhaseDistance = 1.0e-8;
+
+void apply_route_metadata(NeutralTwoPhaseEosNlpContract& out, const RouteMetadata& metadata) {
+    out.variable_model = metadata.variable_model;
+    out.density_backend = metadata.density_backend;
+    out.residual_families = metadata.residual_families;
+    out.constraint_families = metadata.constraint_families;
+}
+
+void apply_route_metadata(NeutralTwoPhaseEosPostsolve& out, const RouteMetadata& metadata) {
+    out.density_backend = metadata.density_backend;
+    out.residual_families = metadata.residual_families;
+    out.constraint_families = metadata.constraint_families;
+}
+
+void apply_route_metadata(NeutralTwoPhaseEosRouteResult& out, const RouteMetadata& metadata) {
+    out.variable_model = metadata.variable_model;
+    out.density_backend = metadata.density_backend;
+    out.residual_families = metadata.residual_families;
+    out.constraint_families = metadata.constraint_families;
+}
+
+void apply_route_metadata(ReactiveTwoPhaseEosPostsolve& out, const RouteMetadata& metadata) {
+    out.density_backend = metadata.density_backend;
+    out.residual_families = metadata.residual_families;
+    out.constraint_families = metadata.constraint_families;
+}
+
+void apply_route_metadata(ReactiveTwoPhaseEosRouteResult& out, const RouteMetadata& metadata) {
+    out.variable_model = metadata.variable_model;
+    out.density_backend = metadata.density_backend;
+    out.residual_families = metadata.residual_families;
+    out.constraint_families = metadata.constraint_families;
+}
 
 struct NeutralTwoPhaseEosInitialPoint {
     std::vector<std::vector<double>> phase_amounts;
@@ -984,6 +1044,12 @@ public:
         return out;
     }
 
+    std::map<std::string, std::string> diagnostics() const override {
+        return route_metadata_diagnostics(
+            phase_amount_volume_route_metadata(!charges_.empty(), separation_constraint_count() > 0)
+        );
+    }
+
     int species_count() const {
         return species_count_;
     }
@@ -1557,6 +1623,10 @@ public:
         return out;
     }
 
+    std::map<std::string, std::string> diagnostics() const override {
+        return route_metadata_diagnostics(reactive_phase_amount_volume_route_metadata(!charges_.empty()));
+    }
+
     int phase_count() const {
         return 2;
     }
@@ -1670,6 +1740,7 @@ NeutralTwoPhaseEosNlpContract make_nlp_contract(
     NeutralTwoPhaseEosNlpContract out;
     out.problem_name = problem.name();
     out.derivative_backend = "analytic_cppad";
+    apply_route_metadata(out, route_metadata_from_diagnostics(problem.diagnostics()));
     out.phase_count = phase_count;
     out.species_count = species_count;
     out.variable_count = problem.variable_count();
@@ -1977,6 +2048,7 @@ ReactiveTwoPhaseEosPostsolve evaluate_reactive_two_phase_eos_postsolve(
     );
 
     ReactiveTwoPhaseEosPostsolve out;
+    apply_route_metadata(out, reactive_phase_amount_volume_route_metadata(!charges.empty()));
     out.phase_count = static_cast<int>(phase_amounts.size());
     out.species_count = species_count;
     out.balance_row_count = balance_rows;
@@ -2236,6 +2308,7 @@ ReactiveTwoPhaseEosRouteResult solve_reactive_two_phase_eos_route(
     out.balance_row_count = problem.balance_row_count();
     out.reaction_count = problem.reaction_count();
     out.standard_mu_rt = problem.standard_mu_rt();
+    apply_route_metadata(out, reactive_phase_amount_volume_route_metadata(!charges.empty()));
     if (!adapter.compiled) {
         out.status = "ipopt_dependency_required";
         return out;
@@ -2342,6 +2415,7 @@ NeutralTwoPhaseEosPostsolve evaluate_neutral_two_phase_eos_postsolve(
 
     NeutralTwoPhaseEosPostsolve out;
     out.derivative_backend = system.derivative_backend;
+    apply_route_metadata(out, phase_amount_volume_route_metadata(!charges.empty(), false));
     out.phase_count = system.phase_count;
     out.species_count = system.species_count;
     out.objective = system.objective;
@@ -2425,6 +2499,7 @@ NeutralTwoPhaseEosRouteResult solve_neutral_two_phase_eos_route(
     out.exact_gradient_required = adapter.exact_gradient_required;
     out.exact_jacobian_required = adapter.exact_jacobian_required;
     out.problem_name = problem_name;
+    apply_route_metadata(out, phase_amount_volume_route_metadata(!charges.empty(), minimum_phase_distance > 0.0));
     if (!adapter.compiled) {
         out.status = "ipopt_dependency_required";
         return out;

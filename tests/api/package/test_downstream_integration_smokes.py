@@ -9,6 +9,9 @@ from __future__ import annotations
 
 import math
 
+import numpy as np
+import pytest
+
 import epcsaft
 
 
@@ -67,6 +70,42 @@ def _generic_chemical_payload(species: tuple[str, ...]) -> dict[str, object]:
     ).to_dict()
 
 
+class _DummyNative:
+    def __init__(self, ncomp: int) -> None:
+        self._ncomp = int(ncomp)
+
+    def ncomp(self) -> int:
+        return self._ncomp
+
+
+def _dummy_mixture(*, charges: tuple[float, ...]) -> epcsaft.ePCSAFTMixture:
+    mix = object.__new__(epcsaft.ePCSAFTMixture)
+    mix._native = _DummyNative(len(charges))
+    mix._params = {"z": np.asarray(charges, dtype=float)}
+    mix._species = [f"c{i}" for i in range(len(charges))]
+    return mix
+
+
+def _one_phase_result(problem_kind: str) -> epcsaft.EquilibriumResult:
+    phase = epcsaft.EquilibriumPhase(
+        label="liq",
+        composition=[0.5, 0.5],
+        density=1000.0,
+        temperature=300.0,
+        pressure=101325.0,
+        phase_fraction=1.0,
+        diagnostics={},
+    )
+    return epcsaft.EquilibriumResult(
+        backend="native",
+        problem_kind=problem_kind,
+        phases=(phase,),
+        stable=True,
+        split_detected=False,
+        diagnostics={"route_status": "accepted"},
+    )
+
+
 def test_public_api_stays_application_neutral_and_nonexact_derivative_free() -> None:
     forbidden_tokens = {
         "absorption",
@@ -84,6 +123,40 @@ def test_public_api_stays_application_neutral_and_nonexact_derivative_free() -> 
     capabilities = epcsaft.capabilities()
     assert "numerical" + "_derivative" not in capabilities["derivatives"]
     assert capabilities["equilibrium"]["problem_objects"]["entrypoint"] == "mixture.solve_equilibrium(problem)"
+
+
+def test_equilibrium_facade_normalizes_auto_neutral_request(monkeypatch) -> None:
+    mix = _dummy_mixture(charges=(0.0, 0.0))
+    captured: dict[str, object] = {}
+
+    def flash_tp(self, T, P, z, *, options=None):
+        captured.update({"T": T, "P": P, "z": z, "options": options})
+        return _one_phase_result("tp_flash")
+
+    monkeypatch.setattr(epcsaft.ePCSAFTMixture, "flash_tp", flash_tp)
+
+    result = mix.equilibrium(kind="auto", T=300.0, P=101325.0, z=[0.25, 0.75])
+
+    assert captured == {"T": 300.0, "P": 101325.0, "z": [0.25, 0.75], "options": None}
+    assert result.problem_kind == "tp_flash"
+    assert result.diagnostics["equilibrium_route"] == "neutral_vle"
+    assert result.diagnostics["route_reason"] == "neutral mixture default"
+
+
+def test_equilibrium_facade_normalizes_auto_electrolyte_errors(monkeypatch) -> None:
+    mix = _dummy_mixture(charges=(0.0, 1.0, -1.0))
+
+    def electrolyte_lle_tp(self, **_kwargs):
+        raise epcsaft.SolutionError("native route rejected", {"route_status": "rejected"})
+
+    monkeypatch.setattr(epcsaft.ePCSAFTMixture, "electrolyte_lle_tp", electrolyte_lle_tp)
+
+    with pytest.raises(epcsaft.SolutionError) as exc_info:
+        mix.equilibrium(kind="auto", T=298.15, P=101325.0, solvent_feed={"c0": 1.0}, salt_molality={"c1c2": 1.0})
+
+    assert exc_info.value.diagnostics["route_status"] == "rejected"
+    assert exc_info.value.diagnostics["equilibrium_route"] == "electrolyte_lle"
+    assert exc_info.value.diagnostics["route_reason"] == "ion-containing mixture"
 
 
 def test_mea_thermodynamics_smoke_uses_generic_reactive_problem_and_targets() -> None:

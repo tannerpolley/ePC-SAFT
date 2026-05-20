@@ -558,6 +558,10 @@ optimizer and exact derivative path. Downstream code supplies records, targets,
 species, balances, reactions, and a ``mixture_factory`` for the current
 parameters; the package returns a ``ReactiveRegressionObjectiveResult`` with
 residuals, residual names, per-record diagnostics, and success/failure counts.
+``summarize_regression_result(...)`` includes the same target-family summary
+shape used by ``TargetDataset.target_family_summaries()`` and normal
+``FitResult`` evidence. Reactive summaries count residuals instead of source
+records because each row can emit several residual families.
 
 The diagnostic context keeps the residual vector shape stable when a record
 fails by inserting bounded penalty residuals. Successful row diagnostics include

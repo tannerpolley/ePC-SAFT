@@ -5,116 +5,39 @@ import sys
 import uuid
 from pathlib import Path
 
-GENERIC_TEST_TARGETS = (
-    "tests/api/package/test_package_main.py::test_python_m_epcsaft_reports_package_and_core_status",
-    "tests/api/runtime/test_runtime_exports_and_metadata.py::test_package_exports_are_available",
-    "tests/api/runtime/test_runtime_neutral_methods.py::test_neutral_scalar_methods_return_expected_values",
-    "tests/api/runtime/test_runtime_ionic_methods.py::test_ionic_activity_and_solution_methods_return_expected_values",
-    "tests/api/parameters/test_parameter_templates.py::test_runtime_options_accept_cppad_modes_and_preserve_explicit_overrides",
-    "tests/api/regression/test_regression_api_native_backends.py::test_public_pure_neutral_regression_is_robust_to_distinct_initial_guesses",
-    "tests/regression/core/test_hydrocarbon.py::test_methane_reference_parameters_keep_native_objective_pinned",
-    "tests/equilibrium/core/test_vle.py::test_tp_flash_builds_one_native_route_request_before_ipopt_gate",
-    "tests/equilibrium/core/test_lle.py::test_lle_flash_builds_one_native_route_request_before_ipopt_gate",
-    "tests/equilibrium/core/test_stability.py::test_stability_uses_native_ipopt_route_after_validation",
-    (
-        "tests/equilibrium/electrolyte/test_electrolyte_lle_smokes.py::"
-        "test_electrolyte_lle_builds_native_route_before_ipopt_gate"
-    ),
-    (
-        "tests/workflows/validation/equilibrium_core/test_electrolyte_thermo_diagnostics.py::"
-        "test_khudaida_fixture_loads_charge_neutral_explicit_ions"
-    ),
-    "tests/native/contracts/test_equilibrium_native_contracts.py::test_native_equilibrium_entrypoint_is_exposed",
-    "tests/native/runtime/test_runtime_density_closure.py::test_pressure_based_and_density_based_states_match_for_neutral_system",
-    "tests/native/contracts/test_equation_registry.py::test_equation_registry_outputs_are_synced",
-    "tests/workflows/repo/test_project_structure.py",
-    "tests/workflows/repo/test_run_pytest.py::test_list_slices_exits_without_running_pytest",
-    "tests/workflows/repo/test_workflow_entrypoints.py::test_docs_make_confidence_suite_the_default_runtime_check",
-)
+REPO_ROOT = Path(__file__).resolve().parent
+SRC_ROOT = REPO_ROOT / "src"
+if str(SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(SRC_ROOT))
+
+from scripts.dev.native_runtime_env import apply_native_runtime_env
+
+apply_native_runtime_env(os.environ)
+
+from epcsaft.capability_evidence import TEST_SLICES, registry_targets
+
+GENERIC_TEST_TARGETS = registry_targets("generic")
 FAST_TEST_TARGETS = GENERIC_TEST_TARGETS
-CONFIDENCE_TEST_TARGETS = (
-    *GENERIC_TEST_TARGETS,
-    "tests/native/runtime/test_runtime_density_closure.py::test_pressure_based_and_density_based_states_match_for_ionic_system",
-    "tests/native/runtime/test_runtime_contribution_contracts.py::test_native_residual_helmholtz_and_compressibility_contributions_match_neutral_contract",
-    "tests/native/contracts/test_equilibrium_native_contracts.py::test_public_tp_flash_requires_native_ipopt_route",
-)
-EQUILIBRIUM_CONFIDENCE_TEST_TARGETS = (
-    (
-        "tests/workflows/validation/equilibrium_core/test_electrolyte_lle_confidence.py::"
-        "test_khudaida_benchmark_fixture_loads_charge_neutral_cases"
-    ),
-    (
-        "tests/workflows/validation/equilibrium_core/test_electrolyte_thermo_diagnostics.py::"
-        "test_khudaida_package_tieline_fixed_phase_residual_is_internally_consistent"
-    ),
-)
-EQUILIBRIUM_API_TEST_TARGETS = (
-    "tests/equilibrium/core/test_vle.py::test_tp_flash_builds_one_native_route_request_before_ipopt_gate",
-    "tests/equilibrium/core/test_lle.py::test_lle_flash_builds_one_native_route_request_before_ipopt_gate",
-    "tests/equilibrium/core/test_stability.py::test_stability_uses_native_ipopt_route_after_validation",
-    (
-        "tests/equilibrium/electrolyte/test_electrolyte_lle_smokes.py::"
-        "test_electrolyte_lle_builds_native_route_before_ipopt_gate"
-    ),
-    "tests/api/runtime/test_runtime_exports_and_metadata.py::test_runtime_build_info_and_capabilities_are_json_like",
-    (
-        "tests/api/reactive/test_reactive_speciation_results.py::"
-        "test_solve_reactive_speciation_activity_coupled_state_requires_native_ipopt_route"
-    ),
-    "tests/api/reactive/test_reactive_speciation_options.py::test_reactive_speciation_options_expose_jacobian_backend_selector",
-    "tests/api/reactive/test_reactive_speciation_options.py::test_reactive_speciation_requested_ipopt_routes_ideal_speciation_when_compiled",
-    "tests/api/reactive/test_reactive_electrolyte_bubble_setup.py",
-    "tests/api/reactive/test_reactive_electrolyte_bubble_results.py",
-    (
-        "tests/native/equilibrium/test_chemical_equilibrium_native_api.py::"
-        "test_native_chemical_equilibrium_residual_evaluator_uses_analytic_jacobian_by_default"
-    ),
-    (
-        "tests/native/equilibrium/test_chemical_equilibrium_native_errors.py::"
-        "test_native_chemical_equilibrium_residual_evaluator_rejects_removed_backend"
-    ),
-)
-ALL_TEST_TARGETS = ("tests",)
-RUNTIME_TEST_TARGETS = (
-    "tests/api/runtime/test_runtime_exports_and_metadata.py",
-    "tests/api/runtime/test_runtime_neutral_methods.py",
-    "tests/api/runtime/test_runtime_ionic_methods.py",
-    "tests/native/runtime/test_runtime_density_closure.py",
-    "tests/native/runtime/test_runtime_contribution_contracts.py",
-    "tests/native/runtime/test_runtime_cache_contracts.py",
-)
-API_TEST_TARGETS = (
-    "tests/api/runtime/test_runtime_exports_and_metadata.py",
-    "tests/api/runtime/test_runtime_neutral_methods.py",
-    "tests/api/runtime/test_runtime_ionic_methods.py",
-    "tests/api/parameters/test_parameter_templates.py",
-    "tests/api/regression/test_regression_api_public_contracts.py",
-    "tests/api/regression/test_regression_api_native_backends.py",
-    "tests/api/regression/test_regression_api_results_and_errors.py",
-)
-NATIVE_TEST_TARGETS = (
-    "tests/native/runtime/test_runtime_density_closure.py",
-    "tests/native/runtime/test_runtime_contribution_contracts.py",
-    "tests/native/runtime/test_runtime_cache_contracts.py",
-)
-PROFILE_TEST_TARGETS = ("tests/profile/test_runtime_profile.py",)
-FULL_PROFILE_TEST_TARGETS = (
-    "tests/profile/test_runtime_profile.py",
-    "tests/profile/test_miac_profile.py",
-    "tests/profile/test_regression_profile.py",
-)
-SLICE_TARGETS = {
-    "generic": GENERIC_TEST_TARGETS,
-    "all": ALL_TEST_TARGETS,
-    "confidence": CONFIDENCE_TEST_TARGETS,
-    "equilibrium-confidence": EQUILIBRIUM_CONFIDENCE_TEST_TARGETS,
-    "equilibrium-api": EQUILIBRIUM_API_TEST_TARGETS,
-    "runtime": RUNTIME_TEST_TARGETS,
-    "api": API_TEST_TARGETS,
-    "native": NATIVE_TEST_TARGETS,
-    "profile": PROFILE_TEST_TARGETS,
-    "profile-full": FULL_PROFILE_TEST_TARGETS,
+CONFIDENCE_TEST_TARGETS = registry_targets("confidence")
+EQUILIBRIUM_CONFIDENCE_TEST_TARGETS = registry_targets("equilibrium-confidence")
+EQUILIBRIUM_API_TEST_TARGETS = registry_targets("equilibrium-api")
+ALL_TEST_TARGETS = registry_targets("all")
+RUNTIME_TEST_TARGETS = registry_targets("runtime")
+API_TEST_TARGETS = registry_targets("api")
+NATIVE_TEST_TARGETS = registry_targets("native")
+NATIVE_CONTRACT_TEST_TARGETS = registry_targets("native-contracts")
+PROFILE_TEST_TARGETS = registry_targets("profile")
+FULL_PROFILE_TEST_TARGETS = registry_targets("profile-full")
+SLICE_TARGETS = {name: registry_targets(name) for name in TEST_SLICES}
+LONG_NATIVE_TARGETS = {
+    "tests/native/equilibrium",
+    "tests/native/equilibrium/test_route_builders.py",
 }
+LONG_NATIVE_TARGETS_NOTE = (
+    "Broad native equilibrium route-builder targets are intentionally guarded because they can take a long time. "
+    "Use `uv run python run_pytest.py --native-contracts -q` for metadata/result-contract checks, "
+    "or target a single test node. Pass `--allow-long-native-tests` only when you intentionally need the broad route suite."
+)
 FULL_PROFILE_MIN_TIMEOUT_SECONDS = 120
 FULL_PROFILE_RUNTIME_NOTE = (
     "--profile-full runs runtime, MIAC, and regression profiling; "
@@ -174,10 +97,17 @@ def _pytest_args(
     runtime: bool = False,
     api: bool = False,
     native: bool = False,
+    native_contracts: bool = False,
     profile: bool = False,
     profile_full: bool = False,
     all_tests: bool = False,
+    allow_long_native_tests: bool = False,
 ) -> list[str]:
+    _reject_unbounded_native_targets(
+        pytest_args,
+        all_tests=all_tests,
+        allow_long_native_tests=allow_long_native_tests,
+    )
     cmd: list[str] = []
     has_predefined_targets = (
         generic
@@ -187,6 +117,7 @@ def _pytest_args(
         or runtime
         or api
         or native
+        or native_contracts
         or profile
         or profile_full
         or all_tests
@@ -207,6 +138,8 @@ def _pytest_args(
         cmd.extend(API_TEST_TARGETS)
     elif native:
         cmd.extend(NATIVE_TEST_TARGETS)
+    elif native_contracts:
+        cmd.extend(NATIVE_CONTRACT_TEST_TARGETS)
     elif profile:
         cmd.extend(PROFILE_TEST_TARGETS)
     elif profile_full:
@@ -225,6 +158,24 @@ def _pytest_args(
     if not any(arg == "--basetemp" or arg.startswith("--basetemp=") for arg in cmd):
         cmd.extend(["--basetemp", str(pytest_temp)])
     return cmd
+
+
+def _reject_unbounded_native_targets(
+    pytest_args: list[str],
+    *,
+    all_tests: bool,
+    allow_long_native_tests: bool,
+) -> None:
+    if all_tests or allow_long_native_tests or os.environ.get("EPCSAFT_ALLOW_LONG_NATIVE_TESTS") == "1":
+        return
+    for arg in pytest_args:
+        if arg.startswith("-"):
+            continue
+        target_path = arg.split("::", 1)[0].replace("\\", "/").rstrip("/")
+        if "::" in arg:
+            continue
+        if target_path in LONG_NATIVE_TARGETS:
+            raise SystemExit(LONG_NATIVE_TARGETS_NOTE)
 
 
 def _slice_listing_text() -> str:
@@ -294,6 +245,11 @@ def main() -> int:
     predefined.add_argument("--runtime", action="store_true", help="Run runtime API and native contract tests")
     predefined.add_argument("--api", action="store_true", help="Run public API and regression API tests")
     predefined.add_argument("--native", action="store_true", help="Run native runtime contract tests")
+    predefined.add_argument(
+        "--native-contracts",
+        action="store_true",
+        help="Run fast native route metadata/result contract tests without broad solver route suites",
+    )
     predefined.add_argument("--profile", action="store_true", help="Run the opt-in runtime-only profile test")
     predefined.add_argument(
         "--profile-full",
@@ -308,6 +264,11 @@ def main() -> int:
     )
     parser.add_argument(
         "--list-slices", action="store_true", help="Print named test slices and exit without running pytest"
+    )
+    parser.add_argument(
+        "--allow-long-native-tests",
+        action="store_true",
+        help="Allow broad known-slow native route-builder targets such as the full test_route_builders.py file",
     )
     args, pytest_args = parser.parse_known_args()
 
@@ -332,9 +293,11 @@ def main() -> int:
         runtime=args.runtime,
         api=args.api,
         native=args.native,
+        native_contracts=args.native_contracts,
         profile=args.profile,
         profile_full=args.profile_full,
         all_tests=args.all_tests,
+        allow_long_native_tests=args.allow_long_native_tests,
     )
     print("Running:", f"{sys.executable} -m pytest", " ".join(cmd), flush=True)
     if args.profile_full:

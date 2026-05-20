@@ -92,6 +92,12 @@ include = [
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 addopts = "-ra -p no:cacheprovider"
+markers = [
+    "native_contract: fast native metadata/result-contract tests that should not run broad solver route suites",
+    "native_solver: native solver or route-builder tests that may run Ipopt or expensive route setup",
+    "ipopt: tests that require or exercise native Ipopt route behavior",
+    "slow: tests that are intentionally excluded from routine focused validation unless explicitly targeted",
+]
 
 [tool.black]
 line-length = 120

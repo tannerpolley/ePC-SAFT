@@ -1,36 +1,24 @@
 from __future__ import annotations
 
 import argparse
+import os
 import subprocess
 import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+SRC_ROOT = REPO_ROOT / "src"
+if str(SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(SRC_ROOT))
 
+from scripts.dev.native_runtime_env import apply_native_runtime_env
+
+apply_native_runtime_env(os.environ)
+
+from epcsaft.capability_evidence import VALIDATION_LANES, validation_lane_commands
 
 CHECK_COMMANDS: dict[str, tuple[tuple[str, ...], ...]] = {
-    "quick": (
-        ("scripts/dev/doctor.py",),
-        ("run_pytest.py", "-q"),
-    ),
-    "confidence": (
-        ("scripts/dev/doctor.py",),
-        ("run_pytest.py", "--confidence", "-q"),
-    ),
-    "docs": (("-m", "sphinx", "-b", "html", "docs", "build/docs-html"),),
-    "full": (
-        ("scripts/dev/doctor.py",),
-        ("run_pytest.py", "--all", "-q"),
-    ),
-    "ceres-cppad": (
-        ("scripts/dev/build_epcsaft.py", "--profile", "full"),
-        (
-            "run_pytest.py",
-            "tests/native/ceres/test_ceres_pure_regression.py",
-            "tests/native/ceres/test_ceres_binary_regression.py",
-            "-q",
-        ),
-    ),
+    name: validation_lane_commands(name) for name in VALIDATION_LANES
 }
 
 

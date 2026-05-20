@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from dataclasses import replace
 from typing import Any
 
 import numpy as np
@@ -57,6 +58,44 @@ _ROUTE_FLOAT_DIAGNOSTIC_KEYS = (
 )
 
 
+def _approximation_is_exact(value: Any) -> bool:
+    return str(value).strip().lower() == "exact"
+
+
+def _normalized_seed_attempts(
+    attempts: Any,
+    *,
+    selected_seed_name: str,
+    gradient_approximation: str,
+    jacobian_approximation: str,
+    hessian_approximation: str,
+    exact_gradient_required: bool,
+    exact_jacobian_required: bool,
+    exact_hessian_available: bool,
+) -> list[Any]:
+    normalized: list[Any] = []
+    for attempt in attempts:
+        if not isinstance(attempt, Mapping):
+            normalized.append(attempt)
+            continue
+        row = dict(attempt)
+        row["route_status"] = str(row.get("status", ""))
+        row["route_accepted"] = bool(row.get("accepted", False))
+        row["solver_accepted"] = bool(row.get("solver_accepted", False))
+        row["selected_seed"] = bool(selected_seed_name) and str(row.get("seed_name", "")) == selected_seed_name
+        row["gradient_approximation"] = gradient_approximation
+        row["jacobian_approximation"] = jacobian_approximation
+        row["hessian_approximation"] = hessian_approximation
+        row["exact_gradient_required"] = exact_gradient_required
+        row["exact_jacobian_required"] = exact_jacobian_required
+        row["exact_hessian_available"] = exact_hessian_available
+        row["gradient_is_exact"] = _approximation_is_exact(gradient_approximation)
+        row["jacobian_is_exact"] = _approximation_is_exact(jacobian_approximation)
+        row["hessian_is_exact"] = _approximation_is_exact(hessian_approximation)
+        normalized.append(row)
+    return normalized
+
+
 def _diagnostics(payload: Mapping[str, Any]) -> dict[str, Any]:
     diagnostics = payload.get("diagnostics", {})
     if isinstance(diagnostics, Mapping):
@@ -88,14 +127,52 @@ def native_route_diagnostics(
     for key in _ROUTE_FLOAT_DIAGNOSTIC_KEYS:
         if key in route or key in default_values:
             diagnostics[key] = float(route.get(key, default_values.get(key, 0.0)))
+    if "compiled" in route or "compiled" in default_values:
+        diagnostics["compiled"] = bool(route.get("compiled", default_values.get("compiled", False)))
+    if "adapter_available" in route or "adapter_available" in default_values:
+        diagnostics["adapter_available"] = bool(
+            route.get("adapter_available", default_values.get("adapter_available", False))
+        )
+    if "ran" in route or "solver_ran" in default_values or "ran" in default_values:
+        diagnostics["solver_ran"] = bool(route.get("ran", default_values.get("solver_ran", default_values.get("ran", False))))
+    diagnostics["route_accepted"] = bool(route.get("accepted", diagnostics.get("accepted", default_values.get("accepted", False))))
+    if "accepted" in diagnostics:
+        diagnostics["postsolve_accepted"] = bool(diagnostics["accepted"])
     if "initial_point_strategy" in route or "initial_point_strategy" in default_values:
         diagnostics["initial_point_strategy"] = str(
             route.get("initial_point_strategy", default_values.get("initial_point_strategy", ""))
         )
     if "seed_name" in route or "seed_name" in default_values:
         diagnostics["seed_name"] = str(route.get("seed_name", default_values.get("seed_name", "")))
+    diagnostics["gradient_is_exact"] = _approximation_is_exact(diagnostics.get("gradient_approximation", ""))
+    diagnostics["jacobian_is_exact"] = _approximation_is_exact(diagnostics.get("jacobian_approximation", ""))
+    diagnostics["hessian_is_exact"] = _approximation_is_exact(diagnostics.get("hessian_approximation", ""))
+    diagnostics["exact_derivatives_required"] = bool(
+        diagnostics.get("exact_gradient_required", False) and diagnostics.get("exact_jacobian_required", False)
+    )
     if "seed_attempts" in route:
-        diagnostics["seed_attempts"] = list(route.get("seed_attempts", []))
+        normalized_attempts = _normalized_seed_attempts(
+            route.get("seed_attempts", []),
+            selected_seed_name=str(diagnostics.get("seed_name", "")),
+            gradient_approximation=str(diagnostics.get("gradient_approximation", "")),
+            jacobian_approximation=str(diagnostics.get("jacobian_approximation", "")),
+            hessian_approximation=str(diagnostics.get("hessian_approximation", "")),
+            exact_gradient_required=bool(diagnostics.get("exact_gradient_required", False)),
+            exact_jacobian_required=bool(diagnostics.get("exact_jacobian_required", False)),
+            exact_hessian_available=bool(diagnostics.get("exact_hessian_available", False)),
+        )
+        diagnostics["seed_attempts"] = normalized_attempts
+        diagnostics["seed_attempt_count"] = len(normalized_attempts)
+        diagnostics["seed_attempt_solver_accepted_count"] = sum(
+            1
+            for attempt in normalized_attempts
+            if isinstance(attempt, Mapping) and bool(attempt.get("solver_accepted", False))
+        )
+        diagnostics["seed_attempt_route_accepted_count"] = sum(
+            1
+            for attempt in normalized_attempts
+            if isinstance(attempt, Mapping) and bool(attempt.get("route_accepted", False))
+        )
     if "iteration_history" in route:
         diagnostics["iteration_history"] = list(route.get("iteration_history", []))
     if "continuation_state" in route:
@@ -116,6 +193,27 @@ def raise_native_route_rejected(
         message,
         native_route_diagnostics(route, route_status_key=route_status_key, defaults=defaults),
     )
+
+
+def equilibrium_route_diagnostics(route: Mapping[str, str], diagnostics: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    """Return public equilibrium-route diagnostics merged into an existing payload."""
+    payload = dict(diagnostics or {})
+    payload["equilibrium_route"] = str(route["route"])
+    payload["route_reason"] = str(route["reason"])
+    return payload
+
+
+def with_equilibrium_route_diagnostics(result: Any, route: Mapping[str, str]) -> Any:
+    """Return a public equilibrium result with canonical route diagnostics."""
+    return replace(result, diagnostics=equilibrium_route_diagnostics(route, getattr(result, "diagnostics", None)))
+
+
+def raise_with_equilibrium_route_diagnostics(exc: SolutionError, route: Mapping[str, str]) -> None:
+    """Raise a SolutionError with canonical public route diagnostics."""
+    raise SolutionError(
+        exc.message,
+        equilibrium_route_diagnostics(route, getattr(exc, "diagnostics", None)),
+    ) from exc
 
 
 def _phase_payload_to_public(phase: Mapping[str, Any], *, label: str | None = None):

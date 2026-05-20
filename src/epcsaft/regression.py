@@ -21,6 +21,7 @@ from .epcsaft import (
     create_struct,
     vector_to_array,
 )
+from .parameter_schema import ParameterSet
 from .parameter_templates import _infer_pure_template_name
 from .parameters import (
     _MISSING,
@@ -780,6 +781,12 @@ class FitResult:
         self.source_summaries = _copy_mapping(self.source_summaries)
         self.target_family_summaries = _copy_mapping(self.target_family_summaries)
         self.residual_block_norms = {str(k): float(v) for k, v in self.residual_block_norms.items()}
+        if not self.target_family_summaries:
+            self.target_family_summaries = _fit_result_target_family_summaries(self)
+        if not self.residual_block_norms and self.metrics_by_term:
+            self.residual_block_norms = dict(self.metrics_by_term)
+        if not self.source_summaries:
+            self.source_summaries = _fit_result_source_summaries(self.problem)
         self.jacobian_available = bool(self.jacobian_available)
         self.jacobian_backend = str(self.jacobian_backend)
         self.provenance_report = _copy_mapping(self.provenance_report)
@@ -859,6 +866,36 @@ def _target_family_summaries_from_terms(
     for term in terms:
         counts[term.term_type] = counts.get(term.term_type, 0) + len(term.records)
     return _compile_target_family_summaries(counts, metrics_by_term)
+
+
+def _fit_result_target_family_summaries(result: FitResult) -> dict[str, dict[str, float | int]]:
+    if result.problem.target_dataset is not None:
+        metrics = result.metrics_by_term or None
+        return _compile_target_family_summaries(result.problem.target_dataset.target_family_counts(), metrics)
+    if result.problem.terms:
+        return _target_family_summaries_from_terms(result.problem.terms, result.metrics_by_term)
+    return {}
+
+
+def _fit_result_source_summaries(problem: FitProblem) -> dict[str, Any]:
+    if problem.target_dataset is not None:
+        return {
+            "target_dataset": {
+                "name": problem.target_dataset.name,
+                "dataset": problem.target_dataset.parameter_set,
+                "record_count": len(problem.target_dataset.rows),
+                "row_families": problem.target_dataset.families,
+            }
+        }
+    if problem.records:
+        return {
+            "records": {
+                "dataset": problem.dataset,
+                "record_count": len(problem.records),
+                "row_families": tuple(term.term_type for term in problem.terms),
+            }
+        }
+    return {}
 
 
 def _active_bounds_from_arrays(
@@ -1358,9 +1395,12 @@ def _json_like_regression(value: Any) -> Any:
     return str(value)
 
 
-def _source_dataset_label(dataset: str | Path | None) -> str | None:
+def _source_dataset_label(dataset: str | Path | ParameterSet | None) -> str | None:
     if dataset is None:
         return None
+    if isinstance(dataset, ParameterSet):
+        source = dataset.metadata.get("dataset", dataset.metadata.get("source"))
+        return str(source) if source not in (None, "") else "ParameterSet"
     return str(dataset)
 
 
@@ -1447,12 +1487,22 @@ def _ion_composition_from_record(record: Mapping[str, Any], species: Sequence[st
 
 
 def _params_for_native_record(
-    dataset: str | Path,
+    dataset: str | Path | ParameterSet,
     species: Sequence[str],
     x: np.ndarray,
     T: float,
     user_options: Mapping[str, Any] | None,
 ) -> dict[str, Any]:
+    if isinstance(dataset, ParameterSet):
+        if tuple(str(label) for label in species) != dataset.components:
+            raise InputError("ParameterSet species order must match the regression species order.")
+        payload = dataset.to_runtime_dict()
+        if user_options:
+            conflicts = sorted(set(str(key) for key in user_options) & set(payload))
+            if conflicts:
+                raise InputError(f"user_options cannot override ParameterSet runtime payload keys: {', '.join(conflicts)}.")
+            payload.update(_copy_mapping(user_options))
+        return payload
     return get_prop_dict(dataset, species, x, T, user_options=_copy_mapping(user_options))
 
 
@@ -2920,7 +2970,7 @@ def fit_liquid_electrolyte_parameters(
     *,
     species: Sequence[str],
     data_rows: Any,
-    parameter_set: str | Path,
+    parameter_set: str | Path | ParameterSet,
     parameters_to_fit: Iterable[str],
     fixed_parameters: Mapping[str, Any] | None = None,
     bounds: FitBounds | Mapping[str, tuple[float | None, float | None]] | None = None,

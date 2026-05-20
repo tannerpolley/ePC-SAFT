@@ -51,6 +51,13 @@ but new code should use the runtime/canonical names:
    runtime_dict = params.to_runtime_dict()
    mixture = epcsaft.ePCSAFTMixture.from_params(runtime_dict, species=["A", "B"])
 
+Runtime options are copied into the emitted payload only after the canonical
+parameter arrays and matrices are built. They cannot override parameter payload
+keys such as ``m``, ``k_ij``, ``k_hb``, or structural keys such as
+``components``. Regression and reactive-regression helpers that accept an
+in-memory ``ParameterSet`` use ``ParameterSet.to_runtime_dict()`` as the single
+runtime-payload boundary.
+
 Existing dictionary payloads keep working:
 
 .. code-block:: python

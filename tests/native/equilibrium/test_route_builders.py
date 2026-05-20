@@ -7,6 +7,8 @@ import epcsaft
 from epcsaft import _core
 from tests.helpers.runtime_cases import _ionic_params
 
+pytestmark = [pytest.mark.native_solver, pytest.mark.ipopt, pytest.mark.slow]
+
 
 def _neutral_binary_mixture() -> epcsaft.ePCSAFTMixture:
     params = {
@@ -245,6 +247,15 @@ def test_neutral_two_phase_eos_nlp_contract_uses_phase_system_blocks() -> None:
 
     assert payload["problem_name"] == "neutral_two_phase_eos"
     assert payload["derivative_backend"] == "analytic_cppad"
+    assert payload["variable_model"] == "phase_species_amounts_plus_phase_volume"
+    assert payload["density_backend"] == "explicit_phase_volume_pressure_constraint"
+    assert payload["residual_families"] == [
+        "material_balance",
+        "phase_pressure_consistency",
+        "phase_equilibrium",
+        "phase_distance",
+    ]
+    assert payload["constraint_families"] == ["material_balance", "phase_pressure_consistency"]
     assert payload["phase_count"] == 2
     assert payload["species_count"] == 2
     assert payload["variable_count"] == 6
@@ -293,6 +304,13 @@ def test_neutral_tp_flash_route_contract_builds_native_initial_point_from_feed()
 
     assert payload["problem_name"] == "neutral_two_phase_eos"
     assert payload["derivative_backend"] == "analytic_cppad"
+    assert payload["variable_model"] == "phase_species_amounts_plus_phase_volume"
+    assert payload["density_backend"] == "explicit_phase_volume_pressure_constraint"
+    assert payload["constraint_families"] == [
+        "material_balance",
+        "phase_pressure_consistency",
+        "phase_distance",
+    ]
     assert payload["phase_count"] == 2
     assert payload["species_count"] == 2
     assert np.all(phase_amounts > 0.0)
@@ -739,6 +757,13 @@ def test_neutral_lle_route_contract_builds_native_initial_point_from_feed() -> N
 
     assert payload["problem_name"] == "neutral_two_phase_eos"
     assert payload["derivative_backend"] == "analytic_cppad"
+    assert payload["variable_model"] == "phase_species_amounts_plus_phase_volume"
+    assert payload["density_backend"] == "explicit_phase_volume_pressure_constraint"
+    assert payload["constraint_families"] == [
+        "material_balance",
+        "phase_pressure_consistency",
+        "phase_distance",
+    ]
     assert np.all(phase_amounts > 0.0)
     assert np.all(volumes > 0.0)
     assert np.sum(phase_amounts, axis=0) == pytest.approx(feed_amounts)
@@ -764,6 +789,13 @@ def test_electrolyte_lle_route_contract_uses_liquid_root_transformed_variables()
     assert payload["problem_name"] == "electrolyte_lle_eos"
     assert payload["derivative_backend"] == "cppad_explicit_density"
     assert payload["density_backend"] == "explicit_log_density_pressure_constraint"
+    assert payload["residual_families"] == ["phase_equilibrium", "material_balance"]
+    assert payload["constraint_families"] == [
+        "phase_equilibrium",
+        "phase_pressure_consistency",
+        "phase_distance",
+        "formula_feasibility",
+    ]
     assert payload["phase_count"] == 2
     assert payload["species_count"] == 4
     assert payload["variable_model"] == "ascani_transformed_salt_pairs_explicit_density"
@@ -818,6 +850,15 @@ def test_electrolyte_lle_route_result_uses_ipopt_adapter_gate_and_charge_rows() 
     assert payload["backend"] == "ipopt"
     assert payload["problem_name"] == "electrolyte_lle_eos"
     assert payload["derivative_backend"] == "cppad_explicit_density"
+    assert payload["variable_model"] == "ascani_transformed_salt_pairs_explicit_density"
+    assert payload["density_backend"] == "explicit_log_density_pressure_constraint"
+    assert payload["residual_families"] == ["phase_equilibrium", "material_balance"]
+    assert payload["constraint_families"] == [
+        "phase_equilibrium",
+        "phase_pressure_consistency",
+        "phase_distance",
+        "formula_feasibility",
+    ]
     assert payload["exact_gradient_required"] is True
     assert payload["exact_jacobian_required"] is True
     if not payload["compiled"]:
@@ -972,6 +1013,22 @@ def test_neutral_fixed_temperature_pressure_route_contract_pins_specified_phase(
 
     assert payload["problem_name"] == problem_name
     assert payload["derivative_backend"] == "analytic_cppad"
+    assert payload["variable_model"] == "phase_species_amounts_plus_phase_volume_plus_pressure"
+    assert payload["density_backend"] == "explicit_phase_volume_pressure_constraint"
+    assert payload["residual_families"] == [
+        "fixed_composition",
+        "phase_amount_total",
+        "phase_pressure_consistency",
+        "phase_equilibrium",
+        "phase_distance",
+    ]
+    assert payload["constraint_families"] == [
+        "fixed_composition",
+        "phase_amount_total",
+        "phase_pressure_consistency",
+        "phase_equilibrium",
+        "phase_volume_gap",
+    ]
     assert payload["phase_count"] == 2
     assert payload["species_count"] == composition.size
     assert payload["variable_count"] == 2 * local_variable_count + 1
@@ -1024,6 +1081,22 @@ def test_neutral_fixed_pressure_temperature_route_contract_pins_specified_phase(
 
     assert payload["problem_name"] == problem_name
     assert payload["derivative_backend"] == "analytic_cppad"
+    assert payload["variable_model"] == "phase_species_amounts_plus_phase_volume_plus_temperature"
+    assert payload["density_backend"] == "explicit_phase_volume_pressure_constraint"
+    assert payload["residual_families"] == [
+        "fixed_composition",
+        "phase_amount_total",
+        "phase_pressure_consistency",
+        "phase_equilibrium",
+        "phase_distance",
+    ]
+    assert payload["constraint_families"] == [
+        "fixed_composition",
+        "phase_amount_total",
+        "phase_pressure_consistency",
+        "phase_equilibrium",
+        "phase_volume_gap",
+    ]
     assert payload["phase_count"] == 2
     assert payload["species_count"] == composition.size
     assert payload["variable_count"] == 2 * local_variable_count + 1
@@ -1351,6 +1424,15 @@ def test_neutral_two_phase_eos_route_result_translates_solver_and_postsolve() ->
     assert payload["backend"] == "ipopt"
     assert payload["problem_name"] == "neutral_two_phase_eos"
     assert payload["derivative_backend"] == "analytic_cppad"
+    assert payload["variable_model"] == "phase_species_amounts_plus_phase_volume"
+    assert payload["density_backend"] == "explicit_phase_volume_pressure_constraint"
+    assert payload["residual_families"] == [
+        "material_balance",
+        "phase_pressure_consistency",
+        "phase_equilibrium",
+        "phase_distance",
+    ]
+    assert payload["constraint_families"] == ["material_balance", "phase_pressure_consistency"]
     assert payload["exact_gradient_required"] is True
     assert payload["exact_jacobian_required"] is True
     if not payload["compiled"]:
@@ -1590,6 +1672,16 @@ def test_reactive_two_phase_eos_contract_uses_conserved_balances_and_standard_po
 
     assert payload["problem_name"] == "reactive_two_phase_eos"
     assert payload["derivative_backend"] == "analytic_cppad"
+    assert payload["variable_model"] == "phase_species_amounts_plus_phase_volume"
+    assert payload["density_backend"] == "explicit_phase_volume_pressure_constraint"
+    assert payload["residual_families"] == [
+        "conserved_balance",
+        "reaction_stationarity",
+        "phase_pressure_consistency",
+        "phase_equilibrium",
+        "phase_distance",
+    ]
+    assert payload["constraint_families"] == ["conserved_balance", "phase_pressure_consistency"]
     assert payload["phase_count"] == 2
     assert payload["species_count"] == 2
     assert payload["balance_row_count"] == 1
@@ -1794,6 +1886,16 @@ def test_reactive_two_phase_eos_route_result_uses_native_ipopt_gate() -> None:
     assert payload["backend"] == "ipopt"
     assert payload["problem_name"] == "reactive_two_phase_eos"
     assert payload["derivative_backend"] == "analytic_cppad"
+    assert payload["variable_model"] == "phase_species_amounts_plus_phase_volume"
+    assert payload["density_backend"] == "explicit_phase_volume_pressure_constraint"
+    assert payload["residual_families"] == [
+        "conserved_balance",
+        "reaction_stationarity",
+        "phase_pressure_consistency",
+        "phase_equilibrium",
+        "phase_distance",
+    ]
+    assert payload["constraint_families"] == ["conserved_balance", "phase_pressure_consistency"]
     assert payload["exact_gradient_required"] is True
     assert payload["exact_jacobian_required"] is True
     assert payload["phase_count"] == 2
@@ -1880,6 +1982,17 @@ def test_reactive_lle_eos_route_builder_owns_canonical_initial_point() -> None:
     assert contract["derivative_backend"] == "cppad_explicit_density"
     assert contract["density_backend"] == "explicit_log_density_pressure_constraint"
     assert contract["variable_model"] == "log_phase_species_amounts_plus_log_density"
+    assert contract["residual_families"] == [
+        "conserved_balance",
+        "reaction_stationarity",
+        "phase_equilibrium",
+        "phase_charge",
+    ]
+    assert contract["constraint_families"] == [
+        "conserved_balance",
+        "phase_pressure_consistency",
+        "phase_distance",
+    ]
     assert contract["variable_count"] == 2 * contract["species_count"] + 2
     assert contract["constraint_count"] == 4
     assert contract["jacobian_nonzero_count"] == 20
@@ -1930,6 +2043,19 @@ def test_reactive_lle_eos_route_builder_owns_canonical_initial_point() -> None:
     assert payload["backend"] == "ipopt"
     assert payload["problem_name"] == "reactive_liquid_root_eos"
     assert payload["derivative_backend"] == "cppad_explicit_density"
+    assert payload["variable_model"] == "log_phase_species_amounts_plus_log_density"
+    assert payload["density_backend"] == "explicit_log_density_pressure_constraint"
+    assert payload["residual_families"] == [
+        "conserved_balance",
+        "reaction_stationarity",
+        "phase_equilibrium",
+        "phase_charge",
+    ]
+    assert payload["constraint_families"] == [
+        "conserved_balance",
+        "phase_pressure_consistency",
+        "phase_distance",
+    ]
     assert payload["exact_gradient_required"] is True
     assert payload["exact_jacobian_required"] is True
     assert payload["phase_count"] == 2
@@ -2042,6 +2168,18 @@ def test_reactive_electrolyte_lle_eos_route_builder_uses_liquid_root_residual_ro
     assert contract["derivative_backend"] == "cppad_explicit_density"
     assert contract["density_backend"] == "explicit_log_density_pressure_constraint"
     assert contract["variable_model"] == "log_phase_species_amounts_plus_log_density"
+    assert contract["residual_families"] == [
+        "conserved_balance",
+        "reaction_stationarity",
+        "phase_equilibrium",
+        "phase_charge",
+    ]
+    assert contract["constraint_families"] == [
+        "conserved_balance",
+        "phase_charge",
+        "phase_pressure_consistency",
+        "phase_distance",
+    ]
     assert contract["variable_count"] == 2 * contract["species_count"] + 2
     assert contract["constraint_count"] == 8
     assert contract["jacobian_nonzero_count"] == 40
@@ -2100,6 +2238,20 @@ def test_reactive_electrolyte_lle_eos_route_builder_uses_liquid_root_residual_ro
     assert payload["backend"] == "ipopt"
     assert payload["problem_name"] == "reactive_liquid_root_eos"
     assert payload["derivative_backend"] == "cppad_explicit_density"
+    assert payload["variable_model"] == "log_phase_species_amounts_plus_log_density"
+    assert payload["density_backend"] == "explicit_log_density_pressure_constraint"
+    assert payload["residual_families"] == [
+        "conserved_balance",
+        "reaction_stationarity",
+        "phase_equilibrium",
+        "phase_charge",
+    ]
+    assert payload["constraint_families"] == [
+        "conserved_balance",
+        "phase_charge",
+        "phase_pressure_consistency",
+        "phase_distance",
+    ]
     assert payload["balance_row_count"] == 3
     assert payload["reaction_count"] == 1
     if not payload["compiled"]:

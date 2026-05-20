@@ -37,8 +37,12 @@ EOS harness
 Equilibrium
    Owns phase-equilibrium, stability, bubble/dew, electrolyte LLE, and
    chemical-equilibrium orchestration. It may use Python for problem objects,
-   request validation, result shaping, and diagnostics, but production
+   request normalization, result shaping, and diagnostics, but production
    thermodynamic evaluations should route through the EOS/native boundary.
+   The public ``mixture.equilibrium(kind=...)`` facade adapts non-reactive
+   string requests into typed problem objects and shared route diagnostics;
+   reactive-specialized routes remain explicit entrypoints with their own
+   option checks.
 
 Regression
    Owns fitting problem definitions, records, provenance validation, objective

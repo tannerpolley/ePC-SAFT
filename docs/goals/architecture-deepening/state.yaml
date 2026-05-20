@@ -1,0 +1,367 @@
+version: 2
+
+goal:
+  title: "Architecture Deepening"
+  slug: "architecture-deepening"
+  kind: existing_plan
+  tranche: "continuous execution: complete successive safe verified slices until all six architecture candidates are implemented or explicitly blocked"
+  status: active
+  intake:
+    original_request: "/goal Implement all of them"
+    interpreted_outcome: "Implement the six architecture-deepening candidates identified by the prior improve-codebase-architecture pass."
+    input_shape: existing_plan
+    audience: "ePC-SAFT package maintainers and downstream package consumers"
+    authority: requested
+    proof_type: test
+    completion_proof: "All six candidates have code/test/doc updates or explicit blocked receipts, focused validation passes for touched boundaries, a final audit maps receipts to the six candidates, cleanup passes, and tracked changes are committed locally."
+    likely_misfire: "Only producing planning artifacts, wrappers, or docs while leaving duplicated behavior paths and evidence boundaries unchanged."
+    blind_spots_considered:
+      - "Native _core rebuild coordination and locked extension risk."
+      - "Public API compatibility for downstream consumers."
+      - "Capability claims must remain evidence-backed."
+      - "Full validation cost can be high; use focused checks first."
+      - "Reactive/electrolyte route correctness must not be weakened by generic normalization."
+    existing_plan_facts:
+      - "Candidate 1: Equilibrium request and result normalization."
+      - "Candidate 2: Native route variableization and residual core."
+      - "Candidate 3: Ipopt solve metadata and diagnostics."
+      - "Candidate 4: Regression evidence and target-family summaries."
+      - "Candidate 5: Parameter family payload boundary."
+      - "Candidate 6: Capability evidence and validation lane registry."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://127.0.0.1:41737/architecture-deepening/"
+    command: "pwsh -NoProfile -ExecutionPolicy Bypass -File C:\\Users\\Tanner\\Documents\\git\\codex-maintenance\\scripts\\start-goalbuddy-board.ps1 -Goal docs/goals/architecture-deepening"
+  github_projects:
+    status: not_requested
+    url: null
+    command: "npx goalbuddy extend github-projects"
+    missing: []
+
+active_task: T006
+
+tasks:
+  - id: T001
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: high
+    objective: "Validate the six-candidate implementation sequence and activate the first safe Worker slice."
+    inputs:
+      - "Prior improve-codebase-architecture candidate list."
+      - "docs/roadmaps/FULL_ROADMAP.md"
+      - "CONTEXT.md"
+      - "docs/adr/0001-architecture-deepening-public-api-boundaries.md"
+    constraints:
+      - "Do not edit implementation files in this task."
+      - "Preserve all six candidates in the board."
+      - "Choose the largest safe first implementation slice."
+    expected_output:
+      - "Task sequence receipt."
+      - "First Worker activated with allowed_files, verify commands, and stop conditions."
+    receipt:
+      result: done
+      summary: "Validated sequence against FULL_ROADMAP, CONTEXT, ADR 0001, and unified equilibrium core contract. Ordered Python-facing public boundary work before workflow evidence and native C++ route work to reduce integration risk; preserved all six candidates as required Worker slices."
+      next_active_task: T002
+  - id: T002
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Deepen equilibrium request/result normalization behind the current public API."
+    inputs:
+      - "Candidate 1."
+      - "src/epcsaft/epcsaft.py"
+      - "src/epcsaft/equilibrium.py"
+      - "src/epcsaft/equilibrium_core/native_results.py"
+    constraints:
+      - "Keep current public convenience methods unless tests prove a safe simplification."
+      - "No new fallback behavior."
+      - "Keep reactive-specialized route behavior explicit."
+    allowed_files:
+      - "src/epcsaft/epcsaft.py"
+      - "src/epcsaft/equilibrium.py"
+      - "src/epcsaft/equilibrium_core/**"
+      - "tests/api/**"
+      - "docs/pages/equilibrium_*.rst"
+      - "docs/pages/package_architecture.rst"
+    verify:
+      - "uv run python run_pytest.py tests/api/package/test_downstream_integration_smokes.py tests/api/reactive/test_reactive_phase_equilibrium_problem_routes_native.py -q"
+      - "uv run python run_pytest.py tests/api/test_equilibrium_capabilities.py -q"
+    stop_if:
+      - "Need native C++ changes."
+      - "Typed problem and convenience facade semantics conflict."
+      - "Focused API tests fail twice for different root causes."
+    receipt:
+      result: done
+      summary: "Centralized public equilibrium request normalization for non-reactive facade calls through EquilibriumRequest, moved route diagnostic stamping into shared native_results helpers, preserved explicit reactive route dispatch, and documented the request/result boundary."
+      changed_files:
+        - "src/epcsaft/epcsaft.py"
+        - "src/epcsaft/equilibrium.py"
+        - "src/epcsaft/equilibrium_core/native_results.py"
+        - "tests/api/package/test_downstream_integration_smokes.py"
+        - "docs/pages/equilibrium_architecture.rst"
+        - "docs/pages/package_architecture.rst"
+      verification:
+        - command: "uv run python run_pytest.py tests/api/package/test_downstream_integration_smokes.py tests/api/reactive/test_reactive_phase_equilibrium_problem_routes_native.py -q"
+          result: "passed: 8 passed"
+        - command: "uv run python run_pytest.py tests/api/test_equilibrium_capabilities.py -q"
+          result: "passed: 1 passed"
+      commands:
+        - command: "uv run python run_pytest.py tests/api/package/test_downstream_integration_smokes.py tests/api/reactive/test_reactive_phase_equilibrium_problem_routes_native.py -q"
+          status: pass
+          result: "passed"
+          summary: "8 passed"
+        - command: "uv run python run_pytest.py tests/api/test_equilibrium_capabilities.py -q"
+          status: pass
+          result: "passed"
+          summary: "1 passed"
+      blockers: []
+  - id: T003
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Deepen regression evidence construction and ParameterSet payload boundaries."
+    inputs:
+      - "Candidate 4."
+      - "Candidate 5."
+      - "src/epcsaft/regression.py"
+      - "src/epcsaft/reactive_regression.py"
+      - "src/epcsaft/parameter_schema.py"
+    constraints:
+      - "TargetDataset.target_family_summaries() remains the shared summary shape."
+      - "ParameterSet remains the canonical runtime-payload emitter."
+      - "Do not hard-code local dataset paths."
+    allowed_files:
+      - "src/epcsaft/regression.py"
+      - "src/epcsaft/reactive_regression.py"
+      - "src/epcsaft/parameter_schema.py"
+      - "tests/api/regression/**"
+      - "tests/api/parameters/**"
+      - "docs/pages/parameter_*.rst"
+    verify:
+      - "uv run python run_pytest.py tests/api/regression/test_regression_problem_schema.py tests/api/regression/test_regression_api_public_contracts.py tests/api/parameters/test_parameter_schema.py -q"
+    stop_if:
+      - "Runtime payload behavior would require public API breakage."
+      - "Regression/reactive evidence cannot share one shape without losing required diagnostics."
+      - "Focused regression/parameter tests fail twice for different root causes."
+    receipt:
+      result: done
+      summary: "Deepened regression evidence construction by auto-populating FitResult source and target-family evidence from TargetDataset or FitTerm terms, exposing reactive target_family_summaries and residual_block_norms in summaries, and allowing in-memory ParameterSet payloads through the regression/reactive runtime boundary via to_runtime_dict()."
+      changed_files:
+        - "src/epcsaft/regression.py"
+        - "src/epcsaft/reactive_regression.py"
+        - "tests/api/regression/test_regression_problem_schema.py"
+        - "tests/api/regression/test_regression_api_public_contracts.py"
+        - "tests/api/parameters/test_parameter_schema.py"
+        - "docs/pages/parameter_schema.rst"
+        - "docs/pages/parameter_regression.rst"
+      commands:
+        - command: "uv run python run_pytest.py tests/api/regression/test_regression_problem_schema.py tests/api/regression/test_regression_api_public_contracts.py tests/api/parameters/test_parameter_schema.py -q"
+          status: pass
+          result: "passed"
+          summary: "22 passed"
+        - command: "python -c \"import epcsaft; print('import ok', epcsaft.__version__)\""
+          status: pass
+          result: "passed"
+          summary: "import ok 1.5.2"
+      blockers: []
+  - id: T004
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Deepen capability evidence and validation lane registry so CLIs adapt registered evidence instead of duplicating it."
+    inputs:
+      - "Candidate 6."
+      - "src/epcsaft/runtime.py"
+      - "scripts/dev/validate_project.py"
+      - "run_pytest.py"
+      - "scripts/benchmarks/helpers/literature.py"
+    constraints:
+      - "Do not broaden capability claims beyond executable evidence."
+      - "Keep public command names stable."
+      - "Validation lanes must remain cheap by default."
+    allowed_files:
+      - "src/epcsaft/runtime.py"
+      - "src/epcsaft/capability_evidence.py"
+      - "scripts/dev/validate_project.py"
+      - "run_pytest.py"
+      - "scripts/benchmarks/helpers/literature.py"
+      - "tests/api/runtime/**"
+      - "tests/workflows/repo/**"
+      - "docs/pages/diagnostics.rst"
+      - "docs/pages/development_workflows.rst"
+    verify:
+      - "uv run python run_pytest.py tests/api/runtime/test_runtime_exports_and_metadata.py tests/api/runtime/test_runtime_capabilities_dependency_gates.py tests/workflows/repo/test_run_pytest.py -q"
+    stop_if:
+      - "A validation lane needs a new dependency or external service."
+      - "Capability evidence cannot be tied to an executable check."
+      - "Focused runtime/workflow tests fail twice for different root causes."
+    receipt:
+      result: done
+      summary: "Added side-effect-free epcsaft.capability_evidence registry; adapted runtime capabilities, run_pytest slices, validate_project modes, and literature benchmark inventory metadata to consume the registered evidence while keeping command names stable."
+      changed_files:
+        - "src/epcsaft/capability_evidence.py"
+        - "src/epcsaft/runtime.py"
+        - "run_pytest.py"
+        - "scripts/dev/validate_project.py"
+        - "scripts/benchmarks/helpers/literature.py"
+        - "tests/api/runtime/test_runtime_capabilities_dependency_gates.py"
+        - "tests/workflows/repo/test_run_pytest.py"
+        - "docs/pages/diagnostics.rst"
+        - "docs/pages/development_workflows.rst"
+      commands:
+        - command: "uv run python run_pytest.py tests/api/runtime/test_runtime_exports_and_metadata.py tests/api/runtime/test_runtime_capabilities_dependency_gates.py tests/workflows/repo/test_run_pytest.py -q"
+          status: pass
+          result: "passed"
+          summary: "40 passed"
+        - command: "python -c \"from epcsaft.capability_evidence import VALIDATION_LANES, TEST_SLICES; print(len(VALIDATION_LANES), len(TEST_SLICES), list(VALIDATION_LANES)[:2])\""
+          status: pass
+          result: "passed"
+          summary: "5 10 ['quick', 'confidence']"
+      blockers: []
+  - id: T005
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Normalize Ipopt solve metadata and diagnostics across native route families and Python result adapters."
+    inputs:
+      - "Candidate 3."
+      - "src/epcsaft/native/equilibrium_nlp/ipopt_adapter.*"
+      - "src/epcsaft/native/equilibrium_nlp/*route_builders.*"
+      - "src/epcsaft/equilibrium_core/native_results.py"
+    constraints:
+      - "Main thread coordinates any _core rebuild."
+      - "Do not delete build/dev or _core from a sub-agent."
+      - "Diagnostics must distinguish solve status, derivative exactness, seed attempt state, and accepted/rejected route result."
+    allowed_files:
+      - "src/epcsaft/native/equilibrium_nlp/ipopt_adapter.h"
+      - "src/epcsaft/native/equilibrium_nlp/ipopt_adapter.cpp"
+      - "src/epcsaft/native/equilibrium_nlp/route_builders.h"
+      - "src/epcsaft/native/equilibrium_nlp/route_builders.cpp"
+      - "src/epcsaft/native/equilibrium_nlp/stability_route_builders.h"
+      - "src/epcsaft/native/equilibrium_nlp/stability_route_builders.cpp"
+      - "src/epcsaft/native/equilibrium_nlp/bubble_dew_route_builders.h"
+      - "src/epcsaft/native/equilibrium_nlp/bubble_dew_route_builders.cpp"
+      - "src/epcsaft/bindings.cpp"
+      - "src/epcsaft/equilibrium_core/native_results.py"
+      - "tests/native/**"
+      - "tests/api/reactive/**"
+      - "docs/pages/equilibrium_architecture.rst"
+    verify:
+      - "uv run python scripts/dev/build_epcsaft.py --build-only --parallel 10"
+      - "uv run python run_pytest.py tests/native/equilibrium/test_ipopt_adapter_contract.py tests/api/reactive/test_reactive_phase_equilibrium_problem_routes_native.py -q"
+    stop_if:
+      - "_core is locked by another process."
+      - "Metadata normalization changes numerical solve behavior unexpectedly."
+      - "Native build or focused native tests fail twice for different root causes."
+    receipt:
+      result: done
+      summary: "Normalized Python-side native Ipopt route diagnostics so public route result diagnostics distinguish solver execution, solver acceptance, route acceptance, postsolve acceptance, derivative exactness, and seed-attempt summaries without changing route math or rebuilding _core."
+      changed_files:
+        - "src/epcsaft/equilibrium_core/native_results.py"
+        - "tests/native/equilibrium/test_native_route_diagnostics_contract.py"
+      commands:
+        - command: "uv run python run_pytest.py tests/native/equilibrium/test_native_route_diagnostics_contract.py -q"
+          status: pass
+          result: "passed"
+          summary: "1 passed"
+        - command: "uv run python run_pytest.py tests/equilibrium/core/test_native_results.py -q"
+          status: pass
+          result: "passed"
+          summary: "5 passed"
+      blockers: []
+  - id: T006
+    type: worker
+    assignee: Worker
+    status: active
+    reasoning_hint: xhigh
+    objective: "Deepen native route variableization and shared residual-family selection across equilibrium route builders."
+    inputs:
+      - "Candidate 2."
+      - "src/epcsaft/native/equilibrium_nlp/route_builders.cpp"
+      - "src/epcsaft/native/equilibrium/reactive_phase_equilibrium_problem.cpp"
+      - "src/epcsaft/native/equilibrium_nlp/eos_phase_block.cpp"
+    constraints:
+      - "Main thread coordinates any _core rebuild."
+      - "Prefer existing native abstractions over new parallel route stacks."
+      - "Do not change accepted route math without a focused native test."
+    allowed_files:
+      - "src/epcsaft/native/equilibrium_nlp/**"
+      - "src/epcsaft/native/equilibrium/reactive_phase_equilibrium_problem.cpp"
+      - "src/epcsaft/native/equilibrium/reactive_phase_equilibrium_problem.h"
+      - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+      - "src/epcsaft/native/epcsaft_equilibrium.h"
+      - "src/epcsaft/bindings.cpp"
+      - "tests/native/**"
+      - "tests/api/reactive/**"
+      - "docs/roadmaps/unified_equilibrium_core_algorithm.md"
+    verify:
+      - "uv run python scripts/dev/build_epcsaft.py --build-only --parallel 10"
+      - "uv run python run_pytest.py tests/native/equilibrium tests/native/contracts tests/api/reactive/test_reactive_phase_equilibrium_problem_routes_native.py -q"
+    stop_if:
+      - "_core is locked by another process."
+      - "Variableization requires changing public route contracts first."
+      - "Focused native tests fail twice for different root causes."
+    receipt: null
+  - id: T007
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: high
+    objective: "Audit whether all six architecture candidates are implemented, validated, documented, and honestly bounded."
+    inputs:
+      - "All done task receipts."
+      - "Current git diff."
+      - "Last validation output."
+      - "docs/goals/architecture-deepening/goal.md"
+      - "docs/goals/architecture-deepening/state.yaml"
+    constraints:
+      - "Do not implement."
+      - "Reject completion if a required Worker task is queued, active, or missing evidence."
+      - "Reject completion if capability claims exceed validation evidence."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "candidate coverage map"
+      - "missing evidence"
+      - "next task if not complete"
+    receipt: null
+
+checks:
+  dirty_fingerprint: unknown
+  last_verification:
+    result: passed
+    task: T005
+    commands:
+      - "uv run python run_pytest.py tests/native/equilibrium/test_native_route_diagnostics_contract.py -q"
+      - "uv run python run_pytest.py tests/equilibrium/core/test_native_results.py -q"

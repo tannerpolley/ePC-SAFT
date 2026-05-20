@@ -10,6 +10,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+from epcsaft.capability_evidence import TEST_SLICES, VALIDATION_LANES
 from scripts.dev.native_runtime_env import apply_native_runtime_env
 
 apply_native_runtime_env(os.environ)
@@ -597,6 +598,9 @@ def run_literature_benchmarks(
         "run_mode": EXECUTE_EXECUTABLE_CASES if execute_commands else REGISTRY_ONLY,
         "execution_summary": execution_summary,
         "all_executable_commands_passed": execution_summary["failed"] == 0,
+        "capability_evidence_source": "epcsaft.capability_evidence",
+        "registered_validation_lanes": list(VALIDATION_LANES),
+        "registered_pytest_slices": list(TEST_SLICES),
         "status_counts": dict(status_counts),
         "executable_cases": executable_cases,
         "blocked_cases": blocked_cases,

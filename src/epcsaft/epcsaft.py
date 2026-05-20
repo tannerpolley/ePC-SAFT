@@ -55,20 +55,6 @@ _CONTRIBUTION_PUBLIC_NAMES = {
 _GAS_CONSTANT = 8.31446261815324
 
 
-def _result_with_route_diagnostics(result, route):
-    diagnostics = dict(result.diagnostics)
-    diagnostics["equilibrium_route"] = route["route"]
-    diagnostics["route_reason"] = route["reason"]
-    return type(result)(
-        backend=result.backend,
-        problem_kind=result.problem_kind,
-        phases=result.phases,
-        stable=result.stable,
-        split_detected=result.split_detected,
-        diagnostics=diagnostics,
-    )
-
-
 def _state_construction_error_message(T, x, phase, ncomp, mode_name, variable_name, variable_value, exc):
     return (
         f"{mode_name}-based state solve failed for "
@@ -628,14 +614,14 @@ class ePCSAFTMixture:
         phase_models=None,
     ):
         """Run a native-backed equilibrium calculation for this mixture."""
-        from .equilibrium import equilibrium_problem_from_request
-        from .equilibrium_core.classify import classify_equilibrium_route
+        from .equilibrium import equilibrium_request_from_request
         from .reactive_speciation import ReactiveSpeciationOptions
 
         if backend not in (None, "native"):
             raise InputError("equilibrium backend must be None or 'native'; select routes with kind or phase_kind.")
+        kind_token = str(kind).strip().lower()
 
-        if kind in {"reactive_staged_equilibrium", "reactive_staged"}:
+        if kind_token in {"reactive_staged_equilibrium", "reactive_staged"}:
             if balances is None or totals is None or reactions is None:
                 raise InputError(f"{kind} requires balances, totals, and reactions.")
             phase_kwargs = {
@@ -661,7 +647,7 @@ class ePCSAFTMixture:
                 phase_kwargs=phase_kwargs,
             )
 
-        if kind in {
+        if kind_token in {
             "reactive_lle",
             "reactive_lle_flash",
             "reactive_electrolyte_lle",
@@ -671,11 +657,11 @@ class ePCSAFTMixture:
 
             if balances is None or totals is None or reactions is None:
                 raise InputError(f"{kind} requires balances, totals, and reactions.")
-            if kind in {"reactive_lle", "reactive_lle_flash"}:
+            if kind_token in {"reactive_lle", "reactive_lle_flash"}:
                 if phase_kind is not None and phase_kind not in {"lle_flash", "lle_tp"}:
                     raise InputError("reactive_lle phase_kind must be 'lle_flash' when provided.")
                 phase_kind = "lle_flash"
-            if kind in {"reactive_electrolyte_lle", "reactive_electrolyte_lle_flash"}:
+            if kind_token in {"reactive_electrolyte_lle", "reactive_electrolyte_lle_flash"}:
                 if phase_kind is not None and phase_kind not in {"electrolyte_lle", "electrolyte_lle_tp"}:
                     raise InputError("reactive_electrolyte_lle phase_kind must be 'electrolyte_lle' when provided.")
                 phase_kind = "electrolyte_lle"
@@ -704,7 +690,7 @@ class ePCSAFTMixture:
                 phase_kwargs=phase_kwargs,
             )
 
-        if kind in {"reactive_electrolyte_bubble_pressure", "reactive_electrolyte_bubble"}:
+        if kind_token in {"reactive_electrolyte_bubble_pressure", "reactive_electrolyte_bubble"}:
             if balances is None or totals is None or reactions is None:
                 raise InputError("reactive_electrolyte_bubble_pressure requires balances, totals, and reactions.")
             if initial_x is None:
@@ -729,7 +715,7 @@ class ePCSAFTMixture:
                 options=options,
             )
 
-        if kind in {"chemical_equilibrium", "reactive_speciation"}:
+        if kind_token in {"chemical_equilibrium", "reactive_speciation"}:
             if balances is None or totals is None or reactions is None:
                 raise InputError("chemical_equilibrium requires balances, totals, and reactions.")
             if initial_x is None:
@@ -747,7 +733,7 @@ class ePCSAFTMixture:
                 options=options,
             )
 
-        if kind in {"reactive_stability", "chemical_stability"}:
+        if kind_token in {"reactive_stability", "chemical_stability"}:
             if balances is None or totals is None or reactions is None:
                 raise InputError("reactive_stability requires balances, totals, and reactions.")
             if initial_x is None:
@@ -785,48 +771,8 @@ class ePCSAFTMixture:
                     _normalize_trial_phases(trial_phases)
                 _raise_native_ipopt_stability_required("reactive_stability")
 
-        if kind == "auto":
-            route = classify_equilibrium_route(self, kind)
-            if route["route"] == "electrolyte_bubble":
-                return self.electrolyte_bubble_p(
-                    T=T,
-                    x_liq=x_liq,
-                    z=z,
-                    volatile_species=volatile_species,
-                    vapor_species=vapor_species,
-                    nonvolatile_species=nonvolatile_species,
-                    options=options,
-                )
-            if route["route"] == "electrolyte_lle":
-                try:
-                    result = self.electrolyte_lle_tp(
-                        T=T,
-                        P=P,
-                        z=z,
-                        solvent_feed=solvent_feed,
-                        salt_molality=salt_molality,
-                        options=options,
-                    )
-                except SolutionError as exc:
-                    diagnostics = dict(getattr(exc, "diagnostics", None) or {})
-                    diagnostics["equilibrium_route"] = route["route"]
-                    diagnostics["route_reason"] = route["reason"]
-                    raise SolutionError(exc.message, diagnostics) from exc
-                diagnostics = dict(result.diagnostics)
-                diagnostics["equilibrium_route"] = route["route"]
-                diagnostics["route_reason"] = route["reason"]
-                return type(result)(
-                    backend=result.backend,
-                    problem_kind=result.problem_kind,
-                    phases=result.phases,
-                    stable=result.stable,
-                    split_detected=result.split_detected,
-                    diagnostics=diagnostics,
-                )
-            if route["route"] == "neutral_lle":
-                return self.lle_tp(T=T, P=P, z=z, options=options)
-            return _result_with_route_diagnostics(self.flash_tp(T=T, P=P, z=z, options=options), route)
-        if kind in {
+        if kind_token in {
+            "auto",
             "bubble_p",
             "neutral_bubble_p",
             "bubble_t",
@@ -845,8 +791,9 @@ class ePCSAFTMixture:
             "electrolyte_stability",
             "stability",
         }:
-            problem = equilibrium_problem_from_request(
-                kind=kind,
+            request = equilibrium_request_from_request(
+                self,
+                kind=kind_token,
                 T=T,
                 P=P,
                 z=z,
@@ -860,7 +807,7 @@ class ePCSAFTMixture:
                 parent_phase=parent_phase,
                 trial_phases=trial_phases,
             )
-            return self.solve_equilibrium(problem)
+            return self.solve_equilibrium(request)
         raise InputError(
             "Only kind='tp_flash', kind='auto', kind='bubble_p', kind='bubble_t', kind='dew_p', kind='dew_t', kind='lle_flash', kind='electrolyte_lle', kind='electrolyte_bubble_pressure', kind='electrolyte_stability', kind='stability', kind='chemical_equilibrium', kind='reactive_staged_equilibrium', kind='reactive_lle', kind='reactive_electrolyte_lle', kind='reactive_stability', or kind='reactive_electrolyte_bubble_pressure' is supported by equilibrium."
         )
