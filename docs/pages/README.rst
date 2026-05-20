@@ -189,7 +189,9 @@ Important boundaries:
 - Scoped reactive electrolyte bubble pressure uses native speciation followed
   by the native Ipopt fixed-liquid electrolyte bubble route when Ipopt is
   compiled.
-- IPOPT is optional and explicit opt-in.
+- IPOPT is an optional native dependency; implemented native equilibrium routes
+  use exact Hessians by default when it is compiled, with limited-memory
+  Hessians available only as an explicit solver opt-out.
 - Downstream case-study models should own their own data, balances, run
   matrices, and acceptance criteria.
 

@@ -1426,7 +1426,6 @@ epcsaft::native::equilibrium_nlp::IpoptSolveOptions ipopt_solve_options_from_sca
     options.complementarity_tolerance = complementarity_tolerance;
     options.max_wall_time_seconds = timeout_seconds;
     options.hessian_mode = hessian_mode;
-    options.limited_memory_hessian = hessian_mode != "exact";
     options.iteration_history_limit = iteration_history_limit;
     options.linear_solver = linear_solver;
     return options;
@@ -1977,7 +1976,6 @@ PYBIND11_MODULE(_core, m) {
         options.max_iterations = 50;
         options.tolerance = 1.0e-10;
         options.hessian_mode = hessian_mode;
-        options.limited_memory_hessian = hessian_mode != "exact";
         options.iteration_history_limit = iteration_history_limit;
         options.linear_solver = linear_solver;
         options.acceptable_tolerance = acceptable_tolerance;

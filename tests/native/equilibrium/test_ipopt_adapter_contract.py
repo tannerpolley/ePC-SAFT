@@ -55,6 +55,9 @@ def test_native_ipopt_quadratic_smoke_is_gated_by_compiled_dependency() -> None:
         assert smoke["accepted"] is True
         assert smoke["exact_gradient_required"] is True
         assert smoke["exact_jacobian_required"] is True
+        assert smoke["hessian_approximation"] == "exact"
+        assert smoke["hessian_backend"] == "analytic"
+        assert smoke["eval_h_calls"] > 0
         assert abs(smoke["variables"][0] - 1.0) < 1.0e-6
         assert abs(smoke["variables"][1] - 2.0) < 1.0e-6
         assert abs(smoke["constraints"][0] - 3.0) < 1.0e-6

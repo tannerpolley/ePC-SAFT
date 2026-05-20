@@ -15,62 +15,38 @@
 
 namespace epcsaft::native::equilibrium_nlp {
 
-namespace {
-
-std::string solve_string(const IpoptSolveResult& solve, const std::string& key, const std::string& default_value) {
-    const auto item = solve.diagnostics_string.find(key);
-    return item == solve.diagnostics_string.end() ? default_value : item->second;
-}
-
-int solve_int(const IpoptSolveResult& solve, const std::string& key, int default_value = 0) {
-    const auto item = solve.diagnostics_int.find(key);
-    return item == solve.diagnostics_int.end() ? default_value : item->second;
-}
-
-double solve_double(const IpoptSolveResult& solve, const std::string& key, double default_value = 0.0) {
-    const auto item = solve.diagnostics_double.find(key);
-    return item == solve.diagnostics_double.end() ? default_value : item->second;
-}
-
-bool solve_bool(const IpoptSolveResult& solve, const std::string& key, bool default_value = false) {
-    const auto item = solve.diagnostics_bool.find(key);
-    return item == solve.diagnostics_bool.end() ? default_value : item->second;
-}
-
-}  // namespace
-
 void apply_ipopt_solve_metadata(NeutralTwoPhaseEosRouteResult& out, const IpoptSolveResult& solve) {
     out.solver_feasible_point = solve.feasible_point;
-    out.gradient_approximation = solve_string(solve, "gradient_approximation", "exact");
-    out.jacobian_approximation = solve_string(solve, "jacobian_approximation", "exact");
-    out.hessian_approximation = solve_string(solve, "hessian_approximation", out.hessian_approximation);
-    out.hessian_backend = solve_string(solve, "hessian_backend", out.hessian_backend);
-    out.last_callback_exception = solve_string(solve, "last_callback_exception", out.last_callback_exception);
-    out.last_callback_failure = solve_string(solve, "last_callback_failure", out.last_callback_failure);
-    out.scaling_method = solve_string(solve, "scaling_method", out.scaling_method);
-    out.linear_solver_requested = solve_string(solve, "linear_solver_requested", out.linear_solver_requested);
-    out.linear_solver_selected = solve_string(solve, "linear_solver_selected", out.linear_solver_selected);
-    out.iteration_count = solve_int(solve, "iteration_count");
-    out.iteration_history_limit = solve_int(solve, "iteration_history_limit");
-    out.iteration_history_size = solve_int(solve, "iteration_history_size");
-    out.variable_scaling_count = solve_int(solve, "variable_scaling_count");
-    out.constraint_scaling_count = solve_int(solve, "constraint_scaling_count");
-    out.eval_h_calls = solve_int(solve, "eval_h_calls");
-    out.objective_scaling = solve_double(solve, "objective_scaling", out.objective_scaling);
-    out.acceptable_tolerance = solve_double(solve, "acceptable_tolerance", out.acceptable_tolerance);
+    out.gradient_approximation = solve_diagnostic_string(solve, "gradient_approximation", "exact");
+    out.jacobian_approximation = solve_diagnostic_string(solve, "jacobian_approximation", "exact");
+    out.hessian_approximation = solve_diagnostic_string(solve, "hessian_approximation", out.hessian_approximation);
+    out.hessian_backend = solve_diagnostic_string(solve, "hessian_backend", out.hessian_backend);
+    out.last_callback_exception = solve_diagnostic_string(solve, "last_callback_exception", out.last_callback_exception);
+    out.last_callback_failure = solve_diagnostic_string(solve, "last_callback_failure", out.last_callback_failure);
+    out.scaling_method = solve_diagnostic_string(solve, "scaling_method", out.scaling_method);
+    out.linear_solver_requested = solve_diagnostic_string(solve, "linear_solver_requested", out.linear_solver_requested);
+    out.linear_solver_selected = solve_diagnostic_string(solve, "linear_solver_selected", out.linear_solver_selected);
+    out.iteration_count = solve_diagnostic_int(solve, "iteration_count");
+    out.iteration_history_limit = solve_diagnostic_int(solve, "iteration_history_limit");
+    out.iteration_history_size = solve_diagnostic_int(solve, "iteration_history_size");
+    out.variable_scaling_count = solve_diagnostic_int(solve, "variable_scaling_count");
+    out.constraint_scaling_count = solve_diagnostic_int(solve, "constraint_scaling_count");
+    out.eval_h_calls = solve_diagnostic_int(solve, "eval_h_calls");
+    out.objective_scaling = solve_diagnostic_double(solve, "objective_scaling", out.objective_scaling);
+    out.acceptable_tolerance = solve_diagnostic_double(solve, "acceptable_tolerance", out.acceptable_tolerance);
     out.constraint_violation_tolerance =
-        solve_double(solve, "constraint_violation_tolerance", out.constraint_violation_tolerance);
+        solve_diagnostic_double(solve, "constraint_violation_tolerance", out.constraint_violation_tolerance);
     out.dual_infeasibility_tolerance =
-        solve_double(solve, "dual_infeasibility_tolerance", out.dual_infeasibility_tolerance);
+        solve_diagnostic_double(solve, "dual_infeasibility_tolerance", out.dual_infeasibility_tolerance);
     out.complementarity_tolerance =
-        solve_double(solve, "complementarity_tolerance", out.complementarity_tolerance);
-    out.variable_scaling_min = solve_double(solve, "variable_scaling_min", out.variable_scaling_min);
-    out.variable_scaling_max = solve_double(solve, "variable_scaling_max", out.variable_scaling_max);
-    out.constraint_scaling_min = solve_double(solve, "constraint_scaling_min", out.constraint_scaling_min);
-    out.constraint_scaling_max = solve_double(solve, "constraint_scaling_max", out.constraint_scaling_max);
-    out.exact_hessian_available = solve_bool(solve, "exact_hessian_available");
-    out.warm_start_requested = solve_bool(solve, "warm_start_requested");
-    out.warm_start_used = solve_bool(solve, "warm_start_used");
+        solve_diagnostic_double(solve, "complementarity_tolerance", out.complementarity_tolerance);
+    out.variable_scaling_min = solve_diagnostic_double(solve, "variable_scaling_min", out.variable_scaling_min);
+    out.variable_scaling_max = solve_diagnostic_double(solve, "variable_scaling_max", out.variable_scaling_max);
+    out.constraint_scaling_min = solve_diagnostic_double(solve, "constraint_scaling_min", out.constraint_scaling_min);
+    out.constraint_scaling_max = solve_diagnostic_double(solve, "constraint_scaling_max", out.constraint_scaling_max);
+    out.exact_hessian_available = solve_diagnostic_bool(solve, "exact_hessian_available");
+    out.warm_start_requested = solve_diagnostic_bool(solve, "warm_start_requested");
+    out.warm_start_used = solve_diagnostic_bool(solve, "warm_start_used");
     out.bound_lower_multipliers = solve.bound_lower_multipliers;
     out.bound_upper_multipliers = solve.bound_upper_multipliers;
     out.constraint_multipliers = solve.constraint_multipliers;
@@ -78,36 +54,36 @@ void apply_ipopt_solve_metadata(NeutralTwoPhaseEosRouteResult& out, const IpoptS
 }
 
 void apply_ipopt_solve_metadata(ReactiveTwoPhaseEosRouteResult& out, const IpoptSolveResult& solve) {
-    out.gradient_approximation = solve_string(solve, "gradient_approximation", "exact");
-    out.jacobian_approximation = solve_string(solve, "jacobian_approximation", "exact");
-    out.hessian_approximation = solve_string(solve, "hessian_approximation", out.hessian_approximation);
-    out.hessian_backend = solve_string(solve, "hessian_backend", out.hessian_backend);
-    out.last_callback_exception = solve_string(solve, "last_callback_exception", out.last_callback_exception);
-    out.last_callback_failure = solve_string(solve, "last_callback_failure", out.last_callback_failure);
-    out.scaling_method = solve_string(solve, "scaling_method", out.scaling_method);
-    out.linear_solver_requested = solve_string(solve, "linear_solver_requested", out.linear_solver_requested);
-    out.linear_solver_selected = solve_string(solve, "linear_solver_selected", out.linear_solver_selected);
-    out.iteration_count = solve_int(solve, "iteration_count");
-    out.iteration_history_limit = solve_int(solve, "iteration_history_limit");
-    out.iteration_history_size = solve_int(solve, "iteration_history_size");
-    out.variable_scaling_count = solve_int(solve, "variable_scaling_count");
-    out.constraint_scaling_count = solve_int(solve, "constraint_scaling_count");
-    out.eval_h_calls = solve_int(solve, "eval_h_calls");
-    out.objective_scaling = solve_double(solve, "objective_scaling", out.objective_scaling);
-    out.acceptable_tolerance = solve_double(solve, "acceptable_tolerance", out.acceptable_tolerance);
+    out.gradient_approximation = solve_diagnostic_string(solve, "gradient_approximation", "exact");
+    out.jacobian_approximation = solve_diagnostic_string(solve, "jacobian_approximation", "exact");
+    out.hessian_approximation = solve_diagnostic_string(solve, "hessian_approximation", out.hessian_approximation);
+    out.hessian_backend = solve_diagnostic_string(solve, "hessian_backend", out.hessian_backend);
+    out.last_callback_exception = solve_diagnostic_string(solve, "last_callback_exception", out.last_callback_exception);
+    out.last_callback_failure = solve_diagnostic_string(solve, "last_callback_failure", out.last_callback_failure);
+    out.scaling_method = solve_diagnostic_string(solve, "scaling_method", out.scaling_method);
+    out.linear_solver_requested = solve_diagnostic_string(solve, "linear_solver_requested", out.linear_solver_requested);
+    out.linear_solver_selected = solve_diagnostic_string(solve, "linear_solver_selected", out.linear_solver_selected);
+    out.iteration_count = solve_diagnostic_int(solve, "iteration_count");
+    out.iteration_history_limit = solve_diagnostic_int(solve, "iteration_history_limit");
+    out.iteration_history_size = solve_diagnostic_int(solve, "iteration_history_size");
+    out.variable_scaling_count = solve_diagnostic_int(solve, "variable_scaling_count");
+    out.constraint_scaling_count = solve_diagnostic_int(solve, "constraint_scaling_count");
+    out.eval_h_calls = solve_diagnostic_int(solve, "eval_h_calls");
+    out.objective_scaling = solve_diagnostic_double(solve, "objective_scaling", out.objective_scaling);
+    out.acceptable_tolerance = solve_diagnostic_double(solve, "acceptable_tolerance", out.acceptable_tolerance);
     out.constraint_violation_tolerance =
-        solve_double(solve, "constraint_violation_tolerance", out.constraint_violation_tolerance);
+        solve_diagnostic_double(solve, "constraint_violation_tolerance", out.constraint_violation_tolerance);
     out.dual_infeasibility_tolerance =
-        solve_double(solve, "dual_infeasibility_tolerance", out.dual_infeasibility_tolerance);
+        solve_diagnostic_double(solve, "dual_infeasibility_tolerance", out.dual_infeasibility_tolerance);
     out.complementarity_tolerance =
-        solve_double(solve, "complementarity_tolerance", out.complementarity_tolerance);
-    out.variable_scaling_min = solve_double(solve, "variable_scaling_min", out.variable_scaling_min);
-    out.variable_scaling_max = solve_double(solve, "variable_scaling_max", out.variable_scaling_max);
-    out.constraint_scaling_min = solve_double(solve, "constraint_scaling_min", out.constraint_scaling_min);
-    out.constraint_scaling_max = solve_double(solve, "constraint_scaling_max", out.constraint_scaling_max);
-    out.exact_hessian_available = solve_bool(solve, "exact_hessian_available");
-    out.warm_start_requested = solve_bool(solve, "warm_start_requested");
-    out.warm_start_used = solve_bool(solve, "warm_start_used");
+        solve_diagnostic_double(solve, "complementarity_tolerance", out.complementarity_tolerance);
+    out.variable_scaling_min = solve_diagnostic_double(solve, "variable_scaling_min", out.variable_scaling_min);
+    out.variable_scaling_max = solve_diagnostic_double(solve, "variable_scaling_max", out.variable_scaling_max);
+    out.constraint_scaling_min = solve_diagnostic_double(solve, "constraint_scaling_min", out.constraint_scaling_min);
+    out.constraint_scaling_max = solve_diagnostic_double(solve, "constraint_scaling_max", out.constraint_scaling_max);
+    out.exact_hessian_available = solve_diagnostic_bool(solve, "exact_hessian_available");
+    out.warm_start_requested = solve_diagnostic_bool(solve, "warm_start_requested");
+    out.warm_start_used = solve_diagnostic_bool(solve, "warm_start_used");
     out.bound_lower_multipliers = solve.bound_lower_multipliers;
     out.bound_upper_multipliers = solve.bound_upper_multipliers;
     out.constraint_multipliers = solve.constraint_multipliers;

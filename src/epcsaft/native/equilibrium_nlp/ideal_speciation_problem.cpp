@@ -738,7 +738,6 @@ ChemicalEquilibriumResultNative solve_ideal_speciation_chemical_equilibrium_ipop
     solve_options.max_iterations = options.max_iterations;
     solve_options.tolerance = options.tolerance;
     solve_options.hessian_mode = options.hessian_mode;
-    solve_options.limited_memory_hessian = options.hessian_mode != "exact";
     solve_options.iteration_history_limit = options.iteration_history_limit;
     solve_options.linear_solver = options.linear_solver;
     solve_options.acceptable_tolerance = options.acceptable_tolerance;

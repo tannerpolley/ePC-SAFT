@@ -14,6 +14,8 @@ This document explains:
 
 This document is authoritative over older roadmap language that allowed audit-only closure, inventory-only closure, staged-only closure, diagnostic-only closure, or documented limitations as completion.
 
+`docs/roadmaps/unified_equilibrium_core_algorithm.md` is the companion architecture contract for shared equilibrium-core implementation. It replaces completed Ipopt tranche handoffs, GoalBuddy receipts, and native-route audit reports as the current source of truth for equilibrium solver structure.
+
 ---
 
 # 1. Package identity

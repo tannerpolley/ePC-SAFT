@@ -119,7 +119,7 @@ public:
 };
 
 std::string normalize_hessian_mode(const IpoptSolveOptions& options) {
-    std::string mode = options.hessian_mode.empty() ? "limited-memory" : options.hessian_mode;
+    std::string mode = options.hessian_mode;
     std::replace(mode.begin(), mode.end(), '_', '-');
     if (mode == "limited-memory" || mode == "exact" || mode == "auto") {
         return mode;
@@ -786,7 +786,10 @@ private:
     static std::string select_hessian_mode(const NlpProblem& problem, const IpoptSolveOptions& options) {
         const std::string mode = normalize_hessian_mode(options);
         if (mode == "auto") {
-            return problem.has_exact_hessian() ? "exact" : "limited-memory";
+            if (problem.has_exact_hessian()) {
+                return "exact";
+            }
+            throw ValueError("Native Ipopt auto Hessian mode requires an NLP Hessian provider; request a supported non-exact mode explicitly to opt out.");
         }
         if (mode == "exact" && !problem.has_exact_hessian()) {
             throw ValueError("Native Ipopt exact Hessian mode requires an NLP Hessian provider.");
@@ -807,6 +810,42 @@ private:
 #endif
 
 }  // namespace
+
+std::string solve_diagnostic_string(
+    const IpoptSolveResult& solve,
+    const std::string& key,
+    const std::string& default_value
+) {
+    const auto item = solve.diagnostics_string.find(key);
+    return item == solve.diagnostics_string.end() ? default_value : item->second;
+}
+
+int solve_diagnostic_int(
+    const IpoptSolveResult& solve,
+    const std::string& key,
+    int default_value
+) {
+    const auto item = solve.diagnostics_int.find(key);
+    return item == solve.diagnostics_int.end() ? default_value : item->second;
+}
+
+double solve_diagnostic_double(
+    const IpoptSolveResult& solve,
+    const std::string& key,
+    double default_value
+) {
+    const auto item = solve.diagnostics_double.find(key);
+    return item == solve.diagnostics_double.end() ? default_value : item->second;
+}
+
+bool solve_diagnostic_bool(
+    const IpoptSolveResult& solve,
+    const std::string& key,
+    bool default_value
+) {
+    const auto item = solve.diagnostics_bool.find(key);
+    return item == solve.diagnostics_bool.end() ? default_value : item->second;
+}
 
 IpoptAdapterInfo native_ipopt_adapter_info() {
     IpoptAdapterInfo info;
@@ -829,9 +868,13 @@ IpoptSolveResult solve_ipopt_nlp(
     validate_nlp_problem_shape(problem);
     const IpoptSolveOptions normalized_options = normalize_ipopt_solve_options(options);
     const std::string normalized_hessian_mode = normalize_hessian_mode(normalized_options);
-    const std::string selected_hessian_mode = normalized_hessian_mode == "auto" && problem.has_exact_hessian()
-        ? "exact"
-        : (normalized_hessian_mode == "auto" ? "limited-memory" : normalized_hessian_mode);
+    std::string selected_hessian_mode = normalized_hessian_mode;
+    if (normalized_hessian_mode == "auto") {
+        if (!problem.has_exact_hessian()) {
+            throw ValueError("Native Ipopt auto Hessian mode requires an NLP Hessian provider; request a supported non-exact mode explicitly to opt out.");
+        }
+        selected_hessian_mode = "exact";
+    }
     if (selected_hessian_mode == "exact" && !problem.has_exact_hessian()) {
         throw ValueError("Native Ipopt exact Hessian mode requires an NLP Hessian provider.");
     }

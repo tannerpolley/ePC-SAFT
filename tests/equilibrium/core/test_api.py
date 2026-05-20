@@ -81,7 +81,7 @@ def test_equilibrium_dispatch_temperature_bubble_dew_uses_native_route_gate(
     mix = _hydrocarbon_mixture()
 
     try:
-        mix.equilibrium(kind=kind, **kwargs)
+        result = mix.equilibrium(kind=kind, **kwargs)
     except epcsaft.InputError as exc:
         assert f"{route} requires a native Ipopt equilibrium NLP route" in str(exc)
     except epcsaft.SolutionError as exc:
@@ -90,7 +90,13 @@ def test_equilibrium_dispatch_temperature_bubble_dew_uses_native_route_gate(
         assert diagnostics["solver_backend"] == "ipopt"
         assert diagnostics["problem_name"] == f"neutral_{route}_eos"
     else:
-        pytest.fail(f"{route} must either require Ipopt or return a native route rejection.")
+        diagnostics = result.diagnostics
+        assert result.problem_kind == f"neutral_{route}"
+        assert diagnostics["route_status"] == "accepted"
+        assert diagnostics["solver_backend"] == "ipopt"
+        assert diagnostics["problem_name"] == f"neutral_{route}_eos"
+        assert diagnostics["hessian_approximation"] == "exact"
+        assert diagnostics["eval_h_calls"] > 0
 
 
 def test_solve_equilibrium_delegates_to_problem_solve() -> None:

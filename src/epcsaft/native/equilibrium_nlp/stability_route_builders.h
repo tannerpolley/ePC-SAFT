@@ -48,8 +48,8 @@ struct StabilityRouteResult {
     std::string derivative_backend = "cppad_implicit";
     std::string gradient_approximation = "exact";
     std::string jacobian_approximation = "exact";
-    std::string hessian_approximation = "limited-memory";
-    std::string hessian_backend = "limited-memory";
+    std::string hessian_approximation = "unknown";
+    std::string hessian_backend = "unknown";
     std::string scaling_method = "user-scaling";
     std::string linear_solver_requested = "auto";
     std::string linear_solver_selected = "default";

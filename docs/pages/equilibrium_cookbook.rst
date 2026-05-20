@@ -44,9 +44,10 @@ these fields as routing hints, not as proof that a physical case is valid.
      - Native Ipopt route when compiled
      - Requires an Ipopt-enabled build; no alternate public optimizer path exists.
    * - Reactive speciation
-     - Explicit Ipopt ideal route
-     - Homogeneous ``ideal_mole_fraction`` chemical equilibrium when Ipopt is
-       compiled; activity and concentration standard states are route-gated.
+     - Native Ipopt route when compiled
+     - Homogeneous chemical equilibrium for implemented ideal, activity, and
+       concentration standard-state routes; unsupported combinations fail at
+       the route boundary.
    * - Electrolyte bubble pressure
      - Native Ipopt route when compiled
      - Fixed liquid composition with neutral vapor species; ions remain liquid-only.
@@ -268,11 +269,12 @@ initial composition. Use ``error_mode="result"`` only for diagnostic sweeps.
    print(result.x, result.named_reaction_residuals)
    print(result.diagnostics["jacobian_backend"])
 
-With ``jacobian_backend="auto"``, the native chemical-equilibrium residual uses
-the analytic derivative path for the native-Ipopt ``ideal_mole_fraction`` route.
-Activity- and concentration-coupled routes raise until their EOS derivative NLP
-blocks exist. Check these fields before treating a result as a production
-reactive-speciation solve:
+With ``jacobian_backend="auto"``, native chemical-equilibrium residuals use the
+implemented analytic, CppAD, and implicit derivative paths for the requested
+standard-state model. Activity- and concentration-coupled routes are native
+Ipopt routes when the compiled extension and derivative blocks are available;
+unsupported combinations fail at the route boundary. Check these fields before
+treating a result as a production reactive-speciation solve:
 
 - ``diagnostics["solver_language"] == "c++"``
 - ``diagnostics["activity_model"]``
@@ -282,7 +284,8 @@ reactive-speciation solve:
 - ``diagnostics["ipopt_accepted"]``
 
 Request a specific derivative backend only when unsupported routes should fail
-loudly. Ipopt limited-memory Hessian behavior is solver-internal and is not a
+loudly. Exact Hessians are the native Ipopt default for implemented production
+routes. Limited-memory Hessians are an explicit solver opt-out and are not a
 package derivative backend.
 
 Electrolyte bubble and reactive bubble
@@ -327,7 +330,9 @@ IPOPT route status
 ``solver_backend="ipopt"`` is reserved for the native Ipopt constrained-NLP
 adapter. The old Python adapter has been removed. Implemented public routes use
 the native adapter when Ipopt is compiled; methods without native Ipopt
-ownership raise ``InputError``.
+ownership raise ``InputError``. Ipopt routes use explicit density or phase-volume
+variables inside NLP callbacks; pressure-root density remains valid for normal
+``State(T, P, x)`` calls and one-time seed construction.
 
 .. code-block:: python
 

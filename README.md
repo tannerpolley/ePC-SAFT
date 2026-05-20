@@ -212,7 +212,7 @@ Important boundaries:
 
 - Electrolyte bubble pressure is for fixed liquid composition with neutral vapor species; ions remain liquid-only.
 - Reactive electrolyte bubble pressure is staged: native speciation first, then fixed-liquid electrolyte bubble pressure.
-- IPOPT is optional, experimental, and explicit opt-in.
+- IPOPT is an optional native dependency; implemented native equilibrium routes use exact Hessians by default when it is compiled, with limited-memory Hessians available only as an explicit solver opt-out.
 - Full downstream case-study models should own their own data, balances, run matrices, and acceptance criteria.
 
 For examples, see the equilibrium cookbook:

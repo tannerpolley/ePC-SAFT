@@ -78,8 +78,8 @@ struct NeutralTwoPhaseEosRouteResult {
     std::string derivative_backend = "analytic_cppad";
     std::string gradient_approximation = "exact";
     std::string jacobian_approximation = "exact";
-    std::string hessian_approximation = "limited-memory";
-    std::string hessian_backend = "limited-memory";
+    std::string hessian_approximation = "unknown";
+    std::string hessian_backend = "unknown";
     std::string scaling_method = "user-scaling";
     std::string linear_solver_requested = "auto";
     std::string linear_solver_selected = "default";
@@ -163,8 +163,8 @@ struct ReactiveTwoPhaseEosRouteResult {
     std::string derivative_backend = "analytic_cppad";
     std::string gradient_approximation = "exact";
     std::string jacobian_approximation = "exact";
-    std::string hessian_approximation = "limited-memory";
-    std::string hessian_backend = "limited-memory";
+    std::string hessian_approximation = "unknown";
+    std::string hessian_backend = "unknown";
     std::string scaling_method = "user-scaling";
     std::string linear_solver_requested = "auto";
     std::string linear_solver_selected = "default";

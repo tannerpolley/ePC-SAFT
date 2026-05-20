@@ -27,7 +27,6 @@ struct IpoptSolveOptions {
     double dual_infeasibility_tolerance = 0.0;
     double complementarity_tolerance = 0.0;
     double max_wall_time_seconds = 0.0;
-    bool limited_memory_hessian = true;
     std::string hessian_mode = "auto";
     int iteration_history_limit = 20;
     std::string linear_solver = "auto";
@@ -96,6 +95,30 @@ struct IpoptSolveResult {
     std::map<std::string, bool> diagnostics_bool;
     std::map<std::string, std::string> diagnostics_string;
 };
+
+std::string solve_diagnostic_string(
+    const IpoptSolveResult& solve,
+    const std::string& key,
+    const std::string& default_value
+);
+
+int solve_diagnostic_int(
+    const IpoptSolveResult& solve,
+    const std::string& key,
+    int default_value = 0
+);
+
+double solve_diagnostic_double(
+    const IpoptSolveResult& solve,
+    const std::string& key,
+    double default_value = 0.0
+);
+
+bool solve_diagnostic_bool(
+    const IpoptSolveResult& solve,
+    const std::string& key,
+    bool default_value = false
+);
 
 IpoptAdapterInfo native_ipopt_adapter_info();
 

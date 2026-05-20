@@ -153,8 +153,8 @@ def test_reactive_speciation_builds_native_request_with_ipopt_tranche_options(mo
                 "derivative_backend": "analytic",
                 "selected_solver_backend": "native_ipopt",
                 "solver_selection_reason": "explicit_request",
-                "hessian_approximation": "limited-memory",
-                "hessian_backend": "limited-memory",
+                "hessian_approximation": "exact",
+                "hessian_backend": "analytic",
                 "iteration_history_limit": 4,
                 "linear_solver_requested": "mumps",
                 "linear_solver_selected": "mumps",
@@ -220,7 +220,7 @@ def test_reactive_speciation_builds_native_request_with_ipopt_tranche_options(mo
     assert request["options"]["complementarity_tolerance"] == pytest.approx(6.0e-8)
     assert request["options"]["continuation_state"]["variables"] == pytest.approx([0.5, 0.5])
     assert result.success is True
-    assert result.diagnostics["hessian_approximation"] == "limited-memory"
+    assert result.diagnostics["hessian_approximation"] == "exact"
     assert result.diagnostics["linear_solver_requested"] == "mumps"
     assert result.diagnostics["linear_solver_selected"] == "mumps"
     assert result.diagnostics["acceptable_tolerance"] == pytest.approx(9.0e-7)

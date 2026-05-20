@@ -1228,7 +1228,7 @@ def _accepted_native_neutral_two_phase_result(
                 "exact_jacobian_required": True,
                 "gradient_approximation": "exact",
                 "jacobian_approximation": "exact",
-                "hessian_approximation": "limited-memory",
+                "hessian_approximation": "unknown",
             },
         )
         diagnostics["feed_basis"] = _json_like(feed_diagnostics or {})

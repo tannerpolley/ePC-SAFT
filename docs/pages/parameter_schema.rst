@@ -41,8 +41,17 @@ Born diameters, and binary records that reference unknown species.
 Dictionary Compatibility
 ------------------------
 
-``ParameterSet.to_legacy_dict()`` emits the array dictionary consumed by the
-native runtime. Existing dictionary payloads keep working:
+``ParameterSet.to_runtime_dict()`` is the canonical emitter for the array
+dictionary consumed by the native runtime. ``ParameterSet.to_legacy_dict()`` and
+``ParameterSet.from_dict(...)`` remain compatibility APIs for existing callers,
+but new code should use the runtime/canonical names:
+
+.. code-block:: python
+
+   runtime_dict = params.to_runtime_dict()
+   mixture = epcsaft.ePCSAFTMixture.from_params(runtime_dict, species=["A", "B"])
+
+Existing dictionary payloads keep working:
 
 .. code-block:: python
 

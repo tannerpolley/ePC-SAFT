@@ -216,7 +216,6 @@ struct ReactivePhaseState {
     std::size_t global_component_count = 0;
     double amount_total = 0.0;
     double density = 0.0;
-    bool explicit_density = false;
 };
 
 std::vector<int> full_component_indices(std::size_t ncomp) {
@@ -272,7 +271,7 @@ void validate_phase_model_indices(
     }
 }
 
-ReactivePhaseState evaluate_phase_state(
+ReactivePhaseState evaluate_phase_density_seed_state(
     const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
     double t,
     double p,
@@ -314,7 +313,6 @@ ReactivePhaseState evaluate_phase_state_at_density(
     out.global_component_count = out.composition.size();
     out.global_indices = full_component_indices(out.composition.size());
     out.density = density;
-    out.explicit_density = true;
     std::shared_ptr<ePCSAFTStateNative> state = mixture->state(t, out.composition, 0, false, 0.0, true, out.density);
     out.ln_phi = state->ln_fugacity_coefficient();
     if (out.ln_phi.size() != out.composition.size()) {
@@ -323,7 +321,7 @@ ReactivePhaseState evaluate_phase_state_at_density(
     return out;
 }
 
-ReactivePhaseState evaluate_scoped_phase_state(
+ReactivePhaseState evaluate_scoped_phase_density_seed_state(
     const std::shared_ptr<ePCSAFTMixtureNative>& phase_mixture,
     double t,
     double p,
@@ -621,9 +619,6 @@ PhaseStateCompositionSensitivityResult reactive_phase_sensitivity(
     const ReactivePhaseState& state
 ) {
     (void)p;
-    if (!state.explicit_density) {
-        throw ValueError("reactive phase sensitivity requires explicit density variables.");
-    }
     const std::vector<double>& composition = state.model_composition.empty()
         ? state.composition
         : state.model_composition;
@@ -657,10 +652,6 @@ std::vector<double> phase_standard_state_variable_jacobian(
         ? full_component_indices(ncomp)
         : state.global_indices;
     std::vector<double> out(ncomp * variable_count, 0.0);
-    if (!state.explicit_density) {
-        throw ValueError("reactive phase standard-state derivatives require explicit density variables.");
-    }
-
     const std::vector<double>& composition = state.model_composition.empty()
         ? state.composition
         : state.model_composition;
@@ -716,10 +707,6 @@ std::vector<double> phase_standard_state_variable_hessian_tensor(
         ? full_component_indices(ncomp)
         : state.global_indices;
     std::vector<double> out(ncomp * variable_count * variable_count, 0.0);
-    if (!state.explicit_density) {
-        throw ValueError("reactive phase standard-state Hessians require explicit density variables.");
-    }
-
     const std::vector<double>& composition = state.model_composition.empty()
         ? state.composition
         : state.model_composition;
@@ -1331,7 +1318,7 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
         const std::vector<double> phase1_seed_amounts = exp_amounts(amount_variables, 0, ncomp);
         const std::vector<double> phase2_seed_amounts = exp_amounts(amount_variables, ncomp, ncomp);
         const ReactivePhaseState phase1_seed = use_phase_models
-            ? evaluate_scoped_phase_state(
+            ? evaluate_scoped_phase_density_seed_state(
                 phase1_mixture,
                 t,
                 p,
@@ -1341,7 +1328,7 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
                 phase1_global_indices,
                 ncomp
             )
-            : evaluate_phase_state(
+            : evaluate_phase_density_seed_state(
                 mixture,
                 t,
                 p,
@@ -1350,7 +1337,7 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
                 "reactive_phase_equilibrium_phase1_density_seed"
             );
         const ReactivePhaseState phase2_seed = use_phase_models
-            ? evaluate_scoped_phase_state(
+            ? evaluate_scoped_phase_density_seed_state(
                 phase2_mixture,
                 t,
                 p,
@@ -1360,7 +1347,7 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
                 phase2_global_indices,
                 ncomp
             )
-            : evaluate_phase_state(
+            : evaluate_phase_density_seed_state(
                 mixture,
                 t,
                 p,
@@ -1662,7 +1649,7 @@ std::vector<double> build_reactive_liquid_root_initial_variables(
     return out;
 }
 
-ReactivePhaseState evaluate_scoped_phase_state(
+ReactivePhaseState evaluate_scoped_phase_density_seed_state(
     const std::shared_ptr<ePCSAFTMixtureNative>& phase_mixture,
     double t,
     double p,
@@ -1765,7 +1752,6 @@ ReactivePhaseState evaluate_scoped_phase_state_at_density(
         out.composition[static_cast<std::size_t>(global_indices[local])] = out.model_composition[local];
     }
     out.density = density;
-    out.explicit_density = true;
     std::shared_ptr<ePCSAFTStateNative> state =
         phase_mixture->state(t, out.model_composition, 0, false, 0.0, true, out.density);
     const std::vector<double> local_ln_phi = state->ln_fugacity_coefficient();
@@ -2397,7 +2383,7 @@ private:
         const std::vector<double> phase2_amounts = exp_amounts(amount_variables, feed_.size(), feed_.size());
         const bool use_phase_models = phase1_mixture_ || phase2_mixture_;
         const ReactivePhaseState phase1_seed = use_phase_models
-            ? evaluate_scoped_phase_state(
+            ? evaluate_scoped_phase_density_seed_state(
                 phase1_mixture_,
                 temperature_,
                 target_pressure_,
@@ -2407,7 +2393,7 @@ private:
                 phase1_global_indices_,
                 feed_.size()
             )
-            : evaluate_phase_state(
+            : evaluate_phase_density_seed_state(
                 mixture_,
                 temperature_,
                 target_pressure_,
@@ -2416,7 +2402,7 @@ private:
                 "reactive_phase_equilibrium_phase1_density_seed"
             );
         const ReactivePhaseState phase2_seed = use_phase_models
-            ? evaluate_scoped_phase_state(
+            ? evaluate_scoped_phase_density_seed_state(
                 phase2_mixture_,
                 temperature_,
                 target_pressure_,
@@ -2426,7 +2412,7 @@ private:
                 phase2_global_indices_,
                 feed_.size()
             )
-            : evaluate_phase_state(
+            : evaluate_phase_density_seed_state(
                 mixture_,
                 temperature_,
                 target_pressure_,
@@ -2477,7 +2463,6 @@ private:
         state.global_indices = phase2 ? phase2_global_indices_ : phase1_global_indices_;
         state.model_composition = selected_amounts(state.composition, state.global_indices, feed_.size());
         state.density = phase2 ? eval.phase2_density : eval.phase1_density;
-        state.explicit_density = true;
         return state;
     }
 
@@ -3077,9 +3062,6 @@ epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult solve_reactive_
 
     if (!solve_options.initial_variables.empty()) {
         epcsaft::native::equilibrium_nlp::IpoptSolveOptions continuation_options = solve_options;
-        if (continuation_options.initial_variables.size() == 2 * problem.feed().size()) {
-            continuation_options.initial_variables = problem.explicit_density_seed(continuation_options.initial_variables);
-        }
         const auto continuation = run_attempt("continuation_state", continuation_options);
         if (continuation.accepted) {
             best.seed_attempts = attempts;
@@ -3247,9 +3229,6 @@ epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult solve_reactive_
 
     if (!solve_options.initial_variables.empty()) {
         epcsaft::native::equilibrium_nlp::IpoptSolveOptions continuation_options = solve_options;
-        if (continuation_options.initial_variables.size() == 2 * problem.feed().size()) {
-            continuation_options.initial_variables = problem.explicit_density_seed(continuation_options.initial_variables);
-        }
         const auto continuation = run_attempt("continuation_state", continuation_options);
         if (continuation.accepted) {
             best.seed_attempts = attempts;

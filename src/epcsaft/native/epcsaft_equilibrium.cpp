@@ -64,7 +64,6 @@ struct ElectrolyteCandidateNative {
     PhaseStateNative org_state;
     std::vector<double> residual;
     std::vector<double> material_residual;
-    bool explicit_density = false;
     double solver_residual_norm = std::numeric_limits<double>::infinity();
     double material_error = std::numeric_limits<double>::infinity();
     double charge_balance_error = std::numeric_limits<double>::infinity();
@@ -777,13 +776,9 @@ PhaseStateCompositionSensitivityResult electrolyte_phase_sensitivity(
     double t,
     double p,
     const std::vector<double>& composition,
-    double density,
-    bool explicit_density
+    double density
 ) {
     (void)p;
-    if (!explicit_density) {
-        throw SolutionError("Electrolyte LLE residual derivatives require explicit density variables.");
-    }
     PhaseStateCompositionSensitivityResult out =
         phase_state_ln_fugacity_explicit_density_composition_sensitivity_cpp(
             t,
@@ -822,23 +817,21 @@ std::vector<double> electrolyte_residual_jacobian_row_major(
 ) {
     const std::size_t ncomp = feed.size();
     const std::size_t formula_nvar = basis.formula_feed.size();
-    const std::size_t nvar = formula_nvar + (candidate.explicit_density ? 2 : 0);
+    const std::size_t nvar = formula_nvar + 2;
     ElectrolyteTransformDerivativesNative transform = electrolyte_transform_derivatives(feed, basis, candidate, nvar);
     PhaseStateCompositionSensitivityResult aq_sensitivity = electrolyte_phase_sensitivity(
         mixture,
         t,
         p,
         candidate.aq_comp,
-        candidate.aq_state.density,
-        candidate.explicit_density
+        candidate.aq_state.density
     );
     PhaseStateCompositionSensitivityResult org_sensitivity = electrolyte_phase_sensitivity(
         mixture,
         t,
         p,
         candidate.org_comp,
-        candidate.org_state.density,
-        candidate.explicit_density
+        candidate.org_state.density
     );
     const std::size_t phase_rows = basis.neutral_indices.size() + basis.salt_pairs.size();
     const std::size_t rows = phase_rows + ncomp;
@@ -853,7 +846,7 @@ std::vector<double> electrolyte_residual_jacobian_row_major(
                 org_sensitivity.ln_fugacity_density_derivative,
                 candidate.org_state.density,
                 electrolyte_density_variable_index(formula_nvar, true),
-                candidate.explicit_density,
+                true,
                 species_index,
                 var,
                 ncomp,
@@ -866,7 +859,7 @@ std::vector<double> electrolyte_residual_jacobian_row_major(
                 aq_sensitivity.ln_fugacity_density_derivative,
                 candidate.aq_state.density,
                 electrolyte_density_variable_index(formula_nvar, false),
-                candidate.explicit_density,
+                true,
                 species_index,
                 var,
                 ncomp,
@@ -908,23 +901,21 @@ ElectrolyteResidualSecondOrderNative electrolyte_residual_second_order_native(
 ) {
     const std::size_t ncomp = feed.size();
     const std::size_t formula_nvar = basis.formula_feed.size();
-    const std::size_t nvar = formula_nvar + (candidate.explicit_density ? 2 : 0);
+    const std::size_t nvar = formula_nvar + 2;
     ElectrolyteTransformDerivativesNative transform = electrolyte_transform_derivatives(feed, basis, candidate, nvar);
     PhaseStateCompositionSensitivityResult aq_sensitivity = electrolyte_phase_sensitivity(
         mixture,
         t,
         p,
         candidate.aq_comp,
-        candidate.aq_state.density,
-        candidate.explicit_density
+        candidate.aq_state.density
     );
     PhaseStateCompositionSensitivityResult org_sensitivity = electrolyte_phase_sensitivity(
         mixture,
         t,
         p,
         candidate.org_comp,
-        candidate.org_state.density,
-        candidate.explicit_density
+        candidate.org_state.density
     );
     const std::size_t phase_rows = basis.neutral_indices.size() + basis.salt_pairs.size();
     const std::size_t residual_rows = phase_rows + ncomp;
@@ -950,7 +941,7 @@ ElectrolyteResidualSecondOrderNative electrolyte_residual_second_order_native(
                     org_sensitivity.ln_fugacity_density_composition_cross_derivative,
                     candidate.org_state.density,
                     electrolyte_density_variable_index(formula_nvar, true),
-                    candidate.explicit_density,
+                    true,
                     species_index,
                     first,
                     second,
@@ -968,7 +959,7 @@ ElectrolyteResidualSecondOrderNative electrolyte_residual_second_order_native(
                     aq_sensitivity.ln_fugacity_density_composition_cross_derivative,
                     candidate.aq_state.density,
                     electrolyte_density_variable_index(formula_nvar, false),
-                    candidate.explicit_density,
+                    true,
                     species_index,
                     first,
                     second,
@@ -1144,7 +1135,6 @@ ElectrolyteCandidateNative evaluate_predictive_electrolyte_variables(
         formula_variables,
         options
     );
-    out.explicit_density = true;
     const double aq_density = std::exp(variables[nformula]);
     const double org_density = std::exp(variables[nformula + 1]);
     out.aq_state = phase_state_at_density(mixture, t, aq_density, out.aq_comp, "liq");
@@ -1512,7 +1502,7 @@ std::vector<double> electrolyte_lle_objective_gradient_from_candidate(
 ) {
     const std::vector<double> residual = electrolyte_lle_residual_vector_from_candidate(candidate);
     const std::vector<double> jacobian = electrolyte_residual_jacobian_row_major(mixture, t, p, feed, basis, candidate);
-    const std::size_t cols = basis.formula_feed.size() + (candidate.explicit_density ? 2 : 0);
+    const std::size_t cols = basis.formula_feed.size() + 2;
     std::vector<double> gradient(cols, 0.0);
     for (std::size_t row = 0; row < residual.size(); ++row) {
         for (std::size_t col = 0; col < cols; ++col) {
@@ -1759,16 +1749,14 @@ public:
                 temperature_,
                 target_pressure_,
                 current.aq_comp,
-                current.aq_state.density,
-                true
+                current.aq_state.density
             );
             const PhaseStateCompositionSensitivityResult org_sensitivity = electrolyte_phase_sensitivity(
                 mixture_,
                 temperature_,
                 target_pressure_,
                 current.org_comp,
-                current.org_state.density,
-                true
+                current.org_state.density
             );
             const std::vector<double> aq_pressure_jacobian = electrolyte_pressure_constraint_jacobian(
                 aq_sensitivity,
@@ -1902,16 +1890,14 @@ public:
                 temperature_,
                 target_pressure_,
                 current.aq_comp,
-                current.aq_state.density,
-                true
+                current.aq_state.density
             );
             const PhaseStateCompositionSensitivityResult org_sensitivity = electrolyte_phase_sensitivity(
                 mixture_,
                 temperature_,
                 target_pressure_,
                 current.org_comp,
-                current.org_state.density,
-                true
+                current.org_state.density
             );
             const std::vector<double> aq_pressure_hessian = electrolyte_pressure_constraint_hessian(
                 aq_sensitivity,
@@ -2144,16 +2130,14 @@ private:
             temperature_,
             target_pressure_,
             initial.aq_comp,
-            initial.aq_state.density,
-            true
+            initial.aq_state.density
         );
         const PhaseStateCompositionSensitivityResult org_sensitivity = electrolyte_phase_sensitivity(
             mixture_,
             temperature_,
             target_pressure_,
             initial.org_comp,
-            initial.org_state.density,
-            true
+            initial.org_state.density
         );
         aqueous_pressure_constraint_scale_ = electrolyte_pressure_constraint_scale(
             target_pressure_,
@@ -2180,8 +2164,7 @@ private:
             temperature_,
             target_pressure_,
             composition,
-            density,
-            true
+            density
         );
         return (sensitivity.pressure - target_pressure_) / scale;
     }
@@ -2661,10 +2644,6 @@ equilibrium_nlp::NeutralTwoPhaseEosRouteResult solve_electrolyte_lle_liquid_root
 
     if (!solve_options.initial_variables.empty()) {
         equilibrium_nlp::IpoptSolveOptions continuation_options = solve_options;
-        if (continuation_options.initial_variables.size() == problem.basis().formula_feed.size()) {
-            continuation_options.initial_variables =
-                problem.explicit_density_seed_from_formula_variables(continuation_options.initial_variables);
-        }
         const equilibrium_nlp::NeutralTwoPhaseEosRouteResult continuation =
             run_attempt("continuation_state", continuation_options);
         if (continuation.accepted) {
