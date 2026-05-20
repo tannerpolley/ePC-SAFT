@@ -113,6 +113,7 @@ def test_route_level_equilibrium_derivative_rows_are_registered_without_capabili
 
     assert by_quantity["neutral_two_phase_routes"]["classification"] == "production_supported"
     assert by_quantity["electrolyte_lle_and_stability"]["classification"] == "production_supported"
+    assert by_quantity["electrolyte_bubble_pressure"]["classification"] == "production_supported"
     assert (
         by_quantity["reactive_lle_and_reactive_electrolyte_lle"]["classification"]
         == "route_builder_supported_capability_pending"

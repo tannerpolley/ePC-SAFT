@@ -84,7 +84,7 @@ def electrolyte_bubble_pressure(
         _prepare_ipopt_continuation_state,
         _stamp_ipopt_continuation_state,
     )
-    from .equilibrium_core.native_results import native_route_diagnostics
+    from .equilibrium_core.native_results import native_route_diagnostics, with_postsolve_certification
 
     if options is None:
         options = ElectrolyteBubbleOptions()
@@ -138,8 +138,10 @@ def electrolyte_bubble_pressure(
     )
     if not vapor_labels:
         raise InputError("electrolyte_bubble_pressure requires vapor_species or volatile_species.")
+    nonvolatile_labels: tuple[str, ...] = ()
     if nonvolatile_species is not None:
-        nonvolatile = set(_normalize_species_labels(nonvolatile_species, field_name="nonvolatile_species"))
+        nonvolatile_labels = _normalize_species_labels(nonvolatile_species, field_name="nonvolatile_species")
+        nonvolatile = set(nonvolatile_labels)
         overlap = nonvolatile.intersection(vapor_labels)
         if overlap:
             raise InputError("vapor_species and nonvolatile_species overlap: " + ", ".join(sorted(overlap)))
@@ -152,13 +154,19 @@ def electrolyte_bubble_pressure(
     unknown_vapor = sorted(set(vapor_labels).difference(species))
     if unknown_vapor:
         raise InputError("Unknown vapor species: " + ", ".join(unknown_vapor))
+    unknown_nonvolatile = sorted(set(nonvolatile_labels).difference(species))
+    if unknown_nonvolatile:
+        raise InputError("Unknown nonvolatile species: " + ", ".join(unknown_nonvolatile))
+    fixed_specs = {
+        "fixed": ["T", "x_liq"],
+        "vapor_species": list(vapor_labels),
+    }
+    if nonvolatile_labels:
+        fixed_specs["nonvolatile_species"] = list(nonvolatile_labels)
     continuation_context = _ipopt_continuation_context(
         route_kind="electrolyte_bubble_pressure",
         mixture=mixture,
-        fixed_specs={
-            "fixed": ["T", "x_liq"],
-            "vapor_species": list(vapor_labels),
-        },
+        fixed_specs=fixed_specs,
     )
     prepared_continuation_state = _prepare_ipopt_continuation_state(
         ElectrolyteBubbleOptions(
@@ -180,42 +188,58 @@ def electrolyte_bubble_pressure(
 
     from . import _core
 
-    route = _core._native_electrolyte_bubble_p_eos_route_result(
-        mixture._native,
-        float(T),
-        x_values.tolist(),
-        int(options.max_iterations),
-        float(options.tolerance),
-        hessian_mode,
-        iteration_history_limit,
-        float(options.tolerance),
-        max(_CANONICAL_PRESSURE_SCALE * float(options.tolerance), float(options.tolerance)),
-        float(options.charge_tolerance),
-        float(options.tolerance),
-        max(10.0 * float(options.min_composition), 1.0e-8),
-        prepared_continuation_state,
-        linear_solver=ipopt_linear_solver,
-        acceptable_tolerance=_resolved_optional_tolerance(
-            ipopt_acceptable_tolerance,
-            max(100.0 * float(options.tolerance), 1.0e-10),
-        ),
-        constraint_violation_tolerance=_resolved_optional_tolerance(
-            ipopt_constraint_violation_tolerance,
+    try:
+        route = _core._native_electrolyte_bubble_p_eos_route_result(
+            mixture._native,
+            float(T),
+            x_values.tolist(),
+            int(options.max_iterations),
             float(options.tolerance),
-        ),
-        dual_infeasibility_tolerance=_resolved_optional_tolerance(
-            ipopt_dual_infeasibility_tolerance,
+            hessian_mode,
+            iteration_history_limit,
             float(options.tolerance),
-        ),
-        complementarity_tolerance=_resolved_optional_tolerance(
-            ipopt_complementarity_tolerance,
+            max(_CANONICAL_PRESSURE_SCALE * float(options.tolerance), float(options.tolerance)),
+            float(options.charge_tolerance),
             float(options.tolerance),
-        ),
-    )
+            max(10.0 * float(options.min_composition), 1.0e-8),
+            prepared_continuation_state,
+            linear_solver=ipopt_linear_solver,
+            acceptable_tolerance=_resolved_optional_tolerance(
+                ipopt_acceptable_tolerance,
+                max(100.0 * float(options.tolerance), 1.0e-10),
+            ),
+            constraint_violation_tolerance=_resolved_optional_tolerance(
+                ipopt_constraint_violation_tolerance,
+                float(options.tolerance),
+            ),
+            dual_infeasibility_tolerance=_resolved_optional_tolerance(
+                ipopt_dual_infeasibility_tolerance,
+                float(options.tolerance),
+            ),
+            complementarity_tolerance=_resolved_optional_tolerance(
+                ipopt_complementarity_tolerance,
+                float(options.tolerance),
+            ),
+        )
+    except _core.NativeValueError as exc:
+        diagnostics = {
+            "route_status": "native_route_builder_error",
+            "solver_backend": "ipopt",
+            "compiled": True,
+            "solver_ran": False,
+            "route_accepted": False,
+            "postsolve_accepted": False,
+            "failure_reason": str(exc),
+        }
+        diagnostics.update(_phase_eligibility_diagnostics(species, vapor_labels))
+        diagnostics = with_postsolve_certification(diagnostics)
+        _stamp_ipopt_continuation_state(diagnostics, {}, continuation_context=continuation_context)
+        raise SolutionError("Native electrolyte bubble-pressure route was rejected.", diagnostics) from exc
     if str(route.get("status", "")) == "ipopt_dependency_required":
         _raise_native_ipopt_electrolyte_bubble_required()
     if not bool(route.get("accepted", False)):
         diagnostics = native_route_diagnostics(route)
+        diagnostics.update(_phase_eligibility_diagnostics(species, vapor_labels))
         _stamp_ipopt_continuation_state(diagnostics, route, continuation_context=continuation_context)
         raise SolutionError("Native electrolyte bubble-pressure route was rejected.", diagnostics)
     return _accepted_native_electrolyte_bubble_result(
@@ -277,6 +301,7 @@ def _accepted_native_electrolyte_bubble_result(
     fugacity_residual_norm = max((abs(value) for value in fugacity_residual.values()), default=0.0)
     diagnostics = native_route_diagnostics(route)
     diagnostics["backend"] = "ipopt"
+    diagnostics.update(_phase_eligibility_diagnostics(species, vapor_labels))
     if continuation_context is not None:
         _stamp_ipopt_continuation_state(diagnostics, route, continuation_context=continuation_context)
     return ElectrolyteBubbleResult(
@@ -293,6 +318,22 @@ def _accepted_native_electrolyte_bubble_result(
         partial_pressures=partial_pressures,
         diagnostics=diagnostics,
     )
+
+
+def _phase_eligibility_diagnostics(species: Sequence[str], vapor_labels: Sequence[str]) -> dict[str, Any]:
+    vapor = set(vapor_labels)
+    mask = [1.0 for _label in species]
+    mask.extend(1.0 if label in vapor else 0.0 for label in species)
+    return {
+        "phase_eligibility_mask_available": True,
+        "phase_eligibility_rows": 2,
+        "phase_eligibility_cols": len(species),
+        "phase_eligibility_shape": [2, len(species)],
+        "phase_eligibility_phase_labels": ["liq", "vap"],
+        "phase_eligibility_species_labels": [str(label) for label in species],
+        "phase_eligibility_mask_source": "public_vapor_species",
+        "phase_eligibility_mask": mask,
+    }
 
 
 def _normalize_species_labels(values: Any, *, field_name: str) -> tuple[str, ...]:

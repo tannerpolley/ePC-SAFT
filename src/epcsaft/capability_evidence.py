@@ -190,6 +190,20 @@ EQUILIBRIUM_ROUTE_DERIVATIVE_EVIDENCE: Final[tuple[dict[str, object], ...]] = (
     {
         "row_family": "equilibrium",
         "subsystem": "native_ipopt",
+        "quantity": "electrolyte_bubble_pressure",
+        "derivative": "lagrangian_hessian",
+        "backend": "cppad_explicit_density",
+        "supported": True,
+        "classification": "production_supported",
+        "reason": "electrolyte bubble pressure is a registered production Ipopt route with exact-Hessian route-builder evidence and public phase-eligibility diagnostics",
+        "tests": (
+            "tests/equilibrium/electrolyte/test_electrolyte_bubble.py",
+            "tests/native/equilibrium/test_route_builders.py",
+        ),
+    },
+    {
+        "row_family": "equilibrium",
+        "subsystem": "native_ipopt",
         "quantity": "reactive_lle_and_reactive_electrolyte_lle",
         "derivative": "lagrangian_hessian",
         "backend": "cppad_explicit_density",

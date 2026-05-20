@@ -7,11 +7,25 @@ import pytest
 
 import epcsaft
 from epcsaft import InputError, _core
+from epcsaft.electrolyte_bubble import electrolyte_bubble_pressure
 
 
 def _salt_mixture() -> epcsaft.ePCSAFTMixture:
     x = np.asarray([0.98, 0.01, 0.01], dtype=float)
     return epcsaft.ePCSAFTMixture.from_dataset("2026_Khudaida", ["H2O", "Na+", "Cl-"], x, 298.15)
+
+
+class _FakeState:
+    def fugacity_coefficient(self):
+        return [0.0, 0.0, 0.0]
+
+
+class _FakeElectrolyteBubbleMixture:
+    species = ["H2O", "Na+", "Cl-"]
+    _native = object()
+
+    def state(self, *args, **kwargs):
+        return _FakeState()
 
 
 def test_electrolyte_bubble_pressure_builds_native_route_before_ipopt_gate(monkeypatch) -> None:
@@ -108,6 +122,57 @@ def test_electrolyte_bubble_pressure_builds_native_route_before_ipopt_gate(monke
     assert call["ipopt_controls"]["constraint_violation_tolerance"] == pytest.approx(8.0e-8)
     assert call["ipopt_controls"]["dual_infeasibility_tolerance"] == pytest.approx(7.0e-8)
     assert call["ipopt_controls"]["complementarity_tolerance"] == pytest.approx(6.0e-8)
+
+
+def test_electrolyte_bubble_pressure_reports_phase_eligibility_from_vapor_controls(monkeypatch) -> None:
+    mix = _FakeElectrolyteBubbleMixture()
+
+    def fake_route(*_args, **_kwargs):
+        return {
+            "backend": "ipopt",
+            "compiled": True,
+            "ran": True,
+            "accepted": True,
+            "status": "accepted",
+            "variables": [1.0e5],
+            "phase_amounts": [[0.98, 0.01, 0.01], [1.0, 0.0, 0.0]],
+            "phase_volumes": [1.0e-4, 1.0],
+            "postsolve": {"accepted": True, "charge_balance_norm": 0.0},
+        }
+
+    monkeypatch.setattr(_core, "_native_electrolyte_bubble_p_eos_route_result", fake_route)
+
+    result = electrolyte_bubble_pressure(
+        mix,
+        T=298.15,
+        x_liq=[0.98, 0.01, 0.01],
+        vapor_species=["H2O"],
+        nonvolatile_species=["Na+", "Cl-"],
+    )
+
+    diagnostics = result.diagnostics
+    assert diagnostics["phase_eligibility_mask_available"] is True
+    assert diagnostics["phase_eligibility_rows"] == 2
+    assert diagnostics["phase_eligibility_cols"] == 3
+    assert diagnostics["phase_eligibility_shape"] == [2, 3]
+    assert diagnostics["phase_eligibility_phase_labels"] == ["liq", "vap"]
+    assert diagnostics["phase_eligibility_species_labels"] == ["H2O", "Na+", "Cl-"]
+    assert diagnostics["phase_eligibility_mask_source"] == "public_vapor_species"
+    assert diagnostics["phase_eligibility_mask"] == pytest.approx([1.0, 1.0, 1.0, 1.0, 0.0, 0.0])
+
+
+def test_electrolyte_bubble_pressure_rejects_unknown_nonvolatile_species() -> None:
+    mix = _salt_mixture()
+
+    with pytest.raises(InputError, match="Unknown nonvolatile species: K\\+"):
+        mix.equilibrium(
+            kind="electrolyte_bubble_pressure",
+            T=298.15,
+            x_liq=[0.98, 0.01, 0.01],
+            vapor_species=["H2O"],
+            nonvolatile_species=["K+"],
+            backend="native",
+        )
 
 
 def test_electrolyte_bubble_pressure_rejects_python_backend_alias() -> None:

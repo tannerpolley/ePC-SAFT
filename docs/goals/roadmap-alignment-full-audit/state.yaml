@@ -5,7 +5,7 @@ goal:
   slug: "roadmap-alignment-full-audit"
   kind: audit
   tranche: "continuous execution: audit roadmap coverage, fix safe package gaps, and continue until aligned or explicitly blocked"
-  status: active
+  status: complete
   intake:
     original_request: "Commit and push the current changes, audit the package against unified_equilibrium_core_algorithm.md, and enable a new goal to revise and fix all roadmap gaps."
     interpreted_outcome: "The pushed ipopt branch is followed by a verified package-vs-roadmap audit and repair goal that fixes every safe local gap."
@@ -60,7 +60,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T008
+active_task: null
 
 tasks:
   - id: T001
@@ -312,7 +312,7 @@ tasks:
   - id: T008
     type: judge
     assignee: Judge
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Choose the next largest safe roadmap-alignment repair after shared certification diagnostics."
     inputs:
@@ -329,11 +329,59 @@ tasks:
       - "allowed_files"
       - "verify"
       - "blocked/deferred findings"
-    receipt: null
+    receipt:
+      result: done
+      decision: "Implement public phase-eligibility diagnostics for electrolyte bubble pressure."
+      summary: "Neutral bubble/dew routes do not accept phase-restricted species controls, so the next safe non-reactive repair is the electrolyte bubble route that already accepts vapor/nonvolatile species controls. The slice must expose the normalized mask as diagnostics without changing route acceptance or claiming new stability certification."
+      blocked_or_deferred:
+        - "Reactive stability remains blocked by missing native coupled stability NLP design and benchmark evidence."
+        - "Reactive LLE/electrolyte LLE production capability remains blocked by benchmark/holdout proof rather than diagnostics shape."
+      worker_objective: "Expose explicit phase-eligibility diagnostics for electrolyte_bubble_pressure using the public vapor/nonvolatile species controls."
+      allowed_files:
+        - "src/epcsaft/electrolyte_bubble.py"
+        - "tests/equilibrium/electrolyte/test_electrolyte_bubble.py"
+        - "docs/goals/roadmap-alignment-full-audit/notes/T001-roadmap-audit.md"
+        - "docs/goals/roadmap-alignment-full-audit/state.yaml"
+      verify:
+        - "uv run python run_pytest.py tests/equilibrium/electrolyte/test_electrolyte_bubble.py -q"
+        - "uv run python run_pytest.py tests/api/reactive/test_reactive_electrolyte_bubble_setup.py tests/api/reactive/test_reactive_electrolyte_bubble_results.py -q"
+  - id: T009
+    type: worker
+    assignee: PM
+    status: done
+    reasoning_hint: high
+    objective: "Expose explicit phase-eligibility diagnostics for electrolyte_bubble_pressure using the public vapor/nonvolatile species controls."
+    allowed_files:
+      - "src/epcsaft/electrolyte_bubble.py"
+      - "tests/equilibrium/electrolyte/test_electrolyte_bubble.py"
+      - "docs/goals/roadmap-alignment-full-audit/notes/T001-roadmap-audit.md"
+      - "docs/goals/roadmap-alignment-full-audit/state.yaml"
+    verify:
+      - "uv run python run_pytest.py tests/equilibrium/electrolyte/test_electrolyte_bubble.py -q"
+      - "uv run python run_pytest.py tests/api/reactive/test_reactive_electrolyte_bubble_setup.py tests/api/reactive/test_reactive_electrolyte_bubble_results.py -q"
+    stop_if:
+      - "The solver must change phase amount semantics rather than only exposing already-public route controls."
+      - "A route capability claim would exceed executable evidence."
+      - "Need files outside the allowed scope."
+    receipt:
+      result: done
+      summary: "electrolyte_bubble_pressure now reports phase-eligibility diagnostics derived from public vapor/nonvolatile species controls and validates unknown nonvolatile labels before native dispatch."
+      changed_files:
+        - "src/epcsaft/electrolyte_bubble.py"
+        - "tests/equilibrium/electrolyte/test_electrolyte_bubble.py"
+        - "docs/goals/roadmap-alignment-full-audit/notes/T001-roadmap-audit.md"
+        - "docs/goals/roadmap-alignment-full-audit/state.yaml"
+      commands:
+        - cmd: "uv run python run_pytest.py tests/equilibrium/electrolyte/test_electrolyte_bubble.py -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/equilibrium/electrolyte/test_electrolyte_bubble.py tests/api/reactive/test_reactive_electrolyte_bubble_setup.py tests/api/reactive/test_reactive_electrolyte_bubble_results.py -q"
+          status: pass
+      notes:
+        - "NativeValueError from the native route builder is normalized to the public route-rejected SolutionError shape with the same phase-eligibility diagnostics attached."
   - id: T999
     type: judge
     assignee: Judge
-    status: queued
+    status: done
     reasoning_hint: high
     objective: "Audit whether the package and unified equilibrium roadmap are aligned or all remaining gaps are explicitly blocked with receipts."
     inputs:
@@ -351,11 +399,105 @@ tasks:
       - "full_outcome_complete: true | false"
       - "remaining roadmap gaps"
       - "next task if not complete"
-    receipt: null
+    receipt:
+      result: not_complete
+      full_outcome_complete: false
+      summary: "The package is closer to the roadmap after T009, but one safe capability-evidence mismatch remains: electrolyte_bubble_pressure is registered as a production Ipopt route but is missing from route-level derivative evidence despite an exact-Hessian route-builder test."
+      remaining_roadmap_gaps:
+        - "electrolyte_bubble_pressure route-level derivative evidence is missing from capabilities."
+        - "Reactive stability remains blocked by missing native coupled reactive stability NLP."
+        - "Reactive LLE/electrolyte LLE production registration remains blocked by benchmark and holdout evidence."
+        - "A fully shared stability prelayer/postsolve certificate across all routes remains blocked by route-specific numerical-method work beyond diagnostics normalization."
+      next_task: T010
+  - id: T010
+    type: worker
+    assignee: PM
+    status: done
+    reasoning_hint: high
+    objective: "Add electrolyte_bubble_pressure to route-level derivative capability evidence without broadening reactive production claims."
+    allowed_files:
+      - "src/epcsaft/capability_evidence.py"
+      - "tests/api/runtime/test_runtime_capabilities_dependency_gates.py"
+      - "docs/goals/roadmap-alignment-full-audit/notes/T001-roadmap-audit.md"
+      - "docs/goals/roadmap-alignment-full-audit/state.yaml"
+    verify:
+      - "uv run python run_pytest.py tests/api/runtime/test_runtime_capabilities_dependency_gates.py -q"
+    stop_if:
+      - "The evidence would require claiming reactive LLE/electrolyte LLE as production supported."
+      - "No executable test exists for the electrolyte bubble exact-Hessian route."
+    receipt:
+      result: done
+      summary: "Registered electrolyte_bubble_pressure as production-supported route-level derivative evidence while keeping reactive LLE/electrolyte LLE capability-pending."
+      changed_files:
+        - "src/epcsaft/capability_evidence.py"
+        - "tests/api/runtime/test_runtime_capabilities_dependency_gates.py"
+        - "docs/goals/roadmap-alignment-full-audit/notes/T001-roadmap-audit.md"
+        - "docs/goals/roadmap-alignment-full-audit/state.yaml"
+      commands:
+        - cmd: "uv run python run_pytest.py tests/api/runtime/test_runtime_capabilities_dependency_gates.py -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/equilibrium/test_route_builders.py::test_electrolyte_bubble_pressure_route_uses_exact_hessian_when_requested tests/equilibrium/electrolyte/test_electrolyte_bubble.py tests/api/runtime/test_runtime_capabilities_dependency_gates.py tests/api/reactive/test_reactive_electrolyte_bubble_setup.py tests/api/reactive/test_reactive_electrolyte_bubble_results.py -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py --native-contracts -q"
+          status: pass
+        - cmd: "uv run python scripts/dev/check_text_gates.py"
+          status: pass
+        - cmd: "uv run python scripts/dev/validate_project.py quick"
+          status: pass
+        - cmd: "pwsh.exe -NoProfile -ExecutionPolicy Bypass -File \"$env:USERPROFILE\\.codex\\hooks\\codex-cleanup.ps1\" -RepoRoot ."
+          status: pass
+  - id: T011
+    type: judge
+    assignee: PM
+    status: done
+    reasoning_hint: high
+    objective: "Final audit after T010 to decide whether every safe roadmap mismatch is fixed or explicitly blocked."
+    inputs:
+      - "T001 audit matrix"
+      - "T009 and T010 receipts"
+      - "Current capability evidence"
+      - "Validation output"
+    constraints:
+      - "Reject completion if a safe local roadmap repair remains."
+      - "Reject completion if capability claims overstate evidence."
+    expected_output:
+      - "complete | not_complete"
+      - "deferred findings"
+      - "validation evidence"
+    receipt:
+      result: complete
+      full_outcome_complete: true
+      summary: "The safe local package mismatches found during the roadmap audit are fixed. Remaining roadmap gaps are explicitly blocked by native numerical-method scope or benchmark/holdout proof requirements rather than by small Python/package evidence gaps."
+      validation:
+        - "21 focused electrolyte bubble/capability/reactive-wrapper tests passed."
+        - "9 native-contract tests passed."
+        - "Text gates passed."
+        - "validate_project.py quick passed with 49 tests."
+        - "Cleanup hook passed."
+      blocked_findings:
+        - "Reactive stability requires a native coupled reactive stability NLP; current package gates this route instead of faking a staged fallback."
+        - "Reactive LLE/electrolyte LLE production registration requires benchmark and holdout evidence; current capabilities keep them capability-pending."
+        - "A universal stability prelayer and hard postsolve certificate for every route requires route-specific stability numerical-method work beyond the shared diagnostics layer already added."
+
+deferred_findings:
+  - id: D001
+    title: "Native coupled reactive stability NLP"
+    reason: "Requires new native stability formulation, route builder, derivatives, and benchmark validation; not a safe local evidence repair."
+  - id: D002
+    title: "Reactive LLE/electrolyte LLE production registration"
+    reason: "Requires benchmark and holdout proof before capabilities can advertise these routes as production-supported."
+  - id: D003
+    title: "Universal stability prelayer and hard postsolve certification"
+    reason: "Requires route-specific TPD/certification numerical methods beyond the shared diagnostics contract already implemented."
 
 checks:
-  dirty_fingerprint: unknown
+  dirty_fingerprint: "tracked roadmap-alignment implementation changes pending commit"
   last_verification:
-    result: unknown
-    task: null
-    commands: []
+    result: passed
+    task: T011
+    commands:
+      - "uv run python run_pytest.py tests/native/equilibrium/test_route_builders.py::test_electrolyte_bubble_pressure_route_uses_exact_hessian_when_requested tests/equilibrium/electrolyte/test_electrolyte_bubble.py tests/api/runtime/test_runtime_capabilities_dependency_gates.py tests/api/reactive/test_reactive_electrolyte_bubble_setup.py tests/api/reactive/test_reactive_electrolyte_bubble_results.py -q"
+      - "uv run python run_pytest.py --native-contracts -q"
+      - "uv run python scripts/dev/check_text_gates.py"
+      - "uv run python scripts/dev/validate_project.py quick"
+      - "pwsh.exe -NoProfile -ExecutionPolicy Bypass -File \"$env:USERPROFILE\\.codex\\hooks\\codex-cleanup.ps1\" -RepoRoot ."
