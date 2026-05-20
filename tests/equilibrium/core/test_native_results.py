@@ -214,6 +214,20 @@ def test_native_route_diagnostics_merges_postsolve_and_solver_metadata() -> None
     assert diagnostics["iteration_history"][1]["objective"] == pytest.approx(0.5)
     assert diagnostics["exact_gradient_required"] is True
     assert diagnostics["exact_jacobian_required"] is True
+    assert diagnostics["postsolve_certification"] == {
+        "accepted": False,
+        "status": "postsolve_rejected",
+        "route_accepted": False,
+        "postsolve_accepted": False,
+        "solver_accepted": False,
+        "stability_checked": False,
+        "stability_accepted": False,
+        "stability_source": "",
+        "failure_reason": "phase_distance",
+        "active_residuals_reported": False,
+        "hard_constraints_reported": True,
+        "physical_admissibility_reported": True,
+    }
 
 
 def test_route_diagnostics_view_exposes_stable_interface() -> None:
@@ -251,6 +265,9 @@ def test_route_diagnostics_view_exposes_stable_interface() -> None:
     assert view.solver_backend == "ipopt"
     assert view.route_accepted is True
     assert view.postsolve_accepted is True
+    assert view.certification_status == "stability_not_checked"
+    assert view.postsolve_certification_accepted is False
+    assert view.stability_checked is False
     assert view.gradient_is_exact is True
     assert view.jacobian_is_exact is True
     assert view.hessian_is_exact is False
@@ -260,6 +277,50 @@ def test_route_diagnostics_view_exposes_stable_interface() -> None:
     assert view.selected_seed_name == "canonical_shifted_feed"
     assert view.seed_attempt_count == 1
     assert result.route_diagnostics.residual_families == view.residual_families
+
+
+def test_native_route_diagnostics_marks_tpd_certified_postsolve() -> None:
+    route = {
+        "accepted": True,
+        "status": "accepted",
+        "solver_accepted": True,
+        "residual_families": ["phase_equilibrium"],
+        "constraint_families": ["material_balance", "phase_distance"],
+        "postsolve": {
+            "accepted": True,
+            "ln_fugacity_consistency_norm": 2.0e-10,
+            "material_balance_norm": 3.0e-12,
+            "phase_distance": 0.4,
+        },
+        "tpdf_stability": {
+            "accepted": True,
+            "status": "accepted",
+            "feed_unstable": True,
+            "final_phases_stable": True,
+        },
+    }
+
+    diagnostics = native_route_diagnostics(route)
+    view = RouteDiagnosticsView(diagnostics)
+
+    assert diagnostics["tpdf_stability"]["accepted"] is True
+    assert diagnostics["postsolve_certification"] == {
+        "accepted": True,
+        "status": "accepted",
+        "route_accepted": True,
+        "postsolve_accepted": True,
+        "solver_accepted": True,
+        "stability_checked": True,
+        "stability_accepted": True,
+        "stability_source": "tpdf_stability",
+        "failure_reason": "",
+        "active_residuals_reported": True,
+        "hard_constraints_reported": True,
+        "physical_admissibility_reported": True,
+    }
+    assert view.certification_status == "accepted"
+    assert view.postsolve_certification_accepted is True
+    assert view.stability_checked is True
 
 
 def test_raise_native_route_rejected_uses_shared_diagnostics() -> None:

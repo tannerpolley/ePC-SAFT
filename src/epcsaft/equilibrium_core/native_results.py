@@ -63,6 +63,32 @@ _ROUTE_SEQUENCE_DIAGNOSTIC_KEYS = (
     "constraint_families",
 )
 
+_RESIDUAL_EVIDENCE_KEYS = (
+    "ln_fugacity_consistency_norm",
+    "chemical_potential_consistency_norm",
+    "neutral_fugacity_residual_norm",
+    "salt_pair_fugacity_residual_norm",
+    "mean_ionic_fugacity_residual_norm",
+)
+
+_CONSTRAINT_EVIDENCE_KEYS = (
+    "material_balance_norm",
+    "pressure_consistency_norm",
+    "charge_balance_norm",
+    "phase_distance",
+)
+
+_ADMISSIBILITY_EVIDENCE_KEYS = (
+    "phase_distance",
+    "density_backend",
+    "density_recompute_relative_errors",
+)
+
+_STABILITY_EVIDENCE_KEYS = (
+    "tpdf_stability",
+    "stability_certificate",
+)
+
 
 @dataclass(frozen=True, slots=True)
 class RouteDiagnosticsView:
@@ -97,6 +123,29 @@ class RouteDiagnosticsView:
     def postsolve_accepted(self) -> bool:
         """Return whether postsolve certification accepted the route."""
         return bool(self.diagnostics.get("postsolve_accepted", self.diagnostics.get("accepted", False)))
+
+    @property
+    def postsolve_certification(self) -> Mapping[str, Any]:
+        """Return the normalized route certification summary."""
+        summary = self.diagnostics.get("postsolve_certification", {})
+        if isinstance(summary, Mapping):
+            return dict(summary)
+        return _postsolve_certification_summary(self.diagnostics)
+
+    @property
+    def certification_status(self) -> str:
+        """Return the normalized route certification status token."""
+        return str(self.postsolve_certification.get("status", ""))
+
+    @property
+    def postsolve_certification_accepted(self) -> bool:
+        """Return whether the shared certification summary accepted the route."""
+        return bool(self.postsolve_certification.get("accepted", False))
+
+    @property
+    def stability_checked(self) -> bool:
+        """Return whether route diagnostics include stability-certificate evidence."""
+        return bool(self.postsolve_certification.get("stability_checked", False))
 
     @property
     def gradient_is_exact(self) -> bool:
@@ -223,6 +272,68 @@ def _diagnostics(payload: Mapping[str, Any]) -> dict[str, Any]:
     return {}
 
 
+def _has_any_key(diagnostics: Mapping[str, Any], keys: tuple[str, ...]) -> bool:
+    return any(key in diagnostics for key in keys)
+
+
+def _stability_evidence(diagnostics: Mapping[str, Any]) -> tuple[str, Mapping[str, Any] | None]:
+    for key in _STABILITY_EVIDENCE_KEYS:
+        payload = diagnostics.get(key)
+        if isinstance(payload, Mapping):
+            return key, payload
+    return "", None
+
+
+def _postsolve_certification_summary(diagnostics: Mapping[str, Any]) -> dict[str, Any]:
+    route_accepted = bool(diagnostics.get("route_accepted", diagnostics.get("accepted", False)))
+    postsolve_accepted = bool(diagnostics.get("postsolve_accepted", diagnostics.get("accepted", False)))
+    solver_accepted = bool(diagnostics.get("solver_accepted", False))
+    stability_source, stability_payload = _stability_evidence(diagnostics)
+    stability_checked = stability_payload is not None
+    stability_accepted = bool(stability_payload.get("accepted", False)) if stability_payload is not None else False
+    failure_reason = str(
+        diagnostics.get(
+            "failure_reason",
+            diagnostics.get("rejection_reason", "" if route_accepted and postsolve_accepted else diagnostics.get("route_status", "")),
+        )
+    )
+
+    if not route_accepted:
+        status = str(diagnostics.get("route_status", "route_rejected"))
+    elif not postsolve_accepted:
+        status = "postsolve_rejected"
+    elif not stability_checked:
+        status = "stability_not_checked"
+    elif not stability_accepted:
+        status = "stability_rejected"
+    else:
+        status = "accepted"
+
+    return {
+        "accepted": route_accepted and postsolve_accepted and stability_checked and stability_accepted,
+        "status": status,
+        "route_accepted": route_accepted,
+        "postsolve_accepted": postsolve_accepted,
+        "solver_accepted": solver_accepted,
+        "stability_checked": stability_checked,
+        "stability_accepted": stability_accepted,
+        "stability_source": stability_source,
+        "failure_reason": "" if status == "accepted" else failure_reason,
+        "active_residuals_reported": bool(diagnostics.get("residual_families"))
+        or _has_any_key(diagnostics, _RESIDUAL_EVIDENCE_KEYS),
+        "hard_constraints_reported": bool(diagnostics.get("constraint_families"))
+        or _has_any_key(diagnostics, _CONSTRAINT_EVIDENCE_KEYS),
+        "physical_admissibility_reported": _has_any_key(diagnostics, _ADMISSIBILITY_EVIDENCE_KEYS),
+    }
+
+
+def with_postsolve_certification(diagnostics: Mapping[str, Any]) -> dict[str, Any]:
+    """Return diagnostics with the shared postsolve-certification summary attached."""
+    payload = dict(diagnostics)
+    payload["postsolve_certification"] = _postsolve_certification_summary(payload)
+    return payload
+
+
 def native_route_diagnostics(
     route: Mapping[str, Any],
     *,
@@ -305,7 +416,11 @@ def native_route_diagnostics(
     if "continuation_state" in route:
         state = route.get("continuation_state", {})
         diagnostics["continuation_state"] = dict(state) if isinstance(state, Mapping) else state
-    return diagnostics
+    for key in _STABILITY_EVIDENCE_KEYS:
+        if key in route:
+            value = route.get(key)
+            diagnostics[key] = dict(value) if isinstance(value, Mapping) else value
+    return with_postsolve_certification(diagnostics)
 
 
 def raise_native_route_rejected(

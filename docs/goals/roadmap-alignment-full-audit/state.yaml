@@ -60,7 +60,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T007
+active_task: T008
 
 tasks:
   - id: T001
@@ -269,21 +269,66 @@ tasks:
   - id: T007
     type: worker
     assignee: Worker
-    status: active
+    status: done
     reasoning_hint: high
     objective: "Audit and repair the next shared-certification gap without overclaiming production behavior."
     allowed_files:
+      - "src/epcsaft/epcsaft.py"
       - "src/epcsaft/equilibrium.py"
       - "src/epcsaft/equilibrium_core/native_results.py"
+      - "tests/equilibrium/core/test_native_results.py"
       - "tests/equilibrium/core/test_api.py"
       - "tests/equilibrium/reactive/test_reactive_electrolyte_lle_coupled_solver.py"
       - "docs/goals/roadmap-alignment-full-audit/notes/T001-roadmap-audit.md"
     verify:
-      - "uv run python run_pytest.py tests/equilibrium/core/test_api.py tests/equilibrium/reactive/test_reactive_electrolyte_lle_coupled_solver.py -q"
+      - "uv run python run_pytest.py tests/equilibrium/core/test_native_results.py -q"
+      - "uv run python run_pytest.py tests/equilibrium/core/test_api.py tests/equilibrium/reactive/test_reactive_electrolyte_lle_coupled_solver.py tests/equilibrium/core/test_native_results.py -q"
+      - "uv run python run_pytest.py tests/api/package/test_downstream_integration_smokes.py::test_equilibrium_facade_normalizes_auto_neutral_request tests/api/package/test_downstream_integration_smokes.py::test_equilibrium_facade_normalizes_auto_electrolyte_errors tests/equilibrium/core/test_vle.py::test_tp_flash_converts_accepted_native_route_payload -q"
       - "uv run python run_pytest.py --native-contracts -q"
+      - "uv run python scripts/dev/check_text_gates.py"
     stop_if:
       - "A true stability certificate requires new numerical methods rather than diagnostics normalization."
       - "The repair would accept a route that is not physically certified."
+    receipt:
+      result: done
+      summary: "Added shared postsolve_certification diagnostics that distinguish route/postsolve acceptance from full stability certification, and restored explicit facade dispatch through typed problem objects."
+      changed_files:
+        - "src/epcsaft/epcsaft.py"
+        - "src/epcsaft/equilibrium.py"
+        - "src/epcsaft/equilibrium_core/native_results.py"
+        - "tests/equilibrium/core/test_native_results.py"
+        - "docs/goals/roadmap-alignment-full-audit/notes/T001-roadmap-audit.md"
+      commands:
+        - cmd: "uv run python run_pytest.py tests/equilibrium/core/test_native_results.py -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/equilibrium/core/test_api.py tests/equilibrium/reactive/test_reactive_electrolyte_lle_coupled_solver.py tests/equilibrium/core/test_native_results.py -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/api/package/test_downstream_integration_smokes.py::test_equilibrium_facade_normalizes_auto_neutral_request tests/api/package/test_downstream_integration_smokes.py::test_equilibrium_facade_normalizes_auto_electrolyte_errors tests/equilibrium/core/test_vle.py::test_tp_flash_converts_accepted_native_route_payload -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py --native-contracts -q"
+          status: pass
+        - cmd: "uv run python scripts/dev/check_text_gates.py"
+          status: pass
+  - id: T008
+    type: judge
+    assignee: Judge
+    status: active
+    reasoning_hint: high
+    objective: "Choose the next largest safe roadmap-alignment repair after shared certification diagnostics."
+    inputs:
+      - "docs/goals/roadmap-alignment-full-audit/notes/T001-roadmap-audit.md"
+      - "Current implementation and capability evidence"
+      - "Current git diff"
+    constraints:
+      - "Do not implement."
+      - "Prefer a code/test repair when safe."
+      - "Block a roadmap item only when current evidence shows it requires new numerical methods, benchmark data, or design decisions beyond a safe local slice."
+      - "Keep capability claims honest."
+    expected_output:
+      - "Decision"
+      - "allowed_files"
+      - "verify"
+      - "blocked/deferred findings"
     receipt: null
   - id: T999
     type: judge

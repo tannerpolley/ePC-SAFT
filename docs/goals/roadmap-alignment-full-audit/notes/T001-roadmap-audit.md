@@ -76,3 +76,20 @@ Added a separate equilibrium-route derivative evidence section under `epcsaft.ca
 Verification:
 
 - `uv run python run_pytest.py tests/api/runtime/test_runtime_capabilities_dependency_gates.py -q`
+
+## T007 Repair Receipt
+
+Added a normalized `postsolve_certification` diagnostics summary for native route payloads:
+
+- accepted routes without stability evidence report `status="stability_not_checked"` rather than implying full certification;
+- TPD-certified electrolyte LLE routes report `status="accepted"` only when route, postsolve, and stability evidence all accept;
+- `RouteDiagnosticsView` exposes `certification_status`, `postsolve_certification_accepted`, and `stability_checked`;
+- explicit non-reactive `mixture.equilibrium(kind=...)` facade calls now dispatch the typed problem object through `mixture.solve_equilibrium(problem)`, while `kind="auto"` keeps its route-aware request wrapper for default-route reasons.
+
+Verification:
+
+- `uv run python run_pytest.py tests/equilibrium/core/test_native_results.py -q`
+- `uv run python run_pytest.py tests/equilibrium/core/test_api.py tests/equilibrium/reactive/test_reactive_electrolyte_lle_coupled_solver.py tests/equilibrium/core/test_native_results.py -q`
+- `uv run python run_pytest.py tests/api/package/test_downstream_integration_smokes.py::test_equilibrium_facade_normalizes_auto_neutral_request tests/api/package/test_downstream_integration_smokes.py::test_equilibrium_facade_normalizes_auto_electrolyte_errors tests/equilibrium/core/test_vle.py::test_tp_flash_converts_accepted_native_route_payload -q`
+- `uv run python run_pytest.py --native-contracts -q`
+- `uv run python scripts/dev/check_text_gates.py`

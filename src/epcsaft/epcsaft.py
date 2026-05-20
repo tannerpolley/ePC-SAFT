@@ -682,6 +682,8 @@ class ePCSAFTMixture:
                 parent_phase=parent_phase,
                 trial_phases=trial_phases,
             )
+            if kind_token != "auto":
+                return self.solve_equilibrium(request.problem)
             return self.solve_equilibrium(request)
         raise InputError(
             "Only kind='tp_flash', kind='auto', kind='bubble_p', kind='bubble_t', kind='dew_p', kind='dew_t', kind='lle_flash', kind='electrolyte_lle', kind='electrolyte_bubble_pressure', kind='electrolyte_stability', kind='stability', kind='chemical_equilibrium', kind='reactive_staged_equilibrium', kind='reactive_lle', kind='reactive_electrolyte_lle', kind='reactive_stability', or kind='reactive_electrolyte_bubble_pressure' is supported by equilibrium."

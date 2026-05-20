@@ -29,6 +29,7 @@ from .equilibrium_core.native_results import (
     raise_native_route_rejected,
     raise_with_equilibrium_route_diagnostics,
     with_equilibrium_route_diagnostics,
+    with_postsolve_certification,
 )
 
 _ASCANI_2022_REFERENCE = {
@@ -1377,6 +1378,7 @@ def _accepted_native_neutral_two_phase_result(
             stability_tolerance=_ELECTROLYTE_LLE_TPDF_TOLERANCE,
         )
         diagnostics["tpdf_stability"] = tpdf_certificate
+        diagnostics = with_postsolve_certification(diagnostics)
         if not bool(tpdf_certificate.get("accepted", False)):
             raise SolutionError("Native electrolyte LLE hard TPDF stability certification failed.", diagnostics)
         return EquilibriumResult(
