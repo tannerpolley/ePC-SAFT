@@ -15,11 +15,11 @@ public:
     RouteCampaign(
         QualityFunction quality,
         std::string initial_point_strategy,
-        std::string fallback_seed_name
+        std::string empty_campaign_seed_name
     )
         : quality_(std::move(quality)),
           initial_point_strategy_(std::move(initial_point_strategy)),
-          fallback_seed_name_(std::move(fallback_seed_name)) {}
+          empty_campaign_seed_name_(std::move(empty_campaign_seed_name)) {}
 
     void reserve(std::size_t count) {
         attempts_.reserve(count);
@@ -37,7 +37,7 @@ public:
         Result out = best_;
         if (!have_best_) {
             out.initial_point_strategy = initial_point_strategy_;
-            out.seed_name = fallback_seed_name_;
+            out.seed_name = empty_campaign_seed_name_;
         }
         out.seed_attempts = attempts_;
         return out;
@@ -46,7 +46,7 @@ public:
 private:
     QualityFunction quality_;
     std::string initial_point_strategy_;
-    std::string fallback_seed_name_;
+    std::string empty_campaign_seed_name_;
     Result best_;
     bool have_best_ = false;
     std::vector<Attempt> attempts_;

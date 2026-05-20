@@ -17,6 +17,7 @@ from urllib.request import url2pathname
 
 from .capability_evidence import (
     DERIVATIVE_COVERAGE_ROWS,
+    EQUILIBRIUM_ROUTE_DERIVATIVE_EVIDENCE,
     EQUILIBRIUM_PROBLEM_OBJECT_CLASSES,
     IPOPT_EQUILIBRIUM_ROUTE_EVIDENCE,
     REGRESSION_CAPABILITY_KEYS,
@@ -320,6 +321,7 @@ def _capability_evidence_summary(derivative_coverage: dict[str, object]) -> dict
     return {
         "source": "registered_capability_evidence",
         "equilibrium_keys": [str(item["key"]) for item in IPOPT_EQUILIBRIUM_ROUTE_EVIDENCE],
+        "equilibrium_route_derivative_row_count": len(EQUILIBRIUM_ROUTE_DERIVATIVE_EVIDENCE),
         "ipopt_public_routes": _registered_ipopt_public_routes(),
         "problem_object_classes": list(EQUILIBRIUM_PROBLEM_OBJECT_CLASSES),
         "regression_keys": list(REGRESSION_CAPABILITY_KEYS),
@@ -382,6 +384,15 @@ def _derivative_coverage_capabilities(cppad: dict[str, object], ceres: dict[str,
     }
 
 
+def _equilibrium_route_derivative_evidence() -> dict[str, object]:
+    return {
+        "source": "registered_capability_evidence",
+        "implemented_capability_claims_only": False,
+        "production_rows_are_capability_safe": True,
+        "rows": [_capability_value(row) for row in EQUILIBRIUM_ROUTE_DERIVATIVE_EVIDENCE],
+    }
+
+
 def capabilities() -> dict[str, object]:
     """Return structured availability flags for high-level package workflows."""
 
@@ -417,6 +428,7 @@ def capabilities() -> dict[str, object]:
         "derivatives": {
             "cppad": cppad_capability,
             "coverage_matrix": derivative_coverage,
+            "equilibrium_route_evidence": _equilibrium_route_derivative_evidence(),
             "ssmds_born_derivatives": {
                 "available": True,
                 "production": True,

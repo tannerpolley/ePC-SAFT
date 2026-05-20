@@ -118,7 +118,6 @@ def test_liquid_root_contracts_declare_residual_families_without_running_ipopt()
         "conserved_balance",
         "reaction_stationarity",
         "phase_equilibrium",
-        "phase_charge",
     ]
 
 

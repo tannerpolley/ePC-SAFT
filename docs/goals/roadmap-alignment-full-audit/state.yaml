@@ -1,0 +1,316 @@
+version: 2
+
+goal:
+  title: "Roadmap Alignment Full Audit"
+  slug: "roadmap-alignment-full-audit"
+  kind: audit
+  tranche: "continuous execution: audit roadmap coverage, fix safe package gaps, and continue until aligned or explicitly blocked"
+  status: active
+  intake:
+    original_request: "Commit and push the current changes, audit the package against unified_equilibrium_core_algorithm.md, and enable a new goal to revise and fix all roadmap gaps."
+    interpreted_outcome: "The pushed ipopt branch is followed by a verified package-vs-roadmap audit and repair goal that fixes every safe local gap."
+    input_shape: audit
+    audience: "ePC-SAFT maintainers and downstream consumers"
+    authority: requested
+    proof_type: test
+    completion_proof: "Branch is pushed, audit matrix covers the roadmap, every gap has a repair/block receipt, validation passes, capabilities remain honest, cleanup passes, and tracked changes are committed locally."
+    likely_misfire: "Treating roadmap aspirations as already implemented, doing a docs-only audit, or opening a giant vague task without executable repair slices."
+    blind_spots_considered:
+      - "The unified roadmap is an architecture contract, not proof of implementation."
+      - "FULL_ROADMAP forbids closing by documenting limitations."
+      - "Capability claims must be backed by executable evidence."
+      - "Native _core rebuilds must be coordinated by the main thread."
+      - "Some roadmap gaps may be too large for one slice and need explicit blocked/deferred receipts."
+    existing_plan_facts:
+      - "Current branch ipopt was pushed to origin at commit 4bb9e513."
+      - "The roadmap requires one shared equilibrium core, route-owned variableizations, exact derivatives, shared stability/certification, and capability-safe acceptance."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: generated
+    url: "http://127.0.0.1:41737/roadmap-alignment-full-audit/"
+    command: "pwsh -NoProfile -ExecutionPolicy Bypass -File C:\\Users\\Tanner\\Documents\\git\\codex-maintenance\\scripts\\start-goalbuddy-board.ps1 -Goal docs/goals/roadmap-alignment-full-audit"
+  github_projects:
+    status: not_requested
+    url: null
+    command: "npx goalbuddy extend github-projects"
+    missing: []
+
+active_task: T007
+
+tasks:
+  - id: T001
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: high
+    objective: "Build a source-backed audit matrix from unified_equilibrium_core_algorithm.md to current package implementation, tests, docs, and capability evidence."
+    inputs:
+      - "docs/roadmaps/unified_equilibrium_core_algorithm.md"
+      - "docs/roadmaps/FULL_ROADMAP.md"
+      - "CONTEXT.md"
+      - "docs/adr/0001-architecture-deepening-public-api-boundaries.md"
+      - "src/epcsaft"
+      - "tests"
+    constraints:
+      - "Read-only."
+      - "Do not edit implementation files."
+      - "Label verified facts, inferences, assumptions, and unknowns."
+      - "Differentiate roadmap architecture targets from current capability claims."
+    expected_output:
+      - "Roadmap section coverage matrix."
+      - "Verified package gaps with file/test evidence."
+      - "Potential overclaims in capabilities or docs."
+      - "Candidate repair slices with allowed_files and verify commands."
+    receipt:
+      result: done
+      path: "docs/goals/roadmap-alignment-full-audit/notes/T001-roadmap-audit.md"
+      evidence:
+        - "docs/goals/roadmap-alignment-full-audit/notes/T001-roadmap-audit.md"
+      summary: "Built the roadmap coverage matrix, identified verified gaps, and selected the first safe selector repair."
+  - id: T002
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Review T001 findings and choose the first largest safe roadmap-alignment repair slice."
+    inputs:
+      - "T001 receipt"
+      - "Current git diff"
+    constraints:
+      - "Do not implement."
+      - "Reject docs-only repair if code/capability behavior is wrong."
+      - "Prefer the largest safe slice with clear validation."
+    expected_output:
+      - "Decision"
+      - "Worker objective"
+      - "allowed_files"
+      - "verify"
+      - "stop_if"
+      - "Blocked/deferred findings"
+    receipt:
+      result: done
+      decision: "Proceed with selector repair first."
+      worker_objective: "Remove inactive neutral reactive phase-charge residual rows while preserving electrolyte phase-charge behavior."
+      allowed_files:
+        - "src/epcsaft/native/equilibrium/reactive_phase_equilibrium_problem.cpp"
+        - "src/epcsaft/native/equilibrium_nlp/route_metadata.h"
+        - "tests/native/equilibrium/test_reactive_phase_equilibrium_residual_surface.py"
+        - "tests/native/equilibrium/test_reactive_phase_equilibrium_residual_jacobian.py"
+        - "tests/native/equilibrium/test_route_metadata_contracts.py"
+        - "tests/api/reactive/test_reactive_phase_equilibrium_problem_routes_native.py"
+        - "tests/native/equilibrium/test_route_builders.py"
+      verify:
+        - "uv run python scripts/dev/build_epcsaft.py --build-only --parallel 10"
+        - "uv run python run_pytest.py tests/native/equilibrium/test_reactive_phase_equilibrium_residual_surface.py tests/native/equilibrium/test_reactive_phase_equilibrium_residual_jacobian.py tests/native/equilibrium/test_route_metadata_contracts.py tests/api/reactive/test_reactive_phase_equilibrium_problem_routes_native.py -q"
+        - "uv run python run_pytest.py --native-contracts -q"
+  - id: T003
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Execute the first roadmap-alignment repair slice selected by T002."
+    allowed_files:
+      - "src/epcsaft/native/equilibrium/reactive_phase_equilibrium_problem.cpp"
+      - "src/epcsaft/native/equilibrium_nlp/route_metadata.h"
+      - "tests/native/equilibrium/test_reactive_phase_equilibrium_residual_surface.py"
+      - "tests/native/equilibrium/test_reactive_phase_equilibrium_residual_jacobian.py"
+      - "tests/native/equilibrium/test_route_metadata_contracts.py"
+      - "tests/api/reactive/test_reactive_phase_equilibrium_problem_routes_native.py"
+      - "tests/native/equilibrium/test_route_builders.py"
+    verify:
+      - "uv run python scripts/dev/build_epcsaft.py --build-only --parallel 10"
+      - "uv run python run_pytest.py tests/native/equilibrium/test_reactive_phase_equilibrium_residual_surface.py tests/native/equilibrium/test_reactive_phase_equilibrium_residual_jacobian.py tests/native/equilibrium/test_route_metadata_contracts.py tests/api/reactive/test_reactive_phase_equilibrium_problem_routes_native.py -q"
+      - "uv run python run_pytest.py tests/native/equilibrium/test_route_builders.py::test_reactive_lle_eos_route_builder_owns_canonical_initial_point tests/native/equilibrium/test_route_builders.py::test_reactive_lle_eos_route_uses_exact_hessian_when_requested tests/native/equilibrium/test_route_builders.py::test_reactive_electrolyte_lle_eos_route_builder_uses_liquid_root_residual_route tests/native/equilibrium/test_route_builders.py::test_reactive_electrolyte_lle_eos_route_uses_exact_hessian_when_requested -q"
+      - "uv run python run_pytest.py --native-contracts -q"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "Thermodynamic claim lacks source-backed evidence."
+      - "Native _core rebuild is required before PM coordination."
+      - "Verification fails twice for different root causes."
+    receipt:
+      result: done
+      summary: "Neutral reactive LLE no longer activates zero phase-charge residual rows; electrolyte reactive LLE retains phase-charge residuals and constraints."
+      changed_files:
+        - "src/epcsaft/native/equilibrium/reactive_phase_equilibrium_problem.cpp"
+        - "src/epcsaft/native/equilibrium_nlp/route_metadata.h"
+        - "tests/native/equilibrium/test_reactive_phase_equilibrium_residual_surface.py"
+        - "tests/native/equilibrium/test_route_metadata_contracts.py"
+        - "tests/api/reactive/test_reactive_phase_equilibrium_problem_routes_native.py"
+        - "tests/native/equilibrium/test_route_builders.py"
+      commands:
+        - cmd: "uv run python scripts/dev/build_epcsaft.py --build-only --parallel 10"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/equilibrium/test_reactive_phase_equilibrium_residual_surface.py tests/native/equilibrium/test_reactive_phase_equilibrium_residual_jacobian.py tests/native/equilibrium/test_route_metadata_contracts.py tests/api/reactive/test_reactive_phase_equilibrium_problem_routes_native.py -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/equilibrium/test_route_builders.py::test_reactive_lle_eos_route_builder_owns_canonical_initial_point tests/native/equilibrium/test_route_builders.py::test_reactive_lle_eos_route_uses_exact_hessian_when_requested tests/native/equilibrium/test_route_builders.py::test_reactive_electrolyte_lle_eos_route_builder_uses_liquid_root_residual_route tests/native/equilibrium/test_route_builders.py::test_reactive_electrolyte_lle_eos_route_uses_exact_hessian_when_requested -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py --native-contracts -q"
+          status: pass
+      tests_passed:
+        - "15 focused residual/API/metadata tests"
+        - "4 focused native route-builder tests"
+        - "9 native-contract tests"
+  - id: T004
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Add explicit phase-eligibility mask evidence to reactive phase route payloads and diagnostics so phase-restricted species are first-class route data."
+    allowed_files:
+      - "src/epcsaft/native/epcsaft_equilibrium.h"
+      - "src/epcsaft/native/equilibrium_nlp/route_builders.h"
+      - "src/epcsaft/native/equilibrium/reactive_phase_equilibrium_problem.cpp"
+      - "src/epcsaft/bindings.cpp"
+      - "tests/native/equilibrium/test_reactive_phase_equilibrium_residual_surface.py"
+      - "tests/equilibrium/reactive/test_reactive_electrolyte_lle_coupled_solver.py"
+      - "tests/api/reactive/test_reactive_phase_equilibrium_problem_routes_native.py"
+      - "docs/goals/roadmap-alignment-full-audit/notes/T001-roadmap-audit.md"
+    verify:
+      - "uv run python scripts/dev/build_epcsaft.py --build-only --parallel 10"
+      - "uv run python run_pytest.py tests/native/equilibrium/test_reactive_phase_equilibrium_residual_surface.py tests/equilibrium/reactive/test_reactive_electrolyte_lle_coupled_solver.py -q"
+      - "uv run python run_pytest.py --native-contracts -q"
+    stop_if:
+      - "The route needs a public API design decision beyond serialized diagnostics."
+      - "The phase mask cannot be represented without changing accepted result semantics."
+    receipt:
+      result: done
+      summary: "Reactive route payloads now expose a flattened phase_eligibility_mask with shape diagnostics; Python route diagnostics preserve the mask when native routes return it."
+      changed_files:
+        - "src/epcsaft/native/epcsaft_equilibrium.h"
+        - "src/epcsaft/native/equilibrium_nlp/route_builders.h"
+        - "src/epcsaft/native/equilibrium/reactive_phase_equilibrium_problem.cpp"
+        - "src/epcsaft/bindings.cpp"
+        - "tests/native/equilibrium/test_reactive_phase_equilibrium_residual_surface.py"
+        - "tests/api/reactive/test_reactive_phase_equilibrium_problem_routes_native.py"
+        - "docs/goals/roadmap-alignment-full-audit/notes/T001-roadmap-audit.md"
+      commands:
+        - cmd: "uv run python scripts/dev/build_epcsaft.py --build-only --parallel 10"
+          status: pass
+        - cmd: "uv run python run_pytest.py tests/native/equilibrium/test_reactive_phase_equilibrium_residual_surface.py tests/equilibrium/reactive/test_reactive_electrolyte_lle_coupled_solver.py tests/api/reactive/test_reactive_phase_equilibrium_problem_routes_native.py -q"
+          status: pass
+        - cmd: "uv run python run_pytest.py --native-contracts -q"
+          status: pass
+  - id: T005
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Choose the next largest safe slice after phase-eligibility evidence, prioritizing shared certification or route-level derivative/capability evidence."
+    inputs:
+      - "T001 receipt"
+      - "T004 receipt"
+      - "Current git diff"
+    constraints:
+      - "Do not implement."
+      - "Reject capability overclaims without executable benchmark evidence."
+      - "Prefer code/test repairs over docs-only alignment."
+    expected_output:
+      - "Decision"
+      - "allowed_files"
+      - "verify"
+      - "blocked/deferred gaps"
+    receipt:
+      result: done
+      decision: "Implement route-level derivative evidence next, keeping production coverage claims separate from capability-pending reactive routes."
+      summary: "Selected public capability evidence as the next safe slice because it improves roadmap traceability without making new production claims."
+  - id: T006
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Implement the next safe roadmap-alignment repair selected by T005."
+    allowed_files:
+      - "src/epcsaft/capability_evidence.py"
+      - "src/epcsaft/runtime.py"
+      - "tests/api/runtime/test_runtime_capabilities_dependency_gates.py"
+      - "docs/goals/roadmap-alignment-full-audit/notes/T001-roadmap-audit.md"
+    verify:
+      - "uv run python run_pytest.py tests/api/runtime/test_runtime_capabilities_dependency_gates.py -q"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "Benchmark or production capability evidence is weaker than the claim."
+      - "Native clean rebuild is required before PM coordination."
+    receipt:
+      result: done
+      summary: "Added derivatives.equilibrium_route_evidence while preserving the production-only coverage_matrix contract."
+      changed_files:
+        - "src/epcsaft/capability_evidence.py"
+        - "src/epcsaft/runtime.py"
+        - "tests/api/runtime/test_runtime_capabilities_dependency_gates.py"
+        - "docs/goals/roadmap-alignment-full-audit/notes/T001-roadmap-audit.md"
+      commands:
+        - cmd: "uv run python run_pytest.py tests/api/runtime/test_runtime_capabilities_dependency_gates.py -q"
+          status: pass
+  - id: T007
+    type: worker
+    assignee: Worker
+    status: active
+    reasoning_hint: high
+    objective: "Audit and repair the next shared-certification gap without overclaiming production behavior."
+    allowed_files:
+      - "src/epcsaft/equilibrium.py"
+      - "src/epcsaft/equilibrium_core/native_results.py"
+      - "tests/equilibrium/core/test_api.py"
+      - "tests/equilibrium/reactive/test_reactive_electrolyte_lle_coupled_solver.py"
+      - "docs/goals/roadmap-alignment-full-audit/notes/T001-roadmap-audit.md"
+    verify:
+      - "uv run python run_pytest.py tests/equilibrium/core/test_api.py tests/equilibrium/reactive/test_reactive_electrolyte_lle_coupled_solver.py -q"
+      - "uv run python run_pytest.py --native-contracts -q"
+    stop_if:
+      - "A true stability certificate requires new numerical methods rather than diagnostics normalization."
+      - "The repair would accept a route that is not physically certified."
+    receipt: null
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: high
+    objective: "Audit whether the package and unified equilibrium roadmap are aligned or all remaining gaps are explicitly blocked with receipts."
+    inputs:
+      - "All done task receipts"
+      - "Roadmap audit matrix"
+      - "Last validation output"
+      - "Current git diff"
+    constraints:
+      - "Do not implement."
+      - "Reject completion if a safe local roadmap repair remains."
+      - "Reject completion if capabilities overclaim beyond executable evidence."
+      - "Reject completion if GoalBuddy state, validation, cleanup, or git status is unresolved."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "remaining roadmap gaps"
+      - "next task if not complete"
+    receipt: null
+
+checks:
+  dirty_fingerprint: unknown
+  last_verification:
+    result: unknown
+    task: null
+    commands: []

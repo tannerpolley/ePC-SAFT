@@ -230,6 +230,34 @@ bool contains_index(const std::vector<int>& indices, std::size_t index) {
     return std::find(indices.begin(), indices.end(), static_cast<int>(index)) != indices.end();
 }
 
+bool has_active_charge_vector(const std::vector<double>& charges, std::size_t ncomp) {
+    if (charges.size() != ncomp) {
+        return false;
+    }
+    return std::any_of(charges.begin(), charges.end(), [](double charge) {
+        return std::isfinite(charge) && std::abs(charge) > 1.0e-12;
+    });
+}
+
+std::vector<double> phase_eligibility_mask_from_indices(
+    std::size_t ncomp,
+    const std::vector<int>& phase1_indices,
+    const std::vector<int>& phase2_indices
+) {
+    std::vector<double> mask(2 * ncomp, 0.0);
+    const auto mark_phase = [&](const std::vector<int>& indices, std::size_t phase_offset) {
+        for (int index : indices) {
+            if (index < 0 || static_cast<std::size_t>(index) >= ncomp) {
+                throw ValueError("phase eligibility index is outside the global component set.");
+            }
+            mask[phase_offset + static_cast<std::size_t>(index)] = 1.0;
+        }
+    };
+    mark_phase(phase1_indices, 0);
+    mark_phase(phase2_indices, ncomp);
+    return mask;
+}
+
 std::vector<double> selected_amounts(
     const std::vector<double>& amounts,
     const std::vector<int>& indices,
@@ -830,6 +858,7 @@ std::vector<double> reactive_phase_residual_jacobian_row_major(
         reaction_rows,
         static_cast<int>(ncomp)
     );
+    const bool phase_charge_active = has_active_charge_vector(charges, ncomp);
     std::size_t row = 0;
 
     for (int balance = 0; balance < balance_rows; ++balance) {
@@ -963,12 +992,18 @@ std::vector<double> reactive_phase_residual_jacobian_row_major(
         }
     }
 
-    for (std::size_t species = 0; species < ncomp; ++species) {
-        jacobian[row * nvars + species] = charges[species] * phase1.amounts[species];
+    if (phase_charge_active) {
+        for (std::size_t species = 0; species < ncomp; ++species) {
+            jacobian[row * nvars + species] = charges[species] * phase1.amounts[species];
+        }
+        ++row;
+        for (std::size_t species = 0; species < ncomp; ++species) {
+            jacobian[row * nvars + ncomp + species] = charges[species] * phase2.amounts[species];
+        }
+        ++row;
     }
-    ++row;
-    for (std::size_t species = 0; species < ncomp; ++species) {
-        jacobian[row * nvars + ncomp + species] = charges[species] * phase2.amounts[species];
+    if (row != residual_eval.residual.size()) {
+        throw ValueError("reactive residual Jacobian row count did not match the residual vector.");
     }
     return jacobian;
 }
@@ -1091,6 +1126,7 @@ std::vector<double> reactive_phase_residual_hessian_tensor_row_major(
         reaction_rows,
         static_cast<int>(ncomp)
     );
+    const bool phase_charge_active = has_active_charge_vector(charges, ncomp);
     std::size_t row = 0;
 
     for (int balance = 0; balance < balance_rows; ++balance) {
@@ -1230,10 +1266,12 @@ std::vector<double> reactive_phase_residual_hessian_tensor_row_major(
         }
     }
 
-    add_phase_amount_diagonal_hessian(tensor, row, nvars, 0, charges, phase1.amounts);
-    ++row;
-    add_phase_amount_diagonal_hessian(tensor, row, nvars, ncomp, charges, phase2.amounts);
-    ++row;
+    if (phase_charge_active) {
+        add_phase_amount_diagonal_hessian(tensor, row, nvars, 0, charges, phase1.amounts);
+        ++row;
+        add_phase_amount_diagonal_hessian(tensor, row, nvars, ncomp, charges, phase2.amounts);
+        ++row;
+    }
     if (row != residual_eval.residual.size()) {
         throw ValueError("reactive residual Hessian row count did not match the residual vector.");
     }
@@ -1412,15 +1450,16 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
         reaction_rows,
         ncomp_int
     );
+    std::vector<double> charges = mixture->args().z;
+    if (charges.size() != ncomp) {
+        charges.assign(ncomp, 0.0);
+    }
+    const bool phase_charge_active = has_active_charge_vector(charges, ncomp);
 
     const epcsaft::native::NativeRouteMetadata metadata =
         epcsaft::native::equilibrium_nlp::reactive_liquid_root_route_metadata(
             phase_tagged_reactions,
-            std::any_of(
-                mixture->args().z.begin(),
-                mixture->args().z.end(),
-                [](double charge) { return std::abs(charge) > 1.0e-12; }
-            )
+            phase_charge_active
         );
     ReactivePhaseResidualEvaluationNative out;
     epcsaft::native::apply_route_metadata(out, metadata);
@@ -1431,6 +1470,11 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
     out.phase2_amounts = phase2.amounts;
     out.phase1_composition = phase1.composition;
     out.phase2_composition = phase2.composition;
+    out.phase_eligibility_mask = phase_eligibility_mask_from_indices(
+        ncomp,
+        phase1.global_indices,
+        phase2.global_indices
+    );
     out.phase1_ln_fugacity_coefficient = phase1.ln_phi;
     out.phase2_ln_fugacity_coefficient = phase2.ln_phi;
     out.phase1_density = phase1.density;
@@ -1475,14 +1519,12 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
             options.min_composition
         );
     }
-    std::vector<double> charges = mixture->args().z;
-    if (charges.size() != ncomp) {
-        charges.assign(ncomp, 0.0);
+    if (phase_charge_active) {
+        out.phase_charge_residuals = {
+            composition_charge(phase1.amounts, charges),
+            composition_charge(phase2.amounts, charges),
+        };
     }
-    out.phase_charge_residuals = {
-        composition_charge(phase1.amounts, charges),
-        composition_charge(phase2.amounts, charges),
-    };
     if (!phase_tagged_reactions) {
         out.neutral_phase_equilibrium_residuals = neutral_phase_residuals(charges, ln_activity1, ln_activity2);
         out.ionic_equilibrium_residuals = ionic_phase_residuals(charges, ln_activity1, ln_activity2);
@@ -1496,7 +1538,9 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
     }
     append_block(out.residual, out.neutral_phase_equilibrium_residuals);
     append_block(out.residual, out.ionic_equilibrium_residuals);
-    append_block(out.residual, out.phase_charge_residuals);
+    if (phase_charge_active) {
+        append_block(out.residual, out.phase_charge_residuals);
+    }
     for (double value : out.residual) {
         out.objective += 0.5 * value * value;
     }
@@ -1545,9 +1589,13 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
 
     out.diagnostics_string["residual_surface"] = "native_reactive_phase_equilibrium_coupled_state";
     out.diagnostics_string["variable_model"] = out.variable_model;
-    out.diagnostics_string["residual_blocks"] = phase_tagged_reactions
-        ? "element_balance,phase_tagged_reaction_equilibrium,neutral_phase_equilibrium,ionic_equilibrium,phase_charge"
-        : "element_balance,reaction_equilibrium,neutral_phase_equilibrium,ionic_equilibrium,phase_charge";
+    std::string residual_blocks = phase_tagged_reactions
+        ? "element_balance,phase_tagged_reaction_equilibrium,neutral_phase_equilibrium,ionic_equilibrium"
+        : "element_balance,reaction_equilibrium,neutral_phase_equilibrium,ionic_equilibrium";
+    if (phase_charge_active) {
+        residual_blocks += ",phase_charge";
+    }
+    out.diagnostics_string["residual_blocks"] = residual_blocks;
     out.diagnostics_string["jacobian_backend"] = "cppad_explicit_density";
     out.diagnostics_string["derivative_backend"] = "cppad_explicit_density";
     out.diagnostics_string["density_backend"] = "explicit_log_density_pressure_constraint";
@@ -1569,6 +1617,7 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
     out.diagnostics_bool["phase_tagged_reaction_stoichiometry"] = phase_tagged_reactions;
     out.diagnostics_bool["cross_phase_reaction_residuals"] = phase_tagged_reactions;
     out.diagnostics_bool["phase_models_applied"] = use_phase_models;
+    out.diagnostics_bool["phase_eligibility_mask_available"] = true;
     out.diagnostics_bool["nonnegative_amounts_enforced_by_transform"] = true;
     out.diagnostics_bool["composition_normalization_enforced_by_transform"] = true;
     out.diagnostics_int["phase_count"] = 2;
@@ -1576,6 +1625,8 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
     out.diagnostics_int["reaction_count"] = reaction_rows;
     out.diagnostics_int["balance_row_count"] = balance_rows;
     out.diagnostics_int["variable_count"] = static_cast<int>(eval_variables.size());
+    out.diagnostics_int["phase_eligibility_rows"] = 2;
+    out.diagnostics_int["phase_eligibility_cols"] = static_cast<int>(ncomp);
     out.diagnostics_int["residual_size"] = static_cast<int>(out.residual.size());
     out.diagnostics_int["element_balance_residual_size"] = static_cast<int>(out.element_balance_residuals.size());
     out.diagnostics_int["reaction_residual_size_per_phase"] = static_cast<int>(out.reaction_residuals_phase1.size());
@@ -1607,6 +1658,7 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
     out.diagnostics_vector["neutral_phase_equilibrium_residual"] = out.neutral_phase_equilibrium_residuals;
     out.diagnostics_vector["ionic_equilibrium_residual"] = out.ionic_equilibrium_residuals;
     out.diagnostics_vector["phase_charge_residual"] = out.phase_charge_residuals;
+    out.diagnostics_vector["phase_eligibility_mask"] = out.phase_eligibility_mask;
     out.diagnostics_vector["reaction_standard_states"] = std::vector<double>(
         reaction_standard_states.begin(),
         reaction_standard_states.end()
@@ -2824,6 +2876,7 @@ epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosPostsolve reactive_liquid_r
         eval.ionic_equilibrium_residuals.end()
     );
     out.phase_charge_residuals = eval.phase_charge_residuals;
+    out.phase_eligibility_mask = eval.phase_eligibility_mask;
     out.phase_amount_totals = {
         std::accumulate(eval.phase1_amounts.begin(), eval.phase1_amounts.end(), 0.0),
         std::accumulate(eval.phase2_amounts.begin(), eval.phase2_amounts.end(), 0.0),
@@ -3089,6 +3142,7 @@ epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult solve_reactive_
             phase_distance_tolerance
         );
         result.phase_volumes = result.postsolve.phase_volumes;
+        result.phase_eligibility_mask = result.postsolve.phase_eligibility_mask;
         result.accepted = result.postsolve.accepted;
         result.status = result.accepted ? "accepted" : "postsolve_rejected";
         attempts.push_back(reactive_seed_attempt_from_result(result));
@@ -3269,6 +3323,7 @@ epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult solve_reactive_
             phase_distance_tolerance
         );
         result.phase_volumes = result.postsolve.phase_volumes;
+        result.phase_eligibility_mask = result.postsolve.phase_eligibility_mask;
         result.accepted = result.postsolve.accepted;
         result.status = result.accepted ? "accepted" : "postsolve_rejected";
         attempts.push_back(reactive_seed_attempt_from_result(result));

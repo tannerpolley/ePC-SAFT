@@ -1986,7 +1986,6 @@ def test_reactive_lle_eos_route_builder_owns_canonical_initial_point() -> None:
         "conserved_balance",
         "reaction_stationarity",
         "phase_equilibrium",
-        "phase_charge",
     ]
     assert contract["constraint_families"] == [
         "conserved_balance",
@@ -2049,7 +2048,6 @@ def test_reactive_lle_eos_route_builder_owns_canonical_initial_point() -> None:
         "conserved_balance",
         "reaction_stationarity",
         "phase_equilibrium",
-        "phase_charge",
     ]
     assert payload["constraint_families"] == [
         "conserved_balance",

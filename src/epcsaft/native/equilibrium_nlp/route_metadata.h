@@ -130,8 +130,10 @@ inline RouteMetadata reactive_liquid_root_route_metadata(
         "conserved_balance",
         "reaction_stationarity",
         "phase_equilibrium",
-        "phase_charge",
     };
+    if (phase_charge_constraints_active) {
+        out.residual_families.push_back("phase_charge");
+    }
     out.constraint_families = {"conserved_balance"};
     if (phase_tagged_reaction_constraints_active) {
         out.constraint_families.push_back("reaction_stationarity");

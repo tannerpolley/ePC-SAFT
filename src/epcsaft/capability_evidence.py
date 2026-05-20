@@ -156,6 +156,54 @@ DERIVATIVE_COVERAGE_ROWS: Final[tuple[dict[str, object], ...]] = (
     },
 )
 
+EQUILIBRIUM_ROUTE_DERIVATIVE_EVIDENCE: Final[tuple[dict[str, object], ...]] = (
+    {
+        "row_family": "equilibrium",
+        "subsystem": "native_ipopt",
+        "quantity": "neutral_two_phase_routes",
+        "derivative": "lagrangian_hessian",
+        "backend": "cppad_phase_blocks",
+        "supported": True,
+        "classification": "production_supported",
+        "reason": "neutral TP flash, LLE, stability, bubble, and dew routes require exact gradients/Jacobians and default to exact Hessians",
+        "tests": (
+            "tests/equilibrium/core/test_api.py",
+            "tests/equilibrium/core/test_bubble_dew.py",
+            "tests/native/equilibrium/test_route_builders.py",
+        ),
+    },
+    {
+        "row_family": "equilibrium",
+        "subsystem": "native_ipopt",
+        "quantity": "electrolyte_lle_and_stability",
+        "derivative": "lagrangian_hessian",
+        "backend": "cppad_explicit_density",
+        "supported": True,
+        "classification": "production_supported",
+        "reason": "electrolyte LLE and charge-constrained stability routes report exact Hessian metadata and reject non-certified postsolves",
+        "tests": (
+            "tests/api/equilibrium/test_electrolyte_lle_problem_native_ipopt.py",
+            "tests/equilibrium/electrolyte/test_electrolyte_lle_solver_contracts.py",
+            "tests/native/equilibrium/test_route_builders.py",
+        ),
+    },
+    {
+        "row_family": "equilibrium",
+        "subsystem": "native_ipopt",
+        "quantity": "reactive_lle_and_reactive_electrolyte_lle",
+        "derivative": "lagrangian_hessian",
+        "backend": "cppad_explicit_density",
+        "supported": True,
+        "classification": "route_builder_supported_capability_pending",
+        "reason": "native reactive LLE route builders expose exact Hessian paths, while production capability registration still waits for benchmark and acceptance evidence",
+        "tests": (
+            "tests/native/equilibrium/test_reactive_phase_equilibrium_residual_jacobian.py",
+            "tests/native/equilibrium/test_route_builders.py",
+            "tests/api/reactive/test_reactive_phase_equilibrium_problem_routes_native.py",
+        ),
+    },
+)
+
 REGRESSION_CAPABILITY_KEYS: Final[tuple[str, ...]] = (
     "pure_neutral",
     "pure_ion",

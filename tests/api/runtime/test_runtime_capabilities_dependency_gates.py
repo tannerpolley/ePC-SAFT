@@ -78,6 +78,9 @@ def test_capability_contract_is_derived_from_registered_evidence() -> None:
     assert evidence["source"] == "registered_capability_evidence"
     assert evidence["ipopt_public_routes"] == capabilities["optimizers"]["ipopt"]["public_routes"]
     assert set(evidence["equilibrium_keys"]).issubset(capabilities["equilibrium"])
+    assert evidence["equilibrium_route_derivative_row_count"] == len(
+        capabilities["derivatives"]["equilibrium_route_evidence"]["rows"]
+    )
     assert evidence["problem_object_classes"] == capabilities["equilibrium"]["problem_objects"]["classes"]
     assert set(evidence["regression_keys"]).issubset(capabilities["regression"])
     assert evidence["derivative_row_count"] == len(capabilities["derivatives"]["coverage_matrix"]["rows"])
@@ -89,7 +92,7 @@ def test_capability_contract_is_derived_from_registered_evidence() -> None:
 
 
 def test_registered_evidence_links_capability_rows_to_executable_checks() -> None:
-    for row in capability_evidence.DERIVATIVE_COVERAGE_ROWS:
+    for row in (*capability_evidence.DERIVATIVE_COVERAGE_ROWS, *capability_evidence.EQUILIBRIUM_ROUTE_DERIVATIVE_EVIDENCE):
         assert row["tests"]
         assert all(str(target).startswith("tests/") for target in row["tests"])
 
@@ -102,3 +105,17 @@ def test_registered_evidence_links_capability_rows_to_executable_checks() -> Non
         targets = slice_payload["targets"]
         assert targets
         assert all(str(target).startswith("tests") for target in targets)
+
+
+def test_route_level_equilibrium_derivative_rows_are_registered_without_capability_overclaims() -> None:
+    route_evidence = epcsaft.capabilities()["derivatives"]["equilibrium_route_evidence"]
+    by_quantity = {row["quantity"]: row for row in route_evidence["rows"]}
+
+    assert by_quantity["neutral_two_phase_routes"]["classification"] == "production_supported"
+    assert by_quantity["electrolyte_lle_and_stability"]["classification"] == "production_supported"
+    assert (
+        by_quantity["reactive_lle_and_reactive_electrolyte_lle"]["classification"]
+        == "route_builder_supported_capability_pending"
+    )
+    assert "reactive_lle" not in epcsaft.capabilities()["equilibrium"]
+    assert "reactive_electrolyte_lle" not in epcsaft.capabilities()["equilibrium"]

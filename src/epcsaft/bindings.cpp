@@ -894,6 +894,8 @@ py::dict reactive_two_phase_eos_postsolve_to_dict(
     out["reaction_stationarity_residuals"] = result.reaction_stationarity_residuals;
     out["phase_equilibrium_residuals"] = result.phase_equilibrium_residuals;
     out["phase_charge_residuals"] = result.phase_charge_residuals;
+    out["phase_eligibility_mask"] = result.phase_eligibility_mask;
+    out["phase_eligibility_shape"] = py::make_tuple(2, result.species_count);
     out["phase_amount_totals"] = result.phase_amount_totals;
     out["phase_volumes"] = result.phase_volumes;
     out["phase_densities"] = result.phase_densities;
@@ -924,6 +926,8 @@ py::dict reactive_two_phase_eos_route_result_to_dict(
     out["seed_attempts"] = route_seed_attempts_to_list(result.seed_attempts);
     out["phase_amounts"] = result.phase_amounts;
     out["phase_volumes"] = result.phase_volumes;
+    out["phase_eligibility_mask"] = result.phase_eligibility_mask;
+    out["phase_eligibility_shape"] = py::make_tuple(2, result.species_count);
     out["postsolve"] = reactive_two_phase_eos_postsolve_to_dict(result.postsolve);
     return out;
 }
@@ -1210,6 +1214,8 @@ py::dict native_reactive_phase_residual_evaluation_to_dict(const ReactivePhaseRe
     out["neutral_phase_equilibrium_residuals"] = result.neutral_phase_equilibrium_residuals;
     out["ionic_equilibrium_residuals"] = result.ionic_equilibrium_residuals;
     out["phase_charge_residuals"] = result.phase_charge_residuals;
+    out["phase_eligibility_mask"] = result.phase_eligibility_mask;
+    out["phase_eligibility_shape"] = py::make_tuple(2, result.phase1_composition.size());
     out["phase_distance"] = result.phase_distance;
     out["diagnostics"] = native_diagnostics_to_dict(
         result.diagnostics_double,

@@ -77,6 +77,7 @@ struct ReactivePhaseResidualEvaluationNative {
     std::vector<double> neutral_phase_equilibrium_residuals;
     std::vector<double> ionic_equilibrium_residuals;
     std::vector<double> phase_charge_residuals;
+    std::vector<double> phase_eligibility_mask;
     double phase_distance = 0.0;
     std::map<std::string, double> diagnostics_double;
     std::map<std::string, int> diagnostics_int;

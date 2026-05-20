@@ -123,7 +123,6 @@ def test_reactive_phase_equilibrium_problem_preserves_native_route_metadata_in_r
                 "conserved_balance",
                 "reaction_stationarity",
                 "phase_equilibrium",
-                "phase_charge",
             ],
             "constraint_families": [
                 "conserved_balance",
@@ -133,6 +132,7 @@ def test_reactive_phase_equilibrium_problem_preserves_native_route_metadata_in_r
             "postsolve": {
                 "accepted": True,
                 "density_backend": "explicit_log_density_pressure_constraint",
+                "phase_eligibility_mask": [1.0, 1.0, 1.0, 1.0],
                 "phase_compositions": [[0.12, 0.88], [0.80, 0.20]],
                 "phase_amount_totals": [0.5, 0.5],
                 "phase_volumes": [0.01, 0.02],
@@ -160,8 +160,8 @@ def test_reactive_phase_equilibrium_problem_preserves_native_route_metadata_in_r
         "conserved_balance",
         "reaction_stationarity",
         "phase_equilibrium",
-        "phase_charge",
     ]
+    assert result.diagnostics["phase_eligibility_mask"] == [1.0, 1.0, 1.0, 1.0]
     assert result.diagnostics["constraint_families"] == [
         "conserved_balance",
         "phase_pressure_consistency",

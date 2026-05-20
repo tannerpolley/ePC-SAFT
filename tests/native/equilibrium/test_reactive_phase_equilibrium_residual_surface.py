@@ -58,7 +58,6 @@ def test_reactive_phase_residual_surface_exposes_single_coupled_state() -> None:
         "conserved_balance",
         "reaction_stationarity",
         "phase_equilibrium",
-        "phase_charge",
     ]
     assert payload["constraint_families"] == [
         "conserved_balance",
@@ -66,6 +65,8 @@ def test_reactive_phase_residual_surface_exposes_single_coupled_state() -> None:
         "phase_distance",
     ]
     assert len(payload["variables"]) == 2 * mix.ncomp + 2
+    assert payload["phase_eligibility_shape"] == (2, mix.ncomp)
+    assert payload["phase_eligibility_mask"] == pytest.approx([1.0, 1.0, 1.0, 1.0])
     assert payload["jacobian_shape"] == (len(payload["residual"]), len(payload["variables"]))
     assert len(payload["jacobian_row_major"]) == len(payload["residual"]) * len(payload["variables"])
     assert payload["jacobian_backend"] == "cppad_explicit_density"
@@ -74,12 +75,16 @@ def test_reactive_phase_residual_surface_exposes_single_coupled_state() -> None:
     assert diagnostics["residual_surface"] == "native_reactive_phase_equilibrium_coupled_state"
     assert diagnostics["coupling_level"] == "single_native_residual_state"
     assert diagnostics["reaction_and_phase_residuals_share_state"] is True
+    assert diagnostics["phase_eligibility_mask_available"] is True
+    assert diagnostics["phase_eligibility_rows"] == 2
+    assert diagnostics["phase_eligibility_cols"] == mix.ncomp
+    assert diagnostics["phase_eligibility_mask"] == pytest.approx([1.0, 1.0, 1.0, 1.0])
     assert diagnostics["nonnegative_amounts_enforced_by_transform"] is True
     assert diagnostics["element_balance_residual_size"] == 1
     assert diagnostics["reaction_residual_size_per_phase"] == 1
     assert diagnostics["neutral_phase_equilibrium_residual_size"] == 2
     assert diagnostics["ionic_equilibrium_residual_size"] == 0
-    assert diagnostics["phase_charge_residual_size"] == 2
+    assert diagnostics["phase_charge_residual_size"] == 0
     assert diagnostics["element_balance_norm"] == pytest.approx(0.0, abs=1.0e-10)
     assert diagnostics["phase_distance"] > 0.1
     assert math.isfinite(payload["objective"])
@@ -167,6 +172,9 @@ def test_reactive_electrolyte_residual_surface_includes_ion_and_charge_blocks() 
         "phase_distance",
     ]
     assert diagnostics["component_count"] == 4
+    assert payload["phase_eligibility_shape"] == (2, 4)
+    assert payload["phase_eligibility_mask"] == pytest.approx([1.0] * 8)
+    assert diagnostics["phase_eligibility_mask"] == pytest.approx([1.0] * 8)
     assert diagnostics["reaction_count"] == 1
     assert diagnostics["element_balance_residual_size"] == 4
     assert diagnostics["neutral_phase_equilibrium_residual_size"] == 2

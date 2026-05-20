@@ -152,6 +152,7 @@ struct ReactiveTwoPhaseEosPostsolve {
     std::vector<double> reaction_stationarity_residuals;
     std::vector<double> phase_equilibrium_residuals;
     std::vector<double> phase_charge_residuals;
+    std::vector<double> phase_eligibility_mask;
     std::vector<double> phase_amount_totals;
     std::vector<double> phase_volumes;
     std::vector<double> phase_densities;
@@ -215,6 +216,7 @@ struct ReactiveTwoPhaseEosRouteResult {
     std::vector<double> standard_mu_rt;
     std::vector<double> variables;
     std::vector<double> constraints;
+    std::vector<double> phase_eligibility_mask;
     std::vector<double> bound_lower_multipliers;
     std::vector<double> bound_upper_multipliers;
     std::vector<double> constraint_multipliers;
