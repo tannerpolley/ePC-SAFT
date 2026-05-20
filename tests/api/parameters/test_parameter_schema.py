@@ -103,6 +103,23 @@ def test_parameter_set_runtime_payload_is_copied_and_blocks_parameter_overrides(
         )
 
 
+def test_parameter_source_merges_runtime_options_and_blocks_payload_overrides() -> None:
+    params = epcsaft.ParameterSet.from_records(
+        [epcsaft.PureRecord("A", molar_mass=10.0e-3, m=1.0, sigma=3.0, epsilon_k=200.0)],
+        runtime_options={"analysis_options": {"source": "base"}},
+    )
+
+    source = epcsaft.ParameterSource(params, species=["A"])
+    runtime = source.to_runtime_dict(user_options={"analysis_options": {"split": "train"}, "source_tag": "batch"})
+
+    assert source.label == "ParameterSet"
+    assert runtime["analysis_options"] == {"source": "base", "split": "train"}
+    assert runtime["source_tag"] == "batch"
+
+    with pytest.raises(epcsaft.InputError, match="runtime_options cannot override parameter payload keys"):
+        source.to_runtime_dict(user_options={"m": [2.0]})
+
+
 def test_parameter_set_from_dataset_preserves_runtime_options_for_mixture() -> None:
     species = ["H2O", "Na+", "Cl-"]
     x = np.asarray([0.98, 0.01, 0.01], dtype=float)

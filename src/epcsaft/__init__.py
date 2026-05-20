@@ -52,6 +52,7 @@ if TYPE_CHECKING:
         dew_t,
         electrolyte_feed_from_molality,
     )
+    from epcsaft.equilibrium_core.native_results import RouteDiagnosticsView
     from epcsaft.implicit_sensitivity import (
         ImplicitSolveResult,
         implicit_backend_for_residual_backend,
@@ -62,6 +63,7 @@ if TYPE_CHECKING:
         BinaryRecord,
         ComponentIdentifier,
         ParameterSet,
+        ParameterSource,
         PermittivityRecord,
         PureRecord,
     )
@@ -158,6 +160,7 @@ _EXPORT_GROUPS = {
         "dew_t",
         "electrolyte_feed_from_molality",
     ),
+    "epcsaft.equilibrium_core.native_results": ("RouteDiagnosticsView",),
     "epcsaft.implicit_sensitivity": (
         "ImplicitSolveResult",
         "implicit_backend_for_residual_backend",
@@ -168,6 +171,7 @@ _EXPORT_GROUPS = {
         "BinaryRecord",
         "ComponentIdentifier",
         "ParameterSet",
+        "ParameterSource",
         "PermittivityRecord",
         "PureRecord",
     ),

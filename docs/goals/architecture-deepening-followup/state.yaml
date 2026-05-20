@@ -1,0 +1,230 @@
+version: 2
+
+goal:
+  title: "Architecture Deepening Followup"
+  slug: "architecture-deepening-followup"
+  kind: specific
+  tranche: "fresh improve-codebase-architecture pass after completed architecture-deepening board"
+  status: complete
+  intake:
+    original_request: "/goal Use improve-codebase-architecture and implement all things found"
+    interpreted_outcome: "Find new architecture-deepening opportunities beyond the completed six-candidate board, implement bounded findings, validate, and commit."
+    input_shape: specific
+    audience: "ePC-SAFT package maintainers and downstream consumers"
+    authority: requested
+    proof_type: test
+    completion_proof: "Implemented or blocked receipts for new candidates, focused validation, cleanup, and a local commit."
+    likely_misfire: "Repeating the previous board's six completed candidates without moving a new package seam."
+    blind_spots_considered:
+      - "Public parameter compatibility."
+      - "Native rebuild coordination."
+      - "Existing active historical GoalBuddy board state."
+      - "Capability claims must remain evidence-backed."
+      - "Canonical seams in CONTEXT.md and ADR 0001 must remain authoritative."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  preserve_and_validate_existing_plan: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: not_started
+    url: "http://127.0.0.1:41737/architecture-deepening-followup/"
+    command: "pwsh -NoProfile -ExecutionPolicy Bypass -File C:\\Users\\Tanner\\Documents\\git\\codex-maintenance\\scripts\\start-goalbuddy-board.ps1 -Goal docs/goals/architecture-deepening-followup"
+  github_projects:
+    status: not_requested
+    url: null
+    command: "npx goalbuddy extend github-projects"
+    missing: []
+
+active_task: null
+
+tasks:
+  - id: T001
+    type: worker
+    assignee: PM
+    status: done
+    reasoning_hint: high
+    objective: "Deepen canonical parameter template loading so canonical JSON scaffolds are not write-only."
+    candidate:
+      files:
+        - "src/epcsaft/parameter_templates.py"
+        - "src/epcsaft/parameter_schema.py"
+        - "tests/api/parameters/test_parameter_schema.py"
+        - "tests/api/parameters/test_parameter_templates.py"
+        - "docs/pages/parameter_schema.rst"
+        - "docs/pages/user_parameter_templates.rst"
+      problem: "create_parameter_template(schema='canonical') writes parameter_set.json, but ParameterSet.from_dataset and ePCSAFTMixture.from_dataset only load native CSV datasets, so the canonical scaffold has low leverage."
+      solution: "Make ParameterSet load canonical parameter_set.json payloads directly and let from_dataset use that file for path-based canonical datasets while preserving explicit legacy CSV workflows."
+      benefits: "The ParameterSet module becomes the deeper interface for canonical parameter folders; tests exercise the same seam users call, improving locality around parameter-family payloads."
+    constraints:
+      - "Do not remove explicit legacy CSV schema support in this slice."
+      - "Do not change native runtime payload semantics."
+      - "Do not add application-specific dataset behavior."
+    verify:
+      - "uv run python run_pytest.py tests/api/parameters/test_parameter_schema.py tests/api/parameters/test_parameter_templates.py -q"
+      - "uv run python run_pytest.py --api -q"
+    stop_if:
+      - "Canonical JSON loading requires a public schema migration decision."
+      - "Regression writer workflows require broad behavior changes."
+    receipt:
+      outcome: done
+      summary: "Canonical JSON parameter folders now load through ParameterSet.from_dataset and ePCSAFTMixture.from_dataset once parameter_set.json is filled."
+      changed_files:
+        - "src/epcsaft/parameter_schema.py"
+        - "tests/api/parameters/test_parameter_templates.py"
+        - "docs/pages/parameter_schema.rst"
+        - "docs/pages/user_parameter_templates.rst"
+      verification:
+        - "uv run python run_pytest.py tests/api/parameters/test_parameter_schema.py tests/api/parameters/test_parameter_templates.py -q"
+  - id: T002
+    type: worker
+    assignee: PM
+    status: done
+    reasoning_hint: high
+    objective: "Deepen native dependency policy into one build/runtime decision module."
+    candidate:
+      files:
+        - "scripts/dev/build_epcsaft.py"
+        - "scripts/dev/native_runtime_env.py"
+        - "build_backend/epcsaft_build_backend.py"
+        - ".codex/environments/setup.ps1"
+      problem: "Ipopt/Ceres/CppAD discovery, Windows SDK precedence, runtime DLL setup, and MSVC activation are repeated across build/runtime adapters."
+      solution: "Extract one native dependency policy module that emits build and runtime decisions while preserving current CLI flags."
+      benefits: "More leverage from one policy interface and better locality for future dependency precedence changes."
+    receipt:
+      outcome: done
+      summary: "Shared native dependency policy now owns Windows Ipopt SDK defaults, Ipopt MSVC-library detection, and Ceres/Ipopt path validators used by dev/runtime and PEP 517 build adapters."
+      changed_files:
+        - "build_backend/native_dependency_policy.py"
+        - "build_backend/epcsaft_build_backend.py"
+        - "scripts/dev/native_runtime_env.py"
+        - "scripts/dev/build_epcsaft.py"
+      verification:
+        - "uv run python run_pytest.py tests/workflows/build/test_native_runtime_env.py tests/workflows/build/test_build_backend.py tests/workflows/build/test_build_epcsaft.py -q"
+  - id: T003
+    type: worker
+    assignee: PM
+    status: done
+    reasoning_hint: high
+    objective: "Deepen the Python parameter-source interface across mixtures and regression."
+    candidate:
+      files:
+        - "src/epcsaft/epcsaft.py"
+        - "src/epcsaft/regression.py"
+        - "src/epcsaft/reactive_regression.py"
+        - "src/epcsaft/parameter_schema.py"
+      problem: "Parameter-origin branching leaks across multiple modules that each normalize ParameterSet, runtime dicts, dataset sources, and species order differently."
+      solution: "Introduce one ParameterSource adapter for runtime payloads, source summaries, and conflict checks."
+      benefits: "Higher depth for public entrypoints and better locality when parameter-origin rules change."
+    receipt:
+      outcome: done
+      summary: "ParameterSource now centralizes source labels, species-order checks, runtime payload resolution, and user-option merge conflict checks for mixtures and regression paths."
+      changed_files:
+        - "src/epcsaft/parameter_schema.py"
+        - "src/epcsaft/epcsaft.py"
+        - "src/epcsaft/regression.py"
+        - "src/epcsaft/reactive_regression.py"
+        - "src/epcsaft/__init__.py"
+        - "tests/api/parameters/test_parameter_schema.py"
+        - "tests/api/regression/test_regression_api_public_contracts.py"
+        - "docs/pages/api_reference.rst"
+        - "docs/pages/parameter_schema.rst"
+      verification:
+        - "uv run python run_pytest.py tests/api/parameters/test_parameter_schema.py tests/api/regression/test_regression_api_public_contracts.py tests/api/runtime/test_runtime_exports_and_metadata.py::test_package_exports_are_available -q"
+  - id: T004
+    type: worker
+    assignee: PM
+    status: done
+    reasoning_hint: high
+    objective: "Deepen route diagnostics with a typed view over the public dict payload."
+    candidate:
+      files:
+        - "src/epcsaft/equilibrium_core/native_results.py"
+        - "src/epcsaft/equilibrium.py"
+        - "tests/equilibrium/core/test_native_results.py"
+        - "tests/api/reactive/test_reactive_phase_equilibrium_problem_routes_native.py"
+      problem: "Route metadata generation is deeper, but Python consumers still spell free-form diagnostics dict keys throughout result adapters and tests."
+      solution: "Add a read-only RouteDiagnosticsView module while keeping dict serialization stable."
+      benefits: "More depth for result adapters and better locality when route diagnostics evolve."
+    receipt:
+      outcome: done
+      summary: "RouteDiagnosticsView now gives result and exception consumers a typed read-only view over the stable diagnostics dict."
+      changed_files:
+        - "src/epcsaft/equilibrium_core/native_results.py"
+        - "src/epcsaft/equilibrium.py"
+        - "src/epcsaft/_types.py"
+        - "src/epcsaft/__init__.py"
+        - "tests/equilibrium/core/test_native_results.py"
+        - "docs/pages/diagnostics.rst"
+      verification:
+        - "uv run python run_pytest.py tests/equilibrium/core/test_native_results.py tests/api/runtime/test_runtime_exports_and_metadata.py::test_package_exports_are_available -q"
+  - id: T005
+    type: judge
+    assignee: PM
+    status: done
+    reasoning_hint: high
+    objective: "Audit scout findings, implemented receipts, validation, cleanup, and commit state."
+    constraints:
+      - "Do not mark complete with active Worker tasks."
+      - "Record any discovered but intentionally deferred candidates."
+    receipt:
+      outcome: done
+      summary: "Focused tests, style checks, standard quick validation, and cleanup hook passed. Larger native/backlog findings are recorded under deferred_findings instead of being treated as complete."
+      verification:
+        - "uv run python -m ruff check <changed Python files>"
+        - "uv run python -m black --check <changed Python files>"
+        - "uv run python scripts/dev/validate_project.py quick"
+        - "pwsh.exe -NoProfile -ExecutionPolicy Bypass -File \"$env:USERPROFILE\\.codex\\hooks\\codex-cleanup.ps1\" -RepoRoot ."
+
+deferred_findings:
+  - id: D001
+    source: native_solver_scout
+    title: "Route solve campaign module"
+    reason: "Requires coordinated native solver refactoring across seed sweep, continuation, and best-result selection code; not a bounded Python/package follow-up slice."
+  - id: D002
+    source: native_solver_scout
+    title: "Native typed solve/report contract"
+    reason: "Python RouteDiagnosticsView covers the consumer-facing layer; replacing native string-map diagnostics needs a separate native contract pass."
+  - id: D003
+    source: native_solver_scout
+    title: "Explicit-density constraint module"
+    reason: "Touches Jacobian/Hessian implementations across electrolyte, reactive, and speciation NLPs and needs native numerical verification."
+  - id: D004
+    source: native_solver_scout
+    title: "Generic regression term adapter module"
+    reason: "Switch-heavy native Ceres term assembly is real architecture debt, but the safe slice requires C++ ownership and native-regression tests."
+  - id: D005
+    source: python_api_scout
+    title: "Shared regression evidence report"
+    reason: "ParameterSource fixed the parameter-origin leak first; evidence report consolidation remains a separate regression-reporting refactor."
+  - id: D006
+    source: packager_scout
+    title: "Workflow catalog, build health snapshot, and distribution contract modules"
+    reason: "Native dependency policy was the bounded package slice; workflow/status/distribution cataloging spans docs, tests, and command surfaces."
+
+checks:
+  dirty_fingerprint: "tracked architecture-deepening implementation changes pending commit"
+  last_verification:
+    result: passed
+    task: T005
+    commands:
+      - "uv run python run_pytest.py tests/api/parameters/test_parameter_schema.py tests/api/parameters/test_parameter_templates.py tests/api/regression/test_regression_api_public_contracts.py tests/api/runtime/test_runtime_exports_and_metadata.py::test_package_exports_are_available -q"
+      - "uv run python run_pytest.py tests/equilibrium/core/test_native_results.py tests/workflows/build/test_native_runtime_env.py tests/workflows/build/test_build_backend.py tests/workflows/build/test_build_epcsaft.py -q"
+      - "uv run python -m ruff check <changed Python files>"
+      - "uv run python -m black --check <changed Python files>"
+      - "uv run python scripts/dev/validate_project.py quick"
+      - "pwsh.exe -NoProfile -ExecutionPolicy Bypass -File \"$env:USERPROFILE\\.codex\\hooks\\codex-cleanup.ps1\" -RepoRoot ."

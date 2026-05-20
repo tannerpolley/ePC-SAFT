@@ -18,10 +18,10 @@ from . import reactive_electrolyte as reactive_electrolyte_module
 from . import reactive_speciation as reactive_speciation_module
 from ._types import InputError
 from .epcsaft import ePCSAFTMixture
-from .parameter_schema import ParameterSet
+from .parameter_schema import ParameterSet, ParameterSource
 from .reactive_electrolyte import ReactiveElectrolyteBubbleOptions, ReactiveElectrolyteBubbleResult
-from .regression import _compile_target_family_summaries
 from .reactive_speciation import ReactionDefinition, ReactiveSpeciationOptions, ReactiveSpeciationResult
+from .regression import _compile_target_family_summaries
 
 _PRESSURE_FAMILY_ALIASES = {
     "pressure_linear": "pressure_linear",
@@ -196,6 +196,7 @@ class ReactiveElectrolyteRow:
             raise InputError("ReactiveElectrolyteRow.mode must be 'bubble' or 'speciation'.")
         object.__setattr__(self, "mode", mode)
 
+
 @dataclass(frozen=True, slots=True)
 class ReactiveElectrolyteBatchOptions:
     """Batch-evaluation policy controls."""
@@ -298,13 +299,14 @@ class ReactiveElectrolyteBatch:
         object.__setattr__(self, "vapor_species", _sequence_str(self.vapor_species))
         object.__setattr__(self, "volatile_species", _sequence_str(self.volatile_species))
         object.__setattr__(self, "nonvolatile_species", _sequence_str(self.nonvolatile_species))
-        if isinstance(self.base_parameters, ParameterSet):
-            if tuple(str(label) for label in self.species) != self.base_parameters.components:
-                raise InputError("ParameterSet species order must match ReactiveElectrolyteBatch.species.")
-            object.__setattr__(self, "base_parameters", self.base_parameters.to_runtime_dict())
-        elif self.base_parameters is not None:
-            object.__setattr__(self, "base_parameters", _copy_parameter_payload(self.base_parameters))
-        object.__setattr__(self, "user_options", dict(self.user_options or {}))
+        user_options = _copy_parameter_payload(self.user_options or {})
+        if self.base_parameters is not None:
+            object.__setattr__(
+                self,
+                "base_parameters",
+                ParameterSource(self.base_parameters, species=species).to_runtime_dict(user_options=user_options),
+            )
+        object.__setattr__(self, "user_options", user_options)
 
 
 @dataclass(frozen=True, slots=True)
@@ -752,6 +754,7 @@ class ReactiveElectrolyteRegressionContext:
         _ = parameter_map, parameters
         raise InputError("reactive-regression sensitivities require native Ceres derivative coverage.")
 
+
 # AlgID: reactive_electrolyte_batch_residual_context
 def build_reactive_regression_objective(
     batch: ReactiveElectrolyteBatch,
@@ -873,16 +876,12 @@ def summarize_regression_result(result: ReactiveRegressionObjectiveResult) -> di
             for split, values in split_counter.items()
         },
         "target_family_summaries": _json_like(
-            batch.diagnostics.get("target_family_summaries", {})
-            if isinstance(batch.diagnostics, Mapping)
-            else {}
+            batch.diagnostics.get("target_family_summaries", {}) if isinstance(batch.diagnostics, Mapping) else {}
         ),
         "residual_block_norms": {
             family: float(summary.get("residual_block_norm", 0.0))
             for family, summary in (
-                batch.diagnostics.get("target_family_summaries", {})
-                if isinstance(batch.diagnostics, Mapping)
-                else {}
+                batch.diagnostics.get("target_family_summaries", {}) if isinstance(batch.diagnostics, Mapping) else {}
             ).items()
         },
         "cache_stats": _json_like(batch.cache_stats),

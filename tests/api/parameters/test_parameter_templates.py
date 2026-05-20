@@ -5,7 +5,7 @@ import json
 import numpy as np
 import pytest
 
-from epcsaft import create_parameter_template, ePCSAFTMixture
+from epcsaft import ParameterSet, create_parameter_template, ePCSAFTMixture
 from epcsaft.parameters import _resolve_runtime_options, minimize_user_options
 from tests.helpers.numeric import assert_allclose
 
@@ -64,6 +64,48 @@ def test_create_parameter_template_canonical_schema_creates_json_scaffold(tmp_pa
     assert [record["component"] for record in pure_records] == ["H2O", "Na+", "Cl-"]
     assert {record["molar_mass_units"] for record in pure_records} == {"kg/mol"}
     assert all(record["molar_mass"] is None for record in pure_records)
+
+
+def test_canonical_parameter_template_loads_through_dataset_seam(tmp_path):
+    root = create_parameter_template(tmp_path, "canonical_runtime", ["H2O", "Ethanol"], schema="canonical")
+    path = root / "parameter_set.json"
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["pure_records"] = [
+        {
+            "component": "H2O",
+            "molar_mass": 18.01528e-3,
+            "m": 1.2047,
+            "sigma": 2.7927,
+            "epsilon_k": 353.95,
+            "charge": 0.0,
+            "relative_permittivity": 78.3,
+        },
+        {
+            "component": "Ethanol",
+            "molar_mass": 46.07e-3,
+            "m": 2.0,
+            "sigma": 3.5,
+            "epsilon_k": 250.0,
+            "charge": 0.0,
+        },
+    ]
+    payload["binary_records"] = [
+        {
+            "components": ["H2O", "Ethanol"],
+            "k_ij": 0.021,
+        }
+    ]
+    payload["runtime_options"] = {"source_tag": "canonical-template-test"}
+    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+    params = ParameterSet.from_dataset(root, ["H2O", "Ethanol"], np.asarray([0.5, 0.5]), 298.15)
+    mixture = ePCSAFTMixture.from_dataset(root, ["H2O", "Ethanol"], np.asarray([0.5, 0.5]), 298.15)
+
+    assert params.components == ("H2O", "Ethanol")
+    assert params.to_runtime_dict()["k_ij"][0, 1] == pytest.approx(0.021)
+    assert params.to_runtime_dict()["source_tag"] == "canonical-template-test"
+    assert mixture.species == ["H2O", "Ethanol"]
+    assert mixture.parameters["k_ij"][0, 1] == pytest.approx(0.021)
 
 
 def test_create_parameter_template_rejects_unknown_schema(tmp_path):

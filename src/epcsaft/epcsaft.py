@@ -237,12 +237,13 @@ def _relative_permittivity_backend(params):
 
 
 def _canonical_runtime_parameter_payload(params, species=None):
-    from .parameter_schema import ParameterSet
+    from .parameter_schema import ParameterSet, ParameterSource
 
     if isinstance(params, ParameterSet):
+        source = ParameterSource(params, species=species)
         if species is None:
             species = list(params.components)
-        params = params.to_runtime_dict()
+        params = source.to_runtime_dict()
     return params, species
 
 
@@ -266,9 +267,9 @@ class ePCSAFTMixture:
     @classmethod
     def from_dataset(cls, dataset_name, species, x, T, user_options=None):
         """Construct a mixture by resolving packaged dataset parameters."""
-        from .parameter_schema import ParameterSet
+        from .parameter_schema import ParameterSource
 
-        params = ParameterSet.from_dataset(dataset_name, species, x, T, user_options=user_options)
+        params = ParameterSource(dataset_name, species=species).to_parameter_set(x=x, T=T, user_options=user_options)
         return cls.from_params(params)
 
     def _init_from_params(self, params, species=None):
@@ -1101,7 +1102,9 @@ class ePCSAFTState:
 
     def density_pressure_derivative_result(self):
         """Return density pressure derivatives when production support exists."""
-        _unsupported_derivative("density-root implicit pressure derivatives require an analytic or CppAD implicit route.")
+        _unsupported_derivative(
+            "density-root implicit pressure derivatives require an analytic or CppAD implicit route."
+        )
 
     def ares_composition_derivative_result(self):
         """Return residual-Helmholtz composition derivatives in the public result shape."""
@@ -1447,7 +1450,9 @@ class ePCSAFTState:
             self.born_ssmds_liquid_derivatives,
             source_equation_ids=("ares_born",),
         )
-        add_result_factory("relative_permittivity", "composition", self.relative_permittivity_composition_derivative_result)
+        add_result_factory(
+            "relative_permittivity", "composition", self.relative_permittivity_composition_derivative_result
+        )
         add_result_factory("relative_permittivity", "parameter", self.relative_permittivity_parameter_derivative_result)
         add_result_factory(
             "pressure",
@@ -2324,14 +2329,10 @@ def create_struct(params):
         raise ValueError("Unknown rel_perm differential_mode. Supported values are analytic/cppad/auto (0/2/3).")
     cppargs.hc_dadx_diff_mode = _as_int_alias(hc_model_dict.get("dadx_differential_mode", "auto"), diff_alias)
     if cppargs.hc_dadx_diff_mode not in (0, 2, 3):
-        raise ValueError(
-            "Unknown hc_model dadx_differential_mode. Supported values are analytic/cppad/auto (0/2/3)."
-        )
+        raise ValueError("Unknown hc_model dadx_differential_mode. Supported values are analytic/cppad/auto (0/2/3).")
     cppargs.disp_dadx_diff_mode = _as_int_alias(disp_model_dict.get("dadx_differential_mode", "auto"), diff_alias)
     if cppargs.disp_dadx_diff_mode not in (0, 2, 3):
-        raise ValueError(
-            "Unknown disp_model dadx_differential_mode. Supported values are analytic/cppad/auto (0/2/3)."
-        )
+        raise ValueError("Unknown disp_model dadx_differential_mode. Supported values are analytic/cppad/auto (0/2/3).")
     cppargs.assoc_dadx_diff_mode = _as_int_alias(assoc_model_dict.get("dadx_differential_mode", "auto"), diff_alias)
     if cppargs.assoc_dadx_diff_mode not in (0, 2, 3):
         raise ValueError(

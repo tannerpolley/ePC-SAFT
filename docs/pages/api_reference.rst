@@ -159,6 +159,11 @@ native-backed helpers remain available for code that already targets them.
    :undoc-members:
    :no-index:
 
+.. autoclass:: epcsaft.ParameterSource
+   :members:
+   :undoc-members:
+   :no-index:
+
 .. autoclass:: epcsaft.RelativePermittivityResidual
    :members:
    :undoc-members:

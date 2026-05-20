@@ -37,10 +37,16 @@ _PURE_PARAMETER_KEYS = {
 }
 _BINARY_PARAMETER_KEYS = {"k_ij", "l_ij", "k_hb", "k_hb_ij"}
 _GENERATED_PARAMETER_KEYS = {"assoc_num", "assoc_matrix"}
-_STRUCTURAL_KEYS = {"components", "pure_records", "binary_records", "metadata"}
-_PARAMETER_PAYLOAD_KEYS = (
-    _PURE_PARAMETER_KEYS | _BINARY_PARAMETER_KEYS | _GENERATED_PARAMETER_KEYS | _STRUCTURAL_KEYS
-)
+_STRUCTURAL_KEYS = {
+    "schema",
+    "schema_version",
+    "components",
+    "pure_records",
+    "binary_records",
+    "metadata",
+    "runtime_options",
+}
+_PARAMETER_PAYLOAD_KEYS = _PURE_PARAMETER_KEYS | _BINARY_PARAMETER_KEYS | _GENERATED_PARAMETER_KEYS | _STRUCTURAL_KEYS
 
 
 @dataclass(frozen=True, slots=True)
@@ -246,6 +252,8 @@ class ParameterSet:
         metadata: Mapping[str, Any] | None = None,
     ) -> ParameterSet:
         arrays = {str(key): value for key, value in payload.items()}
+        if "pure_records" in arrays:
+            return cls._from_canonical_payload(arrays, species=species, metadata=metadata)
         if species is None:
             if "components" in arrays:
                 species = [str(item) for item in arrays["components"]]
@@ -297,6 +305,49 @@ class ParameterSet:
         )
 
     @classmethod
+    def _from_canonical_payload(
+        cls,
+        payload: Mapping[str, Any],
+        *,
+        species: Sequence[str] | None = None,
+        metadata: Mapping[str, Any] | None = None,
+    ) -> ParameterSet:
+        pure_payloads = list(payload.get("pure_records", ()))
+        if not pure_payloads:
+            raise InputError("canonical parameter payload must include pure_records.")
+        payload_components = tuple(str(item) for item in payload.get("components", ()))
+        if not payload_components:
+            payload_components = tuple(str(item.get("component")) for item in pure_payloads)
+        if species is not None and tuple(str(item) for item in species) != payload_components:
+            raise InputError("canonical parameter dataset species must match payload components in order.")
+        payload_metadata = _copy_payload_mapping(payload.get("metadata", {}))
+        payload_metadata.update(_copy_payload_mapping(metadata))
+        return cls(
+            components=payload_components,
+            pure_records=tuple(_pure_record_from_canonical(item) for item in pure_payloads),
+            binary_records=tuple(_binary_record_from_canonical(item) for item in payload.get("binary_records", ())),
+            metadata=payload_metadata,
+            runtime_options=_copy_payload_mapping(payload.get("runtime_options", {})),
+        )
+
+    @classmethod
+    def from_json(
+        cls,
+        path: str | Path,
+        *,
+        species: Sequence[str] | None = None,
+        metadata: Mapping[str, Any] | None = None,
+    ) -> ParameterSet:
+        """Load a canonical parameter-set JSON file or folder."""
+        json_path = Path(path).expanduser()
+        if json_path.is_dir():
+            json_path = json_path / "parameter_set.json"
+        payload = json.loads(json_path.read_text(encoding="utf-8"))
+        if not isinstance(payload, Mapping):
+            raise InputError(f"Canonical parameter file '{json_path}' must contain a JSON object.")
+        return cls.from_dict(payload, species=species, metadata=metadata)
+
+    @classmethod
     def from_dataset(
         cls,
         dataset_name: str | Path,
@@ -306,6 +357,27 @@ class ParameterSet:
         user_options: Mapping[str, Any] | None = None,
     ) -> ParameterSet:
         from .parameters import get_prop_dict
+
+        dataset_path = Path(dataset_name).expanduser()
+        canonical_path = dataset_path / "parameter_set.json"
+        if dataset_path.is_dir() and canonical_path.exists():
+            params = cls.from_json(
+                canonical_path,
+                species=species,
+                metadata={"dataset": str(dataset_name), "T": float(T)},
+            )
+            runtime_options = _deep_update_mapping(
+                params.runtime_options,
+                _load_canonical_user_options(dataset_path),
+            )
+            runtime_options = _deep_update_mapping(runtime_options, user_options or {})
+            return cls(
+                components=params.components,
+                pure_records=params.pure_records,
+                binary_records=params.binary_records,
+                metadata=params.metadata,
+                runtime_options=runtime_options,
+            )
 
         composition = x if x is not None else [1.0 / len(species)] * len(species)
         payload = get_prop_dict(dataset_name, species, composition, T, user_options=user_options)
@@ -345,7 +417,7 @@ class ParameterSet:
             "runtime_option_count": len(self.runtime_options),
         }
 
-    def to_runtime_dict(self) -> dict[str, Any]:
+    def to_runtime_dict(self, user_options: Mapping[str, Any] | None = None) -> dict[str, Any]:
         records = {str(record.component): record for record in self.pure_records}
         ordered = [records[label] for label in self.components]
         charge_vector = np.asarray([record.charge for record in ordered], dtype=float)
@@ -378,7 +450,11 @@ class ParameterSet:
             matrices["l_ij"][i, j] = matrices["l_ij"][j, i] = record.l_ij
             matrices["k_hb"][i, j] = matrices["k_hb"][j, i] = record.k_hb_ij
         payload.update(matrices)
-        payload.update(_copy_payload_mapping(self.runtime_options))
+        runtime_options = _deep_update_mapping(self.runtime_options, user_options or {})
+        reserved = sorted(set(runtime_options) & _PARAMETER_PAYLOAD_KEYS)
+        if reserved:
+            raise InputError(f"runtime_options cannot override parameter payload keys: {', '.join(reserved)}.")
+        payload.update(runtime_options)
         return payload
 
     def to_legacy_dict(self) -> dict[str, Any]:
@@ -398,12 +474,182 @@ class ParameterSet:
         return text
 
 
+@dataclass(frozen=True, slots=True)
+class ParameterSource:
+    """Canonical resolver for parameter source labels and runtime payloads."""
+
+    source: str | Path | Mapping[str, Any] | ParameterSet
+    species: Sequence[str] | None = None
+
+    def __post_init__(self) -> None:
+        if self.species is not None:
+            object.__setattr__(self, "species", tuple(str(label) for label in self.species))
+
+    @property
+    def label(self) -> str:
+        """Return a stable human-readable label for reports and diagnostics."""
+        if isinstance(self.source, ParameterSet):
+            source = self.source.metadata.get("dataset", self.source.metadata.get("source"))
+            return str(source) if source not in (None, "") else "ParameterSet"
+        if isinstance(self.source, Mapping):
+            metadata = self.source.get("metadata")
+            if isinstance(metadata, Mapping):
+                source = metadata.get("dataset", metadata.get("source"))
+                if source not in (None, ""):
+                    return str(source)
+            source = self.source.get("dataset", self.source.get("source"))
+            return str(source) if source not in (None, "") else "parameter-payload"
+        return str(self.source)
+
+    def to_parameter_set(
+        self,
+        species: Sequence[str] | None = None,
+        x: Sequence[float] | None = None,
+        T: float = 298.15,
+        user_options: Mapping[str, Any] | None = None,
+    ) -> ParameterSet:
+        """Resolve this source into a canonical parameter set."""
+        labels = _resolve_parameter_source_species(self.species, species)
+        if isinstance(self.source, ParameterSet):
+            _require_parameter_source_species(labels, self.source.components, "ParameterSet")
+            return _parameter_set_with_runtime_options(self.source, user_options)
+        if isinstance(self.source, Mapping):
+            params = ParameterSet.from_dict(self.source, species=labels)
+            return _parameter_set_with_runtime_options(params, user_options)
+        if labels is None:
+            raise InputError("ParameterSource species must be provided for dataset sources.")
+        composition = x if x is not None else [1.0 / len(labels)] * len(labels)
+        return ParameterSet.from_dataset(self.source, labels, composition, T, user_options=user_options)
+
+    def to_runtime_dict(
+        self,
+        species: Sequence[str] | None = None,
+        x: Sequence[float] | None = None,
+        T: float = 298.15,
+        user_options: Mapping[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Resolve this source into the native runtime payload."""
+        return self.to_parameter_set(species=species, x=x, T=T, user_options=user_options).to_runtime_dict()
+
+
 def _legacy_float(payload: Mapping[str, Any], *keys: str, default: float) -> float:
     for key in keys:
         value = payload.get(key)
         if value not in (None, ""):
             return float(value)
     return float(default)
+
+
+def _pure_record_from_canonical(payload: Mapping[str, Any]) -> PureRecord:
+    component = str(payload.get("component", "")).strip()
+    if not component:
+        raise InputError("canonical pure record requires component.")
+    molar_mass = _required_float(payload, "molar_mass", component)
+    units = str(payload.get("molar_mass_units", "kg/mol")).strip().lower()
+    if units in {"g/mol", "g per mol", "g mol^-1"}:
+        molar_mass *= 1.0e-3
+    elif units not in {"kg/mol", "kg per mol", "kg mol^-1"}:
+        raise InputError(f"{component}.molar_mass_units must be 'kg/mol' or 'g/mol'.")
+    association_sites = tuple(_association_site_from_canonical(item) for item in payload.get("association_sites", ()))
+    return PureRecord(
+        component=component,
+        molar_mass=molar_mass,
+        m=_required_float(payload, "m", component),
+        sigma=_required_float(payload, "sigma", component),
+        epsilon_k=_required_float(payload, "epsilon_k", component),
+        charge=_optional_float(payload, "charge", 0.0),
+        epsilon_k_ab=_optional_float(payload, "epsilon_k_ab", 0.0),
+        kappa_ab=_optional_float(payload, "kappa_ab", 0.0),
+        association_scheme=payload.get("association_scheme"),
+        association_sites=association_sites,
+        relative_permittivity=_optional_float(payload, "relative_permittivity", 1.0),
+        born_diameter=_optional_float(payload, "born_diameter", 0.0),
+        solvation_factor=_optional_float(payload, "solvation_factor", 1.0),
+    )
+
+
+def _association_site_from_canonical(payload: Any) -> AssociationSite:
+    if isinstance(payload, Mapping):
+        return AssociationSite(
+            label=str(payload.get("label", "")),
+            kind=str(payload.get("kind", "generic")),
+        )
+    return AssociationSite(label=str(payload))
+
+
+def _binary_record_from_canonical(payload: Mapping[str, Any]) -> BinaryRecord:
+    return BinaryRecord(
+        components=tuple(str(item) for item in payload.get("components", ())),
+        k_ij=_optional_float(payload, "k_ij", 0.0),
+        l_ij=_optional_float(payload, "l_ij", 0.0),
+        k_hb_ij=_optional_float(payload, "k_hb_ij", 0.0),
+    )
+
+
+def _required_float(payload: Mapping[str, Any], key: str, component: str) -> float:
+    value = payload.get(key)
+    if value in (None, ""):
+        raise InputError(f"{component}.{key} must be filled in canonical parameter data.")
+    return float(value)
+
+
+def _optional_float(payload: Mapping[str, Any], key: str, default: float) -> float:
+    value = payload.get(key, default)
+    if value in (None, ""):
+        return float(default)
+    return float(value)
+
+
+def _resolve_parameter_source_species(
+    base: Sequence[str] | None,
+    override: Sequence[str] | None,
+) -> tuple[str, ...] | None:
+    if base is None and override is None:
+        return None
+    if base is None:
+        return tuple(str(label) for label in override or ())
+    labels = tuple(str(label) for label in base)
+    if override is not None and tuple(str(label) for label in override) != labels:
+        raise InputError("ParameterSource species override must match construction species.")
+    return labels
+
+
+def _require_parameter_source_species(
+    requested: Sequence[str] | None,
+    available: Sequence[str],
+    label: str,
+) -> None:
+    if requested is None:
+        return
+    if tuple(str(item) for item in requested) != tuple(str(item) for item in available):
+        raise InputError(f"{label} species order must match ParameterSource species.")
+
+
+def _parameter_set_with_runtime_options(
+    params: ParameterSet,
+    user_options: Mapping[str, Any] | None,
+) -> ParameterSet:
+    if not user_options:
+        return params
+    return ParameterSet(
+        components=params.components,
+        pure_records=params.pure_records,
+        binary_records=params.binary_records,
+        metadata=params.metadata,
+        runtime_options=_deep_update_mapping(params.runtime_options, user_options),
+    )
+
+
+def _load_canonical_user_options(dataset_dir: Path) -> dict[str, Any]:
+    path = dataset_dir / "user_options.json"
+    if not path.exists():
+        return {}
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if isinstance(payload, Mapping) and "canonical_user_options" in payload:
+        payload = payload.get("canonical_user_options", {})
+    if not isinstance(payload, Mapping):
+        return {}
+    return _copy_payload_mapping(payload)
 
 
 def _copy_payload_value(value: Any) -> Any:
@@ -422,6 +668,16 @@ def _copy_payload_mapping(payload: Mapping[str, Any] | None) -> dict[str, Any]:
     if payload is None:
         return {}
     return {str(key): _copy_payload_value(value) for key, value in payload.items()}
+
+
+def _deep_update_mapping(base: Mapping[str, Any] | None, updates: Mapping[str, Any] | None) -> dict[str, Any]:
+    merged = _copy_payload_mapping(base)
+    for key, value in _copy_payload_mapping(updates).items():
+        if isinstance(merged.get(key), Mapping) and isinstance(value, Mapping):
+            merged[key] = _deep_update_mapping(merged[key], value)
+        else:
+            merged[key] = value
+    return merged
 
 
 def _runtime_options_from_payload(payload: Mapping[str, Any]) -> dict[str, Any]:

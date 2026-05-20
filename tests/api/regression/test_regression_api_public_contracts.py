@@ -17,6 +17,7 @@ def test_public_regression_surface_includes_ion_and_binary_v1():
     assert hasattr(epcsaft, "fit_binary_pair")
     assert hasattr(epcsaft, "FitParameter")
     assert hasattr(epcsaft, "BinaryInteraction")
+    assert hasattr(epcsaft, "ParameterSource")
     assert hasattr(epcsaft, "RelativePermittivityResidual")
     assert hasattr(epcsaft, "validate_regression_provenance")
     assert hasattr(epcsaft, "evaluate_reactive_regression_objective")
@@ -105,3 +106,37 @@ def test_reactive_regression_summary_uses_shared_target_family_evidence(monkeypa
     assert summary["residual_block_norms"]["speciation"] == pytest.approx(
         result.batch_result.diagnostics["target_family_summaries"]["speciation"]["residual_block_norm"]
     )
+
+
+def test_reactive_batch_applies_parameter_source_user_options_to_base_parameters():
+    params = epcsaft.ParameterSet.from_records(
+        [
+            epcsaft.PureRecord("A", molar_mass=10.0e-3, m=1.0, sigma=3.0, epsilon_k=200.0),
+            epcsaft.PureRecord("B", molar_mass=20.0e-3, m=1.2, sigma=3.5, epsilon_k=240.0),
+        ],
+        runtime_options={"analysis_options": {"source": "base"}},
+    )
+
+    batch = epcsaft.ReactiveElectrolyteBatch(
+        species=["A", "B"],
+        rows=[
+            epcsaft.ReactiveElectrolyteRow(
+                row_id="row1",
+                T=298.15,
+                P=101325.0,
+                initial_x=[0.2, 0.8],
+                balances={"a_total": {"A": 1.0}, "b_total": {"B": 1.0}},
+                reactions=[],
+                target_speciation={"A": 0.2},
+                mode="speciation",
+            )
+        ],
+        balances={"a_total": {"A": 1.0}, "b_total": {"B": 1.0}},
+        reactions=[],
+        base_parameters=params,
+        user_options={"analysis_options": {"split": "train"}, "source_tag": "reactive"},
+        options=epcsaft.ReactiveElectrolyteBatchOptions(include_state_outputs=False),
+    )
+
+    assert batch.base_parameters["analysis_options"] == {"source": "base", "split": "train"}
+    assert batch.base_parameters["source_tag"] == "reactive"

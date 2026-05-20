@@ -21,7 +21,7 @@ from .epcsaft import (
     create_struct,
     vector_to_array,
 )
-from .parameter_schema import ParameterSet
+from .parameter_schema import ParameterSet, ParameterSource
 from .parameter_templates import _infer_pure_template_name
 from .parameters import (
     _MISSING,
@@ -31,7 +31,6 @@ from .parameters import (
     _matrix_value,
     _normalize_component,
     _resolve_component_field_with_source,
-    get_prop_dict,
     molality_to_molefraction,
 )
 
@@ -1398,10 +1397,7 @@ def _json_like_regression(value: Any) -> Any:
 def _source_dataset_label(dataset: str | Path | ParameterSet | None) -> str | None:
     if dataset is None:
         return None
-    if isinstance(dataset, ParameterSet):
-        source = dataset.metadata.get("dataset", dataset.metadata.get("source"))
-        return str(source) if source not in (None, "") else "ParameterSet"
-    return str(dataset)
+    return ParameterSource(dataset).label
 
 
 def _ensure_native_vector_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
@@ -1493,17 +1489,7 @@ def _params_for_native_record(
     T: float,
     user_options: Mapping[str, Any] | None,
 ) -> dict[str, Any]:
-    if isinstance(dataset, ParameterSet):
-        if tuple(str(label) for label in species) != dataset.components:
-            raise InputError("ParameterSet species order must match the regression species order.")
-        payload = dataset.to_runtime_dict()
-        if user_options:
-            conflicts = sorted(set(str(key) for key in user_options) & set(payload))
-            if conflicts:
-                raise InputError(f"user_options cannot override ParameterSet runtime payload keys: {', '.join(conflicts)}.")
-            payload.update(_copy_mapping(user_options))
-        return payload
-    return get_prop_dict(dataset, species, x, T, user_options=_copy_mapping(user_options))
+    return ParameterSource(dataset, species=species).to_runtime_dict(x=x, T=T, user_options=_copy_mapping(user_options))
 
 
 def _native_target_payload(
@@ -2409,9 +2395,7 @@ def fit_pure_neutral(
         fixed_parameters=fixed_parameters,
         initial_guess=initial_guess,
         bounds=bounds,
-        optimizer_backend=_optimizer_backend_from_options(
-            {"optimizer_backend": optimizer_backend}, "ceres"
-        ),
+        optimizer_backend=_optimizer_backend_from_options({"optimizer_backend": optimizer_backend}, "ceres"),
     )
 
 

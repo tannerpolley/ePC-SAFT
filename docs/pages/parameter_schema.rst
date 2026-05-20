@@ -10,6 +10,7 @@ The public package still accepts native array parameter dictionaries through
 * ``BinaryRecord``
 * ``PermittivityRecord``
 * ``ParameterSet``
+* ``ParameterSource``
 
 ``ParameterSet`` can be constructed from records, native array dictionaries, or
 packaged datasets, then converted back to the native array payload.
@@ -58,6 +59,16 @@ keys such as ``m``, ``k_ij``, ``k_hb``, or structural keys such as
 in-memory ``ParameterSet`` use ``ParameterSet.to_runtime_dict()`` as the single
 runtime-payload boundary.
 
+``ParameterSource`` is the resolver behind dataset paths, direct
+``ParameterSet`` objects, and direct runtime dictionaries. It keeps source labels
+stable for diagnostics and applies per-call runtime options at the same payload
+boundary:
+
+.. code-block:: python
+
+   source = epcsaft.ParameterSource(params, species=["A", "B"])
+   runtime_dict = source.to_runtime_dict(user_options={"source_tag": "train"})
+
 Existing dictionary payloads keep working:
 
 .. code-block:: python
@@ -95,4 +106,20 @@ New datasets can request a canonical JSON scaffold instead:
 The canonical scaffold writes ``parameter_set.json`` plus ``user_options.json``.
 Its pure records use the same names as ``PureRecord`` and include
 ``molar_mass_units: "kg/mol"`` so source-table g/mol values are converted before
-they become runtime parameters.
+they become runtime parameters. Once the JSON records are filled in, the folder
+is a normal canonical dataset path:
+
+.. code-block:: python
+
+   params = epcsaft.ParameterSet.from_dataset(
+       root,
+       ["H2O", "Na+", "Cl-"],
+       [0.98, 0.01, 0.01],
+       298.15,
+   )
+   mixture = epcsaft.ePCSAFTMixture.from_dataset(
+       root,
+       ["H2O", "Na+", "Cl-"],
+       [0.98, 0.01, 0.01],
+       298.15,
+   )

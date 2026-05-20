@@ -1,13 +1,39 @@
 from __future__ import annotations
 
 import os
+import sys
+from collections.abc import MutableMapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import MutableMapping
+
+try:
+    from build_backend.native_dependency_policy import (
+        DEFAULT_WINDOWS_IPOPT_SDK_RELATIVE as _DEFAULT_WINDOWS_IPOPT_SDK_RELATIVE,
+    )
+    from build_backend.native_dependency_policy import (
+        default_windows_ipopt_sdk_root as _default_windows_ipopt_sdk_root,
+    )
+    from build_backend.native_dependency_policy import ipopt_root_prefers_msvc as _ipopt_root_prefers_msvc
+    from build_backend.native_dependency_policy import (
+        resolve_default_windows_ipopt_sdk_root as _resolve_default_windows_ipopt_sdk_root,
+    )
+except ModuleNotFoundError:  # pragma: no cover - direct script execution
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "build_backend"))
+    from native_dependency_policy import (
+        DEFAULT_WINDOWS_IPOPT_SDK_RELATIVE as _DEFAULT_WINDOWS_IPOPT_SDK_RELATIVE,
+    )
+    from native_dependency_policy import default_windows_ipopt_sdk_root as _default_windows_ipopt_sdk_root
+    from native_dependency_policy import ipopt_root_prefers_msvc as _ipopt_root_prefers_msvc
+    from native_dependency_policy import (
+        resolve_default_windows_ipopt_sdk_root as _resolve_default_windows_ipopt_sdk_root,
+    )
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEV_BUILD_CACHE = REPO_ROOT / "build" / "dev" / "CMakeCache.txt"
-DEFAULT_WINDOWS_IPOPT_SDK_RELATIVE = Path("Documents") / "deps" / "ipopt-msvc"
+DEFAULT_WINDOWS_IPOPT_SDK_RELATIVE = _DEFAULT_WINDOWS_IPOPT_SDK_RELATIVE
+default_windows_ipopt_sdk_root = _default_windows_ipopt_sdk_root
+ipopt_root_prefers_msvc = _ipopt_root_prefers_msvc
+resolve_default_windows_ipopt_sdk_root = _resolve_default_windows_ipopt_sdk_root
 
 
 @dataclass(frozen=True)
@@ -30,21 +56,6 @@ def cmake_cache_value(name: str, cache_path: Path = DEV_BUILD_CACHE) -> str | No
 
 def cmake_enabled(value: str | None) -> bool:
     return str(value or "").strip().upper() in {"1", "ON", "TRUE", "YES"}
-
-
-def default_windows_ipopt_sdk_root(home: Path | None = None) -> Path:
-    return (Path.home() if home is None else home).expanduser() / DEFAULT_WINDOWS_IPOPT_SDK_RELATIVE
-
-
-def resolve_default_windows_ipopt_sdk_root(
-    *,
-    home: Path | None = None,
-    platform_name: str | None = None,
-) -> Path | None:
-    if (os.name if platform_name is None else platform_name) != "nt":
-        return None
-    root = default_windows_ipopt_sdk_root(home)
-    return root.resolve() if root.is_dir() else None
 
 
 def resolve_ipopt_root(

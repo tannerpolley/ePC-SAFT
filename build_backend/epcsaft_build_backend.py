@@ -3,38 +3,36 @@
 from __future__ import annotations
 
 import errno
+import importlib.util
 import os
-import subprocess
 import shutil
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
 
 from scikit_build_core import build as _scikit_build
 
-DEFAULT_WINDOWS_IPOPT_SDK_RELATIVE = Path("Documents") / "deps" / "ipopt-msvc"
-
-
-def _default_windows_ipopt_sdk_root(home: Path | None = None) -> Path:
-    return (Path.home() if home is None else home).expanduser() / DEFAULT_WINDOWS_IPOPT_SDK_RELATIVE
-
-
-def _resolve_default_windows_ipopt_sdk_root() -> Path | None:
-    if os.name != "nt":
-        return None
-    root = _default_windows_ipopt_sdk_root()
-    return root.resolve() if root.is_dir() else None
-
-
-def _ipopt_root_prefers_msvc(ipopt_root: Path) -> bool:
-    if os.name != "nt":
-        return False
-    lib_dir = ipopt_root / "lib"
-    if not lib_dir.is_dir():
-        return False
-    has_msvc_import_lib = any((lib_dir / name).is_file() for name in ("ipopt.lib", "ipopt-3.lib"))
-    has_mingw_import_lib = any((lib_dir / name).is_file() for name in ("libipopt.dll.a", "ipopt.dll.a"))
-    return has_msvc_import_lib and not has_mingw_import_lib
+try:
+    from native_dependency_policy import (
+        ipopt_root_prefers_msvc,
+        resolve_default_windows_ipopt_sdk_root,
+        validate_ceres_dir,
+        validate_ipopt_dir,
+        validate_ipopt_root,
+    )
+except ModuleNotFoundError:  # pragma: no cover - import-by-file tests
+    _POLICY_PATH = Path(__file__).with_name("native_dependency_policy.py")
+    _POLICY_SPEC = importlib.util.spec_from_file_location("epcsaft_native_dependency_policy", _POLICY_PATH)
+    if _POLICY_SPEC is None or _POLICY_SPEC.loader is None:
+        raise
+    _POLICY = importlib.util.module_from_spec(_POLICY_SPEC)
+    _POLICY_SPEC.loader.exec_module(_POLICY)
+    ipopt_root_prefers_msvc = _POLICY.ipopt_root_prefers_msvc
+    resolve_default_windows_ipopt_sdk_root = _POLICY.resolve_default_windows_ipopt_sdk_root
+    validate_ceres_dir = _POLICY.validate_ceres_dir
+    validate_ipopt_dir = _POLICY.validate_ipopt_dir
+    validate_ipopt_root = _POLICY.validate_ipopt_root
 
 
 def _find_vsdevcmd() -> Path:
@@ -71,7 +69,7 @@ def _find_vsdevcmd() -> Path:
 
 
 def _load_msvc_env_for_ipopt_root(ipopt_root: Path) -> None:
-    if not _ipopt_root_prefers_msvc(ipopt_root) or shutil.which("cl"):
+    if not ipopt_root_prefers_msvc(ipopt_root) or shutil.which("cl"):
         return
     if os.environ.get("CMAKE_GENERATOR") == "MinGW Makefiles":
         raise RuntimeError("The MSVC Ipopt SDK cannot be used with the MinGW Makefiles generator.")
@@ -158,59 +156,6 @@ def _apply_required_native_dependency_config(config: dict) -> dict:
     return config
 
 
-def _validate_ceres_dir(raw_path: str) -> Path:
-    ceres_dir = Path(raw_path).expanduser().resolve()
-    if not ceres_dir.is_dir():
-        raise FileNotFoundError(f"EPCSAFT_PEP517_CERES_DIR does not exist or is not a directory: {ceres_dir}")
-    if not any((ceres_dir / name).is_file() for name in ("CeresConfig.cmake", "ceres-config.cmake")):
-        raise FileNotFoundError(
-            "EPCSAFT_PEP517_CERES_DIR must point at the directory containing CeresConfig.cmake "
-            f"or ceres-config.cmake: {ceres_dir}"
-        )
-    return ceres_dir
-
-
-def _validate_ipopt_dir(raw_path: str) -> Path:
-    ipopt_dir = Path(raw_path).expanduser().resolve()
-    if not ipopt_dir.is_dir():
-        raise FileNotFoundError(f"EPCSAFT_PEP517_IPOPT_DIR does not exist or is not a directory: {ipopt_dir}")
-    if not any((ipopt_dir / name).is_file() for name in ("IpoptConfig.cmake", "ipopt-config.cmake")):
-        raise FileNotFoundError(
-            "EPCSAFT_PEP517_IPOPT_DIR must point at the directory containing IpoptConfig.cmake "
-            f"or ipopt-config.cmake: {ipopt_dir}"
-        )
-    return ipopt_dir
-
-
-def _validate_ipopt_root(raw_path: str) -> Path:
-    ipopt_root = Path(raw_path).expanduser().resolve()
-    if not ipopt_root.is_dir():
-        raise FileNotFoundError(f"EPCSAFT_PEP517_IPOPT_ROOT does not exist or is not a directory: {ipopt_root}")
-    include_dir = ipopt_root / "include"
-    lib_dir = ipopt_root / "lib"
-    if not include_dir.is_dir() or not lib_dir.is_dir():
-        raise FileNotFoundError(
-            "EPCSAFT_PEP517_IPOPT_ROOT must point at an Ipopt tree with include/ and lib/: "
-            f"{ipopt_root}"
-        )
-    headers = (
-        include_dir / "coin-or" / "IpIpoptApplication.hpp",
-        include_dir / "coin" / "IpIpoptApplication.hpp",
-        include_dir / "IpIpoptApplication.hpp",
-    )
-    libraries = (
-        lib_dir / "ipopt.lib",
-        lib_dir / "ipopt-3.lib",
-        lib_dir / "libipopt.dll.a",
-        lib_dir / "libipopt.a",
-    )
-    if not any(path.is_file() for path in headers):
-        raise FileNotFoundError(f"EPCSAFT_PEP517_IPOPT_ROOT is missing Ipopt C++ headers: {ipopt_root}")
-    if not any(path.is_file() for path in libraries):
-        raise FileNotFoundError(f"EPCSAFT_PEP517_IPOPT_ROOT is missing an Ipopt link library: {ipopt_root}")
-    return ipopt_root
-
-
 def _apply_system_ceres_config(config: dict) -> dict:
     ceres_dir_env = os.environ.get("EPCSAFT_PEP517_CERES_DIR") or os.environ.get("Ceres_DIR")
     use_system_ceres = bool(ceres_dir_env) or _truthy_env("EPCSAFT_PEP517_USE_SYSTEM_CERES")
@@ -220,7 +165,7 @@ def _apply_system_ceres_config(config: dict) -> dict:
     _set_config_default(config, "cmake.define.EPCSAFT_ENABLE_CERES", "ON")
     _set_config_default(config, "cmake.define.EPCSAFT_USE_SYSTEM_CERES", "ON")
     if ceres_dir_env:
-        _set_config_default(config, "cmake.define.Ceres_DIR", str(_validate_ceres_dir(ceres_dir_env)))
+        _set_config_default(config, "cmake.define.Ceres_DIR", str(validate_ceres_dir(ceres_dir_env)))
     return config
 
 
@@ -228,7 +173,7 @@ def _apply_system_ipopt_config(config: dict) -> dict:
     ipopt_dir_env = os.environ.get("EPCSAFT_PEP517_IPOPT_DIR") or os.environ.get("Ipopt_DIR")
     ipopt_root_env = os.environ.get("EPCSAFT_PEP517_IPOPT_ROOT") or os.environ.get("EPCSAFT_IPOPT_ROOT")
     if not ipopt_dir_env and not ipopt_root_env:
-        default_ipopt_root = _resolve_default_windows_ipopt_sdk_root()
+        default_ipopt_root = resolve_default_windows_ipopt_sdk_root()
         if default_ipopt_root is not None:
             ipopt_root_env = str(default_ipopt_root)
     if ipopt_dir_env and ipopt_root_env:
@@ -245,9 +190,9 @@ def _apply_system_ipopt_config(config: dict) -> dict:
     _set_config_default(config, "cmake.define.EPCSAFT_ENABLE_IPOPT", "ON")
     _set_config_default(config, "cmake.define.EPCSAFT_USE_SYSTEM_IPOPT", "ON")
     if ipopt_dir_env:
-        _set_config_default(config, "cmake.define.Ipopt_DIR", str(_validate_ipopt_dir(ipopt_dir_env)))
+        _set_config_default(config, "cmake.define.Ipopt_DIR", str(validate_ipopt_dir(ipopt_dir_env)))
     if ipopt_root_env:
-        ipopt_root = _validate_ipopt_root(ipopt_root_env)
+        ipopt_root = validate_ipopt_root(ipopt_root_env)
         _load_msvc_env_for_ipopt_root(ipopt_root)
         _set_config_default(config, "cmake.define.EPCSAFT_IPOPT_ROOT", str(ipopt_root))
         bin_dir = ipopt_root / "bin"

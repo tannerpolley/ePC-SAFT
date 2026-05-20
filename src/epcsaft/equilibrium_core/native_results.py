@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from typing import Any
 
 import numpy as np
 
 from .._types import SolutionError
-
 
 _ROUTE_STRING_DIAGNOSTIC_KEYS = (
     "solver_status",
@@ -63,6 +62,114 @@ _ROUTE_SEQUENCE_DIAGNOSTIC_KEYS = (
     "residual_families",
     "constraint_families",
 )
+
+
+@dataclass(frozen=True, slots=True)
+class RouteDiagnosticsView:
+    """Read-only typed view over serialized route diagnostics."""
+
+    diagnostics: Mapping[str, Any]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "diagnostics", dict(self.diagnostics or {}))
+
+    @property
+    def route_status(self) -> str:
+        """Return the route status token, including reactive-specialized payloads."""
+        return str(
+            self.diagnostics.get(
+                "route_status",
+                self.diagnostics.get("reactive_route_status", self.diagnostics.get("equilibrium_route", "")),
+            )
+        )
+
+    @property
+    def solver_backend(self) -> str:
+        """Return the native solver backend token when present."""
+        return str(self.diagnostics.get("solver_backend", self.diagnostics.get("backend", "")))
+
+    @property
+    def route_accepted(self) -> bool:
+        """Return whether the outer route accepted the result."""
+        return bool(self.diagnostics.get("route_accepted", self.diagnostics.get("accepted", False)))
+
+    @property
+    def postsolve_accepted(self) -> bool:
+        """Return whether postsolve certification accepted the route."""
+        return bool(self.diagnostics.get("postsolve_accepted", self.diagnostics.get("accepted", False)))
+
+    @property
+    def gradient_is_exact(self) -> bool:
+        """Return whether the route reports exact gradients."""
+        return bool(
+            self.diagnostics.get(
+                "gradient_is_exact",
+                _approximation_is_exact(self.diagnostics.get("gradient_approximation", "")),
+            )
+        )
+
+    @property
+    def jacobian_is_exact(self) -> bool:
+        """Return whether the route reports exact Jacobians."""
+        return bool(
+            self.diagnostics.get(
+                "jacobian_is_exact",
+                _approximation_is_exact(self.diagnostics.get("jacobian_approximation", "")),
+            )
+        )
+
+    @property
+    def hessian_is_exact(self) -> bool:
+        """Return whether the route reports an exact Hessian path."""
+        return bool(
+            self.diagnostics.get(
+                "hessian_is_exact",
+                _approximation_is_exact(self.diagnostics.get("hessian_approximation", "")),
+            )
+        )
+
+    @property
+    def exact_derivatives_required(self) -> bool:
+        """Return whether exact gradient and Jacobian routes were required."""
+        return bool(
+            self.diagnostics.get(
+                "exact_derivatives_required",
+                bool(self.diagnostics.get("exact_gradient_required", False))
+                and bool(self.diagnostics.get("exact_jacobian_required", False)),
+            )
+        )
+
+    @property
+    def residual_families(self) -> tuple[str, ...]:
+        """Return active residual families."""
+        return tuple(str(item) for item in _diagnostic_sequence(self.diagnostics.get("residual_families", ())))
+
+    @property
+    def constraint_families(self) -> tuple[str, ...]:
+        """Return active hard-constraint families."""
+        return tuple(str(item) for item in _diagnostic_sequence(self.diagnostics.get("constraint_families", ())))
+
+    @property
+    def selected_seed_name(self) -> str:
+        """Return the selected deterministic seed name."""
+        return str(self.diagnostics.get("seed_name", ""))
+
+    @property
+    def seed_attempts(self) -> tuple[Mapping[str, Any], ...]:
+        """Return normalized seed-attempt rows."""
+        attempts = self.diagnostics.get("seed_attempts", ())
+        return tuple(
+            dict(item) if isinstance(item, Mapping) else {"value": item} for item in _diagnostic_sequence(attempts)
+        )
+
+    @property
+    def seed_attempt_count(self) -> int:
+        """Return the reported seed-attempt count."""
+        return int(self.diagnostics.get("seed_attempt_count", len(self.seed_attempts)))
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a copy of the underlying diagnostics payload."""
+        return dict(self.diagnostics)
 
 
 def _approximation_is_exact(value: Any) -> bool:
@@ -150,8 +257,12 @@ def native_route_diagnostics(
             route.get("adapter_available", default_values.get("adapter_available", False))
         )
     if "ran" in route or "solver_ran" in default_values or "ran" in default_values:
-        diagnostics["solver_ran"] = bool(route.get("ran", default_values.get("solver_ran", default_values.get("ran", False))))
-    diagnostics["route_accepted"] = bool(route.get("accepted", diagnostics.get("accepted", default_values.get("accepted", False))))
+        diagnostics["solver_ran"] = bool(
+            route.get("ran", default_values.get("solver_ran", default_values.get("ran", False)))
+        )
+    diagnostics["route_accepted"] = bool(
+        route.get("accepted", diagnostics.get("accepted", default_values.get("accepted", False)))
+    )
     if "accepted" in diagnostics:
         diagnostics["postsolve_accepted"] = bool(diagnostics["accepted"])
     if "initial_point_strategy" in route or "initial_point_strategy" in default_values:
@@ -211,7 +322,9 @@ def raise_native_route_rejected(
     )
 
 
-def equilibrium_route_diagnostics(route: Mapping[str, str], diagnostics: Mapping[str, Any] | None = None) -> dict[str, Any]:
+def equilibrium_route_diagnostics(
+    route: Mapping[str, str], diagnostics: Mapping[str, Any] | None = None
+) -> dict[str, Any]:
     """Return public equilibrium-route diagnostics merged into an existing payload."""
     payload = dict(diagnostics or {})
     payload["equilibrium_route"] = str(route["route"])
@@ -270,15 +383,17 @@ def neutral_two_phase_payload_to_result(
     if not isinstance(phases_raw, Sequence) or isinstance(phases_raw, (str, bytes)):
         raise SolutionError("Native neutral two-phase EOS result did not contain a phase sequence.", diagnostics)
     if phase_labels is not None and len(phase_labels) != len(phases_raw):
-        raise SolutionError("Native neutral two-phase EOS result label count did not match phase payloads.", diagnostics)
+        raise SolutionError(
+            "Native neutral two-phase EOS result label count did not match phase payloads.", diagnostics
+        )
     labels = [None] * len(phases_raw) if phase_labels is None else list(phase_labels)
-    phases = tuple(
-        _phase_payload_to_public(phase, label=labels[index]) for index, phase in enumerate(phases_raw)
-    )
+    phases = tuple(_phase_payload_to_public(phase, label=labels[index]) for index, phase in enumerate(phases_raw))
     if not phases:
         raise SolutionError("Native neutral two-phase EOS result accepted without phase payloads.", diagnostics)
 
-    resolved_problem_kind = payload.get("problem_kind", "neutral_two_phase_eos") if problem_kind is None else problem_kind
+    resolved_problem_kind = (
+        payload.get("problem_kind", "neutral_two_phase_eos") if problem_kind is None else problem_kind
+    )
     return EquilibriumResult(
         backend=str(payload.get("backend", "native_equilibrium_nlp")),
         problem_kind=str(resolved_problem_kind),

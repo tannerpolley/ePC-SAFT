@@ -12,11 +12,13 @@ from pathlib import Path
 from typing import NamedTuple
 
 try:
-    from scripts.dev.native_runtime_env import apply_native_runtime_env
-    from scripts.dev.native_runtime_env import resolve_ipopt_root_for_build
+    from scripts.dev.native_runtime_env import (
+        apply_native_runtime_env,
+        ipopt_root_prefers_msvc,
+        resolve_ipopt_root_for_build,
+    )
 except ModuleNotFoundError:  # pragma: no cover - direct script execution
-    from native_runtime_env import apply_native_runtime_env
-    from native_runtime_env import resolve_ipopt_root_for_build
+    from native_runtime_env import apply_native_runtime_env, ipopt_root_prefers_msvc, resolve_ipopt_root_for_build
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 BUILD_DIR = REPO_ROOT / "build" / "dev"
@@ -114,17 +116,6 @@ def _env() -> dict[str, str]:
     return env
 
 
-def _ipopt_root_prefers_msvc(ipopt_root: Path | None) -> bool:
-    if os.name != "nt" or ipopt_root is None:
-        return False
-    lib_dir = ipopt_root / "lib"
-    if not lib_dir.is_dir():
-        return False
-    has_msvc_import_lib = any((lib_dir / name).is_file() for name in ("ipopt.lib", "ipopt-3.lib"))
-    has_mingw_import_lib = any((lib_dir / name).is_file() for name in ("libipopt.dll.a", "ipopt.dll.a"))
-    return has_msvc_import_lib and not has_mingw_import_lib
-
-
 def _configured_cxx_compiler() -> str | None:
     return _cmake_cache_value("CMAKE_CXX_COMPILER")
 
@@ -192,10 +183,7 @@ def _apply_toolchain_env(
     load_msvc = toolchain == "msvc" or (
         toolchain == "auto"
         and os.name == "nt"
-        and (
-            (enable_ipopt and _ipopt_root_prefers_msvc(ipopt_root))
-            or _configured_compiler_is_msvc()
-        )
+        and ((enable_ipopt and ipopt_root_prefers_msvc(ipopt_root)) or _configured_compiler_is_msvc())
     )
     if not load_msvc:
         return env

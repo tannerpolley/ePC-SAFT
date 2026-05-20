@@ -24,6 +24,13 @@ class SolutionError(Exception):
         else:
             super().__init__(message, diagnostics)
 
+    @property
+    def route_diagnostics(self):
+        """Return a typed view over route diagnostics when present."""
+        from .equilibrium_core.native_results import RouteDiagnosticsView
+
+        return RouteDiagnosticsView(self.diagnostics or {})
+
 
 def phase_to_int(phase):
     """Normalize a phase token to the native liquid/vapor integer flag."""

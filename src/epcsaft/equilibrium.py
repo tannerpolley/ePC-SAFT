@@ -20,10 +20,11 @@ from .equilibrium_core.native_requests import (
     neutral_two_phase_eos_tolerances,
 )
 from .equilibrium_core.native_results import (
+    RouteDiagnosticsView,
+    native_route_diagnostics,
     native_route_solved_pressure,
     native_route_solved_temperature,
     native_route_summed_phase_amounts,
-    native_route_diagnostics,
     neutral_two_phase_payload_to_result,
     raise_native_route_rejected,
     raise_with_equilibrium_route_diagnostics,
@@ -112,7 +113,12 @@ def _reject_phase_controls_for_kind(
     vapor_species: Any = None,
     nonvolatile_species: Any = None,
 ) -> None:
-    if x_liq is not None or volatile_species is not None or vapor_species is not None or nonvolatile_species is not None:
+    if (
+        x_liq is not None
+        or volatile_species is not None
+        or vapor_species is not None
+        or nonvolatile_species is not None
+    ):
         raise InputError("x_liq and vapor species controls are only supported for kind='electrolyte_bubble_pressure'.")
 
 
@@ -538,7 +544,9 @@ def equilibrium_request_from_request(
             )
             _reject_parent_controls_for_phase_equilibrium(parent_phase, trial_phases)
             if solvent_feed is not None or salt_molality is not None:
-                raise InputError("solvent_feed and salt_molality are only supported for electrolyte equilibrium routes.")
+                raise InputError(
+                    "solvent_feed and salt_molality are only supported for electrolyte equilibrium routes."
+                )
             problem = TPFlash(T=T, P=P, z=z, options=options)
         else:
             raise InputError(f"kind='auto' resolved to unsupported equilibrium route '{route['route']}'.")
@@ -741,6 +749,11 @@ class EquilibriumResult:
     def phase_labels(self) -> list[str]:
         """Return phase labels in result order."""
         return [phase.label for phase in self.phases]
+
+    @property
+    def route_diagnostics(self) -> RouteDiagnosticsView:
+        """Return a typed view over route diagnostics."""
+        return RouteDiagnosticsView(self.diagnostics)
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-like result payload."""
@@ -1083,7 +1096,9 @@ def _prepare_ipopt_continuation_state(
         if key in prepared:
             count = _require_continuation_sequence_length(prepared[key], key)
             if count not in {0, variable_count}:
-                raise InputError(f"options.continuation_state.{key} must be empty or match the variables vector length.")
+                raise InputError(
+                    f"options.continuation_state.{key} must be empty or match the variables vector length."
+                )
     if "constraint_multipliers" in prepared:
         constraint_count = _require_continuation_sequence_length(
             prepared["constraint_multipliers"],
@@ -1098,7 +1113,9 @@ def _prepare_ipopt_continuation_state(
     if "species_order" in prepared:
         species_order = [str(label) for label in prepared["species_order"]]
         if species_order != list(continuation_context["species_order"]):
-            raise InputError("options.continuation_state species_order does not match the current mixture species order.")
+            raise InputError(
+                "options.continuation_state species_order does not match the current mixture species order."
+            )
     if "fixed_specs" in prepared:
         fixed_specs = _continuation_json_like(prepared["fixed_specs"])
         if fixed_specs != continuation_context["fixed_specs"]:
@@ -1442,7 +1459,9 @@ def _accepted_native_reactive_two_phase_result(
             or np.any(phase_amount_totals <= 0.0)
             or np.any(phase_volumes <= 0.0)
         ):
-            raise SolutionError(f"Native reactive {route_label} route accepted without a valid liquid-root phase split.")
+            raise SolutionError(
+                f"Native reactive {route_label} route accepted without a valid liquid-root phase split."
+            )
         total_amount = float(np.sum(phase_amount_totals))
         phases = []
         for index, label in enumerate(phase_labels):
@@ -1761,7 +1780,7 @@ def _native_reactive_two_phase_flash(
         fixed_specs={
             "fixed": ["T", "P", "totals"],
             "balance_rows": int(balance_matrix.shape[0]),
-            "reaction_rows": int(len(reactions)),
+            "reaction_rows": len(reactions),
             "phase_models": bool(phase_models is not None),
         },
     )
@@ -1991,7 +2010,9 @@ def _native_neutral_stability(
             "trial_phases": list(trial_phases),
         }
     )
-    _stamp_ipopt_continuation_state(diagnostics, route_payloads[selected_index], continuation_context=continuation_context)
+    _stamp_ipopt_continuation_state(
+        diagnostics, route_payloads[selected_index], continuation_context=continuation_context
+    )
     return StabilityResult(
         backend="native_equilibrium_nlp",
         problem_kind="neutral_stability",
@@ -2260,8 +2281,10 @@ def _electrolyte_lle_tpdf_certificate(
     rejected_feed_trials = len(accepted_feed_trials) != len(feed_trials)
     rejected_phase_trials = len(accepted_phase_trials) != len(phase_trials)
     feed_unstable = any(float(row["min_tpd"]) < -abs(stability_tolerance) for row in accepted_feed_trials)
-    final_phases_stable = bool(phase_trials) and not rejected_phase_trials and all(
-        float(row["min_tpd"]) >= -abs(stability_tolerance) for row in accepted_phase_trials
+    final_phases_stable = (
+        bool(phase_trials)
+        and not rejected_phase_trials
+        and all(float(row["min_tpd"]) >= -abs(stability_tolerance) for row in accepted_phase_trials)
     )
     if (not feed_unstable and rejected_feed_trials) or rejected_phase_trials:
         return {
@@ -2422,7 +2445,9 @@ def reactive_phase_equilibrium(
             options=solver_options,
         )
         _require_charge_neutral(feed, charges, "reactive_electrolyte_lle feed")
-        electrolyte_formula_basis(mixture.species, charges, feed, salt_labels=tuple(feed_diagnostics.get("salt_molality", {})))
+        electrolyte_formula_basis(
+            mixture.species, charges, feed, salt_labels=tuple(feed_diagnostics.get("salt_molality", {}))
+        )
     else:
         if extra_phase_kwargs.get("solvent_feed") is not None or extra_phase_kwargs.get("salt_molality") is not None:
             raise InputError("solvent_feed and salt_molality require reactive_electrolyte_lle.")
@@ -2857,7 +2882,9 @@ def electrolyte_lle_flash_native(
 
     def run_route(route_options: EquilibriumOptions) -> tuple[Mapping[str, Any], tuple[float, float, float, float]]:
         route_tolerances = neutral_two_phase_eos_tolerances(P, route_options)
-        material_tolerance, pressure_tolerance, chemical_potential_tolerance, phase_distance_tolerance = route_tolerances
+        material_tolerance, pressure_tolerance, chemical_potential_tolerance, phase_distance_tolerance = (
+            route_tolerances
+        )
         charge_tolerance = min(route_options.tolerance, 1.0e-8)
         continuation_state = _prepare_ipopt_continuation_state(
             route_options,

@@ -6,7 +6,7 @@ This page shows the simplest way to create your own parameter folder and load it
 Create a template
 -----------------
 
-Use ``create_parameter_template(...)`` to generate a dataset folder with the expected layout:
+Use ``create_parameter_template(...)`` to generate a dataset folder with the expected layout. The default layout is the CSV dataset shape used by existing ``ePCSAFTMixture.from_dataset(...)`` workflows:
 
 - ``user_options.json``
 - ``pure/``
@@ -46,6 +46,22 @@ The generated folder contains blank CSV files in the same shape the loader expec
 You can open those files in a spreadsheet editor or text editor and fill in your parameter values.
 
 For the meaning of ``user_options.json`` and the supported settings, see ``user_options``.
+
+Canonical JSON folders
+----------------------
+
+New parameter-family work can request the canonical JSON layout instead:
+
+.. code-block:: python
+
+   template_root = create_parameter_template(
+       location=r"C:\Users\Tanner\Documents\my_epcsaft_data",
+       folder_name="water_salt_case_canonical",
+       species=["H2O", "Na+", "Cl-"],
+       schema="canonical",
+   )
+
+This writes ``parameter_set.json`` with ``PureRecord`` and ``BinaryRecord`` field names, plus ``user_options.json``. After filling in the required pure-record values, load the same folder through ``ParameterSet.from_dataset(...)`` or ``ePCSAFTMixture.from_dataset(...)``.
 
 Load the template
 -----------------

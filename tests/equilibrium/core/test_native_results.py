@@ -7,6 +7,7 @@ import pytest
 
 import epcsaft
 from epcsaft.equilibrium_core.native_results import (
+    RouteDiagnosticsView,
     native_route_diagnostics,
     native_route_solved_pressure,
     native_route_solved_temperature,
@@ -215,6 +216,52 @@ def test_native_route_diagnostics_merges_postsolve_and_solver_metadata() -> None
     assert diagnostics["exact_jacobian_required"] is True
 
 
+def test_route_diagnostics_view_exposes_stable_interface() -> None:
+    route = {
+        "accepted": True,
+        "status": "accepted",
+        "backend": "ipopt",
+        "gradient_approximation": "exact",
+        "jacobian_approximation": "exact",
+        "hessian_approximation": "limited-memory",
+        "exact_gradient_required": True,
+        "exact_jacobian_required": True,
+        "residual_families": ["phase_equilibrium", "material_balance"],
+        "constraint_families": ["phase_pressure_consistency", "phase_distance"],
+        "seed_name": "canonical_shifted_feed",
+        "seed_attempts": [
+            {"seed_name": "canonical_shifted_feed", "status": "accepted", "accepted": True},
+        ],
+        "postsolve": {"accepted": True},
+    }
+
+    diagnostics = native_route_diagnostics(route)
+    view = RouteDiagnosticsView(diagnostics)
+    result = epcsaft.EquilibriumResult(
+        backend="native",
+        problem_kind="lle",
+        phases=(),
+        stable=False,
+        split_detected=True,
+        diagnostics=diagnostics,
+    )
+
+    assert epcsaft.RouteDiagnosticsView is RouteDiagnosticsView
+    assert view.route_status == "accepted"
+    assert view.solver_backend == "ipopt"
+    assert view.route_accepted is True
+    assert view.postsolve_accepted is True
+    assert view.gradient_is_exact is True
+    assert view.jacobian_is_exact is True
+    assert view.hessian_is_exact is False
+    assert view.exact_derivatives_required is True
+    assert view.residual_families == ("phase_equilibrium", "material_balance")
+    assert view.constraint_families == ("phase_pressure_consistency", "phase_distance")
+    assert view.selected_seed_name == "canonical_shifted_feed"
+    assert view.seed_attempt_count == 1
+    assert result.route_diagnostics.residual_families == view.residual_families
+
+
 def test_raise_native_route_rejected_uses_shared_diagnostics() -> None:
     route = {
         "accepted": False,
@@ -229,6 +276,7 @@ def test_raise_native_route_rejected_uses_shared_diagnostics() -> None:
     assert exc_info.value.diagnostics["route_status"] == "solver_rejected"
     assert exc_info.value.diagnostics["solver_status"] == "Maximum_Iterations_Exceeded"
     assert exc_info.value.diagnostics["rejection_reason"] == "solver_rejected"
+    assert exc_info.value.route_diagnostics.route_status == "solver_rejected"
 
 
 def test_native_route_result_helpers_validate_fixed_temperature_payloads() -> None:

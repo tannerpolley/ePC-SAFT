@@ -25,6 +25,14 @@ metadata and result-diagnostics checks. That slice is intentionally separate
 from the broad native route-builder solver suite, which is slow and should be
 targeted only by a single test node or with explicit long-test opt-in.
 
+Equilibrium route results keep diagnostics as JSON-like dictionaries for stable
+serialization. For code that needs a typed interface over common route fields,
+use ``result.route_diagnostics`` or ``exc.route_diagnostics`` on
+``SolutionError``. The view exposes route status, solver backend, exact
+derivative flags, residual families, constraint families, selected seed name,
+and normalized seed-attempt counts without changing the underlying diagnostics
+payload.
+
 For reactive electrolyte regression, the
 ``mixed_pressure_speciation_residual_context`` capability advertises the
 diagnostic residual context, its supported target families, and the fact that it
