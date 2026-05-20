@@ -11,11 +11,10 @@
 #include <numeric>
 #include <sstream>
 
-PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_composition_sensitivity_cpp(
+PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_explicit_density_composition_sensitivity_cpp(
     double t,
-    double p,
+    double rho,
     std::vector<double> x,
-    int phase,
     const add_args& cppargs
 );
 
@@ -217,6 +216,7 @@ struct ReactivePhaseState {
     std::size_t global_component_count = 0;
     double amount_total = 0.0;
     double density = 0.0;
+    bool explicit_density = false;
 };
 
 std::vector<int> full_component_indices(std::size_t ncomp) {
@@ -296,6 +296,33 @@ ReactivePhaseState evaluate_phase_state(
     return out;
 }
 
+ReactivePhaseState evaluate_phase_state_at_density(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    double density,
+    const std::vector<double>& amounts,
+    double floor
+) {
+    if (!std::isfinite(density) || !(density > 0.0)) {
+        throw ValueError("reactive phase explicit-density variable must produce a positive finite density.");
+    }
+    ReactivePhaseState out;
+    out.amounts = amounts;
+    out.amount_total = sum_amounts(amounts);
+    out.composition = composition_from_amounts(amounts, out.amount_total, floor);
+    out.model_composition = out.composition;
+    out.global_component_count = out.composition.size();
+    out.global_indices = full_component_indices(out.composition.size());
+    out.density = density;
+    out.explicit_density = true;
+    std::shared_ptr<ePCSAFTStateNative> state = mixture->state(t, out.composition, 0, false, 0.0, true, out.density);
+    out.ln_phi = state->ln_fugacity_coefficient();
+    if (out.ln_phi.size() != out.composition.size()) {
+        throw ValueError("reactive phase residual fugacity payload length mismatch.");
+    }
+    return out;
+}
+
 ReactivePhaseState evaluate_scoped_phase_state(
     const std::shared_ptr<ePCSAFTMixtureNative>& phase_mixture,
     double t,
@@ -303,6 +330,16 @@ ReactivePhaseState evaluate_scoped_phase_state(
     const std::vector<double>& amounts,
     double floor,
     const std::string& density_scope,
+    const std::vector<int>& global_indices,
+    std::size_t global_ncomp
+);
+
+ReactivePhaseState evaluate_scoped_phase_state_at_density(
+    const std::shared_ptr<ePCSAFTMixtureNative>& phase_mixture,
+    double t,
+    double density,
+    const std::vector<double>& amounts,
+    double floor,
     const std::vector<int>& global_indices,
     std::size_t global_ncomp
 );
@@ -577,50 +614,41 @@ std::vector<double> phase_log_mole_fraction_log_amount_hessian_tensor(const Reac
     return hessian;
 }
 
-std::vector<double> phase_ln_activity_log_amount_jacobian(
+PhaseStateCompositionSensitivityResult reactive_phase_sensitivity(
     const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
     double t,
     double p,
     const ReactivePhaseState& state
 ) {
-    const std::size_t ncomp = state.global_component_count > 0
-        ? state.global_component_count
-        : state.composition.size();
-    const std::vector<int> indices = state.global_indices.empty()
-        ? full_component_indices(ncomp)
-        : state.global_indices;
+    (void)p;
+    if (!state.explicit_density) {
+        throw ValueError("reactive phase sensitivity requires explicit density variables.");
+    }
     const std::vector<double>& composition = state.model_composition.empty()
         ? state.composition
         : state.model_composition;
-    const std::size_t local_ncomp = composition.size();
     PhaseStateCompositionSensitivityResult sensitivity =
-        phase_state_ln_fugacity_composition_sensitivity_cpp(t, p, composition, 0, mixture->args());
-    if (!sensitivity.supported || sensitivity.jacobian_row_major.size() != local_ncomp * local_ncomp) {
-        throw ValueError("reactive phase residual Jacobian requires supported phase-state fugacity sensitivities.");
+        phase_state_ln_fugacity_explicit_density_composition_sensitivity_cpp(
+            t,
+            state.density,
+            composition,
+            mixture->args()
+        );
+    if (!sensitivity.supported) {
+        throw ValueError("reactive phase exact derivatives require supported phase-state sensitivities.");
     }
-    std::vector<double> jacobian(ncomp * ncomp, 0.0);
-    for (std::size_t species = 0; species < indices.size(); ++species) {
-        const std::size_t global_species = static_cast<std::size_t>(indices[species]);
-        for (std::size_t variable = 0; variable < indices.size(); ++variable) {
-            const std::size_t global_variable = static_cast<std::size_t>(indices[variable]);
-            const double dlogx = (species == variable ? 1.0 : 0.0) - composition[variable];
-            double dlnphi = 0.0;
-            for (std::size_t k = 0; k < local_ncomp; ++k) {
-                const double dxk_dlogn =
-                    composition[k] * ((k == variable ? 1.0 : 0.0) - composition[variable]);
-                dlnphi += sensitivity.jacobian_row_major[species * local_ncomp + k] * dxk_dlogn;
-            }
-            jacobian[global_species * ncomp + global_variable] = dlogx + dlnphi;
-        }
-    }
-    return jacobian;
+    return sensitivity;
 }
 
-std::vector<double> phase_ln_activity_log_amount_hessian_tensor(
+std::vector<double> phase_standard_state_variable_jacobian(
     const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
     double t,
     double p,
-    const ReactivePhaseState& state
+    const ReactivePhaseState& state,
+    int standard_state,
+    std::size_t variable_count,
+    std::size_t phase_offset,
+    std::size_t density_column
 ) {
     const std::size_t ncomp = state.global_component_count > 0
         ? state.global_component_count
@@ -628,18 +656,78 @@ std::vector<double> phase_ln_activity_log_amount_hessian_tensor(
     const std::vector<int> indices = state.global_indices.empty()
         ? full_component_indices(ncomp)
         : state.global_indices;
+    std::vector<double> out(ncomp * variable_count, 0.0);
+    if (!state.explicit_density) {
+        throw ValueError("reactive phase standard-state derivatives require explicit density variables.");
+    }
+
     const std::vector<double>& composition = state.model_composition.empty()
         ? state.composition
         : state.model_composition;
     const std::size_t local_ncomp = composition.size();
-    PhaseStateCompositionSensitivityResult sensitivity =
-        phase_state_ln_fugacity_composition_sensitivity_cpp(t, p, composition, 0, mixture->args());
-    if (!sensitivity.supported
-        || sensitivity.jacobian_row_major.size() != local_ncomp * local_ncomp
-        || sensitivity.hessian_tensor_row_major.size() != local_ncomp * local_ncomp * local_ncomp) {
-        throw ValueError("reactive phase residual Hessian requires supported phase-state fugacity Hessians.");
+    const PhaseStateCompositionSensitivityResult sensitivity =
+        reactive_phase_sensitivity(mixture, t, p, state);
+    const bool activity = standard_state == STANDARD_STATE_MOLE_FRACTION_ACTIVITY;
+    const bool concentration = standard_state == STANDARD_STATE_CONCENTRATION;
+    if (activity
+        && (sensitivity.fixed_density_jacobian_row_major.size() != local_ncomp * local_ncomp
+            || sensitivity.ln_fugacity_density_derivative.size() != local_ncomp)) {
+        throw ValueError("reactive explicit-density activity Jacobian sensitivity shape mismatch.");
     }
-    std::vector<double> hessian = phase_log_mole_fraction_log_amount_hessian_tensor(state);
+    for (std::size_t local_species = 0; local_species < indices.size(); ++local_species) {
+        const std::size_t global_species = static_cast<std::size_t>(indices[local_species]);
+        for (std::size_t local_variable = 0; local_variable < indices.size(); ++local_variable) {
+            const std::size_t global_variable = static_cast<std::size_t>(indices[local_variable]);
+            const double dlogx = (local_species == local_variable ? 1.0 : 0.0) - composition[local_variable];
+            double value = dlogx;
+            if (activity) {
+                for (std::size_t k = 0; k < local_ncomp; ++k) {
+                    const double dxk =
+                        composition[k] * ((k == local_variable ? 1.0 : 0.0) - composition[local_variable]);
+                    value += sensitivity.fixed_density_jacobian_row_major[local_species * local_ncomp + k] * dxk;
+                }
+            }
+            out[global_species * variable_count + phase_offset + global_variable] = value;
+        }
+        if (activity) {
+            out[global_species * variable_count + density_column] =
+                state.density * sensitivity.ln_fugacity_density_derivative[local_species];
+        } else if (concentration) {
+            out[global_species * variable_count + density_column] = 1.0;
+        }
+    }
+    return out;
+}
+
+std::vector<double> phase_standard_state_variable_hessian_tensor(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    double p,
+    const ReactivePhaseState& state,
+    int standard_state,
+    std::size_t variable_count,
+    std::size_t phase_offset,
+    std::size_t density_column
+) {
+    const std::size_t ncomp = state.global_component_count > 0
+        ? state.global_component_count
+        : state.composition.size();
+    const std::vector<int> indices = state.global_indices.empty()
+        ? full_component_indices(ncomp)
+        : state.global_indices;
+    std::vector<double> out(ncomp * variable_count * variable_count, 0.0);
+    if (!state.explicit_density) {
+        throw ValueError("reactive phase standard-state Hessians require explicit density variables.");
+    }
+
+    const std::vector<double>& composition = state.model_composition.empty()
+        ? state.composition
+        : state.model_composition;
+    const std::size_t local_ncomp = composition.size();
+    const bool activity = standard_state == STANDARD_STATE_MOLE_FRACTION_ACTIVITY;
+    const PhaseStateCompositionSensitivityResult sensitivity =
+        reactive_phase_sensitivity(mixture, t, p, state);
+    const std::vector<double> base = phase_log_mole_fraction_log_amount_hessian_tensor(state);
     auto dx = [&](std::size_t species, std::size_t variable) {
         return composition[species] * ((species == variable ? 1.0 : 0.0) - composition[variable]);
     };
@@ -649,184 +737,63 @@ std::vector<double> phase_ln_activity_log_amount_hessian_tensor(
             * ((species == first ? 1.0 : 0.0) - composition[first])
             - composition[species] * composition[first] * ((first == second ? 1.0 : 0.0) - composition[second]);
     };
+    if (activity
+        && (sensitivity.fixed_density_jacobian_row_major.size() != local_ncomp * local_ncomp
+            || sensitivity.fixed_density_hessian_tensor_row_major.size() != local_ncomp * local_ncomp * local_ncomp
+            || sensitivity.ln_fugacity_density_derivative.size() != local_ncomp
+            || sensitivity.ln_fugacity_density_second_derivative.size() != local_ncomp
+            || sensitivity.ln_fugacity_density_composition_cross_derivative.size() != local_ncomp * local_ncomp)) {
+        throw ValueError("reactive explicit-density activity Hessian sensitivity shape mismatch.");
+    }
     for (std::size_t local_species = 0; local_species < indices.size(); ++local_species) {
         const std::size_t global_species = static_cast<std::size_t>(indices[local_species]);
         for (std::size_t first = 0; first < indices.size(); ++first) {
             const std::size_t global_first = static_cast<std::size_t>(indices[first]);
             for (std::size_t second = 0; second < indices.size(); ++second) {
                 const std::size_t global_second = static_cast<std::size_t>(indices[second]);
-                double value = hessian[global_species * ncomp * ncomp + global_first * ncomp + global_second];
-                for (std::size_t k = 0; k < local_ncomp; ++k) {
-                    value += sensitivity.jacobian_row_major[local_species * local_ncomp + k]
-                        * d2x(k, first, second);
-                    for (std::size_t l = 0; l < local_ncomp; ++l) {
-                        value += sensitivity.hessian_tensor_row_major[
-                            local_species * local_ncomp * local_ncomp + k * local_ncomp + l
-                        ] * dx(k, first) * dx(l, second);
+                double value = base[
+                    global_species * ncomp * ncomp + global_first * ncomp + global_second
+                ];
+                if (activity) {
+                    for (std::size_t k = 0; k < local_ncomp; ++k) {
+                        value += sensitivity.fixed_density_jacobian_row_major[local_species * local_ncomp + k]
+                            * d2x(k, first, second);
+                        for (std::size_t l = 0; l < local_ncomp; ++l) {
+                            value += sensitivity.fixed_density_hessian_tensor_row_major[
+                                local_species * local_ncomp * local_ncomp + k * local_ncomp + l
+                            ] * dx(k, first) * dx(l, second);
+                        }
                     }
                 }
-                hessian[global_species * ncomp * ncomp + global_first * ncomp + global_second] = value;
+                out[global_species * variable_count * variable_count
+                    + (phase_offset + global_first) * variable_count
+                    + phase_offset + global_second] = value;
             }
         }
-    }
-    return hessian;
-}
-
-std::vector<double> phase_log_concentration_log_amount_jacobian(
-    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
-    double t,
-    double p,
-    const ReactivePhaseState& state
-) {
-    const std::size_t ncomp = state.global_component_count > 0
-        ? state.global_component_count
-        : state.composition.size();
-    const std::vector<int> indices = state.global_indices.empty()
-        ? full_component_indices(ncomp)
-        : state.global_indices;
-    const std::vector<double>& composition = state.model_composition.empty()
-        ? state.composition
-        : state.model_composition;
-    const std::size_t local_ncomp = composition.size();
-    PhaseStateCompositionSensitivityResult sensitivity =
-        phase_state_ln_fugacity_composition_sensitivity_cpp(t, p, composition, 0, mixture->args());
-    if (!sensitivity.supported || sensitivity.density_composition_derivative.size() != local_ncomp) {
-        throw ValueError("concentration reaction residual Jacobian requires supported density composition sensitivities.");
-    }
-    const double density = sensitivity.density > 0.0 ? sensitivity.density : state.density;
-    if (!(std::isfinite(density) && density > 0.0)) {
-        throw ValueError("concentration reaction residual Jacobian requires a finite positive molar density.");
-    }
-    std::vector<double> jacobian = phase_log_mole_fraction_log_amount_jacobian(state);
-    std::vector<double> dlogrho_dlogn(local_ncomp, 0.0);
-    for (std::size_t variable = 0; variable < local_ncomp; ++variable) {
-        double drho_dlogn = 0.0;
-        for (std::size_t k = 0; k < local_ncomp; ++k) {
-            const double dxk_dlogn =
-                composition[k] * ((k == variable ? 1.0 : 0.0) - composition[variable]);
-            drho_dlogn += sensitivity.density_composition_derivative[k] * dxk_dlogn;
-        }
-        dlogrho_dlogn[variable] = drho_dlogn / density;
-    }
-    for (std::size_t species = 0; species < indices.size(); ++species) {
-        const std::size_t global_species = static_cast<std::size_t>(indices[species]);
-        for (std::size_t variable = 0; variable < indices.size(); ++variable) {
-            const std::size_t global_variable = static_cast<std::size_t>(indices[variable]);
-            jacobian[global_species * ncomp + global_variable] += dlogrho_dlogn[variable];
-        }
-    }
-    return jacobian;
-}
-
-std::vector<double> phase_log_concentration_log_amount_hessian_tensor(
-    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
-    double t,
-    double p,
-    const ReactivePhaseState& state
-) {
-    const std::size_t ncomp = state.global_component_count > 0
-        ? state.global_component_count
-        : state.composition.size();
-    const std::vector<int> indices = state.global_indices.empty()
-        ? full_component_indices(ncomp)
-        : state.global_indices;
-    const std::vector<double>& composition = state.model_composition.empty()
-        ? state.composition
-        : state.model_composition;
-    const std::size_t local_ncomp = composition.size();
-    PhaseStateCompositionSensitivityResult sensitivity =
-        phase_state_ln_fugacity_composition_sensitivity_cpp(t, p, composition, 0, mixture->args());
-    if (!sensitivity.supported
-        || sensitivity.density_composition_derivative.size() != local_ncomp
-        || sensitivity.density_composition_hessian_row_major.size() != local_ncomp * local_ncomp) {
-        throw ValueError("concentration reaction residual Hessian requires supported density composition Hessians.");
-    }
-    const double density = sensitivity.density > 0.0 ? sensitivity.density : state.density;
-    if (!(std::isfinite(density) && density > 0.0)) {
-        throw ValueError("concentration reaction residual Hessian requires a finite positive molar density.");
-    }
-    std::vector<double> hessian = phase_log_mole_fraction_log_amount_hessian_tensor(state);
-    auto dx = [&](std::size_t species, std::size_t variable) {
-        return composition[species] * ((species == variable ? 1.0 : 0.0) - composition[variable]);
-    };
-    auto d2x = [&](std::size_t species, std::size_t first, std::size_t second) {
-        return composition[species]
-            * ((species == second ? 1.0 : 0.0) - composition[second])
-            * ((species == first ? 1.0 : 0.0) - composition[first])
-            - composition[species] * composition[first] * ((first == second ? 1.0 : 0.0) - composition[second]);
-    };
-    std::vector<double> dlogrho(local_ncomp, 0.0);
-    for (std::size_t variable = 0; variable < local_ncomp; ++variable) {
-        for (std::size_t k = 0; k < local_ncomp; ++k) {
-            dlogrho[variable] += sensitivity.density_composition_derivative[k] * dx(k, variable);
-        }
-        dlogrho[variable] /= density;
-    }
-    std::vector<double> d2logrho(local_ncomp * local_ncomp, 0.0);
-    for (std::size_t first = 0; first < local_ncomp; ++first) {
-        for (std::size_t second = 0; second < local_ncomp; ++second) {
-            double d2rho = 0.0;
-            for (std::size_t k = 0; k < local_ncomp; ++k) {
-                d2rho += sensitivity.density_composition_derivative[k] * d2x(k, first, second);
-                for (std::size_t l = 0; l < local_ncomp; ++l) {
-                    d2rho += sensitivity.density_composition_hessian_row_major[k * local_ncomp + l]
-                        * dx(k, first) * dx(l, second);
+        if (activity) {
+            for (std::size_t local_variable = 0; local_variable < indices.size(); ++local_variable) {
+                const std::size_t global_variable = static_cast<std::size_t>(indices[local_variable]);
+                double cross = 0.0;
+                for (std::size_t k = 0; k < local_ncomp; ++k) {
+                    cross += state.density
+                        * sensitivity.ln_fugacity_density_composition_cross_derivative[local_species * local_ncomp + k]
+                        * dx(k, local_variable);
                 }
+                out[global_species * variable_count * variable_count
+                    + (phase_offset + global_variable) * variable_count
+                    + density_column] = cross;
+                out[global_species * variable_count * variable_count
+                    + density_column * variable_count
+                    + phase_offset + global_variable] = cross;
             }
-            d2logrho[first * local_ncomp + second] =
-                d2rho / density - dlogrho[first] * dlogrho[second];
+            out[global_species * variable_count * variable_count
+                + density_column * variable_count
+                + density_column] =
+                state.density * state.density * sensitivity.ln_fugacity_density_second_derivative[local_species]
+                + state.density * sensitivity.ln_fugacity_density_derivative[local_species];
         }
     }
-    for (std::size_t local_species = 0; local_species < indices.size(); ++local_species) {
-        const std::size_t global_species = static_cast<std::size_t>(indices[local_species]);
-        for (std::size_t first = 0; first < indices.size(); ++first) {
-            const std::size_t global_first = static_cast<std::size_t>(indices[first]);
-            for (std::size_t second = 0; second < indices.size(); ++second) {
-                const std::size_t global_second = static_cast<std::size_t>(indices[second]);
-                hessian[global_species * ncomp * ncomp + global_first * ncomp + global_second] +=
-                    d2logrho[first * local_ncomp + second];
-            }
-        }
-    }
-    return hessian;
-}
-
-std::vector<double> phase_reaction_standard_state_log_amount_jacobian(
-    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
-    double t,
-    double p,
-    const ReactivePhaseState& state,
-    int standard_state
-) {
-    if (standard_state == STANDARD_STATE_MOLE_FRACTION_ACTIVITY) {
-        return phase_ln_activity_log_amount_jacobian(mixture, t, p, state);
-    }
-    if (standard_state == STANDARD_STATE_IDEAL_MOLE_FRACTION) {
-        return phase_log_mole_fraction_log_amount_jacobian(state);
-    }
-    if (standard_state == STANDARD_STATE_CONCENTRATION) {
-        return phase_log_concentration_log_amount_jacobian(mixture, t, p, state);
-    }
-    throw ValueError("reaction standard state code is outside the native reactive-phase contract.");
-}
-
-std::vector<double> phase_reaction_standard_state_log_amount_hessian_tensor(
-    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
-    double t,
-    double p,
-    const ReactivePhaseState& state,
-    int standard_state
-) {
-    if (standard_state == STANDARD_STATE_MOLE_FRACTION_ACTIVITY) {
-        return phase_ln_activity_log_amount_hessian_tensor(mixture, t, p, state);
-    }
-    if (standard_state == STANDARD_STATE_IDEAL_MOLE_FRACTION) {
-        return phase_log_mole_fraction_log_amount_hessian_tensor(state);
-    }
-    if (standard_state == STANDARD_STATE_CONCENTRATION) {
-        return phase_log_concentration_log_amount_hessian_tensor(mixture, t, p, state);
-    }
-    throw ValueError("reaction standard state code is outside the native reactive-phase contract.");
+    return out;
 }
 
 std::vector<double> reactive_phase_residual_jacobian_row_major(
@@ -846,10 +813,30 @@ std::vector<double> reactive_phase_residual_jacobian_row_major(
     const ReactivePhaseResidualEvaluationNative& residual_eval
 ) {
     const std::size_t ncomp = phase1.composition.size();
-    const std::size_t nvars = 2 * ncomp;
+    const std::size_t nvars = static_cast<std::size_t>(residual_eval.jacobian_cols);
+    const std::size_t phase1_density_col = 2 * ncomp;
+    const std::size_t phase2_density_col = 2 * ncomp + 1;
     std::vector<double> jacobian(residual_eval.residual.size() * nvars, 0.0);
-    std::vector<double> activity_jac1 = phase_ln_activity_log_amount_jacobian(phase1_mixture, t, p, phase1);
-    std::vector<double> activity_jac2 = phase_ln_activity_log_amount_jacobian(phase2_mixture, t, p, phase2);
+    std::vector<double> activity_jac1 = phase_standard_state_variable_jacobian(
+        phase1_mixture,
+        t,
+        p,
+        phase1,
+        STANDARD_STATE_MOLE_FRACTION_ACTIVITY,
+        nvars,
+        0,
+        phase1_density_col
+    );
+    std::vector<double> activity_jac2 = phase_standard_state_variable_jacobian(
+        phase2_mixture,
+        t,
+        p,
+        phase2,
+        STANDARD_STATE_MOLE_FRACTION_ACTIVITY,
+        nvars,
+        ncomp,
+        phase2_density_col
+    );
     validate_reaction_standard_states(reaction_standard_states, reaction_rows);
     const bool phase_tagged_reactions = has_phase_tagged_reaction_stoichiometry(
         reaction_phase_stoichiometry_row_major,
@@ -869,49 +856,57 @@ std::vector<double> reactive_phase_residual_jacobian_row_major(
 
     if (phase_tagged_reactions) {
         for (int reaction = 0; reaction < reaction_rows; ++reaction) {
-            const std::vector<double> reaction_jac1 = phase_reaction_standard_state_log_amount_jacobian(
+            const std::vector<double> reaction_route_jac1 = phase_standard_state_variable_jacobian(
                 phase1_mixture,
                 t,
                 p,
                 phase1,
-                reaction_standard_states[static_cast<std::size_t>(reaction)]
+                reaction_standard_states[static_cast<std::size_t>(reaction)],
+                nvars,
+                0,
+                phase1_density_col
             );
-            const std::vector<double> reaction_jac2 = phase_reaction_standard_state_log_amount_jacobian(
+            const std::vector<double> reaction_route_jac2 = phase_standard_state_variable_jacobian(
                 phase2_mixture,
                 t,
                 p,
                 phase2,
-                reaction_standard_states[static_cast<std::size_t>(reaction)]
+                reaction_standard_states[static_cast<std::size_t>(reaction)],
+                nvars,
+                ncomp,
+                phase2_density_col
             );
             const std::size_t reaction_offset = static_cast<std::size_t>(reaction) * 2 * ncomp;
-            for (std::size_t variable = 0; variable < ncomp; ++variable) {
+            for (std::size_t variable = 0; variable < nvars; ++variable) {
                 double phase1_value = 0.0;
                 double phase2_value = 0.0;
                 for (std::size_t species = 0; species < ncomp; ++species) {
                     phase1_value += reaction_phase_stoichiometry_row_major[reaction_offset + species]
-                        * reaction_jac1[species * ncomp + variable];
+                        * reaction_route_jac1[species * nvars + variable];
                     phase2_value += reaction_phase_stoichiometry_row_major[reaction_offset + ncomp + species]
-                        * reaction_jac2[species * ncomp + variable];
+                        * reaction_route_jac2[species * nvars + variable];
                 }
-                jacobian[row * nvars + variable] = phase1_value;
-                jacobian[row * nvars + ncomp + variable] = phase2_value;
+                jacobian[row * nvars + variable] = phase1_value + phase2_value;
             }
             ++row;
         }
     } else {
         for (int reaction = 0; reaction < reaction_rows; ++reaction) {
-            const std::vector<double> reaction_jac1 = phase_reaction_standard_state_log_amount_jacobian(
+            const std::vector<double> reaction_jac1 = phase_standard_state_variable_jacobian(
                 phase1_mixture,
                 t,
                 p,
                 phase1,
-                reaction_standard_states[static_cast<std::size_t>(reaction)]
+                reaction_standard_states[static_cast<std::size_t>(reaction)],
+                nvars,
+                0,
+                phase1_density_col
             );
-            for (std::size_t variable = 0; variable < ncomp; ++variable) {
+            for (std::size_t variable = 0; variable < nvars; ++variable) {
                 double value = 0.0;
                 for (std::size_t species = 0; species < ncomp; ++species) {
                     value += reaction_stoichiometry_row_major[static_cast<std::size_t>(reaction) * ncomp + species]
-                        * reaction_jac1[species * ncomp + variable];
+                        * reaction_jac1[species * nvars + variable];
                 }
                 jacobian[row * nvars + variable] = value;
             }
@@ -919,20 +914,23 @@ std::vector<double> reactive_phase_residual_jacobian_row_major(
         }
 
         for (int reaction = 0; reaction < reaction_rows; ++reaction) {
-            const std::vector<double> reaction_jac2 = phase_reaction_standard_state_log_amount_jacobian(
+            const std::vector<double> reaction_jac2 = phase_standard_state_variable_jacobian(
                 phase2_mixture,
                 t,
                 p,
                 phase2,
-                reaction_standard_states[static_cast<std::size_t>(reaction)]
+                reaction_standard_states[static_cast<std::size_t>(reaction)],
+                nvars,
+                ncomp,
+                phase2_density_col
             );
-            for (std::size_t variable = 0; variable < ncomp; ++variable) {
+            for (std::size_t variable = 0; variable < nvars; ++variable) {
                 double value = 0.0;
                 for (std::size_t species = 0; species < ncomp; ++species) {
                     value += reaction_stoichiometry_row_major[static_cast<std::size_t>(reaction) * ncomp + species]
-                        * reaction_jac2[species * ncomp + variable];
+                        * reaction_jac2[species * nvars + variable];
                 }
-                jacobian[row * nvars + ncomp + variable] = value;
+                jacobian[row * nvars + variable] = value;
             }
             ++row;
         }
@@ -943,9 +941,10 @@ std::vector<double> reactive_phase_residual_jacobian_row_major(
             if (std::abs(charges[species]) > 1.0e-12) {
                 continue;
             }
-            for (std::size_t variable = 0; variable < ncomp; ++variable) {
-                jacobian[row * nvars + variable] = activity_jac1[species * ncomp + variable];
-                jacobian[row * nvars + ncomp + variable] = -activity_jac2[species * ncomp + variable];
+            for (std::size_t variable = 0; variable < nvars; ++variable) {
+                jacobian[row * nvars + variable] =
+                    activity_jac1[species * nvars + variable]
+                    - activity_jac2[species * nvars + variable];
             }
             ++row;
         }
@@ -965,13 +964,12 @@ std::vector<double> reactive_phase_residual_jacobian_row_major(
                 const std::size_t a = static_cast<std::size_t>(anion);
                 const double cation_weight = std::abs(charges[a]);
                 const double anion_weight = std::abs(charges[c]);
-                for (std::size_t variable = 0; variable < ncomp; ++variable) {
+                for (std::size_t variable = 0; variable < nvars; ++variable) {
                     jacobian[row * nvars + variable] =
-                        cation_weight * activity_jac1[c * ncomp + variable]
-                        + anion_weight * activity_jac1[a * ncomp + variable];
-                    jacobian[row * nvars + ncomp + variable] =
-                        -cation_weight * activity_jac2[c * ncomp + variable]
-                        - anion_weight * activity_jac2[a * ncomp + variable];
+                        cation_weight * activity_jac1[c * nvars + variable]
+                        + anion_weight * activity_jac1[a * nvars + variable]
+                        - cation_weight * activity_jac2[c * nvars + variable]
+                        - anion_weight * activity_jac2[a * nvars + variable];
                 }
                 ++row;
             }
@@ -1014,6 +1012,33 @@ void add_phase_species_hessian(
     }
 }
 
+void add_route_species_hessian(
+    std::vector<double>& target,
+    std::size_t residual_row,
+    std::size_t variable_count,
+    double coefficient,
+    const std::vector<double>& species_hessian_tensor,
+    std::size_t species
+) {
+    if (coefficient == 0.0) {
+        return;
+    }
+    const std::size_t species_count = species_hessian_tensor.size() / (variable_count * variable_count);
+    if (species_count * variable_count * variable_count != species_hessian_tensor.size()
+        || species >= species_count) {
+        throw ValueError("reactive route Hessian tensor shape does not match variable count.");
+    }
+    for (std::size_t first = 0; first < variable_count; ++first) {
+        for (std::size_t second = 0; second < variable_count; ++second) {
+            target[residual_row * variable_count * variable_count + first * variable_count + second] +=
+                coefficient
+                * species_hessian_tensor[
+                    species * variable_count * variable_count + first * variable_count + second
+                ];
+        }
+    }
+}
+
 void add_phase_amount_diagonal_hessian(
     std::vector<double>& target,
     std::size_t residual_row,
@@ -1049,12 +1074,30 @@ std::vector<double> reactive_phase_residual_hessian_tensor_row_major(
     const ReactivePhaseResidualEvaluationNative& residual_eval
 ) {
     const std::size_t ncomp = phase1.composition.size();
-    const std::size_t nvars = 2 * ncomp;
+    const std::size_t nvars = static_cast<std::size_t>(residual_eval.jacobian_cols);
+    const std::size_t phase1_density_col = 2 * ncomp;
+    const std::size_t phase2_density_col = 2 * ncomp + 1;
     std::vector<double> tensor(residual_eval.residual.size() * nvars * nvars, 0.0);
-    const std::vector<double> activity_hess1 =
-        phase_ln_activity_log_amount_hessian_tensor(phase1_mixture, t, p, phase1);
-    const std::vector<double> activity_hess2 =
-        phase_ln_activity_log_amount_hessian_tensor(phase2_mixture, t, p, phase2);
+    const std::vector<double> activity_hess1 = phase_standard_state_variable_hessian_tensor(
+        phase1_mixture,
+        t,
+        p,
+        phase1,
+        STANDARD_STATE_MOLE_FRACTION_ACTIVITY,
+        nvars,
+        0,
+        phase1_density_col
+    );
+    const std::vector<double> activity_hess2 = phase_standard_state_variable_hessian_tensor(
+        phase2_mixture,
+        t,
+        p,
+        phase2,
+        STANDARD_STATE_MOLE_FRACTION_ACTIVITY,
+        nvars,
+        ncomp,
+        phase2_density_col
+    );
     validate_reaction_standard_states(reaction_standard_states, reaction_rows);
     const bool phase_tagged_reactions = has_phase_tagged_reaction_stoichiometry(
         reaction_phase_stoichiometry_row_major,
@@ -1075,38 +1118,40 @@ std::vector<double> reactive_phase_residual_hessian_tensor_row_major(
 
     if (phase_tagged_reactions) {
         for (int reaction = 0; reaction < reaction_rows; ++reaction) {
-            const std::vector<double> reaction_hess1 = phase_reaction_standard_state_log_amount_hessian_tensor(
+            const std::vector<double> reaction_hess1 = phase_standard_state_variable_hessian_tensor(
                 phase1_mixture,
                 t,
                 p,
                 phase1,
-                reaction_standard_states[static_cast<std::size_t>(reaction)]
+                reaction_standard_states[static_cast<std::size_t>(reaction)],
+                nvars,
+                0,
+                phase1_density_col
             );
-            const std::vector<double> reaction_hess2 = phase_reaction_standard_state_log_amount_hessian_tensor(
+            const std::vector<double> reaction_hess2 = phase_standard_state_variable_hessian_tensor(
                 phase2_mixture,
                 t,
                 p,
                 phase2,
-                reaction_standard_states[static_cast<std::size_t>(reaction)]
+                reaction_standard_states[static_cast<std::size_t>(reaction)],
+                nvars,
+                ncomp,
+                phase2_density_col
             );
             const std::size_t reaction_offset = static_cast<std::size_t>(reaction) * 2 * ncomp;
             for (std::size_t species = 0; species < ncomp; ++species) {
-                add_phase_species_hessian(
+                add_route_species_hessian(
                     tensor,
                     row,
                     nvars,
-                    0,
-                    ncomp,
                     reaction_phase_stoichiometry_row_major[reaction_offset + species],
                     reaction_hess1,
                     species
                 );
-                add_phase_species_hessian(
+                add_route_species_hessian(
                     tensor,
                     row,
                     nvars,
-                    ncomp,
-                    ncomp,
                     reaction_phase_stoichiometry_row_major[reaction_offset + ncomp + species],
                     reaction_hess2,
                     species
@@ -1116,20 +1161,21 @@ std::vector<double> reactive_phase_residual_hessian_tensor_row_major(
         }
     } else {
         for (int reaction = 0; reaction < reaction_rows; ++reaction) {
-            const std::vector<double> reaction_hess1 = phase_reaction_standard_state_log_amount_hessian_tensor(
+            const std::vector<double> reaction_hess1 = phase_standard_state_variable_hessian_tensor(
                 phase1_mixture,
                 t,
                 p,
                 phase1,
-                reaction_standard_states[static_cast<std::size_t>(reaction)]
+                reaction_standard_states[static_cast<std::size_t>(reaction)],
+                nvars,
+                0,
+                phase1_density_col
             );
             for (std::size_t species = 0; species < ncomp; ++species) {
-                add_phase_species_hessian(
+                add_route_species_hessian(
                     tensor,
                     row,
                     nvars,
-                    0,
-                    ncomp,
                     reaction_stoichiometry_row_major[static_cast<std::size_t>(reaction) * ncomp + species],
                     reaction_hess1,
                     species
@@ -1139,20 +1185,21 @@ std::vector<double> reactive_phase_residual_hessian_tensor_row_major(
         }
 
         for (int reaction = 0; reaction < reaction_rows; ++reaction) {
-            const std::vector<double> reaction_hess2 = phase_reaction_standard_state_log_amount_hessian_tensor(
+            const std::vector<double> reaction_hess2 = phase_standard_state_variable_hessian_tensor(
                 phase2_mixture,
                 t,
                 p,
                 phase2,
-                reaction_standard_states[static_cast<std::size_t>(reaction)]
+                reaction_standard_states[static_cast<std::size_t>(reaction)],
+                nvars,
+                ncomp,
+                phase2_density_col
             );
             for (std::size_t species = 0; species < ncomp; ++species) {
-                add_phase_species_hessian(
+                add_route_species_hessian(
                     tensor,
                     row,
                     nvars,
-                    ncomp,
-                    ncomp,
                     reaction_stoichiometry_row_major[static_cast<std::size_t>(reaction) * ncomp + species],
                     reaction_hess2,
                     species
@@ -1167,8 +1214,8 @@ std::vector<double> reactive_phase_residual_hessian_tensor_row_major(
             if (std::abs(charges[species]) > 1.0e-12) {
                 continue;
             }
-            add_phase_species_hessian(tensor, row, nvars, 0, ncomp, 1.0, activity_hess1, species);
-            add_phase_species_hessian(tensor, row, nvars, ncomp, ncomp, -1.0, activity_hess2, species);
+            add_route_species_hessian(tensor, row, nvars, 1.0, activity_hess1, species);
+            add_route_species_hessian(tensor, row, nvars, -1.0, activity_hess2, species);
             ++row;
         }
 
@@ -1187,10 +1234,10 @@ std::vector<double> reactive_phase_residual_hessian_tensor_row_major(
                 const std::size_t a = static_cast<std::size_t>(anion);
                 const double cation_weight = std::abs(charges[a]);
                 const double anion_weight = std::abs(charges[c]);
-                add_phase_species_hessian(tensor, row, nvars, 0, ncomp, cation_weight, activity_hess1, c);
-                add_phase_species_hessian(tensor, row, nvars, 0, ncomp, anion_weight, activity_hess1, a);
-                add_phase_species_hessian(tensor, row, nvars, ncomp, ncomp, -cation_weight, activity_hess2, c);
-                add_phase_species_hessian(tensor, row, nvars, ncomp, ncomp, -anion_weight, activity_hess2, a);
+                add_route_species_hessian(tensor, row, nvars, cation_weight, activity_hess1, c);
+                add_route_species_hessian(tensor, row, nvars, anion_weight, activity_hess1, a);
+                add_route_species_hessian(tensor, row, nvars, -cation_weight, activity_hess2, c);
+                add_route_species_hessian(tensor, row, nvars, -anion_weight, activity_hess2, a);
                 ++row;
             }
         }
@@ -1216,6 +1263,20 @@ void validate_jacobian_backend(const EquilibriumOptionsNative& options) {
 }
 
 }  // namespace
+
+std::vector<double> append_reactive_phase_density_variables(
+    std::vector<double> variables,
+    double phase1_density,
+    double phase2_density
+) {
+    if (!std::isfinite(phase1_density) || phase1_density <= 0.0
+        || !std::isfinite(phase2_density) || phase2_density <= 0.0) {
+        throw ValueError("Reactive liquid-root explicit-density seed requires positive finite phase densities.");
+    }
+    variables.push_back(std::log(phase1_density));
+    variables.push_back(std::log(phase2_density));
+    return variables;
+}
 
 ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residual_native(
     const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
@@ -1254,59 +1315,104 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
     std::vector<double> feed = normalize_feed(raw_feed, ncomp, options.min_composition, "reactive_phase_equilibrium");
     std::vector<double> eval_variables = variables;
     if (has_variables) {
-        if (variables.size() != 2 * ncomp) {
-            throw ValueError("reactive phase residual variables length must be 2 * mixture component count.");
+        if (variables.size() != 2 * ncomp + 2) {
+            throw ValueError("reactive phase residual variables must include log phase species amounts plus two log-density variables.");
         }
-    } else if (has_initial_phases) {
-        eval_variables = variables_from_initial_phases(
+    } else {
+        std::vector<double> amount_variables = has_initial_phases
+            ? variables_from_initial_phases(
             initial_phase1,
             initial_phase2,
             initial_phase_fraction_phase2,
             ncomp,
             options.min_composition
+        )
+            : default_variables_from_feed(feed, options.min_composition);
+        const std::vector<double> phase1_seed_amounts = exp_amounts(amount_variables, 0, ncomp);
+        const std::vector<double> phase2_seed_amounts = exp_amounts(amount_variables, ncomp, ncomp);
+        const ReactivePhaseState phase1_seed = use_phase_models
+            ? evaluate_scoped_phase_state(
+                phase1_mixture,
+                t,
+                p,
+                phase1_seed_amounts,
+                options.min_composition,
+                "reactive_phase_equilibrium_phase1_density_seed",
+                phase1_global_indices,
+                ncomp
+            )
+            : evaluate_phase_state(
+                mixture,
+                t,
+                p,
+                phase1_seed_amounts,
+                options.min_composition,
+                "reactive_phase_equilibrium_phase1_density_seed"
+            );
+        const ReactivePhaseState phase2_seed = use_phase_models
+            ? evaluate_scoped_phase_state(
+                phase2_mixture,
+                t,
+                p,
+                phase2_seed_amounts,
+                options.min_composition,
+                "reactive_phase_equilibrium_phase2_density_seed",
+                phase2_global_indices,
+                ncomp
+            )
+            : evaluate_phase_state(
+                mixture,
+                t,
+                p,
+                phase2_seed_amounts,
+                options.min_composition,
+                "reactive_phase_equilibrium_phase2_density_seed"
+            );
+        eval_variables = append_reactive_phase_density_variables(
+            amount_variables,
+            phase1_seed.density,
+            phase2_seed.density
         );
-    } else {
-        eval_variables = default_variables_from_feed(feed, options.min_composition);
     }
 
+    const std::vector<double> phase1_amounts = exp_amounts(eval_variables, 0, ncomp);
+    const std::vector<double> phase2_amounts = exp_amounts(eval_variables, ncomp, ncomp);
+    const double phase1_density = std::exp(eval_variables[2 * ncomp]);
+    const double phase2_density = std::exp(eval_variables[2 * ncomp + 1]);
     ReactivePhaseState phase1 = use_phase_models
-        ? evaluate_scoped_phase_state(
-            phase1_mixture,
-            t,
-            p,
-            exp_amounts(eval_variables, 0, ncomp),
-            options.min_composition,
-            "reactive_phase_equilibrium_phase1",
-            phase1_global_indices,
-            ncomp
-        )
-        : evaluate_phase_state(
-            mixture,
-            t,
-            p,
-            exp_amounts(eval_variables, 0, ncomp),
-            options.min_composition,
-            "reactive_phase_equilibrium_phase1"
-        );
+        ? evaluate_scoped_phase_state_at_density(
+                phase1_mixture,
+                t,
+                phase1_density,
+                phase1_amounts,
+                options.min_composition,
+                phase1_global_indices,
+                ncomp
+            )
+        : evaluate_phase_state_at_density(
+                mixture,
+                t,
+                phase1_density,
+                phase1_amounts,
+                options.min_composition
+            );
     ReactivePhaseState phase2 = use_phase_models
-        ? evaluate_scoped_phase_state(
-            phase2_mixture,
-            t,
-            p,
-            exp_amounts(eval_variables, ncomp, ncomp),
-            options.min_composition,
-            "reactive_phase_equilibrium_phase2",
-            phase2_global_indices,
-            ncomp
-        )
-        : evaluate_phase_state(
-            mixture,
-            t,
-            p,
-            exp_amounts(eval_variables, ncomp, ncomp),
-            options.min_composition,
-            "reactive_phase_equilibrium_phase2"
-        );
+        ? evaluate_scoped_phase_state_at_density(
+                phase2_mixture,
+                t,
+                phase2_density,
+                phase2_amounts,
+                options.min_composition,
+                phase2_global_indices,
+                ncomp
+            )
+        : evaluate_phase_state_at_density(
+                mixture,
+                t,
+                phase2_density,
+                phase2_amounts,
+                options.min_composition
+            );
     std::vector<double> total_amounts(ncomp, 0.0);
     for (std::size_t i = 0; i < ncomp; ++i) {
         total_amounts[i] = phase1.amounts[i] + phase2.amounts[i];
@@ -1321,7 +1427,7 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
     );
 
     ReactivePhaseResidualEvaluationNative out;
-    out.variable_model = "log_phase_species_amounts";
+    out.variable_model = "log_phase_species_amounts_plus_log_density";
     out.variables = eval_variables;
     out.lower_bounds.assign(eval_variables.size(), std::log(options.min_composition));
     out.upper_bounds.assign(eval_variables.size(), 50.0);
@@ -1446,8 +1552,9 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
     out.diagnostics_string["residual_blocks"] = phase_tagged_reactions
         ? "element_balance,phase_tagged_reaction_equilibrium,neutral_phase_equilibrium,ionic_equilibrium,phase_charge"
         : "element_balance,reaction_equilibrium,neutral_phase_equilibrium,ionic_equilibrium,phase_charge";
-    out.diagnostics_string["jacobian_backend"] = "cppad_implicit";
-    out.diagnostics_string["derivative_backend"] = "cppad_implicit";
+    out.diagnostics_string["jacobian_backend"] = "cppad_explicit_density";
+    out.diagnostics_string["derivative_backend"] = "cppad_explicit_density";
+    out.diagnostics_string["density_backend"] = "explicit_log_density_pressure_constraint";
     out.diagnostics_string["coupling_level"] = use_phase_models
         ? "phase_tagged_distinct_native_residual_states"
         : "single_native_residual_state";
@@ -1632,6 +1739,46 @@ std::vector<double> build_reactive_phase_model_initial_variables(
     return out;
 }
 
+ReactivePhaseState evaluate_scoped_phase_state_at_density(
+    const std::shared_ptr<ePCSAFTMixtureNative>& phase_mixture,
+    double t,
+    double density,
+    const std::vector<double>& amounts,
+    double floor,
+    const std::vector<int>& global_indices,
+    std::size_t global_ncomp
+) {
+    if (!std::isfinite(density) || !(density > 0.0)) {
+        throw ValueError("reactive phase-model explicit-density variable must produce a positive finite density.");
+    }
+    validate_phase_model_indices(phase_mixture, global_indices, global_ncomp, "explicit_density_phase_model");
+    ReactivePhaseState out;
+    out.amounts = amounts;
+    out.amount_total = sum_amounts(amounts);
+    out.global_component_count = global_ncomp;
+    out.global_indices = global_indices;
+    const std::vector<double> local_amounts = selected_amounts(amounts, global_indices, global_ncomp);
+    const double local_total = sum_amounts(local_amounts);
+    out.model_composition = composition_from_amounts(local_amounts, local_total, floor);
+    out.composition.assign(global_ncomp, 0.0);
+    for (std::size_t local = 0; local < global_indices.size(); ++local) {
+        out.composition[static_cast<std::size_t>(global_indices[local])] = out.model_composition[local];
+    }
+    out.density = density;
+    out.explicit_density = true;
+    std::shared_ptr<ePCSAFTStateNative> state =
+        phase_mixture->state(t, out.model_composition, 0, false, 0.0, true, out.density);
+    const std::vector<double> local_ln_phi = state->ln_fugacity_coefficient();
+    if (local_ln_phi.size() != out.model_composition.size()) {
+        throw ValueError("reactive phase model fugacity payload length mismatch.");
+    }
+    out.ln_phi.assign(global_ncomp, 0.0);
+    for (std::size_t local = 0; local < global_indices.size(); ++local) {
+        out.ln_phi[static_cast<std::size_t>(global_indices[local])] = local_ln_phi[local];
+    }
+    return out;
+}
+
 struct NamedInitialVariables {
     std::string seed_name;
     std::vector<double> variables;
@@ -1754,7 +1901,7 @@ public:
                 static_cast<int>(ncomp)
             );
         }
-        initial_variables_ = distinct_phase_models
+        const std::vector<double> amount_initial = distinct_phase_models
             ? build_reactive_phase_model_initial_variables(
                 feed_,
                 phase1_global_indices_,
@@ -1767,6 +1914,8 @@ public:
                 mixture_->args().z,
                 options_.min_composition
             );
+        initial_variables_ = explicit_density_seed_from_amount_variables(amount_initial);
+        initialize_density_bounds_and_scales(initial_variables_);
         const std::vector<double> species_upper = species_amount_upper_bounds(
             balance_matrix_row_major_,
             balance_rows_,
@@ -1774,7 +1923,7 @@ public:
             ncomp,
             options_.min_composition
         );
-        variable_upper_bounds_.assign(2 * ncomp, std::log(1.0));
+        variable_upper_bounds_.assign(initial_variables_.size(), std::log(1.0));
         for (std::size_t species = 0; species < ncomp; ++species) {
             const double upper = std::log(species_upper[species]);
             variable_upper_bounds_[species] = upper;
@@ -1786,6 +1935,8 @@ public:
                 variable_upper_bounds_[ncomp + species] = std::log(10.0 * options_.min_composition);
             }
         }
+        variable_upper_bounds_[phase1_density_variable_index()] = std::log(phase1_density_upper_bound_);
+        variable_upper_bounds_[phase2_density_variable_index()] = std::log(phase2_density_upper_bound_);
         if (minimum_phase_distance_ > 0.0) {
             const std::vector<double> first_amounts = exp_amounts(initial_variables_, 0, ncomp);
             const std::vector<double> second_amounts = exp_amounts(initial_variables_, ncomp, ncomp);
@@ -1826,6 +1977,7 @@ public:
         return balance_rows_
             + phase_tagged_reaction_constraint_count()
             + phase_charge_constraint_count()
+            + pressure_constraint_count()
             + separation_constraint_count();
     }
 
@@ -1843,14 +1995,17 @@ public:
                 charge_nonzeros += 2;
             }
         }
+        const int pressure_nonzeros = pressure_constraint_count() * variable_count();
         const int separation_nonzeros = separation_constraint_count() > 0 ? 2 * static_cast<int>(feed_.size()) : 0;
-        return balance_nonzeros + reaction_nonzeros + charge_nonzeros + separation_nonzeros;
+        return balance_nonzeros + reaction_nonzeros + charge_nonzeros + pressure_nonzeros + separation_nonzeros;
     }
 
     epcsaft::native::equilibrium_nlp::NlpBounds bounds() const override {
         epcsaft::native::equilibrium_nlp::NlpBounds out;
         out.variable_lower.assign(initial_variables_.size(), std::log(options_.min_composition));
         out.variable_upper = variable_upper_bounds_;
+        out.variable_lower[phase1_density_variable_index()] = std::log(phase1_density_lower_bound_);
+        out.variable_lower[phase2_density_variable_index()] = std::log(phase2_density_lower_bound_);
         out.constraint_lower.assign(static_cast<std::size_t>(balance_rows_), 0.0);
         out.constraint_upper.assign(static_cast<std::size_t>(balance_rows_), 0.0);
         for (int row = 0; row < phase_tagged_reaction_constraint_count(); ++row) {
@@ -1858,6 +2013,10 @@ public:
             out.constraint_upper.push_back(0.0);
         }
         for (int row = 0; row < phase_charge_constraint_count(); ++row) {
+            out.constraint_lower.push_back(0.0);
+            out.constraint_upper.push_back(0.0);
+        }
+        for (int row = 0; row < pressure_constraint_count(); ++row) {
             out.constraint_lower.push_back(0.0);
             out.constraint_upper.push_back(0.0);
         }
@@ -1897,6 +2056,8 @@ public:
         if (phase_charge_constraint_count() > 0) {
             out.insert(out.end(), eval.phase_charge_residuals.begin(), eval.phase_charge_residuals.end());
         }
+        out.push_back(pressure_constraint_value(eval, false));
+        out.push_back(pressure_constraint_value(eval, true));
         if (separation_constraint_count() > 0) {
             out.push_back(phase_separation(variables));
         }
@@ -1940,10 +2101,15 @@ public:
                 out.cols.push_back(phase_offset + static_cast<int>(species));
             }
         }
+        for (int pressure_row = 0; pressure_row < pressure_constraint_count(); ++pressure_row) {
+            const int row = pressure_constraint_start_index() + pressure_row;
+            for (int col = 0; col < variable_count(); ++col) {
+                out.rows.push_back(row);
+                out.cols.push_back(col);
+            }
+        }
         if (separation_constraint_count() > 0) {
-            const int row = balance_rows_
-                + phase_tagged_reaction_constraint_count()
-                + phase_charge_constraint_count();
+            const int row = separation_constraint_index();
             for (std::size_t species = 0; species < feed_.size(); ++species) {
                 out.rows.push_back(row);
                 out.cols.push_back(static_cast<int>(species));
@@ -1997,6 +2163,10 @@ public:
                 }
             }
         }
+        const std::vector<double> phase1_pressure = pressure_constraint_jacobian(eval, false);
+        values.insert(values.end(), phase1_pressure.begin(), phase1_pressure.end());
+        const std::vector<double> phase2_pressure = pressure_constraint_jacobian(eval, true);
+        values.insert(values.end(), phase2_pressure.begin(), phase2_pressure.end());
         if (separation_constraint_count() > 0) {
             const std::vector<double> separation_jacobian = phase_separation_jacobian(variables);
             for (std::size_t species = 0; species < ncomp; ++species) {
@@ -2034,7 +2204,7 @@ public:
         residuals.residuals = eval.residual;
         residuals.jacobian_row_major = eval.jacobian_row_major;
         residuals.residual_hessian_tensor_row_major = eval.residual_hessian_tensor_row_major;
-        residuals.backend = "cppad_implicit_reactive_residual";
+        residuals.backend = "cppad_explicit_density_reactive_residual";
         epcsaft::native::equilibrium_nlp::ObjectiveSecondOrderData objective =
             epcsaft::native::equilibrium_nlp::residual_quadratic_objective_second_order(residuals);
 
@@ -2049,7 +2219,7 @@ public:
             0.0
         );
         constraints_data.has_hessian.assign(static_cast<std::size_t>(constraints_data.constraint_count), false);
-        constraints_data.backend = "cppad_implicit_reactive_residual";
+        constraints_data.backend = "cppad_explicit_density_reactive_residual";
         const auto copy_residual_hessian = [&](int residual_row, int constraint_row) {
             constraints_data.has_hessian[static_cast<std::size_t>(constraint_row)] = true;
             const std::size_t source_offset = static_cast<std::size_t>(residual_row) * n * n;
@@ -2072,8 +2242,24 @@ public:
             copy_residual_hessian(charge_residual_start, charge_constraint_start);
             copy_residual_hessian(charge_residual_start + 1, charge_constraint_start + 1);
         }
+        constraints_data.has_hessian[static_cast<std::size_t>(pressure_constraint_start_index())] = true;
+        const std::vector<double> phase1_pressure_hessian = pressure_constraint_hessian(eval, false);
+        std::copy(
+            phase1_pressure_hessian.begin(),
+            phase1_pressure_hessian.end(),
+            constraints_data.hessian_tensor_row_major.begin()
+                + static_cast<std::ptrdiff_t>(pressure_constraint_start_index() * n * n)
+        );
+        constraints_data.has_hessian[static_cast<std::size_t>(pressure_constraint_start_index() + 1)] = true;
+        const std::vector<double> phase2_pressure_hessian = pressure_constraint_hessian(eval, true);
+        std::copy(
+            phase2_pressure_hessian.begin(),
+            phase2_pressure_hessian.end(),
+            constraints_data.hessian_tensor_row_major.begin()
+                + static_cast<std::ptrdiff_t>((pressure_constraint_start_index() + 1) * n * n)
+        );
         if (separation_constraint_count() > 0) {
-            const int row = constraint_count() - 1;
+            const int row = separation_constraint_index();
             constraints_data.has_hessian[static_cast<std::size_t>(row)] = true;
             const std::vector<double> separation = phase_separation_hessian(variables);
             const std::size_t offset = static_cast<std::size_t>(row) * n * n;
@@ -2092,7 +2278,7 @@ public:
     }
 
     std::string hessian_backend() const override {
-        return "cppad_implicit_reactive_residual";
+        return "cppad_explicit_density_reactive_residual";
     }
 
     epcsaft::native::equilibrium_nlp::NlpScaling scaling() const override {
@@ -2105,9 +2291,9 @@ public:
 
     std::map<std::string, std::string> diagnostics() const override {
         return {
-            {"derivative_backend", "cppad_implicit"},
-            {"density_backend", "liquid_pressure_root"},
-            {"variable_model", "log_phase_species_amounts"},
+            {"derivative_backend", "cppad_explicit_density"},
+            {"density_backend", "explicit_log_density_pressure_constraint"},
+            {"variable_model", "log_phase_species_amounts_plus_log_density"},
         };
     }
 
@@ -2165,7 +2351,249 @@ public:
         return minimum_phase_distance_;
     }
 
+    std::vector<double> explicit_density_seed(const std::vector<double>& amount_variables) const {
+        return explicit_density_seed_from_amount_variables(amount_variables);
+    }
+
+    double pressure_consistency_norm(const ReactivePhaseResidualEvaluationNative& eval) const {
+        return std::max(
+            std::abs(pressure_constraint_value(eval, false) * phase1_pressure_constraint_scale_),
+            std::abs(pressure_constraint_value(eval, true) * phase2_pressure_constraint_scale_)
+        );
+    }
+
+    double pressure_consistency_tolerance() const {
+        return std::max(1.0e-2, 1.0e-8 * std::abs(target_pressure_));
+    }
+
 private:
+    std::size_t phase1_density_variable_index() const {
+        return 2 * feed_.size();
+    }
+
+    std::size_t phase2_density_variable_index() const {
+        return 2 * feed_.size() + 1;
+    }
+
+    int pressure_constraint_count() const {
+        return 2;
+    }
+
+    int pressure_constraint_start_index() const {
+        return balance_rows_ + phase_tagged_reaction_constraint_count() + phase_charge_constraint_count();
+    }
+
+    int separation_constraint_index() const {
+        return pressure_constraint_start_index() + pressure_constraint_count();
+    }
+
+    std::vector<double> explicit_density_seed_from_amount_variables(
+        const std::vector<double>& amount_variables
+    ) const {
+        if (amount_variables.size() != 2 * feed_.size()) {
+            throw ValueError("reactive explicit-density seed requires log phase species amount variables.");
+        }
+        const std::vector<double> phase1_amounts = exp_amounts(amount_variables, 0, feed_.size());
+        const std::vector<double> phase2_amounts = exp_amounts(amount_variables, feed_.size(), feed_.size());
+        const bool use_phase_models = phase1_mixture_ || phase2_mixture_;
+        const ReactivePhaseState phase1_seed = use_phase_models
+            ? evaluate_scoped_phase_state(
+                phase1_mixture_,
+                temperature_,
+                target_pressure_,
+                phase1_amounts,
+                options_.min_composition,
+                "reactive_phase_equilibrium_phase1_density_seed",
+                phase1_global_indices_,
+                feed_.size()
+            )
+            : evaluate_phase_state(
+                mixture_,
+                temperature_,
+                target_pressure_,
+                phase1_amounts,
+                options_.min_composition,
+                "reactive_phase_equilibrium_phase1_density_seed"
+            );
+        const ReactivePhaseState phase2_seed = use_phase_models
+            ? evaluate_scoped_phase_state(
+                phase2_mixture_,
+                temperature_,
+                target_pressure_,
+                phase2_amounts,
+                options_.min_composition,
+                "reactive_phase_equilibrium_phase2_density_seed",
+                phase2_global_indices_,
+                feed_.size()
+            )
+            : evaluate_phase_state(
+                mixture_,
+                temperature_,
+                target_pressure_,
+                phase2_amounts,
+                options_.min_composition,
+                "reactive_phase_equilibrium_phase2_density_seed"
+            );
+        return append_reactive_phase_density_variables(
+            amount_variables,
+            phase1_seed.density,
+            phase2_seed.density
+        );
+    }
+
+    void initialize_density_bounds_and_scales(const std::vector<double>& variables) {
+        const ReactivePhaseResidualEvaluationNative eval = evaluate_cached(variables);
+        phase1_density_lower_bound_ = std::max(minimum_density_, eval.phase1_density / density_bound_factor_);
+        phase1_density_upper_bound_ = std::min(maximum_density_, eval.phase1_density * density_bound_factor_);
+        phase2_density_lower_bound_ = std::max(minimum_density_, eval.phase2_density / density_bound_factor_);
+        phase2_density_upper_bound_ = std::min(maximum_density_, eval.phase2_density * density_bound_factor_);
+        phase1_pressure_constraint_scale_ = pressure_constraint_scale(eval, false);
+        phase2_pressure_constraint_scale_ = pressure_constraint_scale(eval, true);
+    }
+
+    double pressure_constraint_scale(
+        const ReactivePhaseResidualEvaluationNative& eval,
+        bool phase2
+    ) const {
+        const ReactivePhaseState state = state_from_eval(eval, phase2);
+        const PhaseStateCompositionSensitivityResult sensitivity = reactive_phase_sensitivity(
+            phase2 ? phase2_mixture_ : phase1_mixture_,
+            temperature_,
+            target_pressure_,
+            state
+        );
+        return std::max(
+            {std::abs(target_pressure_), std::abs(state.density * sensitivity.pressure_density_derivative), 1.0}
+        );
+    }
+
+    ReactivePhaseState state_from_eval(const ReactivePhaseResidualEvaluationNative& eval, bool phase2) const {
+        ReactivePhaseState state;
+        state.amounts = phase2 ? eval.phase2_amounts : eval.phase1_amounts;
+        state.amount_total = sum_amounts(state.amounts);
+        state.composition = phase2 ? eval.phase2_composition : eval.phase1_composition;
+        state.ln_phi = phase2 ? eval.phase2_ln_fugacity_coefficient : eval.phase1_ln_fugacity_coefficient;
+        state.global_component_count = feed_.size();
+        state.global_indices = phase2 ? phase2_global_indices_ : phase1_global_indices_;
+        state.model_composition = selected_amounts(state.composition, state.global_indices, feed_.size());
+        state.density = phase2 ? eval.phase2_density : eval.phase1_density;
+        state.explicit_density = true;
+        return state;
+    }
+
+    double pressure_constraint_value(
+        const ReactivePhaseResidualEvaluationNative& eval,
+        bool phase2
+    ) const {
+        const ReactivePhaseState state = state_from_eval(eval, phase2);
+        const PhaseStateCompositionSensitivityResult sensitivity = reactive_phase_sensitivity(
+            phase2 ? phase2_mixture_ : phase1_mixture_,
+            temperature_,
+            target_pressure_,
+            state
+        );
+        const double scale = phase2 ? phase2_pressure_constraint_scale_ : phase1_pressure_constraint_scale_;
+        return (sensitivity.pressure - target_pressure_) / scale;
+    }
+
+    std::vector<double> pressure_constraint_jacobian(
+        const ReactivePhaseResidualEvaluationNative& eval,
+        bool phase2
+    ) const {
+        const std::size_t ncomp = feed_.size();
+        const std::size_t nvars = static_cast<std::size_t>(variable_count());
+        const std::size_t phase_offset = phase2 ? ncomp : 0;
+        const std::size_t density_col = phase2 ? phase2_density_variable_index() : phase1_density_variable_index();
+        const ReactivePhaseState state = state_from_eval(eval, phase2);
+        const PhaseStateCompositionSensitivityResult sensitivity = reactive_phase_sensitivity(
+            phase2 ? phase2_mixture_ : phase1_mixture_,
+            temperature_,
+            target_pressure_,
+            state
+        );
+        const double scale = phase2 ? phase2_pressure_constraint_scale_ : phase1_pressure_constraint_scale_;
+        const std::vector<double>& composition = state.model_composition;
+        const std::vector<int>& indices = state.global_indices;
+        std::vector<double> row(nvars, 0.0);
+        for (std::size_t local_variable = 0; local_variable < composition.size(); ++local_variable) {
+            const std::size_t global_variable = static_cast<std::size_t>(indices[local_variable]);
+            double value = 0.0;
+            for (std::size_t species = 0; species < composition.size(); ++species) {
+                const double dx =
+                    composition[species]
+                    * ((species == local_variable ? 1.0 : 0.0) - composition[local_variable]);
+                value += sensitivity.pressure_composition_fixed_density_derivative[species] * dx;
+            }
+            row[phase_offset + global_variable] = value / scale;
+        }
+        row[density_col] = state.density * sensitivity.pressure_density_derivative / scale;
+        return row;
+    }
+
+    std::vector<double> pressure_constraint_hessian(
+        const ReactivePhaseResidualEvaluationNative& eval,
+        bool phase2
+    ) const {
+        const std::size_t ncomp = feed_.size();
+        const std::size_t nvars = static_cast<std::size_t>(variable_count());
+        const std::size_t phase_offset = phase2 ? ncomp : 0;
+        const std::size_t density_col = phase2 ? phase2_density_variable_index() : phase1_density_variable_index();
+        const ReactivePhaseState state = state_from_eval(eval, phase2);
+        const PhaseStateCompositionSensitivityResult sensitivity = reactive_phase_sensitivity(
+            phase2 ? phase2_mixture_ : phase1_mixture_,
+            temperature_,
+            target_pressure_,
+            state
+        );
+        const double scale = phase2 ? phase2_pressure_constraint_scale_ : phase1_pressure_constraint_scale_;
+        const std::vector<double>& composition = state.model_composition;
+        const std::vector<int>& indices = state.global_indices;
+        std::vector<double> out(nvars * nvars, 0.0);
+        auto dx = [&](std::size_t species, std::size_t variable) {
+            return composition[species] * ((species == variable ? 1.0 : 0.0) - composition[variable]);
+        };
+        auto d2x = [&](std::size_t species, std::size_t first, std::size_t second) {
+            return composition[species]
+                * ((species == second ? 1.0 : 0.0) - composition[second])
+                * ((species == first ? 1.0 : 0.0) - composition[first])
+                - composition[species] * composition[first] * ((first == second ? 1.0 : 0.0) - composition[second]);
+        };
+        for (std::size_t first = 0; first < composition.size(); ++first) {
+            const std::size_t global_first = static_cast<std::size_t>(indices[first]);
+            for (std::size_t second = 0; second < composition.size(); ++second) {
+                const std::size_t global_second = static_cast<std::size_t>(indices[second]);
+                double value = 0.0;
+                for (std::size_t species = 0; species < composition.size(); ++species) {
+                    value += sensitivity.pressure_composition_fixed_density_derivative[species]
+                        * d2x(species, first, second);
+                    for (std::size_t other = 0; other < composition.size(); ++other) {
+                        value += sensitivity.pressure_composition_fixed_density_hessian_row_major[
+                            species * composition.size() + other
+                        ] * dx(species, first) * dx(other, second);
+                    }
+                }
+                out[(phase_offset + global_first) * nvars + phase_offset + global_second] = value / scale;
+            }
+        }
+        for (std::size_t variable = 0; variable < composition.size(); ++variable) {
+            const std::size_t global_variable = static_cast<std::size_t>(indices[variable]);
+            double cross = 0.0;
+            for (std::size_t species = 0; species < composition.size(); ++species) {
+                cross += state.density
+                    * sensitivity.pressure_density_composition_cross_derivative[species]
+                    * dx(species, variable);
+            }
+            out[(phase_offset + global_variable) * nvars + density_col] = cross / scale;
+            out[density_col * nvars + phase_offset + global_variable] = cross / scale;
+        }
+        out[density_col * nvars + density_col] =
+            (
+                state.density * state.density * sensitivity.pressure_density_second_derivative
+                + state.density * sensitivity.pressure_density_derivative
+            ) / scale;
+        return out;
+    }
+
     int phase_tagged_reaction_constraint_count() const {
         if (reaction_phase_stoichiometry_row_major_.empty()) {
             return 0;
@@ -2297,6 +2725,15 @@ private:
     mutable std::vector<double> cached_variables_;
     mutable ReactivePhaseResidualEvaluationNative cached_evaluation_;
     double minimum_phase_distance_ = 1.0e-8;
+    double minimum_density_ = 1.0e-12;
+    double maximum_density_ = 1.0e8;
+    double density_bound_factor_ = 20.0;
+    double phase1_density_lower_bound_ = 1.0e-12;
+    double phase1_density_upper_bound_ = 1.0e8;
+    double phase2_density_lower_bound_ = 1.0e-12;
+    double phase2_density_upper_bound_ = 1.0e8;
+    double phase1_pressure_constraint_scale_ = 1.0;
+    double phase2_pressure_constraint_scale_ = 1.0;
     int separation_species_index_ = 0;
     double separation_sign_ = 1.0;
 };
@@ -2314,9 +2751,9 @@ epcsaft::native::equilibrium_nlp::NeutralTwoPhaseEosNlpContract reactive_liquid_
 
     epcsaft::native::equilibrium_nlp::NeutralTwoPhaseEosNlpContract out;
     out.problem_name = problem.name();
-    out.derivative_backend = "cppad_implicit";
-    out.variable_model = "log_phase_species_amounts";
-    out.density_backend = "liquid_pressure_root";
+    out.derivative_backend = "cppad_explicit_density";
+    out.variable_model = "log_phase_species_amounts_plus_log_density";
+    out.density_backend = "explicit_log_density_pressure_constraint";
     out.phase_count = 2;
     out.species_count = static_cast<int>(problem.feed().size());
     out.balance_row_count = problem.balance_row_count();
@@ -2353,8 +2790,8 @@ epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosPostsolve reactive_liquid_r
     double phase_distance_tolerance
 ) {
     epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosPostsolve out;
-    out.derivative_backend = "cppad_implicit";
-    out.density_backend = "liquid_pressure_root";
+    out.derivative_backend = "cppad_explicit_density";
+    out.density_backend = "explicit_log_density_pressure_constraint";
     out.phase_count = 2;
     out.species_count = static_cast<int>(problem.feed().size());
     out.balance_row_count = problem.balance_row_count();
@@ -2395,7 +2832,7 @@ epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosPostsolve reactive_liquid_r
     out.conserved_balance_norm = max_abs(eval.element_balance_residuals);
     out.charge_balance_norm = max_abs(eval.phase_charge_residuals);
     out.phase_equilibrium_norm = max_abs(out.phase_equilibrium_residuals);
-    out.pressure_consistency_norm = 0.0;
+    out.pressure_consistency_norm = problem.pressure_consistency_norm(eval);
     out.reaction_stationarity_norm = reaction_residual_norm(eval);
     out.phase_distance = eval.phase_distance;
     const double effective_phase_distance = std::max(
@@ -2409,6 +2846,7 @@ epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosPostsolve reactive_liquid_r
     const bool retained_phase_split = out.phase_amount_totals[0] > 0.0 && out.phase_amount_totals[1] > 0.0;
     out.accepted = out.conserved_balance_norm <= conserved_balance_tolerance
         && out.charge_balance_norm <= conserved_balance_tolerance
+        && out.pressure_consistency_norm <= problem.pressure_consistency_tolerance()
         && out.reaction_stationarity_norm <= reaction_tolerance
         && out.phase_equilibrium_norm <= phase_equilibrium_tolerance
         && out.phase_distance >= effective_phase_distance
@@ -2420,6 +2858,8 @@ epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosPostsolve reactive_liquid_r
         out.rejection_reason = "conserved_balance";
     } else if (out.charge_balance_norm > conserved_balance_tolerance) {
         out.rejection_reason = "charge_balance";
+    } else if (out.pressure_consistency_norm > problem.pressure_consistency_tolerance()) {
+        out.rejection_reason = "pressure_consistency";
     } else if (out.reaction_stationarity_norm > reaction_tolerance) {
         out.rejection_reason = "reaction_equilibrium";
     } else if (out.phase_equilibrium_norm > phase_equilibrium_tolerance) {
@@ -2533,9 +2973,9 @@ epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult solve_reactive_
     best.exact_gradient_required = adapter.exact_gradient_required;
     best.exact_jacobian_required = adapter.exact_jacobian_required;
     best.problem_name = "reactive_liquid_root_eos";
-    best.derivative_backend = "cppad_implicit";
-    best.postsolve.derivative_backend = "cppad_implicit";
-    best.postsolve.density_backend = "liquid_pressure_root";
+    best.derivative_backend = "cppad_explicit_density";
+    best.postsolve.derivative_backend = "cppad_explicit_density";
+    best.postsolve.density_backend = "explicit_log_density_pressure_constraint";
     if (!adapter.compiled) {
         best.status = "ipopt_dependency_required";
         return best;
@@ -2561,11 +3001,14 @@ epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult solve_reactive_
     best.species_count = static_cast<int>(problem.feed().size());
     best.balance_row_count = problem.balance_row_count();
     best.reaction_count = problem.reaction_count();
-    const std::vector<NamedInitialVariables> seeds = reactive_liquid_root_seed_candidates(
+    std::vector<NamedInitialVariables> seeds = reactive_liquid_root_seed_candidates(
         problem.feed(),
         mixture->args().z,
         equilibrium_options.min_composition
     );
+    for (NamedInitialVariables& seed : seeds) {
+        seed.variables = problem.explicit_density_seed(seed.variables);
+    }
     bool have_best = false;
     std::vector<epcsaft::native::equilibrium_nlp::RouteSeedAttempt> attempts;
     attempts.reserve(seeds.size() + (solve_options.initial_variables.empty() ? 0 : 1));
@@ -2583,9 +3026,9 @@ epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult solve_reactive_
         result.exact_gradient_required = adapter.exact_gradient_required;
         result.exact_jacobian_required = adapter.exact_jacobian_required;
         result.problem_name = "reactive_liquid_root_eos";
-        result.derivative_backend = "cppad_implicit";
-        result.postsolve.derivative_backend = "cppad_implicit";
-        result.postsolve.density_backend = "liquid_pressure_root";
+        result.derivative_backend = "cppad_explicit_density";
+        result.postsolve.derivative_backend = "cppad_explicit_density";
+        result.postsolve.density_backend = "explicit_log_density_pressure_constraint";
         result.initial_point_strategy = "deterministic_seed_sweep";
         result.seed_name = seed_name;
         result.phase_count = 2;
@@ -2633,7 +3076,11 @@ epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult solve_reactive_
     };
 
     if (!solve_options.initial_variables.empty()) {
-        const auto continuation = run_attempt("continuation_state", solve_options);
+        epcsaft::native::equilibrium_nlp::IpoptSolveOptions continuation_options = solve_options;
+        if (continuation_options.initial_variables.size() == 2 * problem.feed().size()) {
+            continuation_options.initial_variables = problem.explicit_density_seed(continuation_options.initial_variables);
+        }
+        const auto continuation = run_attempt("continuation_state", continuation_options);
         if (continuation.accepted) {
             best.seed_attempts = attempts;
             return best;
@@ -2690,9 +3137,9 @@ epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult solve_reactive_
     best.exact_gradient_required = adapter.exact_gradient_required;
     best.exact_jacobian_required = adapter.exact_jacobian_required;
     best.problem_name = "reactive_liquid_root_eos";
-    best.derivative_backend = "cppad_implicit";
-    best.postsolve.derivative_backend = "cppad_implicit";
-    best.postsolve.density_backend = "liquid_pressure_root";
+    best.derivative_backend = "cppad_explicit_density";
+    best.postsolve.derivative_backend = "cppad_explicit_density";
+    best.postsolve.density_backend = "explicit_log_density_pressure_constraint";
     if (!adapter.compiled) {
         best.status = "ipopt_dependency_required";
         return best;
@@ -2722,13 +3169,16 @@ epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult solve_reactive_
     best.species_count = static_cast<int>(problem.feed().size());
     best.balance_row_count = problem.balance_row_count();
     best.reaction_count = problem.reaction_count();
-    const std::vector<NamedInitialVariables> seeds = reactive_phase_model_seed_candidates(
+    std::vector<NamedInitialVariables> seeds = reactive_phase_model_seed_candidates(
         problem.feed(),
         phase1_global_indices,
         phase2_global_indices,
         mixture->args().z,
         equilibrium_options.min_composition
     );
+    for (NamedInitialVariables& seed : seeds) {
+        seed.variables = problem.explicit_density_seed(seed.variables);
+    }
     bool have_best = false;
     std::vector<epcsaft::native::equilibrium_nlp::RouteSeedAttempt> attempts;
     attempts.reserve(seeds.size() + (solve_options.initial_variables.empty() ? 0 : 1));
@@ -2746,9 +3196,9 @@ epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult solve_reactive_
         result.exact_gradient_required = adapter.exact_gradient_required;
         result.exact_jacobian_required = adapter.exact_jacobian_required;
         result.problem_name = "reactive_liquid_root_eos";
-        result.derivative_backend = "cppad_implicit";
-        result.postsolve.derivative_backend = "cppad_implicit";
-        result.postsolve.density_backend = "liquid_pressure_root";
+        result.derivative_backend = "cppad_explicit_density";
+        result.postsolve.derivative_backend = "cppad_explicit_density";
+        result.postsolve.density_backend = "explicit_log_density_pressure_constraint";
         result.initial_point_strategy = "deterministic_seed_sweep";
         result.seed_name = seed_name;
         result.phase_count = 2;
@@ -2796,7 +3246,11 @@ epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult solve_reactive_
     };
 
     if (!solve_options.initial_variables.empty()) {
-        const auto continuation = run_attempt("continuation_state", solve_options);
+        epcsaft::native::equilibrium_nlp::IpoptSolveOptions continuation_options = solve_options;
+        if (continuation_options.initial_variables.size() == 2 * problem.feed().size()) {
+            continuation_options.initial_variables = problem.explicit_density_seed(continuation_options.initial_variables);
+        }
+        const auto continuation = run_attempt("continuation_state", continuation_options);
         if (continuation.accepted) {
             best.seed_attempts = attempts;
             return best;

@@ -76,7 +76,8 @@ def test_solve_reactive_speciation_activity_coupled_state_routes_to_native_ipopt
 
     assert result.success is True
     assert result.diagnostics["problem_class"] == "homogeneous_nonideal_residual_speciation"
-    assert result.diagnostics["derivative_backend"] == "cppad_implicit"
+    assert result.diagnostics["derivative_backend"] == "cppad_explicit_density"
+    assert result.diagnostics["density_backend"] == "explicit_log_density_pressure_constraint"
     assert result.diagnostics["activity_basis"] == "mole_fraction"
     assert result.diagnostics["hessian_approximation"] == "exact"
     assert result.diagnostics["exact_hessian_available"] is True
@@ -99,7 +100,8 @@ def test_solve_reactive_speciation_concentration_standard_state_routes_to_native
 
     assert result.success is True
     assert result.diagnostics["problem_class"] == "homogeneous_nonideal_residual_speciation"
-    assert result.diagnostics["derivative_backend"] == "cppad_implicit"
+    assert result.diagnostics["derivative_backend"] == "cppad_explicit_density"
+    assert result.diagnostics["density_backend"] == "explicit_log_density_pressure_constraint"
     assert result.diagnostics["activity_basis"] == "concentration"
     assert result.diagnostics["hessian_approximation"] == "exact"
     assert result.diagnostics["exact_hessian_available"] is True

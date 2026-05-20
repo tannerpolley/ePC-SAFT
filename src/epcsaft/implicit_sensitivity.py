@@ -16,6 +16,7 @@ _EXPLICIT_TO_IMPLICIT_BACKEND = {
     "cppad": "cppad_implicit",
     "analytic_implicit": "analytic_implicit",
     "cppad_implicit": "cppad_implicit",
+    "cppad_explicit_density": "cppad_implicit",
 }
 
 

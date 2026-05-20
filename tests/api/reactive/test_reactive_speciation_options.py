@@ -438,8 +438,9 @@ def test_reactive_speciation_requested_ipopt_routes_nonideal_speciation_when_com
     assert result.success is True
     assert result.x["B"] / result.x["A"] == pytest.approx(3.0, rel=1.0e-7)
     assert result.diagnostics["problem_class"] == "homogeneous_nonideal_residual_speciation"
-    assert result.diagnostics["derivative_backend"] == "cppad_implicit"
-    assert result.diagnostics["implicit_sensitivity_backend"] == "cppad_implicit"
+    assert result.diagnostics["derivative_backend"] == "cppad_explicit_density"
+    assert result.diagnostics["density_backend"] == "explicit_log_density_pressure_constraint"
+    assert result.diagnostics["implicit_sensitivity_backend"] == "cppad_explicit_density_implicit"
     assert result.diagnostics["hessian_approximation"] == "exact"
     assert result.diagnostics["exact_hessian_available"] is True
     assert result.diagnostics["hessian_backend"] != "limited-memory"

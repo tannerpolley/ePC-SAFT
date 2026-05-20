@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <map>
 #include <numeric>
 #include <utility>
 
@@ -61,8 +62,13 @@ void apply_stability_ipopt_metadata(StabilityRouteResult& out, const IpoptSolveR
     out.exact_hessian_available = solve_bool(solve, "exact_hessian_available");
     out.warm_start_requested = solve_bool(solve, "warm_start_requested");
     out.warm_start_used = solve_bool(solve, "warm_start_used");
-    out.last_callback_exception = solve_string(solve, "last_callback_exception", out.last_callback_exception);
-    out.last_callback_failure = solve_string(solve, "last_callback_failure", out.last_callback_failure);
+    if (solve.accepted) {
+        out.last_callback_exception.clear();
+        out.last_callback_failure.clear();
+    } else {
+        out.last_callback_exception = solve_string(solve, "last_callback_exception", out.last_callback_exception);
+        out.last_callback_failure = solve_string(solve, "last_callback_failure", out.last_callback_failure);
+    }
     out.bound_lower_multipliers = solve.bound_lower_multipliers;
     out.bound_upper_multipliers = solve.bound_upper_multipliers;
     out.constraint_multipliers = solve.constraint_multipliers;
@@ -289,13 +295,26 @@ PhaseStateCompositionSensitivityResult phase_state_sensitivity(
     int phase,
     const std::string& label
 ) {
-    PhaseStateCompositionSensitivityResult result = phase_state_ln_fugacity_composition_sensitivity_cpp(
+    const DensitySolveResult density = density_solve_report_cpp(
         temperature,
         pressure,
         composition,
         phase,
         args
     );
+    if (!density.valid || !std::isfinite(density.rho) || !(density.rho > 0.0)) {
+        const std::string reason = density.diagnostics.rejection_reason.empty()
+            ? "density root was not valid."
+            : density.diagnostics.rejection_reason;
+        throw ValueError(label + " " + reason);
+    }
+    PhaseStateCompositionSensitivityResult result =
+        phase_state_ln_fugacity_explicit_density_composition_sensitivity_cpp(
+            temperature,
+            density.rho,
+            composition,
+            args
+        );
     if (!result.supported) {
         const std::string message = result.message.empty()
             ? "phase-state fugacity composition sensitivity was not available."
@@ -304,11 +323,64 @@ PhaseStateCompositionSensitivityResult phase_state_sensitivity(
     }
     require_size(result.ln_fugacity, composition.size(), label + " ln fugacity");
     require_size(
-        result.jacobian_row_major,
+        result.fixed_density_jacobian_row_major,
         composition.size() * composition.size(),
-        label + " ln fugacity composition Jacobian"
+        label + " fixed-density ln fugacity composition Jacobian"
     );
     return result;
+}
+
+PhaseStateCompositionSensitivityResult phase_state_explicit_density_sensitivity(
+    const add_args& args,
+    double temperature,
+    double density,
+    const std::vector<double>& composition,
+    const std::string& label
+) {
+    PhaseStateCompositionSensitivityResult result =
+        phase_state_ln_fugacity_explicit_density_composition_sensitivity_cpp(
+            temperature,
+            density,
+            composition,
+            args
+        );
+    if (!result.supported) {
+        const std::string message = result.message.empty()
+            ? "explicit-density phase-state fugacity sensitivity was not available."
+            : result.message;
+        throw ValueError(label + " " + message);
+    }
+    require_size(result.ln_fugacity, composition.size(), label + " ln fugacity");
+    require_size(
+        result.fixed_density_jacobian_row_major,
+        composition.size() * composition.size(),
+        label + " fixed-density ln fugacity composition Jacobian"
+    );
+    return result;
+}
+
+double pressure_root_density_seed(
+    const add_args& args,
+    double temperature,
+    double pressure,
+    const std::vector<double>& composition,
+    int phase,
+    const std::string& label
+) {
+    const DensitySolveResult density = density_solve_report_cpp(
+        temperature,
+        pressure,
+        composition,
+        phase,
+        args
+    );
+    if (!density.valid || !std::isfinite(density.rho) || !(density.rho > 0.0)) {
+        const std::string reason = density.diagnostics.rejection_reason.empty()
+            ? "density root was not valid."
+            : density.diagnostics.rejection_reason;
+        throw ValueError(label + " " + reason);
+    }
+    return density.rho;
 }
 
 std::vector<double> reduced_potential(
@@ -406,6 +478,27 @@ public:
             "parent stability state"
         );
         parent_reduced_potential_ = reduced_potential(feed_composition_, parent_state_.ln_fugacity);
+        initial_density_ = pressure_root_density_seed(
+            args_,
+            temperature_,
+            pressure_,
+            initial_composition_for_seed(),
+            trial_phase_,
+            "trial stability reference density"
+        );
+        density_lower_bound_ = std::max(minimum_density_, initial_density_ / density_bound_factor_);
+        density_upper_bound_ = std::min(maximum_density_, initial_density_ * density_bound_factor_);
+        const PhaseStateCompositionSensitivityResult initial_trial_state =
+            phase_state_explicit_density_sensitivity(
+                args_,
+                temperature_,
+                initial_density_,
+                initial_composition_for_seed(),
+                "trial stability reference state"
+            );
+        pressure_constraint_scale_ = std::max(
+            {pressure_, std::abs(initial_density_ * initial_trial_state.pressure_density_derivative), 1.0}
+        );
     }
 
     std::string name() const override {
@@ -413,41 +506,40 @@ public:
     }
 
     int variable_count() const override {
-        return species_count_;
+        return species_count_ + 1;
     }
 
     int constraint_count() const override {
-        return has_charge_constraint() ? 2 : 1;
+        return has_charge_constraint() ? 3 : 2;
     }
 
     int jacobian_nonzero_count() const override {
-        return species_count_ * constraint_count();
+        return variable_count() * constraint_count();
     }
 
     NlpBounds bounds() const override {
         NlpBounds out;
         out.variable_lower.assign(static_cast<std::size_t>(species_count_), minimum_composition_);
         out.variable_upper.assign(static_cast<std::size_t>(species_count_), 1.0);
+        out.variable_lower.push_back(std::log(density_lower_bound_));
+        out.variable_upper.push_back(std::log(density_upper_bound_));
         out.constraint_lower.assign(static_cast<std::size_t>(constraint_count()), 0.0);
         out.constraint_upper.assign(static_cast<std::size_t>(constraint_count()), 0.0);
         return out;
     }
 
     std::vector<double> initial_point() const override {
-        if (!initial_composition_.empty()) {
-            return initial_composition_;
-        }
-        if (has_charge_constraint()) {
-            return feed_composition_;
-        }
-        return shifted_composition(feed_composition_);
+        std::vector<double> composition = initial_composition_for_seed();
+        composition.push_back(std::log(initial_density_));
+        return composition;
     }
 
     double objective(const std::vector<double>& variables) const override {
         const PhaseStateCompositionSensitivityResult trial = trial_state(variables);
+        const std::vector<double> composition = composition_from_variables(variables);
         double value = 0.0;
         for (int index = 0; index < species_count_; ++index) {
-            const double xi = variables[static_cast<std::size_t>(index)];
+            const double xi = composition[static_cast<std::size_t>(index)];
             value += xi * (
                 std::log(xi)
                 + trial.ln_fugacity[static_cast<std::size_t>(index)]
@@ -459,9 +551,11 @@ public:
 
     std::vector<double> objective_gradient(const std::vector<double>& variables) const override {
         const PhaseStateCompositionSensitivityResult trial = trial_state(variables);
-        std::vector<double> gradient(static_cast<std::size_t>(species_count_), 0.0);
+        const std::vector<double> composition = composition_from_variables(variables);
+        const double density = density_from_variables(variables);
+        std::vector<double> gradient(static_cast<std::size_t>(variable_count()), 0.0);
         for (int col = 0; col < species_count_; ++col) {
-            const double xj = variables[static_cast<std::size_t>(col)];
+            const double xj = composition[static_cast<std::size_t>(col)];
             gradient[static_cast<std::size_t>(col)] =
                 std::log(xj)
                 + 1.0
@@ -469,26 +563,36 @@ public:
                 - parent_reduced_potential_[static_cast<std::size_t>(col)];
             for (int row = 0; row < species_count_; ++row) {
                 gradient[static_cast<std::size_t>(col)] +=
-                    variables[static_cast<std::size_t>(row)]
-                    * trial.jacobian_row_major[static_cast<std::size_t>(row * species_count_ + col)];
+                    composition[static_cast<std::size_t>(row)]
+                    * trial.fixed_density_jacobian_row_major[static_cast<std::size_t>(row * species_count_ + col)];
             }
+        }
+        const std::size_t density_col = static_cast<std::size_t>(density_variable_index());
+        for (int row = 0; row < species_count_; ++row) {
+            gradient[density_col] +=
+                composition[static_cast<std::size_t>(row)]
+                * density
+                * trial.ln_fugacity_density_derivative[static_cast<std::size_t>(row)];
         }
         return gradient;
     }
 
     std::vector<double> constraints(const std::vector<double>& variables) const override {
         require_trial_variables(variables);
+        const std::vector<double> composition = composition_from_variables(variables);
+        const PhaseStateCompositionSensitivityResult trial = trial_state(variables);
         std::vector<double> out;
         out.reserve(static_cast<std::size_t>(constraint_count()));
-        out.push_back(std::accumulate(variables.begin(), variables.end(), 0.0) - 1.0);
+        out.push_back(std::accumulate(composition.begin(), composition.end(), 0.0) - 1.0);
         if (has_charge_constraint()) {
             double charge_balance = 0.0;
             for (int index = 0; index < species_count_; ++index) {
                 charge_balance +=
-                    variables[static_cast<std::size_t>(index)] * charges_[static_cast<std::size_t>(index)];
+                    composition[static_cast<std::size_t>(index)] * charges_[static_cast<std::size_t>(index)];
             }
             out.push_back(charge_balance);
         }
+        out.push_back((trial.pressure - pressure_) / pressure_constraint_scale_);
         return out;
     }
 
@@ -497,7 +601,7 @@ public:
         out.rows.reserve(static_cast<std::size_t>(jacobian_nonzero_count()));
         out.cols.reserve(static_cast<std::size_t>(jacobian_nonzero_count()));
         for (int row = 0; row < constraint_count(); ++row) {
-            for (int col = 0; col < species_count_; ++col) {
+            for (int col = 0; col < variable_count(); ++col) {
                 out.rows.push_back(row);
                 out.cols.push_back(col);
             }
@@ -507,10 +611,27 @@ public:
 
     std::vector<double> jacobian_values(const std::vector<double>& variables) const override {
         require_trial_variables(variables);
-        std::vector<double> out(static_cast<std::size_t>(species_count_), 1.0);
-        if (has_charge_constraint()) {
-            out.insert(out.end(), charges_.begin(), charges_.end());
+        const PhaseStateCompositionSensitivityResult trial = trial_state(variables);
+        const double density = density_from_variables(variables);
+        const std::size_t nvar = static_cast<std::size_t>(variable_count());
+        std::vector<double> out(static_cast<std::size_t>(constraint_count()) * nvar, 0.0);
+        for (int col = 0; col < species_count_; ++col) {
+            out[static_cast<std::size_t>(col)] = 1.0;
         }
+        std::size_t row_offset = nvar;
+        if (has_charge_constraint()) {
+            for (int col = 0; col < species_count_; ++col) {
+                out[row_offset + static_cast<std::size_t>(col)] = charges_[static_cast<std::size_t>(col)];
+            }
+            row_offset += nvar;
+        }
+        for (int col = 0; col < species_count_; ++col) {
+            out[row_offset + static_cast<std::size_t>(col)] =
+                trial.pressure_composition_fixed_density_derivative[static_cast<std::size_t>(col)]
+                / pressure_constraint_scale_;
+        }
+        out[row_offset + static_cast<std::size_t>(density_variable_index())] =
+            density * trial.pressure_density_derivative / pressure_constraint_scale_;
         return out;
     }
 
@@ -519,11 +640,11 @@ public:
     }
 
     int hessian_nonzero_count() const override {
-        return LagrangianHessianAssembler(species_count_).nonzero_count();
+        return LagrangianHessianAssembler(variable_count()).nonzero_count();
     }
 
     NlpHessianStructure hessian_structure() const override {
-        return LagrangianHessianAssembler(species_count_).structure();
+        return LagrangianHessianAssembler(variable_count()).structure();
     }
 
     std::vector<double> hessian_values(
@@ -536,46 +657,99 @@ public:
             throw ValueError("Stability route Hessian multiplier vector size does not match the constraint count.");
         }
         const PhaseStateCompositionSensitivityResult trial = trial_state(variables);
+        const std::vector<double> composition = composition_from_variables(variables);
+        const double density = density_from_variables(variables);
         const std::size_t n = static_cast<std::size_t>(species_count_);
-        if (trial.jacobian_row_major.size() != n * n || trial.hessian_tensor_row_major.size() != n * n * n) {
+        const std::size_t nvar = static_cast<std::size_t>(variable_count());
+        const std::size_t density_col = static_cast<std::size_t>(density_variable_index());
+        if (trial.fixed_density_jacobian_row_major.size() != n * n
+            || trial.fixed_density_hessian_tensor_row_major.size() != n * n * n
+            || trial.ln_fugacity_density_derivative.size() != n
+            || trial.ln_fugacity_density_second_derivative.size() != n
+            || trial.ln_fugacity_density_composition_cross_derivative.size() != n * n) {
             throw ValueError("Stability route phase-state Hessian shape did not match the species count.");
         }
         ObjectiveSecondOrderData objective;
-        objective.variable_count = species_count_;
-        objective.hessian_row_major.assign(n * n, 0.0);
-        objective.backend = "cppad_implicit";
+        objective.variable_count = variable_count();
+        objective.hessian_row_major.assign(nvar * nvar, 0.0);
+        objective.backend = "cppad_explicit_density";
         for (std::size_t row = 0; row < n; ++row) {
             for (std::size_t col = 0; col < n; ++col) {
                 double value = row == col ? 1.0 / variables[row] : 0.0;
-                value += trial.jacobian_row_major[row * n + col];
-                value += trial.jacobian_row_major[col * n + row];
+                value += trial.fixed_density_jacobian_row_major[row * n + col];
+                value += trial.fixed_density_jacobian_row_major[col * n + row];
                 for (std::size_t species = 0; species < n; ++species) {
-                    value += variables[species]
-                        * trial.hessian_tensor_row_major[species * n * n + row * n + col];
+                    value += composition[species]
+                        * trial.fixed_density_hessian_tensor_row_major[species * n * n + row * n + col];
                 }
-                objective.hessian_row_major[row * n + col] = value;
+                objective.hessian_row_major[row * nvar + col] = value;
             }
         }
         for (std::size_t row = 0; row < n; ++row) {
             for (std::size_t col = 0; col < row; ++col) {
                 const double symmetric_value = 0.5 * (
-                    objective.hessian_row_major[row * n + col]
-                    + objective.hessian_row_major[col * n + row]
+                    objective.hessian_row_major[row * nvar + col]
+                    + objective.hessian_row_major[col * nvar + row]
                 );
-                objective.hessian_row_major[row * n + col] = symmetric_value;
-                objective.hessian_row_major[col * n + row] = symmetric_value;
+                objective.hessian_row_major[row * nvar + col] = symmetric_value;
+                objective.hessian_row_major[col * nvar + row] = symmetric_value;
             }
         }
+        for (std::size_t row = 0; row < n; ++row) {
+            double value = density * trial.ln_fugacity_density_derivative[row];
+            for (std::size_t species = 0; species < n; ++species) {
+                value += composition[species]
+                    * density
+                    * trial.ln_fugacity_density_composition_cross_derivative[species * n + row];
+            }
+            objective.hessian_row_major[row * nvar + density_col] = value;
+            objective.hessian_row_major[density_col * nvar + row] = value;
+        }
+        double density_density = 0.0;
+        for (std::size_t species = 0; species < n; ++species) {
+            density_density += composition[species] * (
+                density * density * trial.ln_fugacity_density_second_derivative[species]
+                + density * trial.ln_fugacity_density_derivative[species]
+            );
+        }
+        objective.hessian_row_major[density_col * nvar + density_col] = density_density;
+
         ConstraintSecondOrderData constraints;
         constraints.constraint_count = constraint_count();
-        constraints.variable_count = species_count_;
+        constraints.variable_count = variable_count();
         constraints.hessian_tensor_row_major.assign(
-            static_cast<std::size_t>(constraints.constraint_count) * n * n,
+            static_cast<std::size_t>(constraints.constraint_count) * nvar * nvar,
             0.0
         );
         constraints.has_hessian.assign(static_cast<std::size_t>(constraints.constraint_count), false);
-        constraints.backend = "linear";
-        return LagrangianHessianAssembler(species_count_).values(
+        constraints.backend = "cppad_explicit_density";
+        const std::size_t pressure_row = static_cast<std::size_t>(pressure_constraint_index());
+        constraints.has_hessian[pressure_row] = true;
+        for (std::size_t row = 0; row < n; ++row) {
+            for (std::size_t col = 0; col < n; ++col) {
+                constraints.hessian_tensor_row_major[
+                    pressure_row * nvar * nvar + row * nvar + col
+                ] =
+                    trial.pressure_composition_fixed_density_hessian_row_major[row * n + col]
+                    / pressure_constraint_scale_;
+            }
+            const double cross =
+                density * trial.pressure_density_composition_cross_derivative[row] / pressure_constraint_scale_;
+            constraints.hessian_tensor_row_major[
+                pressure_row * nvar * nvar + row * nvar + density_col
+            ] = cross;
+            constraints.hessian_tensor_row_major[
+                pressure_row * nvar * nvar + density_col * nvar + row
+            ] = cross;
+        }
+        constraints.hessian_tensor_row_major[
+            pressure_row * nvar * nvar + density_col * nvar + density_col
+        ] =
+            (
+                density * density * trial.pressure_density_second_derivative
+                + density * trial.pressure_density_derivative
+            ) / pressure_constraint_scale_;
+        return LagrangianHessianAssembler(variable_count()).values(
             objective_factor,
             objective,
             constraints,
@@ -584,15 +758,23 @@ public:
     }
 
     std::string hessian_backend() const override {
-        return "cppad_implicit";
+        return "cppad_explicit_density";
     }
 
     NlpScaling scaling() const override {
         NlpScaling out;
         out.objective = 1.0;
-        out.variables.assign(static_cast<std::size_t>(species_count_), 1.0);
+        out.variables.assign(static_cast<std::size_t>(variable_count()), 1.0);
         out.constraints.assign(static_cast<std::size_t>(constraint_count()), 1.0);
         return out;
+    }
+
+    std::map<std::string, std::string> diagnostics() const override {
+        return {
+            {"derivative_backend", "cppad_explicit_density"},
+            {"density_backend", "explicit_log_density_pressure_constraint"},
+            {"variable_model", "composition_plus_log_density"},
+        };
     }
 
     int species_count() const {
@@ -620,21 +802,60 @@ private:
         return !charges_.empty();
     }
 
-    void require_trial_variables(const std::vector<double>& variables) const {
-        require_size(variables, static_cast<std::size_t>(species_count_), "stability trial variable");
-        for (double value : variables) {
-            require_positive_finite(value, "stability trial composition");
+    int density_variable_index() const {
+        return species_count_;
+    }
+
+    int pressure_constraint_index() const {
+        return has_charge_constraint() ? 2 : 1;
+    }
+
+    std::vector<double> composition_from_variables(const std::vector<double>& variables) const {
+        require_size(variables, static_cast<std::size_t>(variable_count()), "stability trial variable");
+        return std::vector<double>(
+            variables.begin(),
+            variables.begin() + static_cast<std::ptrdiff_t>(species_count_)
+        );
+    }
+
+    std::vector<double> initial_composition_for_seed() const {
+        if (!initial_composition_.empty()) {
+            return initial_composition_;
         }
+        if (has_charge_constraint()) {
+            return feed_composition_;
+        }
+        return shifted_composition(feed_composition_);
+    }
+
+    double density_from_variables(const std::vector<double>& variables) const {
+        require_size(variables, static_cast<std::size_t>(variable_count()), "stability trial variable");
+        const double log_density = variables[static_cast<std::size_t>(density_variable_index())];
+        if (!std::isfinite(log_density)) {
+            throw ValueError("stability trial log-density variable must be finite.");
+        }
+        const double density = std::exp(log_density);
+        if (!std::isfinite(density) || !(density > 0.0)) {
+            throw ValueError("stability trial density variable produced a non-positive density.");
+        }
+        return density;
+    }
+
+    void require_trial_variables(const std::vector<double>& variables) const {
+        require_size(variables, static_cast<std::size_t>(variable_count()), "stability trial variable");
+        for (int index = 0; index < species_count_; ++index) {
+            require_positive_finite(variables[static_cast<std::size_t>(index)], "stability trial composition");
+        }
+        (void)density_from_variables(variables);
     }
 
     PhaseStateCompositionSensitivityResult trial_state(const std::vector<double>& variables) const {
         require_trial_variables(variables);
-        return phase_state_sensitivity(
+        return phase_state_explicit_density_sensitivity(
             args_,
             temperature_,
-            pressure_,
-            variables,
-            trial_phase_,
+            density_from_variables(variables),
+            composition_from_variables(variables),
             "trial stability state"
         );
     }
@@ -643,6 +864,13 @@ private:
     double temperature_ = 0.0;
     double pressure_ = 0.0;
     double minimum_composition_ = 1.0e-14;
+    double minimum_density_ = 1.0e-12;
+    double maximum_density_ = 1.0e8;
+    double density_bound_factor_ = 20.0;
+    double initial_density_ = 0.0;
+    double density_lower_bound_ = 1.0e-12;
+    double density_upper_bound_ = 1.0e8;
+    double pressure_constraint_scale_ = 1.0;
     double charge_epsilon_ = 1.0e-12;
     double charge_balance_tolerance_ = 1.0e-10;
     std::vector<double> feed_composition_;
@@ -667,7 +895,7 @@ StabilityNlpContract make_contract(const StabilityTpdProblem& problem) {
 
     StabilityNlpContract out;
     out.problem_name = problem.name();
-    out.derivative_backend = "cppad_implicit";
+    out.derivative_backend = "cppad_explicit_density";
     out.species_count = problem.species_count();
     out.variable_count = problem.variable_count();
     out.constraint_count = problem.constraint_count();
@@ -711,6 +939,7 @@ StabilityRouteResult solve_stability_tpd_route(
     out.adapter_available = adapter.adapter_available;
     out.adapter_kind = adapter.adapter_kind;
     out.problem_name = problem_name;
+    out.derivative_backend = "cppad_explicit_density";
     out.seed_name = seed_name;
     out.exact_gradient_required = adapter.exact_gradient_required;
     out.exact_jacobian_required = adapter.exact_jacobian_required;
@@ -751,7 +980,10 @@ StabilityRouteResult solve_stability_tpd_route(
     }
     out.accepted = true;
     out.stable = solve.objective >= -std::abs(stability_tolerance);
-    out.trial_composition = solve.variables;
+    out.trial_composition.assign(
+        solve.variables.begin(),
+        solve.variables.begin() + static_cast<std::ptrdiff_t>(problem.species_count())
+    );
     out.status = "accepted";
     return out;
 }

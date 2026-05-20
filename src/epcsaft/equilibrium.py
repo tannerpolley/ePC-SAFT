@@ -1331,7 +1331,10 @@ def _accepted_native_reactive_two_phase_result(
 
     material_tolerance, pressure_tolerance, chemical_potential_tolerance, phase_distance_tolerance = tolerances
     postsolve = route.get("postsolve", {})
-    if isinstance(postsolve, Mapping) and str(postsolve.get("density_backend", "")) == "liquid_pressure_root":
+    if (
+        isinstance(postsolve, Mapping)
+        and str(postsolve.get("density_backend", "")) == "explicit_log_density_pressure_constraint"
+    ):
         phase_compositions = np.asarray(postsolve.get("phase_compositions", ()), dtype=float)
         phase_amount_totals = np.asarray(postsolve.get("phase_amount_totals", ()), dtype=float).reshape(-1)
         phase_volumes = np.asarray(postsolve.get("phase_volumes", ()), dtype=float).reshape(-1)

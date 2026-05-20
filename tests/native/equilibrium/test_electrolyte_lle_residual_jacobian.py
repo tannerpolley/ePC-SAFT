@@ -21,8 +21,8 @@ def test_electrolyte_lle_residual_jacobian_reports_real_transformed_surface() ->
     assert cols == len(payload["variables"])
     assert diagnostics["jacobian_available"] is True
     assert diagnostics["derivative_available"] is True
-    assert payload["jacobian_backend"] == "cppad_implicit"
-    assert diagnostics["jacobian_scope"] == "transformed_variables_phase_state_implicit_density"
+    assert payload["jacobian_backend"] == "cppad_explicit_density"
+    assert diagnostics["jacobian_scope"] == "transformed_variables_explicit_density"
     assert np.all(np.isfinite(jacobian))
     assert np.any(np.abs(jacobian[: diagnostics["phase_equilibrium_residual_size"]]) > 1.0e-12)
     assert_allclose(gradient, jacobian.T @ residual, rtol=1.0e-12, atol=1.0e-12)

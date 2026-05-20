@@ -118,7 +118,8 @@ def test_reactive_speciation_auto_validates_conventions_before_native_ipopt_rout
         result = epcsaft.solve_reactive_speciation(**kwargs)
         assert result.success is True
         assert result.diagnostics["problem_class"] == "homogeneous_nonideal_residual_speciation"
-        assert result.diagnostics["derivative_backend"] == "cppad_implicit"
+        assert result.diagnostics["derivative_backend"] == "cppad_explicit_density"
+        assert result.diagnostics["density_backend"] == "explicit_log_density_pressure_constraint"
 
     assert reaction.metadata["constant_convention"]["standard_state"] == "mole_fraction_activity"
     assert reaction.metadata["constant_convention"]["basis"] == "mole_fraction"

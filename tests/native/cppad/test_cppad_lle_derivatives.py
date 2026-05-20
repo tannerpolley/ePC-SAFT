@@ -11,7 +11,7 @@ def _electrolyte_mixture() -> epcsaft.ePCSAFTMixture:
     return epcsaft.ePCSAFTMixture.from_dataset("2022_Ascani", ["H2O", "Butanol", "Na+", "Cl-"], feed, 298.15)
 
 
-def test_electrolyte_lle_residual_surface_reports_cppad_implicit_jacobian() -> None:
+def test_electrolyte_lle_residual_surface_reports_cppad_explicit_density_jacobian() -> None:
     mix = _electrolyte_mixture()
     aq = np.asarray([0.798324680201737, 0.016320352824141723, 0.09267748348706063, 0.09267748348706063])
     org = np.asarray([0.37006036048879404, 0.6214918588210971, 0.004223890345054407, 0.004223890345054407])
@@ -28,7 +28,7 @@ def test_electrolyte_lle_residual_surface_reports_cppad_implicit_jacobian() -> N
 
     payload = _core._evaluate_electrolyte_lle_residual_native(mix._native, request)
 
-    assert payload["jacobian_backend"] == "cppad_implicit"
+    assert payload["jacobian_backend"] == "cppad_explicit_density"
     assert payload["diagnostics"]["jacobian_available"] is True
     assert payload["diagnostics"]["derivative_available"] is True
     assert len(payload["jacobian_row_major"]) == len(payload["residual"]) * len(payload["variables"])

@@ -275,7 +275,7 @@ _IPOPT_EQUILIBRIUM_ROUTE_EVIDENCE = (
             "backend": "native_ipopt_equilibrium_nlp",
             "sweep_available_from_ipopt": True,
             "activity_output_modes": ("auto", "always", "never"),
-            "jacobian_auto_policy": "ideal_analytic_nonideal_cppad_implicit_else_raise",
+            "jacobian_auto_policy": "ideal_analytic_nonideal_cppad_explicit_density_else_raise",
             "jacobian_auto_supported_standard_states": _REACTIVE_SPECIATION_STANDARD_STATES,
             "implemented_standard_states": _REACTIVE_SPECIATION_STANDARD_STATES,
             "auto_request": "implemented_standard_states_route_to_native_ipopt",
@@ -284,7 +284,7 @@ _IPOPT_EQUILIBRIUM_ROUTE_EVIDENCE = (
             "ipopt_formulation": "thermodynamic_constrained_nlp",
             "ideal_speciation_nlp_available_from_ipopt": True,
             "nonideal_speciation_nlp_available_from_ipopt": True,
-            "nonideal_derivative_backend": "cppad_implicit",
+            "nonideal_derivative_backend": "cppad_explicit_density",
             "mixed_standard_state_policy": "raise_until_single_objective_is_specified",
         },
     },
@@ -584,6 +584,7 @@ def capabilities() -> dict[str, object]:
                     "cppad",
                     "analytic_implicit",
                     "cppad_implicit",
+                    "cppad_explicit_density",
                 ],
                 "parameter_families": {
                     "production_supported": [

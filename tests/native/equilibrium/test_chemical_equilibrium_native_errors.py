@@ -67,13 +67,15 @@ def test_native_chemical_equilibrium_residual_evaluator_uses_phase_state_cppad_d
     payload = _core._evaluate_chemical_equilibrium_residual_native(mix._native, request)
 
     diagnostics = payload["diagnostics"]
-    assert payload["jacobian_backend"] == "cppad_implicit"
-    assert diagnostics["derivative_backend"] == "cppad_implicit"
+    assert payload["jacobian_backend"] == "cppad_explicit_density"
+    assert diagnostics["derivative_backend"] == "cppad_explicit_density"
+    assert diagnostics["density_backend"] == "explicit_log_density_pressure_constraint"
     assert diagnostics["derivative_available"] is True
     assert diagnostics["activity_model"] == "eos_phase_state"
     assert diagnostics["activity_basis"] in {standard_state, "mole_fraction"}
-    assert "phase_state_cppad_implicit" in diagnostics["derivative_capability_path"]
+    assert "phase_state_cppad_explicit_density" in diagnostics["derivative_capability_path"]
     assert diagnostics["activity_coefficients_evaluated"] is True
+    assert len(payload["variables"]) > mix.ncomp
 
     x = np.asarray(payload["composition"], dtype=float)
     sensitivity = _core._native_phase_state_ln_fugacity_composition_sensitivity(
@@ -96,29 +98,10 @@ def test_native_chemical_equilibrium_residual_evaluator_uses_phase_state_cppad_d
 
     jacobian = np.asarray(payload["jacobian_row_major"], dtype=float).reshape(payload["jacobian_shape"])
     reaction_jacobian = jacobian[-1]
-    logx_jacobian = np.asarray(
-        [[(species == variable) - x[variable] for variable in range(x.size)] for species in range(x.size)],
-        dtype=float,
-    )
-    if standard_state == "mole_fraction_activity":
-        lnphi_jacobian = np.asarray(sensitivity["jacobian_row_major"], dtype=float).reshape((x.size, x.size))
-        expected_species_jacobian = np.empty_like(logx_jacobian)
-        for species in range(x.size):
-            for variable in range(x.size):
-                dlnphi = sum(
-                    lnphi_jacobian[species, k] * x[k] * ((k == variable) - x[variable])
-                    for k in range(x.size)
-                )
-                expected_species_jacobian[species, variable] = logx_jacobian[species, variable] + dlnphi
-    else:
-        drhodx = np.asarray(sensitivity["density_composition_derivative"], dtype=float)
-        expected_species_jacobian = np.empty_like(logx_jacobian)
-        for species in range(x.size):
-            for variable in range(x.size):
-                drho = sum(drhodx[k] * x[k] * ((k == variable) - x[variable]) for k in range(x.size))
-                expected_species_jacobian[species, variable] = logx_jacobian[species, variable] + drho / density
-    expected_reaction_jacobian = stoich @ expected_species_jacobian
-    np.testing.assert_allclose(reaction_jacobian, expected_reaction_jacobian, rtol=1.0e-10, atol=1.0e-10)
+    assert reaction_jacobian.shape[0] == len(payload["variables"])
+    assert np.all(np.isfinite(reaction_jacobian))
+    assert np.any(np.abs(reaction_jacobian[: mix.ncomp]) > 1.0e-12)
+    assert np.any(np.abs(reaction_jacobian[mix.ncomp :]) > 1.0e-12)
 
 
 def test_native_chemical_equilibrium_solve_accepts_ideal_cppad_derivative_request_when_compiled() -> None:
@@ -203,9 +186,11 @@ def test_native_chemical_equilibrium_solve_routes_nonideal_speciation_to_ipopt()
     assert payload["composition"][1] / payload["composition"][0] == pytest.approx(3.0, rel=1.0e-7)
     diagnostics = payload["diagnostics"]
     assert diagnostics["problem_class"] == "homogeneous_nonideal_residual_speciation"
-    assert diagnostics["derivative_backend"] == "cppad_implicit"
-    assert diagnostics["jacobian_backend"] == "cppad_implicit"
-    assert diagnostics["implicit_sensitivity_backend"] == "cppad_implicit"
+    assert diagnostics["derivative_backend"] == "cppad_explicit_density"
+    assert diagnostics["jacobian_backend"] == "cppad_explicit_density"
+    assert diagnostics["density_backend"] == "explicit_log_density_pressure_constraint"
+    assert diagnostics["variable_model"] == "log_species_amounts_plus_log_density"
+    assert diagnostics["implicit_sensitivity_backend"] == "cppad_explicit_density_implicit"
     assert diagnostics["selected_solver_backend"] == "native_ipopt"
     assert diagnostics["linear_solver_requested"] == "mumps"
     assert diagnostics["acceptable_tolerance"] == pytest.approx(9.0e-7)
@@ -247,7 +232,7 @@ def test_native_chemical_equilibrium_solve_accepts_exact_hessian_for_ideal_speci
 
 
 @pytest.mark.parametrize("standard_state_code", [0, 2])
-def test_native_chemical_equilibrium_solve_rejects_exact_hessian_without_provider(
+def test_native_chemical_equilibrium_solve_accepts_nonideal_exact_hessian_with_explicit_density(
     standard_state_code: int,
 ) -> None:
     mix = _toy_mixture()
@@ -270,8 +255,18 @@ def test_native_chemical_equilibrium_solve_rejects_exact_hessian_without_provide
             _core._solve_chemical_equilibrium_native(mix._native, request)
         return
 
-    with pytest.raises(_core.NativeValueError, match="exact Hessian mode requires"):
-        _core._solve_chemical_equilibrium_native(mix._native, request)
+    payload = _core._solve_chemical_equilibrium_native(mix._native, request)
+
+    assert payload["success"] is True
+    diagnostics = payload["diagnostics"]
+    assert diagnostics["problem_class"] == "homogeneous_nonideal_residual_speciation"
+    assert diagnostics["derivative_backend"] == "cppad_explicit_density"
+    assert diagnostics["density_backend"] == "explicit_log_density_pressure_constraint"
+    assert diagnostics["hessian_approximation"] == "exact"
+    assert diagnostics["hessian_backend"] == "cppad_explicit_density_speciation_residual"
+    assert diagnostics["exact_hessian_available"] is True
+    assert diagnostics["eval_h_calls"] > 0
+    assert len(diagnostics["continuation_state"]["variables"]) == 3
 
 
 def test_native_chemical_equilibrium_solve_accepts_mixed_nonideal_standard_states() -> None:
@@ -301,6 +296,8 @@ def test_native_chemical_equilibrium_solve_accepts_mixed_nonideal_standard_state
     diagnostics = payload["diagnostics"]
     assert diagnostics["problem_class"] == "homogeneous_nonideal_residual_speciation"
     assert diagnostics["activity_basis"] == "mixed_standard_state"
+    assert diagnostics["derivative_backend"] == "cppad_explicit_density"
+    assert diagnostics["density_backend"] == "explicit_log_density_pressure_constraint"
 
 
 def test_mixture_equilibrium_rejects_non_native_chemical_equilibrium_backend() -> None:

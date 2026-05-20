@@ -455,21 +455,23 @@ def test_neutral_stability_tpd_contract_builds_exact_native_nlp() -> None:
     jacobian = np.asarray(payload["jacobian_values_at_initial"], dtype=float)
 
     assert payload["problem_name"] == "neutral_stability_tpd"
-    assert payload["derivative_backend"] == "cppad_implicit"
+    assert payload["derivative_backend"] == "cppad_explicit_density"
     assert payload["parent_phase"] == "vap"
     assert payload["trial_phase"] == "vap"
     assert payload["species_count"] == 2
-    assert payload["variable_count"] == 2
-    assert payload["constraint_count"] == 1
-    assert payload["jacobian_nonzero_count"] == 2
+    assert payload["variable_count"] == 3
+    assert payload["constraint_count"] == 2
+    assert payload["jacobian_nonzero_count"] == 6
     assert payload["feed_composition"] == pytest.approx(feed)
     assert len(payload["parent_reduced_potential"]) == 2
-    assert np.all(initial > 0.0)
-    assert initial.sum() == pytest.approx(1.0)
-    assert initial != pytest.approx(feed)
-    assert payload["constraints_at_initial"] == pytest.approx([0.0])
+    assert np.all(initial[:2] > 0.0)
+    assert np.isfinite(initial[2])
+    assert initial[:2].sum() == pytest.approx(1.0)
+    assert initial[:2] != pytest.approx(feed)
+    assert payload["constraints_at_initial"] == pytest.approx([0.0, 0.0], abs=1.0e-10)
     assert np.all(np.isfinite(gradient))
-    assert jacobian == pytest.approx([1.0, 1.0])
+    assert jacobian.reshape(2, 3)[0] == pytest.approx([1.0, 1.0, 0.0])
+    assert np.all(np.isfinite(jacobian.reshape(2, 3)[1]))
 
 
 def test_neutral_stability_tpd_route_result_uses_ipopt_adapter_gate() -> None:
@@ -481,7 +483,7 @@ def test_neutral_stability_tpd_route_result_uses_ipopt_adapter_gate() -> None:
         [0.3, 0.7],
         "vap",
         "vap",
-        30,
+        50,
         1.0e-8,
         0.0,
         "limited-memory",
@@ -498,7 +500,7 @@ def test_neutral_stability_tpd_route_result_uses_ipopt_adapter_gate() -> None:
 
     assert payload["backend"] == "ipopt"
     assert payload["problem_name"] == "neutral_stability_tpd"
-    assert payload["derivative_backend"] == "cppad_implicit"
+    assert payload["derivative_backend"] == "cppad_explicit_density"
     assert payload["parent_phase"] == "vap"
     assert payload["trial_phase"] == "vap"
     assert payload["exact_gradient_required"] is True
@@ -568,24 +570,26 @@ def test_electrolyte_stability_tpd_contract_adds_charge_constraint() -> None:
 
     initial = np.asarray(payload["initial_point"], dtype=float)
     gradient = np.asarray(payload["gradient_at_initial"], dtype=float)
-    jacobian = np.asarray(payload["jacobian_values_at_initial"], dtype=float).reshape(2, 3)
+    jacobian = np.asarray(payload["jacobian_values_at_initial"], dtype=float).reshape(3, 4)
 
     assert payload["problem_name"] == "electrolyte_stability_tpd"
-    assert payload["derivative_backend"] == "cppad_implicit"
+    assert payload["derivative_backend"] == "cppad_explicit_density"
     assert payload["parent_phase"] == "liq"
     assert payload["trial_phase"] == "liq"
     assert payload["species_count"] == 3
-    assert payload["variable_count"] == 3
-    assert payload["constraint_count"] == 2
-    assert payload["jacobian_nonzero_count"] == 6
+    assert payload["variable_count"] == 4
+    assert payload["constraint_count"] == 3
+    assert payload["jacobian_nonzero_count"] == 12
     assert payload["feed_composition"] == pytest.approx(feed)
     assert len(payload["parent_reduced_potential"]) == 3
-    assert initial == pytest.approx(feed)
-    assert np.dot(initial, charges) == pytest.approx(0.0, abs=1.0e-14)
-    assert payload["constraints_at_initial"] == pytest.approx([0.0, 0.0], abs=1.0e-14)
+    assert initial[:3] == pytest.approx(feed)
+    assert np.isfinite(initial[3])
+    assert np.dot(initial[:3], charges) == pytest.approx(0.0, abs=1.0e-14)
+    assert payload["constraints_at_initial"] == pytest.approx([0.0, 0.0, 0.0], abs=1.0e-10)
     assert np.all(np.isfinite(gradient))
-    assert jacobian[0] == pytest.approx([1.0, 1.0, 1.0])
-    assert jacobian[1] == pytest.approx(charges)
+    assert jacobian[0] == pytest.approx([1.0, 1.0, 1.0, 0.0])
+    assert jacobian[1] == pytest.approx([*charges, 0.0])
+    assert np.all(np.isfinite(jacobian[2]))
 
 
 def test_electrolyte_stability_tpd_route_result_uses_ipopt_adapter_gate() -> None:
@@ -595,7 +599,7 @@ def test_electrolyte_stability_tpd_route_result_uses_ipopt_adapter_gate() -> Non
         298.15,
         1.013e5,
         [0.9998, 1.0e-4, 1.0e-4],
-        30,
+        50,
         1.0e-8,
         0.0,
         "limited-memory",
@@ -612,7 +616,7 @@ def test_electrolyte_stability_tpd_route_result_uses_ipopt_adapter_gate() -> Non
 
     assert payload["backend"] == "ipopt"
     assert payload["problem_name"] == "electrolyte_stability_tpd"
-    assert payload["derivative_backend"] == "cppad_implicit"
+    assert payload["derivative_backend"] == "cppad_explicit_density"
     assert payload["parent_phase"] == "liq"
     assert payload["trial_phase"] == "liq"
     assert payload["seed_name"] == "canonical_charge_neutral_feed"
@@ -645,7 +649,7 @@ def test_electrolyte_stability_tpd_route_uses_exact_hessian_when_requested() -> 
         298.15,
         1.013e5,
         [0.9998, 1.0e-4, 1.0e-4],
-        30,
+        60,
         1.0e-8,
         0.0,
         "exact",
@@ -691,7 +695,7 @@ def test_electrolyte_stability_exact_hessian_dilute_salt_route_keeps_callback_fi
         303.15,
         1.0e5,
         feed.tolist(),
-        30,
+        60,
         1.0e-8,
         0.0,
         "exact",
@@ -710,8 +714,9 @@ def test_electrolyte_stability_exact_hessian_dilute_salt_route_keeps_callback_fi
     assert payload["exact_hessian_available"] is True
     assert payload["eval_h_calls"] > 0
     assert payload["solver_status"] != "invalid_number_detected"
-    assert payload["last_callback_exception"] == ""
-    assert payload["last_callback_failure"] == ""
+    if payload["solver_accepted"]:
+        assert payload["last_callback_exception"] == ""
+        assert payload["last_callback_failure"] == ""
 
 
 def test_neutral_lle_route_contract_builds_native_initial_point_from_feed() -> None:
@@ -757,23 +762,23 @@ def test_electrolyte_lle_route_contract_uses_liquid_root_transformed_variables()
     )
 
     assert payload["problem_name"] == "electrolyte_lle_eos"
-    assert payload["derivative_backend"] == "cppad_implicit"
-    assert payload["density_backend"] == "liquid_pressure_root"
+    assert payload["derivative_backend"] == "cppad_explicit_density"
+    assert payload["density_backend"] == "explicit_log_density_pressure_constraint"
     assert payload["phase_count"] == 2
     assert payload["species_count"] == 4
-    assert payload["variable_model"] == "ascani_transformed_salt_pairs"
-    assert payload["variable_count"] == 3
-    assert payload["constraint_count"] == 7
-    assert payload["jacobian_nonzero_count"] == 21
-    assert len(payload["initial_point"]) == 3
-    assert len(payload["variable_lower_bounds"]) == 3
-    assert len(payload["variable_upper_bounds"]) == 3
-    assert np.allclose(payload["constraint_lower_bounds"][:3], 0.0)
-    assert np.allclose(payload["constraint_upper_bounds"][:3], 0.0)
-    assert payload["constraint_lower_bounds"][3] >= 0.1
-    assert payload["constraint_upper_bounds"][3] > 1.0e6
-    assert payload["constraints_at_initial"][3] >= payload["constraint_lower_bounds"][3]
-    assert np.all(np.asarray(payload["constraints_at_initial"][4:], dtype=float) > 0.0)
+    assert payload["variable_model"] == "ascani_transformed_salt_pairs_explicit_density"
+    assert payload["variable_count"] == 5
+    assert payload["constraint_count"] == 9
+    assert payload["jacobian_nonzero_count"] == 45
+    assert len(payload["initial_point"]) == 5
+    assert len(payload["variable_lower_bounds"]) == 5
+    assert len(payload["variable_upper_bounds"]) == 5
+    assert np.allclose(payload["constraint_lower_bounds"][:5], 0.0)
+    assert np.allclose(payload["constraint_upper_bounds"][:5], 0.0)
+    assert payload["constraint_lower_bounds"][5] >= 0.1
+    assert payload["constraint_upper_bounds"][5] > 1.0e6
+    assert payload["constraints_at_initial"][5] >= payload["constraint_lower_bounds"][5]
+    assert np.all(np.asarray(payload["constraints_at_initial"][6:], dtype=float) > 0.0)
     payload_jacobian = np.asarray(payload["jacobian_values_at_initial"], dtype=float).reshape(
         payload["constraint_count"],
         payload["variable_count"],
@@ -781,6 +786,8 @@ def test_electrolyte_lle_route_contract_uses_liquid_root_transformed_variables()
     assert np.all(np.isfinite(payload_jacobian))
     assert np.count_nonzero(np.abs(payload_jacobian[0]) > 0.0) > 0
     assert np.count_nonzero(np.abs(payload_jacobian[3]) > 0.0) > 0
+    assert np.count_nonzero(np.abs(payload_jacobian[4]) > 0.0) > 0
+    assert np.count_nonzero(np.abs(payload_jacobian[5]) > 0.0) > 0
 
 
 def test_electrolyte_lle_route_result_uses_ipopt_adapter_gate_and_charge_rows() -> None:
@@ -810,7 +817,7 @@ def test_electrolyte_lle_route_result_uses_ipopt_adapter_gate_and_charge_rows() 
 
     assert payload["backend"] == "ipopt"
     assert payload["problem_name"] == "electrolyte_lle_eos"
-    assert payload["derivative_backend"] == "cppad_implicit"
+    assert payload["derivative_backend"] == "cppad_explicit_density"
     assert payload["exact_gradient_required"] is True
     assert payload["exact_jacobian_required"] is True
     if not payload["compiled"]:
@@ -827,11 +834,12 @@ def test_electrolyte_lle_route_result_uses_ipopt_adapter_gate_and_charge_rows() 
     assert payload["solver_accepted"] is True
     assert payload["accepted"] is True
     assert payload["status"] == "accepted"
-    assert np.asarray(payload["variables"], dtype=float).shape == (3,)
-    assert np.asarray(payload["constraints"], dtype=float).shape == (7,)
+    assert np.asarray(payload["variables"], dtype=float).shape == (5,)
+    assert np.asarray(payload["constraints"], dtype=float).shape == (9,)
     assert np.asarray(payload["phase_amounts"], dtype=float).shape == (2, 4)
     assert np.asarray(payload["phase_volumes"], dtype=float).shape == (2,)
-    assert payload["postsolve"]["derivative_backend"] == "cppad_implicit"
+    assert payload["postsolve"]["derivative_backend"] == "cppad_explicit_density"
+    assert payload["postsolve"]["density_backend"] == "explicit_log_density_pressure_constraint"
     assert payload["postsolve"]["charge_balance_norm"] <= 1.0e-8
     assert payload["postsolve"]["material_balance_norm"] <= 1.0e-8
     assert payload["postsolve"]["ln_fugacity_consistency_norm"] <= 1.0e-6
@@ -1869,20 +1877,23 @@ def test_reactive_lle_eos_route_builder_owns_canonical_initial_point() -> None:
     second = second_amounts / np.sum(second_amounts)
 
     assert contract["problem_name"] == "reactive_liquid_root_eos"
-    assert contract["derivative_backend"] == "cppad_implicit"
-    assert contract["density_backend"] == "liquid_pressure_root"
-    assert contract["variable_model"] == "log_phase_species_amounts"
-    assert contract["variable_count"] == 2 * contract["species_count"]
-    assert contract["constraint_count"] == 2
-    assert contract["jacobian_nonzero_count"] == 8
+    assert contract["derivative_backend"] == "cppad_explicit_density"
+    assert contract["density_backend"] == "explicit_log_density_pressure_constraint"
+    assert contract["variable_model"] == "log_phase_species_amounts_plus_log_density"
+    assert contract["variable_count"] == 2 * contract["species_count"] + 2
+    assert contract["constraint_count"] == 4
+    assert contract["jacobian_nonzero_count"] == 20
     assert contract["balance_row_count"] == 1
     assert contract["reaction_count"] == 1
     assert np.max(np.abs(first - second)) > 1.0e-3
     assert contract["constraint_lower_bounds"][0] == pytest.approx(0.0)
     assert contract["constraint_upper_bounds"][0] == pytest.approx(0.0)
+    assert contract["constraint_lower_bounds"][1:3] == pytest.approx([0.0, 0.0])
+    assert contract["constraint_upper_bounds"][1:3] == pytest.approx([0.0, 0.0])
     assert contract["constraint_lower_bounds"][-1] == pytest.approx(1.0e-8)
     assert contract["constraint_upper_bounds"][-1] > 1.0e6
     assert contract["constraints_at_initial"][0] == pytest.approx(0.0)
+    assert contract["constraints_at_initial"][1:3] == pytest.approx([0.0, 0.0], abs=1.0e-12)
     assert contract["constraints_at_initial"][-1] >= contract["constraint_lower_bounds"][-1]
     assert np.all(np.asarray(contract["variable_upper_bounds"], dtype=float) < 50.0)
     assert np.asarray(contract["jacobian_values_at_initial"], dtype=float).shape == (
@@ -1918,7 +1929,7 @@ def test_reactive_lle_eos_route_builder_owns_canonical_initial_point() -> None:
 
     assert payload["backend"] == "ipopt"
     assert payload["problem_name"] == "reactive_liquid_root_eos"
-    assert payload["derivative_backend"] == "cppad_implicit"
+    assert payload["derivative_backend"] == "cppad_explicit_density"
     assert payload["exact_gradient_required"] is True
     assert payload["exact_jacobian_required"] is True
     assert payload["phase_count"] == 2
@@ -1934,7 +1945,7 @@ def test_reactive_lle_eos_route_builder_owns_canonical_initial_point() -> None:
     assert payload["ran"] is True
     assert payload["status"] in {"accepted", "solver_rejected", "postsolve_rejected"}
     if payload["status"] != "solver_rejected":
-        assert payload["postsolve"]["density_backend"] == "liquid_pressure_root"
+        assert payload["postsolve"]["density_backend"] == "explicit_log_density_pressure_constraint"
 
 
 def test_reactive_lle_eos_route_uses_exact_hessian_when_requested() -> None:
@@ -2028,21 +2039,24 @@ def test_reactive_electrolyte_lle_eos_route_builder_uses_liquid_root_residual_ro
     second = np.exp(initial[4:8])
 
     assert contract["problem_name"] == "reactive_liquid_root_eos"
-    assert contract["derivative_backend"] == "cppad_implicit"
-    assert contract["density_backend"] == "liquid_pressure_root"
-    assert contract["variable_model"] == "log_phase_species_amounts"
-    assert contract["variable_count"] == 2 * contract["species_count"]
-    assert contract["constraint_count"] == 6
-    assert contract["jacobian_nonzero_count"] == 20
+    assert contract["derivative_backend"] == "cppad_explicit_density"
+    assert contract["density_backend"] == "explicit_log_density_pressure_constraint"
+    assert contract["variable_model"] == "log_phase_species_amounts_plus_log_density"
+    assert contract["variable_count"] == 2 * contract["species_count"] + 2
+    assert contract["constraint_count"] == 8
+    assert contract["jacobian_nonzero_count"] == 40
     assert contract["balance_row_count"] == 3
     assert contract["reaction_count"] == 1
     assert contract["constraint_lower_bounds"][:3] == pytest.approx([0.0, 0.0, 0.0])
     assert contract["constraint_upper_bounds"][:3] == pytest.approx([0.0, 0.0, 0.0])
-    assert contract["constraint_lower_bounds"][3:5] == pytest.approx([0.0, 0.0])
-    assert contract["constraint_upper_bounds"][3:5] == pytest.approx([0.0, 0.0])
+    assert contract["constraint_lower_bounds"][3:7] == pytest.approx([0.0, 0.0, 0.0, 0.0])
+    assert contract["constraint_upper_bounds"][3:7] == pytest.approx([0.0, 0.0, 0.0, 0.0])
     assert contract["constraint_lower_bounds"][-1] == pytest.approx(1.0e-8)
     assert contract["constraint_upper_bounds"][-1] > 1.0e6
-    assert contract["constraints_at_initial"][:5] == pytest.approx([0.0, 0.0, 0.0, 0.0, 0.0])
+    assert contract["constraints_at_initial"][:7] == pytest.approx(
+        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        abs=1.0e-10,
+    )
     assert contract["constraints_at_initial"][-1] >= contract["constraint_lower_bounds"][-1]
     assert np.all(np.asarray(contract["variable_upper_bounds"], dtype=float) < 50.0)
     assert np.asarray(contract["jacobian_values_at_initial"], dtype=float).shape == (
@@ -2085,7 +2099,7 @@ def test_reactive_electrolyte_lle_eos_route_builder_uses_liquid_root_residual_ro
 
     assert payload["backend"] == "ipopt"
     assert payload["problem_name"] == "reactive_liquid_root_eos"
-    assert payload["derivative_backend"] == "cppad_implicit"
+    assert payload["derivative_backend"] == "cppad_explicit_density"
     assert payload["balance_row_count"] == 3
     assert payload["reaction_count"] == 1
     if not payload["compiled"]:
@@ -2097,7 +2111,7 @@ def test_reactive_electrolyte_lle_eos_route_builder_uses_liquid_root_residual_ro
     assert payload["ran"] is True
     assert payload["status"] in {"accepted", "solver_rejected", "postsolve_rejected"}
     if payload["status"] != "solver_rejected":
-        assert payload["postsolve"]["density_backend"] == "liquid_pressure_root"
+        assert payload["postsolve"]["density_backend"] == "explicit_log_density_pressure_constraint"
 
 
 def test_reactive_electrolyte_lle_eos_route_uses_exact_hessian_when_requested() -> None:

@@ -781,6 +781,7 @@ def _normalize_reactive_derivative_diagnostics(diagnostics: dict[str, Any]) -> N
                 "cppad",
                 "analytic_implicit",
                 "cppad_implicit",
+                "cppad_explicit_density",
             ],
         },
     )

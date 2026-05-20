@@ -19,7 +19,7 @@ def test_native_equilibrium_entrypoint_is_exposed() -> None:
     assert hasattr(_core, "_evaluate_electrolyte_lle_residual_native")
 
 
-def test_native_electrolyte_lle_residual_evaluator_reports_cppad_implicit_derivatives() -> None:
+def test_native_electrolyte_lle_residual_evaluator_reports_explicit_density_derivatives() -> None:
     mix = _electrolyte_mixture()
     aq = np.asarray([0.798324680201737, 0.016320352824141723, 0.09267748348706063, 0.09267748348706063], dtype=float)
     org = np.asarray([0.37006036048879404, 0.6214918588210971, 0.004223890345054407, 0.004223890345054407], dtype=float)
@@ -41,8 +41,8 @@ def test_native_electrolyte_lle_residual_evaluator_reports_cppad_implicit_deriva
 
     payload = _core._evaluate_electrolyte_lle_residual_native(mix._native, request)
 
-    assert payload["variable_model"] == "ascani_transformed_salt_pairs"
-    assert payload["jacobian_backend"] == "cppad_implicit"
+    assert payload["variable_model"] == "ascani_transformed_salt_pairs_explicit_density"
+    assert payload["jacobian_backend"] == "cppad_explicit_density"
     assert payload["jacobian_row_major"]
     assert payload["gradient"]
     assert payload["diagnostics"]["jacobian_available"] is True
@@ -55,7 +55,7 @@ def test_native_electrolyte_lle_residual_evaluator_reports_cppad_implicit_deriva
     assert payload["charge_balance_error"] <= 1.0e-8
 
 
-def test_native_electrolyte_lle_residual_evaluator_defaults_to_cppad_implicit_derivatives() -> None:
+def test_native_electrolyte_lle_residual_evaluator_defaults_to_explicit_density_derivatives() -> None:
     mix = _electrolyte_mixture()
     aq = np.asarray([0.798324680201737, 0.016320352824141723, 0.09267748348706063, 0.09267748348706063], dtype=float)
     org = np.asarray([0.37006036048879404, 0.6214918588210971, 0.004223890345054407, 0.004223890345054407], dtype=float)
@@ -72,7 +72,7 @@ def test_native_electrolyte_lle_residual_evaluator_defaults_to_cppad_implicit_de
 
     payload = _core._evaluate_electrolyte_lle_residual_native(mix._native, request)
 
-    assert payload["jacobian_backend"] == "cppad_implicit"
+    assert payload["jacobian_backend"] == "cppad_explicit_density"
     assert payload["diagnostics"]["derivative_available"] is True
 
 

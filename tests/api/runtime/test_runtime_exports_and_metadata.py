@@ -183,7 +183,7 @@ def test_runtime_build_info_and_capabilities_are_json_like():
     ]
     assert (
         reactive_speciation["jacobian_auto_policy"]
-        == "ideal_analytic_nonideal_cppad_implicit_else_raise"
+        == "ideal_analytic_nonideal_cppad_explicit_density_else_raise"
     )
     assert reactive_speciation["jacobian_auto_supported_standard_states"] == [
         "ideal_mole_fraction",
@@ -191,7 +191,7 @@ def test_runtime_build_info_and_capabilities_are_json_like():
         "concentration",
     ]
     assert reactive_speciation["auto_request"] == "implemented_standard_states_route_to_native_ipopt"
-    assert reactive_speciation["nonideal_derivative_backend"] == "cppad_implicit"
+    assert reactive_speciation["nonideal_derivative_backend"] == "cppad_explicit_density"
     assert reactive_speciation["mixed_standard_state_policy"] == "raise_until_single_objective_is_specified"
     assert capabilities["regression"]["pure_neutral"]["backend"] == "native_ceres"
     reactive_regression = capabilities["regression"]["reactive_electrolyte_residuals"]

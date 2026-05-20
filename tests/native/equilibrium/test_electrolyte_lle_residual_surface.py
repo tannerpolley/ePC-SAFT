@@ -34,14 +34,14 @@ def test_electrolyte_lle_residual_surface_returns_transformed_payload() -> None:
     payload = _core._evaluate_electrolyte_lle_residual_native(mix._native, _initial_request(mix))
     diagnostics = payload["diagnostics"]
 
-    assert payload["variable_model"] == "ascani_transformed_salt_pairs"
-    assert len(payload["variables"]) == 3
+    assert payload["variable_model"] == "ascani_transformed_salt_pairs_explicit_density"
+    assert len(payload["variables"]) == 5
     assert len(payload["lower_bounds"]) == len(payload["variables"])
     assert len(payload["upper_bounds"]) == len(payload["variables"])
     assert payload["jacobian_shape"] == (len(payload["residual"]), len(payload["variables"]))
     assert len(payload["jacobian_row_major"]) == len(payload["residual"]) * len(payload["variables"])
     assert len(payload["gradient"]) == len(payload["variables"])
-    assert payload["jacobian_backend"] == "cppad_implicit"
+    assert payload["jacobian_backend"] == "cppad_explicit_density"
     assert diagnostics["jacobian_available"] is True
     assert diagnostics["residual_surface"] == "native_electrolyte_lle_transformed_variables"
     assert diagnostics["residual_blocks"] == "phase_equilibrium,material_balance"

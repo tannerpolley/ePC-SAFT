@@ -1768,12 +1768,15 @@ void eos_phase_temperature_variable_derivatives_cpp(
 #endif
 }
 
-PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_composition_sensitivity_cpp(
+namespace {
+
+PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_density_sensitivity_cpp(
     double t,
     double p,
+    double rho,
     vector<double> x,
-    int phase,
-    const add_args &cppargs
+    const add_args &cppargs,
+    bool apply_pressure_root_chain
 ) {
     PhaseStateCompositionSensitivityResult out;
     out.temperature = t;
@@ -1782,21 +1785,18 @@ PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_composition_sensi
     out.rows = static_cast<int>(x.size());
     out.cols = static_cast<int>(x.size());
 
-    DensitySolveResult density = density_solve_report_cpp(t, p, x, phase, cppargs);
-    if (!density.valid || !(density.rho > 0.0) || !std::isfinite(density.rho)) {
-        out.message = density.diagnostics.rejection_reason.empty()
-            ? "Density root was not valid for phase-state sensitivity evaluation."
-            : density.diagnostics.rejection_reason;
+    if (!std::isfinite(rho) || !(rho > 0.0)) {
+        out.message = "Phase-state fugacity sensitivity requires a positive finite explicit density.";
         return out;
     }
-    out.density = density.rho;
-    out.ln_fugacity = fugacity_coefficient_result_cpp(t, density.rho, x, cppargs).lnfugcoef.total;
+    out.density = rho;
+    out.ln_fugacity = fugacity_coefficient_result_cpp(t, rho, x, cppargs).lnfugcoef.total;
 
     using CppADScalar = CppAD::AD<double>;
     const int ncomp = static_cast<int>(x.size());
     const int var_count = ncomp + 1;
     std::vector<CppADScalar> avars(static_cast<size_t>(var_count));
-    avars[0] = density.rho;
+    avars[0] = rho;
     for (int i = 0; i < ncomp; ++i) {
         avars[static_cast<size_t>(1 + i)] = x[static_cast<size_t>(i)];
     }
@@ -1821,7 +1821,7 @@ PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_composition_sensi
 
     CppAD::ADFun<double> function(avars, ay);
     std::vector<double> point(static_cast<size_t>(var_count), 0.0);
-    point[0] = density.rho;
+    point[0] = rho;
     for (int i = 0; i < ncomp; ++i) {
         point[static_cast<size_t>(1 + i)] = x[static_cast<size_t>(i)];
     }
@@ -1840,10 +1840,10 @@ PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_composition_sensi
     };
     ares_detail::AssociationPhaseStateResponse association_response;
     if (active_association) {
-        association_response = association_phase_state_response_cppad_cpp(t, density.rho, x, cppargs);
+        association_response = association_phase_state_response_cppad_cpp(t, rho, x, cppargs);
         if (!association_response.active) {
             out.message = "Association phase-state sensitivity expected active association but received no active site fractions.";
-            out.density_backend = "selected_density_root";
+            out.density_backend = apply_pressure_root_chain ? "selected_density_root" : "explicit_density";
             return out;
         }
     }
@@ -1851,12 +1851,16 @@ PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_composition_sensi
     (void)values;
     const double da_drho = jacobian[0];
     const double association_zraw = active_association ? association_response.zraw : 0.0;
-    const double z_raw = density.rho * da_drho + association_zraw;
+    const double z_raw = rho * da_drho + association_zraw;
     const double z = 1.0 + z_raw;
     if (!(z > 0.0) || !std::isfinite(z)) {
         out.message = "Phase-state sensitivity produced a non-positive compressibility factor.";
-        out.density_backend = "selected_density_root";
+        out.density_backend = apply_pressure_root_chain ? "selected_density_root" : "explicit_density";
         return out;
+    }
+    const double pressure_value = kb * t * N_AV * rho * z;
+    if (!apply_pressure_root_chain) {
+        out.pressure = pressure_value;
     }
 
     std::vector<double> dadx(static_cast<size_t>(ncomp), 0.0);
@@ -1867,14 +1871,14 @@ PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_composition_sensi
     }
 
     const auto base_dzraw_dvar = [&](int var_index) {
-        double value = density.rho * h(0, var_index);
+        double value = rho * h(0, var_index);
         if (var_index == 0) {
             value += da_drho;
         }
         return value;
     };
     const auto base_d2zraw_dvar2 = [&](int first, int second) {
-        double value = density.rho * h3(0, first, second);
+        double value = rho * h3(0, first, second);
         if (first == 0) {
             value += h(0, second);
         }
@@ -1901,14 +1905,14 @@ PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_composition_sensi
     };
     const auto pressure_dvar = [&](int var_index) {
         const double dzraw = dzraw_dvar(var_index);
-        double value = density.rho * dzraw;
+        double value = rho * dzraw;
         if (var_index == 0) {
             value += z;
         }
         return kb * t * N_AV * value;
     };
     const auto pressure_d2var = [&](int first, int second) {
-        double value = density.rho * d2zraw_dvar2(first, second);
+        double value = rho * d2zraw_dvar2(first, second);
         if (first == 0) {
             value += dzraw_dvar(second);
         }
@@ -1981,7 +1985,7 @@ PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_composition_sensi
     const double dp_drho = pressure_dvar(0);
     if (!std::isfinite(dp_drho) || std::abs(dp_drho) <= 1.0e-30) {
         out.message = "Phase-state sensitivity produced a singular pressure-density derivative.";
-        out.density_backend = "selected_density_root";
+        out.density_backend = apply_pressure_root_chain ? "selected_density_root" : "explicit_density";
         return out;
     }
 
@@ -1996,6 +2000,8 @@ PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_composition_sensi
         0.0
     );
     out.ln_fugacity_density_derivative.assign(static_cast<size_t>(ncomp), 0.0);
+    out.ln_fugacity_density_second_derivative.assign(static_cast<size_t>(ncomp), 0.0);
+    out.ln_fugacity_density_composition_cross_derivative.assign(static_cast<size_t>(ncomp * ncomp), 0.0);
     out.fixed_density_jacobian_row_major.assign(static_cast<size_t>(ncomp * ncomp), 0.0);
     out.fixed_density_hessian_tensor_row_major.assign(static_cast<size_t>(ncomp * ncomp * ncomp), 0.0);
     out.jacobian_row_major.assign(static_cast<size_t>(ncomp * ncomp), 0.0);
@@ -2029,11 +2035,15 @@ PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_composition_sensi
     for (int i = 0; i < ncomp; ++i) {
         const double dln_drho = fixed_density_dlnphi_dvar(i, 0);
         out.ln_fugacity_density_derivative[static_cast<size_t>(i)] = dln_drho;
+        out.ln_fugacity_density_second_derivative[static_cast<size_t>(i)] =
+            fixed_density_d2lnphi_dvar2(i, 0, 0);
         for (int j = 0; j < ncomp; ++j) {
             const double fixed = fixed_density_dlnphi_dvar(i, 1 + j);
             const double total = fixed + dln_drho * out.density_composition_derivative[static_cast<size_t>(j)];
             const size_t index = static_cast<size_t>(i * ncomp + j);
             out.fixed_density_jacobian_row_major[index] = fixed;
+            out.ln_fugacity_density_composition_cross_derivative[index] =
+                fixed_density_d2lnphi_dvar2(i, 0, 1 + j);
             out.jacobian_row_major[index] = total;
             for (int k = 0; k < ncomp; ++k) {
                 const double fixed_hessian = fixed_density_d2lnphi_dvar2(i, 1 + j, 1 + k);
@@ -2057,12 +2067,72 @@ PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_composition_sensi
     }
 
     out.supported = true;
+    if (!apply_pressure_root_chain) {
+        out.backend = active_association ? "cppad_explicit_density_implicit_association" : "cppad_explicit_density";
+        out.density_backend = "explicit_density";
+        out.jacobian_row_major = out.fixed_density_jacobian_row_major;
+        out.hessian_tensor_row_major = out.fixed_density_hessian_tensor_row_major;
+        out.message = (cppargs.born_model == 2)
+            ? "CppAD phase-state fugacity composition sensitivities with explicit density and SSM/DS Born terms are available."
+            : "CppAD phase-state fugacity composition sensitivities with explicit density are available.";
+        return out;
+    }
     out.backend = "cppad_implicit";
     out.density_backend = "implicit_density_root";
     out.message = (cppargs.born_model == 2)
         ? "CppAD phase-state fugacity composition sensitivities with implicit density-root routing and SSM/DS Born terms are available."
         : "CppAD phase-state fugacity composition sensitivities with implicit density-root routing are available.";
     return out;
+}
+
+}  // namespace
+
+PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_explicit_density_composition_sensitivity_cpp(
+    double t,
+    double rho,
+    vector<double> x,
+    const add_args &cppargs
+) {
+    return phase_state_ln_fugacity_density_sensitivity_cpp(
+        t,
+        0.0,
+        rho,
+        std::move(x),
+        cppargs,
+        false
+    );
+}
+
+PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_composition_sensitivity_cpp(
+    double t,
+    double p,
+    vector<double> x,
+    int phase,
+    const add_args &cppargs
+) {
+    PhaseStateCompositionSensitivityResult out;
+    out.temperature = t;
+    out.pressure = p;
+    out.composition = x;
+    out.rows = static_cast<int>(x.size());
+    out.cols = static_cast<int>(x.size());
+
+    DensitySolveResult density = density_solve_report_cpp(t, p, x, phase, cppargs);
+    if (!density.valid || !(density.rho > 0.0) || !std::isfinite(density.rho)) {
+        out.message = density.diagnostics.rejection_reason.empty()
+            ? "Density root was not valid for phase-state sensitivity evaluation."
+            : density.diagnostics.rejection_reason;
+        out.density_backend = "selected_density_root";
+        return out;
+    }
+    return phase_state_ln_fugacity_density_sensitivity_cpp(
+        t,
+        p,
+        density.rho,
+        std::move(x),
+        cppargs,
+        true
+    );
 }
 
 EosPhasePressureDerivativeResult eos_phase_pressure_derivatives_cpp(

@@ -37,10 +37,10 @@ def test_reactive_phase_residual_jacobian_reports_cppad_contract() -> None:
     payload = _core._evaluate_reactive_phase_equilibrium_residual_native(mix._native, request)
     diagnostics = payload["diagnostics"]
 
-    assert payload["jacobian_backend"] == "cppad_implicit"
+    assert payload["jacobian_backend"] == "cppad_explicit_density"
     assert diagnostics["jacobian_available"] is True
     assert diagnostics["solved_state_sensitivity_available"] is True
-    assert diagnostics["derivative_backend"] == "cppad_implicit"
+    assert diagnostics["derivative_backend"] == "cppad_explicit_density"
 
     variables = np.asarray(payload["variables"], dtype=float)
     residual = np.asarray(payload["residual"], dtype=float)
@@ -69,6 +69,8 @@ def test_ideal_reaction_standard_state_jacobian_uses_log_mole_fraction_basis() -
     expected_phase2 = np.asarray([-1.0, 2.0], dtype=float) - x2
 
     assert_allclose(jacobian[1, :2], expected_phase1, rtol=1.0e-12, atol=1.0e-12)
-    assert_allclose(jacobian[1, 2:], np.zeros(2), atol=1.0e-12)
+    assert_allclose(jacobian[1, 2:4], np.zeros(2), atol=1.0e-12)
+    assert_allclose(jacobian[1, 4:], np.zeros(2), atol=1.0e-12)
     assert_allclose(jacobian[2, :2], np.zeros(2), atol=1.0e-12)
-    assert_allclose(jacobian[2, 2:], expected_phase2, rtol=1.0e-12, atol=1.0e-12)
+    assert_allclose(jacobian[2, 2:4], expected_phase2, rtol=1.0e-12, atol=1.0e-12)
+    assert_allclose(jacobian[2, 4:], np.zeros(2), atol=1.0e-12)

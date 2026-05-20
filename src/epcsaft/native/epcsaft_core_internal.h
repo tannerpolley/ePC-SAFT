@@ -319,6 +319,12 @@ PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_composition_sensi
     int phase,
     const add_args &cppargs
 );
+PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_explicit_density_composition_sensitivity_cpp(
+    double t,
+    double rho,
+    vector<double> x,
+    const add_args &cppargs
+);
 double dielectric_constant_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs);
 vector<double> dielectric_derivative_rule_cpp(int rule, const vector<double> &x, const add_args &cppargs);
 #ifdef EPCSAFT_HAS_CPPAD

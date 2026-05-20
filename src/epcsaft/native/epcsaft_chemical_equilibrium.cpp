@@ -13,11 +13,10 @@
 #include <numeric>
 #include <utility>
 
-PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_composition_sensitivity_cpp(
+PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_explicit_density_composition_sensitivity_cpp(
     double t,
-    double p,
+    double rho,
     std::vector<double> x,
-    int phase,
     const add_args& cppargs
 );
 
@@ -148,9 +147,15 @@ std::vector<double> composition_from_moles(const std::vector<double>& n, double 
 struct ChemicalEvaluation {
     std::vector<double> n;
     std::vector<double> x;
+    std::size_t variable_count = 0;
+    bool uses_explicit_density = false;
+    int phase_density_variable_index = -1;
+    int reference_density_variable_index = -1;
     std::vector<double> gamma;
     bool has_phase_state = false;
     PhaseStateCompositionSensitivityResult phase_state;
+    bool has_activity_reference_phase_state = false;
+    PhaseStateCompositionSensitivityResult activity_reference_phase_state;
     bool has_activity_sensitivity = false;
     std::vector<double> ln_activity_coefficient;
     std::vector<double> ln_activity_coefficient_jacobian_row_major;
@@ -173,6 +178,13 @@ struct ChemicalDerivativeSelection {
     bool derivative_available = false;
 };
 
+struct ChemicalExplicitDensityState {
+    bool enabled = false;
+    double phase_density = 0.0;
+    bool reference_enabled = false;
+    double reference_density = 0.0;
+};
+
 ChemicalDerivativeSelection select_chemical_derivative_backend(
     const ChemicalEquilibriumOptionsNative& options,
     const std::vector<int>& reaction_standard_states
@@ -192,9 +204,9 @@ ChemicalDerivativeSelection select_chemical_derivative_backend(
         selection.derivative_available = true;
         return selection;
     }
-    selection.backend = "cppad_implicit";
+    selection.backend = "cppad_explicit_density";
     selection.capability_path =
-        "chemical_equilibrium:" + standard_state_summary(reaction_standard_states) + ":phase_state_cppad_implicit";
+        "chemical_equilibrium:" + standard_state_summary(reaction_standard_states) + ":phase_state_cppad_explicit_density";
     selection.derivative_available = true;
     return selection;
 }
@@ -398,7 +410,8 @@ std::vector<double> log_mole_fraction_log_amount_jacobian_row(
     std::size_t species
 ) {
     const std::size_t ncomp = state.x.size();
-    std::vector<double> row(ncomp, 0.0);
+    const std::size_t nvars = state.variable_count == 0 ? ncomp : state.variable_count;
+    std::vector<double> row(nvars, 0.0);
     for (std::size_t variable = 0; variable < ncomp; ++variable) {
         row[variable] = (species == variable ? 1.0 : 0.0) - state.x[variable];
     }
@@ -429,6 +442,23 @@ std::vector<double> log_activity_log_amount_jacobian_row(
         }
         row[variable] += dlnphi;
     }
+    if (state.uses_explicit_density && state.phase_density_variable_index >= 0) {
+        if (state.phase_state.ln_fugacity_density_derivative.size() != ncomp) {
+            throw ValueError("chemical activity residual Jacobian requires density fugacity sensitivities.");
+        }
+        row[static_cast<std::size_t>(state.phase_density_variable_index)] +=
+            state.phase_state.density * state.phase_state.ln_fugacity_density_derivative[species];
+    }
+    if (state.has_activity_sensitivity
+        && state.has_activity_reference_phase_state
+        && state.reference_density_variable_index >= 0) {
+        const PhaseStateCompositionSensitivityResult& ref_state = state.activity_reference_phase_state;
+        if (ref_state.ln_fugacity_density_derivative.size() != ncomp) {
+            throw ValueError("chemical activity residual Jacobian requires reference-density fugacity sensitivities.");
+        }
+        row[static_cast<std::size_t>(state.reference_density_variable_index)] -=
+            ref_state.density * ref_state.ln_fugacity_density_derivative[species];
+    }
     return row;
 }
 
@@ -438,13 +468,17 @@ std::vector<double> log_concentration_log_amount_jacobian_row(
     std::size_t species
 ) {
     const std::size_t ncomp = state.x.size();
-    if (phase_state.density_composition_derivative.size() != ncomp) {
-        throw ValueError("concentration chemical residual Jacobian requires supported density composition sensitivities.");
-    }
     if (!(std::isfinite(phase_state.density) && phase_state.density > 0.0)) {
         throw ValueError("concentration chemical residual Jacobian requires a finite positive molar density.");
     }
     std::vector<double> row = log_mole_fraction_log_amount_jacobian_row(state, species);
+    if (state.uses_explicit_density && state.phase_density_variable_index >= 0) {
+        row[static_cast<std::size_t>(state.phase_density_variable_index)] += 1.0;
+        return row;
+    }
+    if (phase_state.density_composition_derivative.size() != ncomp) {
+        throw ValueError("concentration chemical residual Jacobian requires supported density composition sensitivities.");
+    }
     for (std::size_t variable = 0; variable < ncomp; ++variable) {
         double drho_dlogn = 0.0;
         for (std::size_t k = 0; k < ncomp; ++k) {
@@ -481,10 +515,22 @@ PhaseStateCompositionSensitivityResult evaluate_phase_state_sensitivity(
     double t,
     double p,
     const ChemicalEvaluation& state,
-    int phase
+    int phase,
+    bool use_explicit_density,
+    double explicit_density
 ) {
+    (void)p;
+    (void)phase;
+    if (!use_explicit_density) {
+        throw ValueError("chemical residual phase-state derivatives require explicit density variables.");
+    }
     PhaseStateCompositionSensitivityResult phase_state =
-        phase_state_ln_fugacity_composition_sensitivity_cpp(t, p, state.x, phase, mixture->args());
+        phase_state_ln_fugacity_explicit_density_composition_sensitivity_cpp(
+            t,
+            explicit_density,
+            state.x,
+            mixture->args()
+        );
     if (!phase_state.supported) {
         const std::string message = phase_state.message.empty()
             ? "phase-state fugacity composition sensitivity was not available."
@@ -609,8 +655,11 @@ void assign_component_activity_sensitivity(
     double t,
     double p,
     ChemicalEvaluation& state,
-    int phase
+    int phase,
+    const ChemicalExplicitDensityState& explicit_density
 ) {
+    (void)p;
+    (void)phase;
     const std::size_t ncomp = state.x.size();
     const add_args& args = mixture->args();
     if (!supports_component_activity_reference(args, ncomp)) {
@@ -623,8 +672,16 @@ void assign_component_activity_sensitivity(
     const double eps = 1.0e-12;
     std::vector<double> x_ref = activity_reference_composition(state.x, groups, eps);
     std::vector<double> dxref_dx = activity_reference_composition_jacobian_row_major(state.x, groups, eps);
+    if (!explicit_density.reference_enabled) {
+        throw ValueError("chemical residual activity reference derivatives require explicit reference density variables.");
+    }
     PhaseStateCompositionSensitivityResult ref_state =
-        phase_state_ln_fugacity_composition_sensitivity_cpp(t, p, x_ref, phase, args);
+        phase_state_ln_fugacity_explicit_density_composition_sensitivity_cpp(
+            t,
+            explicit_density.reference_density,
+            x_ref,
+            args
+        );
     if (!ref_state.supported) {
         const std::string message = ref_state.message.empty()
             ? "activity reference-state fugacity sensitivity was not available."
@@ -649,6 +706,8 @@ void assign_component_activity_sensitivity(
                 state.phase_state.jacobian_row_major[species * ncomp + variable] - ref_chain;
         }
     }
+    state.activity_reference_phase_state = ref_state;
+    state.has_activity_reference_phase_state = true;
     state.has_activity_sensitivity = true;
 }
 
@@ -693,6 +752,22 @@ std::vector<double> log_mole_fraction_log_amount_hessian_tensor_chemical(const s
             for (std::size_t second = 0; second < ncomp; ++second) {
                 hessian[species * ncomp * ncomp + first * ncomp + second] =
                     -x_first * ((first == second ? 1.0 : 0.0) - x[second]);
+            }
+        }
+    }
+    return hessian;
+}
+
+std::vector<double> log_mole_fraction_log_amount_hessian_tensor_chemical(const ChemicalEvaluation& state) {
+    const std::size_t ncomp = state.x.size();
+    const std::size_t nvars = state.variable_count == 0 ? ncomp : state.variable_count;
+    const std::vector<double> base = log_mole_fraction_log_amount_hessian_tensor_chemical(state.x);
+    std::vector<double> hessian(ncomp * nvars * nvars, 0.0);
+    for (std::size_t species = 0; species < ncomp; ++species) {
+        for (std::size_t first = 0; first < ncomp; ++first) {
+            for (std::size_t second = 0; second < ncomp; ++second) {
+                hessian[species * nvars * nvars + first * nvars + second] =
+                    base[species * ncomp * ncomp + first * ncomp + second];
             }
         }
     }
@@ -771,8 +846,14 @@ std::vector<double> activity_coefficient_composition_hessian_tensor_chemical(
     const std::vector<double> dxref_dx = activity_reference_composition_jacobian_row_major(state.x, groups, eps);
     const std::vector<double> d2xref_dx2 =
         activity_reference_composition_hessian_tensor_row_major(state.x, groups, eps);
-    PhaseStateCompositionSensitivityResult ref_state =
-        phase_state_ln_fugacity_composition_sensitivity_cpp(t, p, x_ref, phase, args);
+    (void)t;
+    (void)p;
+    (void)phase;
+    (void)x_ref;
+    if (!state.has_activity_reference_phase_state) {
+        throw ValueError("chemical activity Hessian requires a retained reference phase-state Hessian.");
+    }
+    const PhaseStateCompositionSensitivityResult& ref_state = state.activity_reference_phase_state;
     if (!ref_state.supported
         || ref_state.jacobian_row_major.size() != ncomp * ncomp
         || ref_state.hessian_tensor_row_major.size() != ncomp * ncomp * ncomp) {
@@ -807,6 +888,7 @@ std::vector<double> log_activity_log_amount_hessian_tensor_chemical(
     int phase
 ) {
     const std::size_t ncomp = state.x.size();
+    const std::size_t nvars = state.variable_count == 0 ? ncomp : state.variable_count;
     const std::vector<double> composition_jacobian =
         composition_log_amount_jacobian_row_major_chemical(state.x);
     const std::vector<double> composition_hessian =
@@ -819,11 +901,11 @@ std::vector<double> log_activity_log_amount_hessian_tensor_chemical(
     if (activity_jacobian.size() != ncomp * ncomp || activity_hessian.size() != ncomp * ncomp * ncomp) {
         throw ValueError("chemical activity Hessian shape does not match species count.");
     }
-    std::vector<double> hessian = log_mole_fraction_log_amount_hessian_tensor_chemical(state.x);
+    std::vector<double> hessian = log_mole_fraction_log_amount_hessian_tensor_chemical(state);
     for (std::size_t species = 0; species < ncomp; ++species) {
         for (std::size_t first = 0; first < ncomp; ++first) {
             for (std::size_t second = 0; second < ncomp; ++second) {
-                double value = hessian[species * ncomp * ncomp + first * ncomp + second];
+                double value = hessian[species * nvars * nvars + first * nvars + second];
                 for (std::size_t k = 0; k < ncomp; ++k) {
                     value += activity_jacobian[species * ncomp + k]
                         * composition_hessian[k * ncomp * ncomp + first * ncomp + second];
@@ -833,8 +915,69 @@ std::vector<double> log_activity_log_amount_hessian_tensor_chemical(
                             * composition_jacobian[l * ncomp + second];
                     }
                 }
-                hessian[species * ncomp * ncomp + first * ncomp + second] = value;
+                hessian[species * nvars * nvars + first * nvars + second] = value;
             }
+        }
+    }
+    if (state.uses_explicit_density && state.phase_density_variable_index >= 0) {
+        if (state.phase_state.ln_fugacity_density_derivative.size() != ncomp
+            || state.phase_state.ln_fugacity_density_second_derivative.size() != ncomp
+            || state.phase_state.ln_fugacity_density_composition_cross_derivative.size() != ncomp * ncomp) {
+            throw ValueError("chemical activity Hessian requires explicit-density fugacity Hessians.");
+        }
+        const std::size_t density_col = static_cast<std::size_t>(state.phase_density_variable_index);
+        const double rho = state.phase_state.density;
+        for (std::size_t species = 0; species < ncomp; ++species) {
+            for (std::size_t variable = 0; variable < ncomp; ++variable) {
+                double cross = 0.0;
+                for (std::size_t k = 0; k < ncomp; ++k) {
+                    cross += state.phase_state.ln_fugacity_density_composition_cross_derivative[species * ncomp + k]
+                        * composition_jacobian[k * ncomp + variable];
+                }
+                cross *= rho;
+                hessian[species * nvars * nvars + variable * nvars + density_col] += cross;
+                hessian[species * nvars * nvars + density_col * nvars + variable] += cross;
+            }
+            hessian[species * nvars * nvars + density_col * nvars + density_col] +=
+                rho * state.phase_state.ln_fugacity_density_derivative[species]
+                + rho * rho * state.phase_state.ln_fugacity_density_second_derivative[species];
+        }
+    }
+    if (state.has_activity_sensitivity
+        && state.has_activity_reference_phase_state
+        && state.reference_density_variable_index >= 0) {
+        const PhaseStateCompositionSensitivityResult& ref_state = state.activity_reference_phase_state;
+        if (ref_state.ln_fugacity_density_derivative.size() != ncomp
+            || ref_state.ln_fugacity_density_second_derivative.size() != ncomp
+            || ref_state.ln_fugacity_density_composition_cross_derivative.size() != ncomp * ncomp) {
+            throw ValueError("chemical activity Hessian requires reference explicit-density fugacity Hessians.");
+        }
+        const ActivityReferenceGroups groups = activity_reference_groups(mixture->args(), ncomp);
+        const double eps = 1.0e-12;
+        const std::vector<double> dxref_dx =
+            activity_reference_composition_jacobian_row_major(state.x, groups, eps);
+        const std::size_t density_col = static_cast<std::size_t>(state.reference_density_variable_index);
+        const double rho = ref_state.density;
+        for (std::size_t species = 0; species < ncomp; ++species) {
+            for (std::size_t variable = 0; variable < ncomp; ++variable) {
+                double cross = 0.0;
+                for (std::size_t ref_variable = 0; ref_variable < ncomp; ++ref_variable) {
+                    double dxref_dlogn = 0.0;
+                    for (std::size_t k = 0; k < ncomp; ++k) {
+                        dxref_dlogn += dxref_dx[ref_variable * ncomp + k]
+                            * composition_jacobian[k * ncomp + variable];
+                    }
+                    cross += ref_state.ln_fugacity_density_composition_cross_derivative[
+                        species * ncomp + ref_variable
+                    ] * dxref_dlogn;
+                }
+                cross *= -rho;
+                hessian[species * nvars * nvars + variable * nvars + density_col] += cross;
+                hessian[species * nvars * nvars + density_col * nvars + variable] += cross;
+            }
+            hessian[species * nvars * nvars + density_col * nvars + density_col] -=
+                rho * ref_state.ln_fugacity_density_derivative[species]
+                + rho * rho * ref_state.ln_fugacity_density_second_derivative[species];
         }
     }
     return hessian;
@@ -842,6 +985,12 @@ std::vector<double> log_activity_log_amount_hessian_tensor_chemical(
 
 std::vector<double> log_concentration_log_amount_hessian_tensor_chemical(const ChemicalEvaluation& state) {
     const std::size_t ncomp = state.x.size();
+    if (state.uses_explicit_density && state.phase_density_variable_index >= 0) {
+        if (!state.has_phase_state || !(std::isfinite(state.phase_state.density) && state.phase_state.density > 0.0)) {
+            throw ValueError("chemical concentration Hessian requires a finite explicit density.");
+        }
+        return log_mole_fraction_log_amount_hessian_tensor_chemical(state);
+    }
     if (!state.has_phase_state
         || state.phase_state.density_composition_derivative.size() != ncomp
         || state.phase_state.density_composition_hessian_row_major.size() != ncomp * ncomp
@@ -878,11 +1027,12 @@ std::vector<double> log_concentration_log_amount_hessian_tensor_chemical(const C
                 d2rho / density - dlogrho[first] * dlogrho[second];
         }
     }
-    std::vector<double> hessian = log_mole_fraction_log_amount_hessian_tensor_chemical(state.x);
+    std::vector<double> hessian = log_mole_fraction_log_amount_hessian_tensor_chemical(state);
+    const std::size_t nvars = state.variable_count == 0 ? ncomp : state.variable_count;
     for (std::size_t species = 0; species < ncomp; ++species) {
         for (std::size_t first = 0; first < ncomp; ++first) {
             for (std::size_t second = 0; second < ncomp; ++second) {
-                hessian[species * ncomp * ncomp + first * ncomp + second] +=
+                hessian[species * nvars * nvars + first * nvars + second] +=
                     d2logrho[first * ncomp + second];
             }
         }
@@ -899,7 +1049,7 @@ std::vector<double> reaction_standard_state_log_amount_hessian_tensor_chemical(
     int phase
 ) {
     if (standard_state == STANDARD_STATE_IDEAL_MOLE_FRACTION) {
-        return log_mole_fraction_log_amount_hessian_tensor_chemical(state.x);
+        return log_mole_fraction_log_amount_hessian_tensor_chemical(state);
     }
     if (!state.has_phase_state) {
         throw ValueError("chemical residual Hessian requires a phase-state derivative block.");
@@ -924,7 +1074,8 @@ ChemicalEvaluation evaluate_chemical(
     const Eigen::VectorXd& log_k,
     const std::vector<int>& reaction_standard_states,
     const ChemicalEquilibriumOptionsNative& options,
-    ChemicalEvaluationCounters* counters
+    ChemicalEvaluationCounters* counters,
+    const ChemicalExplicitDensityState& explicit_density = ChemicalExplicitDensityState()
 ) {
     ChemicalEvaluation out;
     if (counters != nullptr) {
@@ -932,16 +1083,32 @@ ChemicalEvaluation evaluate_chemical(
     }
     out.n = moles_from_log_amounts(log_n);
     out.x = composition_from_moles(out.n, options.min_mole_fraction);
+    out.variable_count = out.n.size() + (explicit_density.enabled ? 1 : 0) + (explicit_density.reference_enabled ? 1 : 0);
+    out.uses_explicit_density = explicit_density.enabled;
+    if (explicit_density.enabled) {
+        out.phase_density_variable_index = static_cast<int>(out.n.size());
+    }
+    if (explicit_density.reference_enabled) {
+        out.reference_density_variable_index = static_cast<int>(out.n.size() + 1);
+    }
     const bool needs_phase_state = standard_states_require_phase_state(reaction_standard_states);
     const int phase = phase_token_to_int_chemical(options.phase);
     if (needs_phase_state) {
         if (counters != nullptr) {
             counters->activity_evaluations += 1;
         }
-        out.phase_state = evaluate_phase_state_sensitivity(mixture, t, p, out, phase);
+        out.phase_state = evaluate_phase_state_sensitivity(
+            mixture,
+            t,
+            p,
+            out,
+            phase,
+            explicit_density.enabled,
+            explicit_density.phase_density
+        );
         out.has_phase_state = true;
         if (standard_states_include_activity(reaction_standard_states)) {
-            assign_component_activity_sensitivity(mixture, t, p, out, phase);
+            assign_component_activity_sensitivity(mixture, t, p, out, phase, explicit_density);
         }
     }
     if (should_evaluate_activity_coefficients(options)) {
@@ -1005,17 +1172,20 @@ Eigen::MatrixXd phase_state_log_amount_jacobian(
     const std::vector<double>& charges,
     const std::vector<int>& reaction_standard_states
 ) {
-    const Eigen::Index nvars = static_cast<Eigen::Index>(current.n.size());
+    const Eigen::Index ncomp = static_cast<Eigen::Index>(current.n.size());
+    const Eigen::Index nvars = static_cast<Eigen::Index>(
+        current.variable_count == 0 ? current.n.size() : current.variable_count
+    );
     const Eigen::Index rows = balances.rows() + 1 + reactions.rows();
     Eigen::MatrixXd jac = Eigen::MatrixXd::Zero(rows, nvars);
     for (Eigen::Index r = 0; r < balances.rows(); ++r) {
-        for (Eigen::Index j = 0; j < nvars; ++j) {
+        for (Eigen::Index j = 0; j < ncomp; ++j) {
             jac(r, j) = balances(r, j) * current.n[static_cast<std::size_t>(j)];
         }
     }
     const Eigen::Index charge_row = balances.rows();
-    if (static_cast<Eigen::Index>(charges.size()) == nvars) {
-        for (Eigen::Index j = 0; j < nvars; ++j) {
+    if (static_cast<Eigen::Index>(charges.size()) == ncomp) {
+        for (Eigen::Index j = 0; j < ncomp; ++j) {
             jac(charge_row, j) = charges[static_cast<std::size_t>(j)] * current.n[static_cast<std::size_t>(j)];
         }
     }
@@ -1032,6 +1202,9 @@ Eigen::MatrixXd phase_state_log_amount_jacobian(
                 standard_state,
                 static_cast<std::size_t>(species)
             );
+            if (species_jacobian.size() != static_cast<std::size_t>(nvars)) {
+                throw ValueError("chemical residual Jacobian row length does not match variable count.");
+            }
             for (Eigen::Index variable = 0; variable < nvars; ++variable) {
                 jac(row, variable) += coefficient * species_jacobian[static_cast<std::size_t>(variable)];
             }
@@ -1050,19 +1223,20 @@ std::vector<double> chemical_residual_hessian_tensor_row_major(
     const std::vector<int>& reaction_standard_states,
     const ChemicalEquilibriumOptionsNative& options
 ) {
-    const std::size_t nvars = current.n.size();
+    const std::size_t ncomp = current.n.size();
+    const std::size_t nvars = current.variable_count == 0 ? ncomp : current.variable_count;
     const std::size_t rows = static_cast<std::size_t>(balances.rows() + 1 + reactions.rows());
     std::vector<double> tensor(rows * nvars * nvars, 0.0);
     for (Eigen::Index row = 0; row < balances.rows(); ++row) {
-        for (std::size_t species = 0; species < nvars; ++species) {
+        for (std::size_t species = 0; species < ncomp; ++species) {
             tensor[static_cast<std::size_t>(row) * nvars * nvars + species * nvars + species] =
                 balances(row, static_cast<Eigen::Index>(species)) * current.n[species];
         }
     }
     const Eigen::Index charge_row = balances.rows();
     const std::vector<double>& charges = mixture->args().z;
-    if (charges.size() == nvars) {
-        for (std::size_t species = 0; species < nvars; ++species) {
+    if (charges.size() == ncomp) {
+        for (std::size_t species = 0; species < ncomp; ++species) {
             tensor[static_cast<std::size_t>(charge_row) * nvars * nvars + species * nvars + species] =
                 charges[species] * current.n[species];
         }
@@ -1079,11 +1253,11 @@ std::vector<double> chemical_residual_hessian_tensor_row_major(
                 current,
                 standard_state,
                 phase
-            );
-        if (standard_state_hessian.size() != nvars * nvars * nvars) {
+        );
+        if (standard_state_hessian.size() != ncomp * nvars * nvars) {
             throw ValueError("chemical standard-state Hessian shape does not match species count.");
         }
-        for (std::size_t species = 0; species < nvars; ++species) {
+        for (std::size_t species = 0; species < ncomp; ++species) {
             const double coefficient = reactions(reaction, static_cast<Eigen::Index>(species));
             if (coefficient == 0.0) {
                 continue;
@@ -1142,12 +1316,12 @@ Eigen::MatrixXd chemical_residual_jacobian(
             mixture->args().z
         );
     }
-    if (selected.backend == "cppad_implicit") {
+    if (selected.backend == "cppad_explicit_density") {
         if (counters != nullptr) {
             counters->jacobian_evaluations += 1;
         }
         if (!current.has_phase_state) {
-            throw ValueError("chemical-equilibrium implicit Jacobian requires a retained phase-state sensitivity.");
+            throw ValueError("chemical-equilibrium explicit-density Jacobian requires a retained phase-state sensitivity.");
         }
         return phase_state_log_amount_jacobian(
             current,
@@ -1347,6 +1521,100 @@ Eigen::VectorXd log_amount_vector_from_amounts(const std::vector<double>& amount
     return log_n;
 }
 
+Eigen::VectorXd log_amount_vector_from_variables(
+    const std::vector<double>& variables,
+    int species_count
+) {
+    if (variables.size() < static_cast<std::size_t>(species_count)) {
+        throw ValueError("chemical speciation variable vector is shorter than the species count.");
+    }
+    Eigen::VectorXd log_n(species_count);
+    for (int index = 0; index < species_count; ++index) {
+        log_n[index] = variables[static_cast<std::size_t>(index)];
+    }
+    return log_n;
+}
+
+std::vector<double> composition_variable_jacobian_row_major_chemical(
+    const ChemicalEvaluation& state,
+    const add_args& args,
+    bool reference_composition
+) {
+    const std::size_t ncomp = state.x.size();
+    const std::size_t nvars = state.variable_count == 0 ? ncomp : state.variable_count;
+    const std::vector<double> dx_dlogn = composition_log_amount_jacobian_row_major_chemical(state.x);
+    std::vector<double> out(ncomp * nvars, 0.0);
+    if (!reference_composition) {
+        for (std::size_t row = 0; row < ncomp; ++row) {
+            for (std::size_t col = 0; col < ncomp; ++col) {
+                out[row * nvars + col] = dx_dlogn[row * ncomp + col];
+            }
+        }
+        return out;
+    }
+    const ActivityReferenceGroups groups = activity_reference_groups(args, ncomp);
+    const double eps = 1.0e-12;
+    const std::vector<double> dxref_dx =
+        activity_reference_composition_jacobian_row_major(state.x, groups, eps);
+    for (std::size_t row = 0; row < ncomp; ++row) {
+        for (std::size_t col = 0; col < ncomp; ++col) {
+            double value = 0.0;
+            for (std::size_t k = 0; k < ncomp; ++k) {
+                value += dxref_dx[row * ncomp + k] * dx_dlogn[k * ncomp + col];
+            }
+            out[row * nvars + col] = value;
+        }
+    }
+    return out;
+}
+
+std::vector<double> composition_variable_hessian_tensor_row_major_chemical(
+    const ChemicalEvaluation& state,
+    const add_args& args,
+    bool reference_composition
+) {
+    const std::size_t ncomp = state.x.size();
+    const std::size_t nvars = state.variable_count == 0 ? ncomp : state.variable_count;
+    const std::vector<double> dx_dlogn = composition_log_amount_jacobian_row_major_chemical(state.x);
+    const std::vector<double> d2x_dlogn2 = composition_log_amount_hessian_tensor_chemical(state.x);
+    std::vector<double> out(ncomp * nvars * nvars, 0.0);
+    if (!reference_composition) {
+        for (std::size_t species = 0; species < ncomp; ++species) {
+            for (std::size_t first = 0; first < ncomp; ++first) {
+                for (std::size_t second = 0; second < ncomp; ++second) {
+                    out[species * nvars * nvars + first * nvars + second] =
+                        d2x_dlogn2[species * ncomp * ncomp + first * ncomp + second];
+                }
+            }
+        }
+        return out;
+    }
+    const ActivityReferenceGroups groups = activity_reference_groups(args, ncomp);
+    const double eps = 1.0e-12;
+    const std::vector<double> dxref_dx =
+        activity_reference_composition_jacobian_row_major(state.x, groups, eps);
+    const std::vector<double> d2xref_dx2 =
+        activity_reference_composition_hessian_tensor_row_major(state.x, groups, eps);
+    for (std::size_t species = 0; species < ncomp; ++species) {
+        for (std::size_t first = 0; first < ncomp; ++first) {
+            for (std::size_t second = 0; second < ncomp; ++second) {
+                double value = 0.0;
+                for (std::size_t k = 0; k < ncomp; ++k) {
+                    value += dxref_dx[species * ncomp + k]
+                        * d2x_dlogn2[k * ncomp * ncomp + first * ncomp + second];
+                    for (std::size_t l = 0; l < ncomp; ++l) {
+                        value += d2xref_dx2[species * ncomp * ncomp + k * ncomp + l]
+                            * dx_dlogn[k * ncomp + first]
+                            * dx_dlogn[l * ncomp + second];
+                    }
+                }
+                out[species * nvars * nvars + first * nvars + second] = value;
+            }
+        }
+    }
+    return out;
+}
+
 class NonidealSpeciationResidualProblem final : public epcsaft::native::equilibrium_nlp::NlpProblem {
 public:
     NonidealSpeciationResidualProblem(
@@ -1387,7 +1655,18 @@ public:
               request_.total_vector,
               options_.min_mole_fraction
         );
-        initial_log_amounts_ = log_amount_vector_from_amounts(initial_amounts);
+        requires_phase_density_ = standard_states_require_phase_state(reaction_standard_states_);
+        requires_reference_density_ = standard_states_include_activity(reaction_standard_states_)
+            && supports_component_activity_reference(mixture_->args(), static_cast<std::size_t>(request_.species_count));
+        initial_variables_.assign(initial_amounts.size(), 0.0);
+        Eigen::VectorXd initial_log_amounts = log_amount_vector_from_amounts(initial_amounts);
+        for (Eigen::Index index = 0; index < initial_log_amounts.size(); ++index) {
+            initial_variables_[static_cast<std::size_t>(index)] = initial_log_amounts[index];
+        }
+        if (requires_phase_density_) {
+            initial_variables_ = explicit_density_seed_from_amount_variables(initial_variables_);
+            initialize_density_bounds_and_scales(initial_variables_);
+        }
     }
 
     std::string name() const override {
@@ -1395,11 +1674,11 @@ public:
     }
 
     int variable_count() const override {
-        return request_.species_count;
+        return static_cast<int>(initial_variables_.size());
     }
 
     int constraint_count() const override {
-        return request_.balance_rows + (include_charge_constraint_ ? 1 : 0);
+        return request_.balance_rows + (include_charge_constraint_ ? 1 : 0) + pressure_constraint_count();
     }
 
     int jacobian_nonzero_count() const override {
@@ -1417,18 +1696,30 @@ public:
                 }
             }
         }
-        return balance_nonzeros + charge_nonzeros;
+        return balance_nonzeros + charge_nonzeros + pressure_constraint_count() * variable_count();
     }
 
     epcsaft::native::equilibrium_nlp::NlpBounds bounds() const override {
         epcsaft::native::equilibrium_nlp::NlpBounds out;
         const double lower = options_.min_mole_fraction * total_scale_;
         const double upper = std::max(1.0, 10.0 * total_scale_);
-        out.variable_lower.assign(static_cast<std::size_t>(request_.species_count), std::log(lower));
-        out.variable_upper.assign(static_cast<std::size_t>(request_.species_count), std::log(upper));
+        out.variable_lower.assign(initial_variables_.size(), std::log(lower));
+        out.variable_upper.assign(initial_variables_.size(), std::log(upper));
+        if (requires_phase_density_) {
+            out.variable_lower[phase_density_variable_index()] = std::log(phase_density_lower_bound_);
+            out.variable_upper[phase_density_variable_index()] = std::log(phase_density_upper_bound_);
+        }
+        if (requires_reference_density_) {
+            out.variable_lower[reference_density_variable_index()] = std::log(reference_density_lower_bound_);
+            out.variable_upper[reference_density_variable_index()] = std::log(reference_density_upper_bound_);
+        }
         out.constraint_lower = request_.total_vector;
         out.constraint_upper = request_.total_vector;
         if (include_charge_constraint_) {
+            out.constraint_lower.push_back(0.0);
+            out.constraint_upper.push_back(0.0);
+        }
+        for (int row = 0; row < pressure_constraint_count(); ++row) {
             out.constraint_lower.push_back(0.0);
             out.constraint_upper.push_back(0.0);
         }
@@ -1436,7 +1727,7 @@ public:
     }
 
     std::vector<double> initial_point() const override {
-        return std::vector<double>(initial_log_amounts_.data(), initial_log_amounts_.data() + initial_log_amounts_.size());
+        return initial_variables_;
     }
 
     double objective(const std::vector<double>& variables) const override {
@@ -1453,7 +1744,7 @@ public:
         ChemicalEvaluationCounters counters;
         ChemicalEvaluation current = evaluate(variables, &counters);
         ChemicalDerivativeSelection selection;
-        const Eigen::VectorXd log_n = vector_from_values(variables);
+        const Eigen::VectorXd log_n = log_amount_vector_from_variables(variables, request_.species_count);
         const Eigen::MatrixXd jac = chemical_residual_jacobian(
             mixture_,
             t_,
@@ -1480,7 +1771,8 @@ public:
 
     std::vector<double> constraints(const std::vector<double>& variables) const override {
         std::vector<double> out(static_cast<std::size_t>(constraint_count()), 0.0);
-        const std::vector<double> amounts = moles_from_log_amounts(vector_from_values(variables));
+        const std::vector<double> amounts =
+            moles_from_log_amounts(log_amount_vector_from_variables(variables, request_.species_count));
         for (int row = 0; row < request_.balance_rows; ++row) {
             for (int col = 0; col < request_.species_count; ++col) {
                 out[static_cast<std::size_t>(row)] += request_.balance_matrix_row_major[
@@ -1493,6 +1785,15 @@ public:
             for (int col = 0; col < request_.species_count; ++col) {
                 out[static_cast<std::size_t>(request_.balance_rows)] +=
                     request_.charges[static_cast<std::size_t>(col)] * amounts[static_cast<std::size_t>(col)];
+            }
+        }
+        if (pressure_constraint_count() > 0) {
+            const ChemicalEvaluation current = evaluate(variables, nullptr);
+            out[static_cast<std::size_t>(pressure_constraint_start_index())] =
+                pressure_constraint_value(current, false);
+            if (requires_reference_density_) {
+                out[static_cast<std::size_t>(pressure_constraint_start_index() + 1)] =
+                    pressure_constraint_value(current, true);
             }
         }
         return out;
@@ -1524,11 +1825,19 @@ public:
                 out.cols.push_back(col);
             }
         }
+        for (int pressure_row = 0; pressure_row < pressure_constraint_count(); ++pressure_row) {
+            const int row = pressure_constraint_start_index() + pressure_row;
+            for (int col = 0; col < variable_count(); ++col) {
+                out.rows.push_back(row);
+                out.cols.push_back(col);
+            }
+        }
         return out;
     }
 
     std::vector<double> jacobian_values(const std::vector<double>& variables) const override {
-        const std::vector<double> amounts = moles_from_log_amounts(vector_from_values(variables));
+        const std::vector<double> amounts =
+            moles_from_log_amounts(log_amount_vector_from_variables(variables, request_.species_count));
         std::vector<double> out;
         out.reserve(static_cast<std::size_t>(jacobian_nonzero_count()));
         for (int row = 0; row < request_.balance_rows; ++row) {
@@ -1550,6 +1859,15 @@ public:
                     continue;
                 }
                 out.push_back(charge * amounts[static_cast<std::size_t>(col)]);
+            }
+        }
+        if (pressure_constraint_count() > 0) {
+            const ChemicalEvaluation current = evaluate(variables, nullptr);
+            const std::vector<double> phase_pressure = pressure_constraint_jacobian(current, false);
+            out.insert(out.end(), phase_pressure.begin(), phase_pressure.end());
+            if (requires_reference_density_) {
+                const std::vector<double> reference_pressure = pressure_constraint_jacobian(current, true);
+                out.insert(out.end(), reference_pressure.begin(), reference_pressure.end());
             }
         }
         return out;
@@ -1576,7 +1894,7 @@ public:
             throw ValueError("nonideal speciation Hessian multiplier vector size does not match constraints.");
         }
         ChemicalEvaluationCounters counters;
-        const Eigen::VectorXd log_n = vector_from_values(variables);
+        const Eigen::VectorXd log_n = log_amount_vector_from_variables(variables, request_.species_count);
         ChemicalEvaluation current = evaluate(variables, &counters);
         ChemicalDerivativeSelection selection;
         const Eigen::MatrixXd jac = chemical_residual_jacobian(
@@ -1613,7 +1931,7 @@ public:
         residuals.residuals = current.reaction_residuals;
         residuals.jacobian_row_major.assign(reaction_rows * n, 0.0);
         residuals.residual_hessian_tensor_row_major.assign(reaction_rows * n * n, 0.0);
-        residuals.backend = "cppad_implicit_speciation_residual";
+        residuals.backend = "cppad_explicit_density_speciation_residual";
         for (std::size_t row = 0; row < reaction_rows; ++row) {
             for (std::size_t col = 0; col < n; ++col) {
                 residuals.jacobian_row_major[row * n + col] =
@@ -1640,7 +1958,7 @@ public:
             0.0
         );
         constraints_data.has_hessian.assign(static_cast<std::size_t>(constraint_count()), true);
-        constraints_data.backend = "cppad_implicit_speciation_residual";
+        constraints_data.backend = "cppad_explicit_density_speciation_residual";
         for (std::size_t row = 0; row < static_cast<std::size_t>(request_.balance_rows); ++row) {
             std::copy(
                 residual_hessian.begin() + static_cast<std::ptrdiff_t>(row * n * n),
@@ -1658,6 +1976,24 @@ public:
                     + static_cast<std::ptrdiff_t>(charge_target * n * n)
             );
         }
+        if (pressure_constraint_count() > 0) {
+            const std::vector<double> phase_pressure_hessian = pressure_constraint_hessian(current, false);
+            std::copy(
+                phase_pressure_hessian.begin(),
+                phase_pressure_hessian.end(),
+                constraints_data.hessian_tensor_row_major.begin()
+                    + static_cast<std::ptrdiff_t>(pressure_constraint_start_index() * n * n)
+            );
+            if (requires_reference_density_) {
+                const std::vector<double> reference_pressure_hessian = pressure_constraint_hessian(current, true);
+                std::copy(
+                    reference_pressure_hessian.begin(),
+                    reference_pressure_hessian.end(),
+                    constraints_data.hessian_tensor_row_major.begin()
+                        + static_cast<std::ptrdiff_t>((pressure_constraint_start_index() + 1) * n * n)
+                );
+            }
+        }
         return epcsaft::native::equilibrium_nlp::LagrangianHessianAssembler(variable_count()).values(
             objective_factor,
             objective,
@@ -1667,13 +2003,13 @@ public:
     }
 
     std::string hessian_backend() const override {
-        return "cppad_implicit_speciation_residual";
+        return "cppad_explicit_density_speciation_residual";
     }
 
     epcsaft::native::equilibrium_nlp::NlpScaling scaling() const override {
         epcsaft::native::equilibrium_nlp::NlpScaling out;
         out.objective = 1.0;
-        out.variables.assign(static_cast<std::size_t>(request_.species_count), 1.0);
+        out.variables.assign(initial_variables_.size(), 1.0);
         out.constraints.reserve(static_cast<std::size_t>(constraint_count()));
         for (double total : request_.total_vector) {
             out.constraints.push_back(1.0 / std::max(1.0, std::abs(total)));
@@ -1681,14 +2017,17 @@ public:
         if (include_charge_constraint_) {
             out.constraints.push_back(1.0);
         }
+        for (int row = 0; row < pressure_constraint_count(); ++row) {
+            out.constraints.push_back(1.0);
+        }
         return out;
     }
 
     ChemicalEvaluation evaluate(const std::vector<double>& variables, ChemicalEvaluationCounters* counters) const {
-        if (variables.size() != static_cast<std::size_t>(request_.species_count)) {
-            throw ValueError("nonideal residual speciation variables length must match species count.");
+        if (variables.size() != initial_variables_.size()) {
+            throw ValueError("nonideal residual speciation variables length must match explicit-density variable count.");
         }
-        const Eigen::VectorXd log_n = vector_from_values(variables);
+        const Eigen::VectorXd log_n = log_amount_vector_from_variables(variables, request_.species_count);
         return evaluate_chemical(
             mixture_,
             t_,
@@ -1700,11 +2039,235 @@ public:
             log_k_,
             reaction_standard_states_,
             options_,
-            counters
+            counters,
+            explicit_density_state_from_variables(variables)
         );
     }
 
+    std::vector<double> explicit_density_seed(const std::vector<double>& variables) const {
+        if (variables.size() == initial_variables_.size()) {
+            return variables;
+        }
+        if (variables.size() == static_cast<std::size_t>(request_.species_count)) {
+            return explicit_density_seed_from_amount_variables(variables);
+        }
+        throw ValueError("nonideal speciation continuation variables do not match species or explicit-density variable count.");
+    }
+
 private:
+    std::vector<double> explicit_density_seed_from_amount_variables(
+        const std::vector<double>& amount_variables
+    ) const {
+        if (amount_variables.size() != static_cast<std::size_t>(request_.species_count)) {
+            throw ValueError("nonideal speciation density seed requires log amount variables only.");
+        }
+        std::vector<double> out = amount_variables;
+        if (!requires_phase_density_) {
+            return out;
+        }
+        const std::vector<double> amounts =
+            moles_from_log_amounts(log_amount_vector_from_variables(amount_variables, request_.species_count));
+        const std::vector<double> composition = composition_from_moles(amounts, options_.min_mole_fraction);
+        const int phase = phase_token_to_int_chemical(options_.phase);
+        const double density = mixture_->solve_density_scoped(
+            t_,
+            p_,
+            composition,
+            phase,
+            "nonideal_speciation_phase_density_seed"
+        );
+        if (!(std::isfinite(density) && density > 0.0)) {
+            throw ValueError("nonideal speciation explicit-density seed requires a finite positive density.");
+        }
+        out.push_back(std::log(density));
+        if (requires_reference_density_) {
+            const ActivityReferenceGroups groups =
+                activity_reference_groups(mixture_->args(), static_cast<std::size_t>(request_.species_count));
+            const std::vector<double> reference_composition =
+                activity_reference_composition(composition, groups, 1.0e-12);
+            const double reference_density = mixture_->solve_density_scoped(
+                t_,
+                p_,
+                reference_composition,
+                phase,
+                "nonideal_speciation_activity_reference_density_seed"
+            );
+            if (!(std::isfinite(reference_density) && reference_density > 0.0)) {
+                throw ValueError("nonideal speciation activity reference density seed must be finite and positive.");
+            }
+            out.push_back(std::log(reference_density));
+        }
+        return out;
+    }
+
+    void initialize_density_bounds_and_scales(const std::vector<double>& variables) {
+        if (!requires_phase_density_) {
+            return;
+        }
+        const double phase_density = std::exp(variables[phase_density_variable_index()]);
+        phase_density_lower_bound_ = std::max(1.0e-12, phase_density / 20.0);
+        phase_density_upper_bound_ = std::min(1.0e8, std::max(phase_density * 20.0, phase_density + 1.0));
+        if (requires_reference_density_) {
+            const double reference_density = std::exp(variables[reference_density_variable_index()]);
+            reference_density_lower_bound_ = std::max(1.0e-12, reference_density / 20.0);
+            reference_density_upper_bound_ =
+                std::min(1.0e8, std::max(reference_density * 20.0, reference_density + 1.0));
+        }
+        const ChemicalEvaluation current = evaluate(variables, nullptr);
+        phase_pressure_constraint_scale_ = pressure_constraint_scale(current, false);
+        if (requires_reference_density_) {
+            reference_pressure_constraint_scale_ = pressure_constraint_scale(current, true);
+        }
+    }
+
+    ChemicalExplicitDensityState explicit_density_state_from_variables(
+        const std::vector<double>& variables
+    ) const {
+        ChemicalExplicitDensityState out;
+        out.enabled = requires_phase_density_;
+        if (!out.enabled) {
+            return out;
+        }
+        out.phase_density = std::exp(variables[phase_density_variable_index()]);
+        if (!(std::isfinite(out.phase_density) && out.phase_density > 0.0)) {
+            throw ValueError("nonideal speciation explicit density variable must be finite and positive.");
+        }
+        out.reference_enabled = requires_reference_density_;
+        if (out.reference_enabled) {
+            out.reference_density = std::exp(variables[reference_density_variable_index()]);
+            if (!(std::isfinite(out.reference_density) && out.reference_density > 0.0)) {
+                throw ValueError("nonideal speciation reference density variable must be finite and positive.");
+            }
+        }
+        return out;
+    }
+
+    int pressure_constraint_count() const {
+        return requires_phase_density_ ? (requires_reference_density_ ? 2 : 1) : 0;
+    }
+
+    int pressure_constraint_start_index() const {
+        return request_.balance_rows + (include_charge_constraint_ ? 1 : 0);
+    }
+
+    std::size_t phase_density_variable_index() const {
+        return static_cast<std::size_t>(request_.species_count);
+    }
+
+    std::size_t reference_density_variable_index() const {
+        return static_cast<std::size_t>(request_.species_count + 1);
+    }
+
+    const PhaseStateCompositionSensitivityResult& pressure_phase_state(
+        const ChemicalEvaluation& current,
+        bool reference
+    ) const {
+        if (reference) {
+            if (!current.has_activity_reference_phase_state) {
+                throw ValueError("nonideal speciation reference pressure constraint requires reference phase state.");
+            }
+            return current.activity_reference_phase_state;
+        }
+        if (!current.has_phase_state) {
+            throw ValueError("nonideal speciation pressure constraint requires current phase state.");
+        }
+        return current.phase_state;
+    }
+
+    double pressure_constraint_scale(const ChemicalEvaluation& current, bool reference) const {
+        const PhaseStateCompositionSensitivityResult& state = pressure_phase_state(current, reference);
+        return std::max(
+            {1.0, std::abs(p_), std::abs(state.density * state.pressure_density_derivative)}
+        );
+    }
+
+    double pressure_constraint_value(const ChemicalEvaluation& current, bool reference) const {
+        const PhaseStateCompositionSensitivityResult& state = pressure_phase_state(current, reference);
+        const double scale = reference ? reference_pressure_constraint_scale_ : phase_pressure_constraint_scale_;
+        return (state.pressure - p_) / scale;
+    }
+
+    std::vector<double> pressure_constraint_jacobian(
+        const ChemicalEvaluation& current,
+        bool reference
+    ) const {
+        const PhaseStateCompositionSensitivityResult& state = pressure_phase_state(current, reference);
+        const std::size_t ncomp = current.x.size();
+        const std::size_t nvars = current.variable_count;
+        if (state.pressure_composition_fixed_density_derivative.size() != ncomp) {
+            throw ValueError("nonideal speciation pressure constraint requires pressure composition derivatives.");
+        }
+        const std::vector<double> composition_jacobian =
+            composition_variable_jacobian_row_major_chemical(current, mixture_->args(), reference);
+        std::vector<double> row(nvars, 0.0);
+        for (std::size_t col = 0; col < nvars; ++col) {
+            for (std::size_t k = 0; k < ncomp; ++k) {
+                row[col] += state.pressure_composition_fixed_density_derivative[k]
+                    * composition_jacobian[k * nvars + col];
+            }
+        }
+        const std::size_t density_col = reference ? reference_density_variable_index() : phase_density_variable_index();
+        row[density_col] += state.density * state.pressure_density_derivative;
+        const double scale = reference ? reference_pressure_constraint_scale_ : phase_pressure_constraint_scale_;
+        for (double& value : row) {
+            value /= scale;
+        }
+        return row;
+    }
+
+    std::vector<double> pressure_constraint_hessian(
+        const ChemicalEvaluation& current,
+        bool reference
+    ) const {
+        const PhaseStateCompositionSensitivityResult& state = pressure_phase_state(current, reference);
+        const std::size_t ncomp = current.x.size();
+        const std::size_t nvars = current.variable_count;
+        if (state.pressure_composition_fixed_density_derivative.size() != ncomp
+            || state.pressure_composition_fixed_density_hessian_row_major.size() != ncomp * ncomp
+            || state.pressure_density_composition_cross_derivative.size() != ncomp) {
+            throw ValueError("nonideal speciation pressure constraint requires pressure Hessian derivatives.");
+        }
+        const std::vector<double> composition_jacobian =
+            composition_variable_jacobian_row_major_chemical(current, mixture_->args(), reference);
+        const std::vector<double> composition_hessian =
+            composition_variable_hessian_tensor_row_major_chemical(current, mixture_->args(), reference);
+        std::vector<double> hessian(nvars * nvars, 0.0);
+        for (std::size_t first = 0; first < nvars; ++first) {
+            for (std::size_t second = 0; second < nvars; ++second) {
+                double value = 0.0;
+                for (std::size_t k = 0; k < ncomp; ++k) {
+                    value += state.pressure_composition_fixed_density_derivative[k]
+                        * composition_hessian[k * nvars * nvars + first * nvars + second];
+                    for (std::size_t l = 0; l < ncomp; ++l) {
+                        value += state.pressure_composition_fixed_density_hessian_row_major[k * ncomp + l]
+                            * composition_jacobian[k * nvars + first]
+                            * composition_jacobian[l * nvars + second];
+                    }
+                }
+                hessian[first * nvars + second] = value;
+            }
+        }
+        const std::size_t density_col = reference ? reference_density_variable_index() : phase_density_variable_index();
+        for (std::size_t variable = 0; variable < nvars; ++variable) {
+            double cross = 0.0;
+            for (std::size_t k = 0; k < ncomp; ++k) {
+                cross += state.pressure_density_composition_cross_derivative[k]
+                    * composition_jacobian[k * nvars + variable];
+            }
+            cross *= state.density;
+            hessian[variable * nvars + density_col] += cross;
+            hessian[density_col * nvars + variable] += cross;
+        }
+        hessian[density_col * nvars + density_col] +=
+            state.density * state.pressure_density_derivative
+            + state.density * state.density * state.pressure_density_second_derivative;
+        const double scale = reference ? reference_pressure_constraint_scale_ : phase_pressure_constraint_scale_;
+        for (double& value : hessian) {
+            value /= scale;
+        }
+        return hessian;
+    }
+
     std::shared_ptr<ePCSAFTMixtureNative> mixture_;
     double t_ = 0.0;
     double p_ = 0.0;
@@ -1715,10 +2278,110 @@ private:
     Eigen::VectorXd totals_;
     Eigen::MatrixXd reactions_;
     Eigen::VectorXd log_k_;
-    Eigen::VectorXd initial_log_amounts_;
+    std::vector<double> initial_variables_;
     double total_scale_ = 1.0;
     bool include_charge_constraint_ = false;
+    bool requires_phase_density_ = false;
+    bool requires_reference_density_ = false;
+    double phase_density_lower_bound_ = 1.0e-12;
+    double phase_density_upper_bound_ = 1.0e8;
+    double reference_density_lower_bound_ = 1.0e-12;
+    double reference_density_upper_bound_ = 1.0e8;
+    double phase_pressure_constraint_scale_ = 1.0;
+    double reference_pressure_constraint_scale_ = 1.0;
 };
+
+bool chemical_requires_reference_density(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    const std::vector<int>& reaction_standard_states,
+    std::size_t ncomp
+) {
+    return standard_states_include_activity(reaction_standard_states)
+        && supports_component_activity_reference(mixture->args(), ncomp);
+}
+
+std::vector<double> chemical_explicit_density_seed_from_amount_variables(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    double t,
+    double p,
+    const std::vector<double>& amount_variables,
+    const std::vector<int>& reaction_standard_states,
+    const ChemicalEquilibriumOptionsNative& options
+) {
+    if (!standard_states_require_phase_state(reaction_standard_states)) {
+        return amount_variables;
+    }
+    const int species_count = static_cast<int>(amount_variables.size());
+    std::vector<double> out = amount_variables;
+    const Eigen::VectorXd log_n = log_amount_vector_from_variables(amount_variables, species_count);
+    const std::vector<double> amounts = moles_from_log_amounts(log_n);
+    const std::vector<double> composition = composition_from_moles(amounts, options.min_mole_fraction);
+    const int phase = phase_token_to_int_chemical(options.phase);
+    const double density = mixture->solve_density_scoped(
+        t,
+        p,
+        composition,
+        phase,
+        "chemical_residual_phase_density_seed"
+    );
+    if (!(std::isfinite(density) && density > 0.0)) {
+        throw ValueError("chemical residual explicit-density seed requires a finite positive density.");
+    }
+    out.push_back(std::log(density));
+    if (chemical_requires_reference_density(mixture, reaction_standard_states, amount_variables.size())) {
+        const ActivityReferenceGroups groups = activity_reference_groups(mixture->args(), amount_variables.size());
+        const std::vector<double> reference_composition =
+            activity_reference_composition(composition, groups, 1.0e-12);
+        const double reference_density = mixture->solve_density_scoped(
+            t,
+            p,
+            reference_composition,
+            phase,
+            "chemical_residual_activity_reference_density_seed"
+        );
+        if (!(std::isfinite(reference_density) && reference_density > 0.0)) {
+            throw ValueError("chemical residual reference-density seed requires a finite positive density.");
+        }
+        out.push_back(std::log(reference_density));
+    }
+    return out;
+}
+
+ChemicalExplicitDensityState chemical_explicit_density_state_from_variables(
+    const std::shared_ptr<ePCSAFTMixtureNative>& mixture,
+    const std::vector<double>& variables,
+    const std::vector<int>& reaction_standard_states,
+    const ChemicalEquilibriumOptionsNative& options,
+    int species_count
+) {
+    (void)options;
+    ChemicalExplicitDensityState out;
+    out.enabled = standard_states_require_phase_state(reaction_standard_states);
+    if (!out.enabled) {
+        if (variables.size() != static_cast<std::size_t>(species_count)) {
+            throw ValueError("ideal chemical residual variables must match mixture component count.");
+        }
+        return out;
+    }
+    out.reference_enabled =
+        chemical_requires_reference_density(mixture, reaction_standard_states, static_cast<std::size_t>(species_count));
+    const std::size_t expected =
+        static_cast<std::size_t>(species_count) + 1 + (out.reference_enabled ? 1 : 0);
+    if (variables.size() != expected) {
+        throw ValueError("nonideal chemical residual variables must include log amount variables plus required log-density variables.");
+    }
+    out.phase_density = std::exp(variables[static_cast<std::size_t>(species_count)]);
+    if (!(std::isfinite(out.phase_density) && out.phase_density > 0.0)) {
+        throw ValueError("chemical residual explicit density variable must be finite and positive.");
+    }
+    if (out.reference_enabled) {
+        out.reference_density = std::exp(variables[static_cast<std::size_t>(species_count + 1)]);
+        if (!(std::isfinite(out.reference_density) && out.reference_density > 0.0)) {
+            throw ValueError("chemical residual reference density variable must be finite and positive.");
+        }
+    }
+    return out;
+}
 
 void add_chemical_implicit_sensitivity_diagnostics(
     ChemicalEquilibriumResultNative& result,
@@ -1736,6 +2399,22 @@ void add_chemical_implicit_sensitivity_diagnostics(
 ) {
     ChemicalEvaluationCounters counters;
     const Eigen::VectorXd log_n = log_amount_vector_from_amounts(amounts);
+    const std::vector<double> amount_variables(log_n.data(), log_n.data() + log_n.size());
+    const std::vector<double> sensitivity_variables = chemical_explicit_density_seed_from_amount_variables(
+        mixture,
+        t,
+        p,
+        amount_variables,
+        reaction_standard_states,
+        options
+    );
+    const ChemicalExplicitDensityState explicit_density = chemical_explicit_density_state_from_variables(
+        mixture,
+        sensitivity_variables,
+        reaction_standard_states,
+        options,
+        static_cast<int>(amount_variables.size())
+    );
     ChemicalEvaluation current = evaluate_chemical(
         mixture,
         t,
@@ -1747,7 +2426,8 @@ void add_chemical_implicit_sensitivity_diagnostics(
         log_k,
         reaction_standard_states,
         options,
-        &counters
+        &counters,
+        explicit_density
     );
     ChemicalDerivativeSelection selection;
     Eigen::MatrixXd residual_state = chemical_residual_jacobian(
@@ -1779,8 +2459,7 @@ void add_chemical_implicit_sensitivity_diagnostics(
     result.diagnostics_int["reactive_speciation_residual_rows"] = static_cast<int>(residual_state.rows());
     result.diagnostics_int["reactive_speciation_state_size"] = static_cast<int>(residual_state.cols());
     result.diagnostics_int["reactive_speciation_parameter_size"] = static_cast<int>(log_k.size());
-    result.diagnostics_vector["reactive_speciation_state"] =
-        std::vector<double>(log_n.data(), log_n.data() + log_n.size());
+    result.diagnostics_vector["reactive_speciation_state"] = sensitivity_variables;
     result.diagnostics_vector["reactive_speciation_residual"] = residuals;
     result.diagnostics_vector["reactive_speciation_residual_state_jacobian_row_major"] =
         matrix_to_row_major_chemical(residual_state);
@@ -1842,13 +2521,23 @@ ChemicalEquilibriumResultNative solve_nonideal_speciation_chemical_equilibrium_i
     solve_options.initial_bound_lower_multipliers = options.initial_bound_lower_multipliers;
     solve_options.initial_bound_upper_multipliers = options.initial_bound_upper_multipliers;
     solve_options.initial_constraint_multipliers = options.initial_constraint_multipliers;
+    if (!solve_options.initial_variables.empty()) {
+        const std::size_t original_size = solve_options.initial_variables.size();
+        solve_options.initial_variables = problem.explicit_density_seed(solve_options.initial_variables);
+        if (solve_options.initial_variables.size() != original_size) {
+            solve_options.initial_bound_lower_multipliers.clear();
+            solve_options.initial_bound_upper_multipliers.clear();
+            solve_options.initial_constraint_multipliers.clear();
+        }
+    }
     epcsaft::native::equilibrium_nlp::IpoptSolveResult ipopt_result =
         epcsaft::native::equilibrium_nlp::solve_ipopt_nlp(problem, solve_options);
-    if (ipopt_result.variables.size() != static_cast<std::size_t>(request.species_count)) {
+    if (ipopt_result.variables.size() != static_cast<std::size_t>(problem.variable_count())) {
         throw SolutionError("Ipopt returned an invalid nonideal reactive speciation variable vector.");
     }
 
-    const std::vector<double> amounts = moles_from_log_amounts(vector_from_values(ipopt_result.variables));
+    const std::vector<double> amounts =
+        moles_from_log_amounts(log_amount_vector_from_variables(ipopt_result.variables, request.species_count));
     const Eigen::MatrixXd balances = matrix_from_row_major(
         request.balance_matrix_row_major,
         request.balance_rows,
@@ -1863,21 +2552,8 @@ ChemicalEquilibriumResultNative solve_nonideal_speciation_chemical_equilibrium_i
         "nonideal speciation reaction matrix"
     );
     const Eigen::VectorXd log_k = vector_from_values(request.log_equilibrium_constants);
-    const Eigen::VectorXd log_n = log_amount_vector_from_amounts(amounts);
     ChemicalEvaluationCounters counters;
-    ChemicalEvaluation current = evaluate_chemical(
-        mixture,
-        t,
-        p,
-        log_n,
-        balances,
-        totals,
-        reactions,
-        log_k,
-        reaction_standard_states,
-        options,
-        &counters
-    );
+    ChemicalEvaluation current = problem.evaluate(ipopt_result.variables, &counters);
 
     ChemicalEquilibriumResultNative result;
     result.success = ipopt_result.accepted && current.residual_norm <= options.tolerance;
@@ -1906,16 +2582,17 @@ ChemicalEquilibriumResultNative solve_nonideal_speciation_chemical_equilibrium_i
     result.diagnostics_string["native_entrypoint"] = "_solve_chemical_equilibrium_native";
     result.diagnostics_string["problem_class"] = "homogeneous_nonideal_residual_speciation";
     result.diagnostics_string["activity_model"] = "eos_phase_state";
-    result.diagnostics_string["variable_model"] = "log_species_amounts";
+    result.diagnostics_string["variable_model"] = "log_species_amounts_plus_log_density";
+    result.diagnostics_string["density_backend"] = "explicit_log_density_pressure_constraint";
     result.diagnostics_string["activity_output"] = options.activity_output;
     result.diagnostics_string["activity_basis"] = standard_state_summary(reaction_standard_states);
     result.diagnostics_string["phase"] = options.phase;
     result.diagnostics_string["requested_jacobian_backend"] = options.jacobian_backend;
-    result.diagnostics_string["jacobian_backend"] = "cppad_implicit";
-    result.diagnostics_string["derivative_backend"] = "cppad_implicit";
+    result.diagnostics_string["jacobian_backend"] = "cppad_explicit_density";
+    result.diagnostics_string["derivative_backend"] = "cppad_explicit_density";
     result.diagnostics_string["derivative_capability_path"] =
         "chemical_equilibrium:" + standard_state_summary(reaction_standard_states)
-        + ":ipopt_log_amount_residual_phase_state_cppad_implicit";
+        + ":ipopt_log_amount_residual_phase_state_cppad_explicit_density";
     result.diagnostics_string["selected_solver_backend"] = "native_ipopt";
     result.diagnostics_string["solver_selection_reason"] = "explicit_request";
     result.diagnostics_string["ipopt_solver_status"] = ipopt_result.solver_status;
@@ -1947,7 +2624,7 @@ ChemicalEquilibriumResultNative solve_nonideal_speciation_chemical_equilibrium_i
         log_k,
         reaction_standard_states,
         options,
-        "cppad_implicit"
+        "cppad_explicit_density"
     );
     return result;
 }
@@ -1973,9 +2650,6 @@ ChemicalResidualEvaluationNative evaluate_chemical_equilibrium_residual_native(
     const int ncomp = static_cast<int>(mixture->ncomp());
     if (initial_x.size() != static_cast<std::size_t>(ncomp)) {
         throw ValueError("initial_x length must match mixture component count.");
-    }
-    if (has_variables && variables.size() != static_cast<std::size_t>(ncomp)) {
-        throw ValueError("chemical residual variables length must match mixture component count.");
     }
     if (balance_rows <= 0) {
         throw ValueError("chemical residual evaluation requires at least one material balance.");
@@ -2005,15 +2679,32 @@ ChemicalResidualEvaluationNative evaluate_chemical_equilibrium_residual_native(
         "reaction_stoichiometry"
     );
     Eigen::VectorXd log_k = vector_from_values(log_equilibrium_constants);
-    Eigen::VectorXd log_n(static_cast<Eigen::Index>(ncomp));
+    std::vector<double> eval_variables;
     if (has_variables) {
-        log_n = vector_from_values(variables);
+        eval_variables = variables;
     } else {
         std::vector<double> initial = normalize_composition_chemical(initial_x, options.min_mole_fraction);
+        eval_variables.reserve(static_cast<std::size_t>(ncomp));
         for (int i = 0; i < ncomp; ++i) {
-            log_n[i] = std::log(std::max(initial[static_cast<std::size_t>(i)], options.min_mole_fraction));
+            eval_variables.push_back(std::log(std::max(initial[static_cast<std::size_t>(i)], options.min_mole_fraction)));
         }
+        eval_variables = chemical_explicit_density_seed_from_amount_variables(
+            mixture,
+            t,
+            p,
+            eval_variables,
+            reaction_standard_states,
+            options
+        );
     }
+    ChemicalExplicitDensityState explicit_density = chemical_explicit_density_state_from_variables(
+        mixture,
+        eval_variables,
+        reaction_standard_states,
+        options,
+        ncomp
+    );
+    const Eigen::VectorXd log_n = log_amount_vector_from_variables(eval_variables, ncomp);
     for (Eigen::Index i = 0; i < log_n.size(); ++i) {
         if (!std::isfinite(log_n[i])) {
             throw ValueError("chemical residual variables must be finite.");
@@ -2040,7 +2731,8 @@ ChemicalResidualEvaluationNative evaluate_chemical_equilibrium_residual_native(
         log_k,
         reaction_standard_states,
         options,
-        &counters
+        &counters,
+        explicit_density
     );
     Eigen::MatrixXd jac = chemical_residual_jacobian(
         mixture,
@@ -2063,10 +2755,18 @@ ChemicalResidualEvaluationNative evaluate_chemical_equilibrium_residual_native(
     Eigen::VectorXd gradient = jac.transpose() * residual;
 
     ChemicalResidualEvaluationNative out;
-    out.variables.assign(log_n.data(), log_n.data() + log_n.size());
+    out.variables = eval_variables;
     const double lower = std::log(options.min_mole_fraction);
-    out.lower_bounds.assign(static_cast<std::size_t>(ncomp), lower);
-    out.upper_bounds.assign(static_cast<std::size_t>(ncomp), 50.0);
+    out.lower_bounds.assign(eval_variables.size(), lower);
+    out.upper_bounds.assign(eval_variables.size(), 50.0);
+    if (explicit_density.enabled) {
+        out.lower_bounds[static_cast<std::size_t>(ncomp)] = std::log(1.0e-12);
+        out.upper_bounds[static_cast<std::size_t>(ncomp)] = std::log(1.0e8);
+    }
+    if (explicit_density.reference_enabled) {
+        out.lower_bounds[static_cast<std::size_t>(ncomp + 1)] = std::log(1.0e-12);
+        out.upper_bounds[static_cast<std::size_t>(ncomp + 1)] = std::log(1.0e8);
+    }
     out.residual = current.residuals;
     out.jacobian_rows = static_cast<int>(jac.rows());
     out.jacobian_cols = static_cast<int>(jac.cols());
@@ -2092,6 +2792,11 @@ ChemicalResidualEvaluationNative evaluate_chemical_equilibrium_residual_native(
     out.diagnostics_string["phase"] = options.phase;
     out.diagnostics_string["jacobian_backend"] = derivative_selection.backend;
     out.diagnostics_string["derivative_backend"] = derivative_selection.backend;
+    if (explicit_density.enabled) {
+        out.diagnostics_string["jacobian_backend"] = "cppad_explicit_density";
+        out.diagnostics_string["derivative_backend"] = "cppad_explicit_density";
+        out.diagnostics_string["density_backend"] = "explicit_log_density_pressure_constraint";
+    }
     out.diagnostics_string["derivative_capability_path"] = derivative_selection.capability_path;
     out.diagnostics_bool["derivative_available"] = derivative_selection.derivative_available;
     out.diagnostics_bool["jacobian_available"] = derivative_selection.derivative_available;
