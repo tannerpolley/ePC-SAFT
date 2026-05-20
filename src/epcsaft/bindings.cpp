@@ -2308,13 +2308,18 @@ PYBIND11_MODULE(_core, m) {
         const std::vector<double>& total_vector,
         int reaction_rows,
         const std::vector<double>& reaction_stoichiometry_row_major,
-        const std::vector<double>& log_equilibrium_constants
+        const std::vector<double>& log_equilibrium_constants,
+        const std::vector<int>& reaction_standard_states,
+        const std::vector<double>& reaction_phase_stoichiometry
     ) {
         if (!mixture) {
             throw ValueError("Reactive LLE EOS NLP contract requires a native mixture.");
         }
         EquilibriumOptionsNative options;
-        std::vector<int> reaction_standard_states(static_cast<std::size_t>(reaction_rows), 0);
+        std::vector<int> standard_states = reaction_standard_states;
+        if (standard_states.empty()) {
+            standard_states.assign(static_cast<std::size_t>(reaction_rows), 0);
+        }
         return neutral_two_phase_eos_nlp_contract_to_dict(
             evaluate_reactive_phase_liquid_root_nlp_contract_native(
                 mixture,
@@ -2328,12 +2333,25 @@ PYBIND11_MODULE(_core, m) {
                 reaction_stoichiometry_row_major,
                 reaction_rows,
                 log_equilibrium_constants,
-                reaction_standard_states,
-                {},
+                standard_states,
+                reaction_phase_stoichiometry,
                 1.0e-8
             )
         );
-    });
+    },
+        py::arg("mixture"),
+        py::arg("temperature"),
+        py::arg("target_pressure"),
+        py::arg("feed_amounts"),
+        py::arg("balance_rows"),
+        py::arg("balance_matrix_row_major"),
+        py::arg("total_vector"),
+        py::arg("reaction_rows"),
+        py::arg("reaction_stoichiometry_row_major"),
+        py::arg("log_equilibrium_constants"),
+        py::arg("reaction_standard_states") = std::vector<int>{},
+        py::arg("reaction_phase_stoichiometry") = std::vector<double>{}
+    );
     // AlgID: reactive_electrolyte_lle_liquid_root_ipopt
     m.def("_native_reactive_electrolyte_lle_eos_nlp_contract", [](
         const std::shared_ptr<ePCSAFTMixtureNative>& mixture,

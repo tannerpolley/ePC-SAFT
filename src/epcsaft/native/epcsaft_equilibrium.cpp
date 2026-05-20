@@ -20,45 +20,6 @@ PhaseStateCompositionSensitivityResult phase_state_ln_fugacity_explicit_density_
 
 namespace epcsaft::native {
 
-NativeRouteMetadata electrolyte_liquid_root_route_metadata(const std::string& variable_model) {
-    NativeRouteMetadata out;
-    out.variable_model = variable_model;
-    out.density_backend = "explicit_log_density_pressure_constraint";
-    out.residual_families = {"phase_equilibrium", "material_balance"};
-    out.constraint_families = {
-        "phase_equilibrium",
-        "phase_pressure_consistency",
-        "phase_distance",
-        "formula_feasibility",
-    };
-    return out;
-}
-
-NativeRouteMetadata reactive_liquid_root_route_metadata(
-    bool phase_tagged_reaction_constraints_active,
-    bool phase_charge_constraints_active
-) {
-    NativeRouteMetadata out;
-    out.variable_model = "log_phase_species_amounts_plus_log_density";
-    out.density_backend = "explicit_log_density_pressure_constraint";
-    out.residual_families = {
-        "conserved_balance",
-        "reaction_stationarity",
-        "phase_equilibrium",
-        "phase_charge",
-    };
-    out.constraint_families = {"conserved_balance"};
-    if (phase_tagged_reaction_constraints_active) {
-        out.constraint_families.push_back("reaction_stationarity");
-    }
-    if (phase_charge_constraints_active) {
-        out.constraint_families.push_back("phase_charge");
-    }
-    out.constraint_families.push_back("phase_pressure_consistency");
-    out.constraint_families.push_back("phase_distance");
-    return out;
-}
-
 void apply_route_metadata(
     ElectrolyteLLEResidualEvaluationNative& out,
     const NativeRouteMetadata& metadata
@@ -1390,7 +1351,7 @@ ElectrolyteLLEResidualEvaluationNative evaluate_electrolyte_lle_residual_native(
     }
 
     const epcsaft::native::NativeRouteMetadata metadata =
-        epcsaft::native::electrolyte_liquid_root_route_metadata(
+        equilibrium_nlp::electrolyte_liquid_root_route_metadata(
             basis.variable_model + "_explicit_density"
         );
     ElectrolyteLLEResidualEvaluationNative out;
@@ -2139,11 +2100,11 @@ public:
     }
 
     std::map<std::string, std::string> diagnostics() const override {
-        return {
-            {"derivative_backend", "cppad_explicit_density"},
-            {"density_backend", "explicit_log_density_pressure_constraint"},
-            {"variable_model", basis_.variable_model + "_explicit_density"},
-        };
+        std::map<std::string, std::string> out = equilibrium_nlp::route_metadata_diagnostics(
+            equilibrium_nlp::electrolyte_liquid_root_route_metadata(basis_.variable_model + "_explicit_density")
+        );
+        out["derivative_backend"] = "cppad_explicit_density";
+        return out;
     }
 
     ElectrolyteCandidateNative candidate(const std::vector<double>& variables) const {
@@ -2448,9 +2409,7 @@ equilibrium_nlp::NeutralTwoPhaseEosNlpContract liquid_root_contract_from_problem
     const equilibrium_nlp::NlpJacobianStructure structure = problem.jacobian_structure();
 
     const epcsaft::native::NativeRouteMetadata metadata =
-        epcsaft::native::electrolyte_liquid_root_route_metadata(
-            problem.basis().variable_model + "_explicit_density"
-        );
+        equilibrium_nlp::route_metadata_from_diagnostics(problem.diagnostics());
     equilibrium_nlp::NeutralTwoPhaseEosNlpContract out;
     out.problem_name = problem.name();
     out.derivative_backend = "cppad_explicit_density";
@@ -2483,9 +2442,7 @@ equilibrium_nlp::NeutralTwoPhaseEosPostsolve liquid_root_postsolve_from_candidat
     double phase_distance_tolerance
 ) {
     const epcsaft::native::NativeRouteMetadata metadata =
-        epcsaft::native::electrolyte_liquid_root_route_metadata(
-            problem.basis().variable_model + "_explicit_density"
-        );
+        equilibrium_nlp::route_metadata_from_diagnostics(problem.diagnostics());
     equilibrium_nlp::NeutralTwoPhaseEosPostsolve out;
     out.derivative_backend = "cppad_explicit_density";
     epcsaft::native::apply_route_metadata(out, metadata);
@@ -2664,7 +2621,7 @@ equilibrium_nlp::NeutralTwoPhaseEosRouteResult solve_electrolyte_lle_liquid_root
 ) {
     const equilibrium_nlp::IpoptAdapterInfo adapter = equilibrium_nlp::native_ipopt_adapter_info();
     const epcsaft::native::NativeRouteMetadata metadata =
-        epcsaft::native::electrolyte_liquid_root_route_metadata(
+        equilibrium_nlp::electrolyte_liquid_root_route_metadata(
             "ascani_transformed_salt_pairs_explicit_density"
         );
     equilibrium_nlp::NeutralTwoPhaseEosRouteResult best;
@@ -2691,6 +2648,8 @@ equilibrium_nlp::NeutralTwoPhaseEosRouteResult solve_electrolyte_lle_liquid_root
         species,
         phase_distance_tolerance
     );
+    const epcsaft::native::NativeRouteMetadata problem_metadata =
+        equilibrium_nlp::route_metadata_from_diagnostics(problem.diagnostics());
     const std::vector<NamedInitialVariables> seeds = {
         {
             "canonical_formula_shift",
@@ -2723,7 +2682,7 @@ equilibrium_nlp::NeutralTwoPhaseEosRouteResult solve_electrolyte_lle_liquid_root
         result.problem_name = "electrolyte_lle_eos";
         result.derivative_backend = "cppad_explicit_density";
         result.postsolve.derivative_backend = "cppad_explicit_density";
-        epcsaft::native::apply_route_metadata(result, metadata);
+        epcsaft::native::apply_route_metadata(result, problem_metadata);
         result.initial_point_strategy = "deterministic_seed_sweep";
         result.seed_name = seed_name;
         result.ran = solve.solver_ran;

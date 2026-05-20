@@ -102,6 +102,73 @@ def test_reactive_phase_equilibrium_problem_requires_native_ipopt_route(monkeypa
     assert captured["kwargs"]["complementarity_tolerance"] == pytest.approx(1.0e-8)
 
 
+def test_reactive_phase_equilibrium_problem_preserves_native_route_metadata_in_result_diagnostics(monkeypatch) -> None:
+    mix, feed, reaction = _toy_reactive_phase_case()
+
+    def accepted_native_route(*_args, **_kwargs):
+        return {
+            "backend": "ipopt",
+            "compiled": True,
+            "adapter_available": True,
+            "ran": True,
+            "accepted": True,
+            "status": "accepted",
+            "solver_accepted": True,
+            "solver_status": "success",
+            "application_status": "solve_succeeded",
+            "problem_name": "reactive_liquid_root_eos",
+            "variable_model": "log_phase_species_amounts_plus_log_density",
+            "density_backend": "explicit_log_density_pressure_constraint",
+            "residual_families": [
+                "conserved_balance",
+                "reaction_stationarity",
+                "phase_equilibrium",
+                "phase_charge",
+            ],
+            "constraint_families": [
+                "conserved_balance",
+                "phase_pressure_consistency",
+                "phase_distance",
+            ],
+            "postsolve": {
+                "accepted": True,
+                "density_backend": "explicit_log_density_pressure_constraint",
+                "phase_compositions": [[0.12, 0.88], [0.80, 0.20]],
+                "phase_amount_totals": [0.5, 0.5],
+                "phase_volumes": [0.01, 0.02],
+                "phase_ln_fugacity_coefficients": [[0.0, 0.0], [0.0, 0.0]],
+                "phase_distance": 0.68,
+            },
+        }
+
+    monkeypatch.setattr(_core, "_native_reactive_lle_eos_route_result", accepted_native_route)
+    problem = epcsaft.ReactivePhaseEquilibriumProblem(
+        T=298.15,
+        P=1.013e5,
+        z=feed,
+        balances={"total": {"Methanol": 1.0, "Cyclohexane": 1.0}},
+        totals={"total": 1.0},
+        reactions=[reaction],
+        phase_kind="lle_flash",
+    )
+
+    result = mix.solve_equilibrium(problem)
+
+    assert result.diagnostics["reactive_route_status"] == "accepted"
+    assert result.diagnostics["variable_model"] == "log_phase_species_amounts_plus_log_density"
+    assert result.diagnostics["residual_families"] == [
+        "conserved_balance",
+        "reaction_stationarity",
+        "phase_equilibrium",
+        "phase_charge",
+    ]
+    assert result.diagnostics["constraint_families"] == [
+        "conserved_balance",
+        "phase_pressure_consistency",
+        "phase_distance",
+    ]
+
+
 def test_reactive_phase_equilibrium_problem_rejects_non_lle_production_kind() -> None:
     mix, feed, reaction = _toy_reactive_phase_case()
     problem = epcsaft.ReactivePhaseEquilibriumProblem(

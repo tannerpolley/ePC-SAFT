@@ -90,6 +90,21 @@ def test_validate_project_modes_route_to_standard_validation_bundles():
     )
 
 
+def test_validate_project_script_runs_when_invoked_by_path():
+    repo_root = Path(__file__).resolve().parents[3]
+
+    result = subprocess.run(
+        [sys.executable, "scripts/dev/validate_project.py", "--help"],
+        cwd=repo_root,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "standard validation modes" in result.stdout
+
+
 def test_pytest_slices_are_adapted_from_capability_evidence_registry():
     assert run_pytest.SLICE_TARGETS == {
         name: capability_evidence.registry_targets(name)

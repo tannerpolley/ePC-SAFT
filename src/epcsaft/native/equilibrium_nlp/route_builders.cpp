@@ -119,59 +119,6 @@ void apply_ipopt_solve_metadata(ReactiveTwoPhaseEosRouteResult& out, const Ipopt
 
 namespace {
 
-std::string solve_string(const IpoptSolveResult& solve, const std::string& key, const std::string& fallback) {
-    const auto item = solve.diagnostics_string.find(key);
-    return item == solve.diagnostics_string.end() ? fallback : item->second;
-}
-
-int solve_int(const IpoptSolveResult& solve, const std::string& key, int fallback = 0) {
-    const auto item = solve.diagnostics_int.find(key);
-    return item == solve.diagnostics_int.end() ? fallback : item->second;
-}
-
-bool solve_bool(const IpoptSolveResult& solve, const std::string& key, bool fallback = false) {
-    const auto item = solve.diagnostics_bool.find(key);
-    return item == solve.diagnostics_bool.end() ? fallback : item->second;
-}
-
-}  // namespace
-
-void apply_ipopt_solve_metadata(NeutralTwoPhaseEosRouteResult& out, const IpoptSolveResult& solve) {
-    out.gradient_approximation = solve_string(solve, "gradient_approximation", "exact");
-    out.jacobian_approximation = solve_string(solve, "jacobian_approximation", "exact");
-    out.hessian_approximation = solve_string(solve, "hessian_approximation", out.hessian_approximation);
-    out.hessian_backend = solve_string(solve, "hessian_backend", out.hessian_backend);
-    out.scaling_method = solve_string(solve, "scaling_method", out.scaling_method);
-    out.iteration_count = solve_int(solve, "iteration_count");
-    out.iteration_history_limit = solve_int(solve, "iteration_history_limit");
-    out.iteration_history_size = solve_int(solve, "iteration_history_size");
-    out.variable_scaling_count = solve_int(solve, "variable_scaling_count");
-    out.constraint_scaling_count = solve_int(solve, "constraint_scaling_count");
-    out.eval_h_calls = solve_int(solve, "eval_h_calls");
-    out.exact_hessian_available = solve_bool(solve, "exact_hessian_available");
-    out.warm_start_requested = solve_bool(solve, "warm_start_requested");
-    out.warm_start_used = solve_bool(solve, "warm_start_used");
-}
-
-void apply_ipopt_solve_metadata(ReactiveTwoPhaseEosRouteResult& out, const IpoptSolveResult& solve) {
-    out.gradient_approximation = solve_string(solve, "gradient_approximation", "exact");
-    out.jacobian_approximation = solve_string(solve, "jacobian_approximation", "exact");
-    out.hessian_approximation = solve_string(solve, "hessian_approximation", out.hessian_approximation);
-    out.hessian_backend = solve_string(solve, "hessian_backend", out.hessian_backend);
-    out.scaling_method = solve_string(solve, "scaling_method", out.scaling_method);
-    out.iteration_count = solve_int(solve, "iteration_count");
-    out.iteration_history_limit = solve_int(solve, "iteration_history_limit");
-    out.iteration_history_size = solve_int(solve, "iteration_history_size");
-    out.variable_scaling_count = solve_int(solve, "variable_scaling_count");
-    out.constraint_scaling_count = solve_int(solve, "constraint_scaling_count");
-    out.eval_h_calls = solve_int(solve, "eval_h_calls");
-    out.exact_hessian_available = solve_bool(solve, "exact_hessian_available");
-    out.warm_start_requested = solve_bool(solve, "warm_start_requested");
-    out.warm_start_used = solve_bool(solve, "warm_start_used");
-}
-
-namespace {
-
 constexpr double kGasConstant = 8.31446261815324;
 constexpr double kContractPhaseDistance = 1.0e-8;
 

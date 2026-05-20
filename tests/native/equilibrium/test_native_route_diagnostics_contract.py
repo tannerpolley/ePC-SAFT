@@ -59,3 +59,44 @@ def test_native_route_diagnostics_normalizes_solver_route_and_seed_contract() ->
     assert diagnostics["seed_attempts"][1]["route_status"] == "postsolve_rejected"
     assert diagnostics["seed_attempts"][1]["selected_seed"] is True
     assert diagnostics["seed_attempts"][1]["gradient_is_exact"] is True
+
+
+def test_native_route_diagnostics_preserves_route_metadata_contract() -> None:
+    route = {
+        "accepted": True,
+        "status": "accepted",
+        "variable_model": "log_phase_species_amounts_plus_log_density",
+        "density_backend": "explicit_log_density_pressure_constraint",
+        "residual_families": [
+            "conserved_balance",
+            "reaction_stationarity",
+            "phase_equilibrium",
+            "phase_charge",
+        ],
+        "constraint_families": [
+            "conserved_balance",
+            "phase_charge",
+            "phase_pressure_consistency",
+            "phase_distance",
+        ],
+        "postsolve": {
+            "accepted": True,
+        },
+    }
+
+    diagnostics = native_route_diagnostics(route)
+
+    assert diagnostics["variable_model"] == "log_phase_species_amounts_plus_log_density"
+    assert diagnostics["density_backend"] == "explicit_log_density_pressure_constraint"
+    assert diagnostics["residual_families"] == [
+        "conserved_balance",
+        "reaction_stationarity",
+        "phase_equilibrium",
+        "phase_charge",
+    ]
+    assert diagnostics["constraint_families"] == [
+        "conserved_balance",
+        "phase_charge",
+        "phase_pressure_consistency",
+        "phase_distance",
+    ]

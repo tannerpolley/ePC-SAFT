@@ -105,6 +105,45 @@ inline RouteMetadata phase_amount_volume_route_metadata(
     return out;
 }
 
+inline RouteMetadata electrolyte_liquid_root_route_metadata(const std::string& variable_model) {
+    RouteMetadata out;
+    out.variable_model = variable_model;
+    out.density_backend = "explicit_log_density_pressure_constraint";
+    out.residual_families = {"phase_equilibrium", "material_balance"};
+    out.constraint_families = {
+        "phase_equilibrium",
+        "phase_pressure_consistency",
+        "phase_distance",
+        "formula_feasibility",
+    };
+    return out;
+}
+
+inline RouteMetadata reactive_liquid_root_route_metadata(
+    bool phase_tagged_reaction_constraints_active,
+    bool phase_charge_constraints_active
+) {
+    RouteMetadata out;
+    out.variable_model = "log_phase_species_amounts_plus_log_density";
+    out.density_backend = "explicit_log_density_pressure_constraint";
+    out.residual_families = {
+        "conserved_balance",
+        "reaction_stationarity",
+        "phase_equilibrium",
+        "phase_charge",
+    };
+    out.constraint_families = {"conserved_balance"};
+    if (phase_tagged_reaction_constraints_active) {
+        out.constraint_families.push_back("reaction_stationarity");
+    }
+    if (phase_charge_constraints_active) {
+        out.constraint_families.push_back("phase_charge");
+    }
+    out.constraint_families.push_back("phase_pressure_consistency");
+    out.constraint_families.push_back("phase_distance");
+    return out;
+}
+
 inline RouteMetadata reactive_phase_amount_volume_route_metadata(bool has_charge_constraints) {
     RouteMetadata out;
     out.variable_model = "phase_species_amounts_plus_phase_volume";

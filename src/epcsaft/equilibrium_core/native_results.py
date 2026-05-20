@@ -17,6 +17,8 @@ _ROUTE_STRING_DIAGNOSTIC_KEYS = (
     "last_callback_exception",
     "problem_name",
     "adapter_kind",
+    "variable_model",
+    "density_backend",
     "gradient_approximation",
     "jacobian_approximation",
     "hessian_approximation",
@@ -57,9 +59,20 @@ _ROUTE_FLOAT_DIAGNOSTIC_KEYS = (
     "constraint_scaling_max",
 )
 
+_ROUTE_SEQUENCE_DIAGNOSTIC_KEYS = (
+    "residual_families",
+    "constraint_families",
+)
+
 
 def _approximation_is_exact(value: Any) -> bool:
     return str(value).strip().lower() == "exact"
+
+
+def _diagnostic_sequence(value: Any) -> list[Any]:
+    if isinstance(value, (str, bytes)) or not isinstance(value, Sequence):
+        return []
+    return list(value)
 
 
 def _normalized_seed_attempts(
@@ -127,6 +140,9 @@ def native_route_diagnostics(
     for key in _ROUTE_FLOAT_DIAGNOSTIC_KEYS:
         if key in route or key in default_values:
             diagnostics[key] = float(route.get(key, default_values.get(key, 0.0)))
+    for key in _ROUTE_SEQUENCE_DIAGNOSTIC_KEYS:
+        if key in route or key in default_values:
+            diagnostics[key] = _diagnostic_sequence(route.get(key, default_values.get(key, ())))
     if "compiled" in route or "compiled" in default_values:
         diagnostics["compiled"] = bool(route.get("compiled", default_values.get("compiled", False)))
     if "adapter_available" in route or "adapter_available" in default_values:

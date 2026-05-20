@@ -5,7 +5,7 @@ goal:
   slug: "architecture-deepening"
   kind: existing_plan
   tranche: "continuous execution: complete successive safe verified slices until all six architecture candidates are implemented or explicitly blocked"
-  status: active
+  status: complete
   intake:
     original_request: "/goal Implement all of them"
     interpreted_outcome: "Implement the six architecture-deepening candidates identified by the prior improve-codebase-architecture pass."
@@ -64,7 +64,7 @@ visual_board:
     command: "npx goalbuddy extend github-projects"
     missing: []
 
-active_task: T006
+active_task: null
 
 tasks:
   - id: T001
@@ -303,7 +303,7 @@ tasks:
   - id: T006
     type: worker
     assignee: Worker
-    status: active
+    status: done
     reasoning_hint: xhigh
     objective: "Deepen native route variableization and shared residual-family selection across equilibrium route builders."
     inputs:
@@ -332,11 +332,44 @@ tasks:
       - "_core is locked by another process."
       - "Variableization requires changing public route contracts first."
       - "Focused native tests fail twice for different root causes."
-    receipt: null
+    receipt:
+      result: done
+      summary: "Consolidated liquid-root route metadata with equilibrium_nlp RouteMetadata, moved electrolyte/reactive explicit-density metadata factories into route_metadata.h, made liquid-root problem diagnostics own variable_model, density_backend, residual_families, and constraint_families, and propagated those diagnostics through native contracts, postsolve route results, bindings, and Python public result diagnostics. Removed duplicate shallow Ipopt solve metadata helpers so the native build preserves the richer route diagnostics."
+      changed_files:
+        - "src/epcsaft/native/epcsaft_equilibrium.h"
+        - "src/epcsaft/native/epcsaft_equilibrium.cpp"
+        - "src/epcsaft/native/equilibrium/reactive_phase_equilibrium_problem.cpp"
+        - "src/epcsaft/native/equilibrium_nlp/route_metadata.h"
+        - "src/epcsaft/native/equilibrium_nlp/route_builders.cpp"
+        - "src/epcsaft/bindings.cpp"
+        - "src/epcsaft/equilibrium_core/native_results.py"
+        - "tests/native/equilibrium/test_route_metadata_contracts.py"
+        - "tests/native/equilibrium/test_native_route_diagnostics_contract.py"
+        - "tests/api/reactive/test_reactive_phase_equilibrium_problem_routes_native.py"
+        - "docs/algorithms.md"
+        - "docs/algorithms_registry.yaml"
+      commands:
+        - command: "uv run python scripts/dev/build_epcsaft.py --build-only --parallel 10"
+          status: pass
+          result: "passed"
+          summary: "native extension rebuilt"
+        - command: "uv run python run_pytest.py tests/native/equilibrium/test_route_metadata_contracts.py tests/native/equilibrium/test_native_route_diagnostics_contract.py tests/api/reactive/test_reactive_phase_equilibrium_problem_routes_native.py -q"
+          status: pass
+          result: "passed"
+          summary: "12 passed"
+        - command: "uv run python run_pytest.py --native-contracts -q"
+          status: pass
+          result: "passed"
+          summary: "9 passed"
+        - command: "uv run python run_pytest.py tests/native/contracts -q"
+          status: pass
+          result: "passed"
+          summary: "38 passed after sync_algorithm_registry.py"
+      blockers: []
   - id: T007
     type: judge
     assignee: Judge
-    status: queued
+    status: done
     reasoning_hint: high
     objective: "Audit whether all six architecture candidates are implemented, validated, documented, and honestly bounded."
     inputs:
@@ -355,13 +388,50 @@ tasks:
       - "candidate coverage map"
       - "missing evidence"
       - "next task if not complete"
-    receipt: null
+    receipt:
+      result: complete
+      full_outcome_complete: true
+      summary: "PM/Judge audit found all six original architecture candidates covered by done receipts T002 through T006, with executable evidence for the touched API, workflow, native, diagnostics, and documentation boundaries. Capability claims remain tied to the capability_evidence registry and validation lane commands; no queued or active Worker task remains."
+      candidate_coverage:
+        - candidate: "1: Equilibrium request and result normalization"
+          receipt: T002
+          status: covered
+        - candidate: "2: Native route variableization and residual core"
+          receipt: T006
+          status: covered
+        - candidate: "3: Ipopt solve metadata and diagnostics"
+          receipt: T005
+          status: covered
+        - candidate: "4: Regression evidence and target-family summaries"
+          receipt: T003
+          status: covered
+        - candidate: "5: Parameter family payload boundary"
+          receipt: T003
+          status: covered
+        - candidate: "6: Capability evidence and validation lane registry"
+          receipt: T004
+          status: covered
+      missing_evidence: []
+      commands:
+        - command: "uv run python scripts/dev/validate_project.py quick"
+          status: pass
+          result: "passed"
+          summary: "doctor passed; fast validation 49 passed"
+        - command: "uv run python run_pytest.py tests/workflows/repo/test_run_pytest.py -q"
+          status: pass
+          result: "passed"
+          summary: "27 passed"
+        - command: "pwsh.exe -NoProfile -ExecutionPolicy Bypass -File \"$env:USERPROFILE\\.codex\\hooks\\codex-cleanup.ps1\" -RepoRoot ."
+          status: pass
+          result: "passed"
+          summary: "no matching leftover Codex processes"
 
 checks:
   dirty_fingerprint: unknown
   last_verification:
     result: passed
-    task: T005
+    task: T007
     commands:
-      - "uv run python run_pytest.py tests/native/equilibrium/test_native_route_diagnostics_contract.py -q"
-      - "uv run python run_pytest.py tests/equilibrium/core/test_native_results.py -q"
+      - "uv run python scripts/dev/validate_project.py quick"
+      - "uv run python run_pytest.py tests/workflows/repo/test_run_pytest.py -q"
+      - "pwsh.exe -NoProfile -ExecutionPolicy Bypass -File \"$env:USERPROFILE\\.codex\\hooks\\codex-cleanup.ps1\" -RepoRoot ."

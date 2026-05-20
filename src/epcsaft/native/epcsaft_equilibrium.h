@@ -7,6 +7,7 @@
 
 #include "epcsaft_electrolyte.h"
 #include "equilibrium_nlp/route_builders.h"
+#include "equilibrium_nlp/route_metadata.h"
 
 struct EquilibriumOptionsNative {
     double min_composition = 1.0e-12;
@@ -86,19 +87,7 @@ struct ReactivePhaseResidualEvaluationNative {
 
 namespace epcsaft::native {
 
-struct NativeRouteMetadata {
-    std::string variable_model;
-    std::string density_backend;
-    std::vector<std::string> residual_families;
-    std::vector<std::string> constraint_families;
-};
-
-NativeRouteMetadata electrolyte_liquid_root_route_metadata(const std::string& variable_model);
-
-NativeRouteMetadata reactive_liquid_root_route_metadata(
-    bool phase_tagged_reaction_constraints_active,
-    bool phase_charge_constraints_active
-);
+using NativeRouteMetadata = epcsaft::native::equilibrium_nlp::RouteMetadata;
 
 void apply_route_metadata(
     ::ElectrolyteLLEResidualEvaluationNative& out,

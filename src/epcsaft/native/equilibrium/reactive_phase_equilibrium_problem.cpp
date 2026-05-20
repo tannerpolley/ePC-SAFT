@@ -1414,7 +1414,7 @@ ReactivePhaseResidualEvaluationNative evaluate_reactive_phase_equilibrium_residu
     );
 
     const epcsaft::native::NativeRouteMetadata metadata =
-        epcsaft::native::reactive_liquid_root_route_metadata(
+        epcsaft::native::equilibrium_nlp::reactive_liquid_root_route_metadata(
             phase_tagged_reactions,
             std::any_of(
                 mixture->args().z.begin(),
@@ -2285,11 +2285,15 @@ public:
     }
 
     std::map<std::string, std::string> diagnostics() const override {
-        return {
-            {"derivative_backend", "cppad_explicit_density"},
-            {"density_backend", "explicit_log_density_pressure_constraint"},
-            {"variable_model", "log_phase_species_amounts_plus_log_density"},
-        };
+        std::map<std::string, std::string> out =
+            epcsaft::native::equilibrium_nlp::route_metadata_diagnostics(
+                epcsaft::native::equilibrium_nlp::reactive_liquid_root_route_metadata(
+                    phase_tagged_reaction_constraints_active(),
+                    phase_charge_constraints_active()
+                )
+            );
+        out["derivative_backend"] = "cppad_explicit_density";
+        return out;
     }
 
     ReactivePhaseResidualEvaluationNative evaluate(const std::vector<double>& variables) const {
@@ -2752,10 +2756,7 @@ epcsaft::native::equilibrium_nlp::NeutralTwoPhaseEosNlpContract reactive_liquid_
     const std::vector<double> jacobian = problem.jacobian_values(initial);
 
     const epcsaft::native::NativeRouteMetadata metadata =
-        epcsaft::native::reactive_liquid_root_route_metadata(
-            problem.phase_tagged_reaction_constraints_active(),
-            problem.phase_charge_constraints_active()
-        );
+        epcsaft::native::equilibrium_nlp::route_metadata_from_diagnostics(problem.diagnostics());
     epcsaft::native::equilibrium_nlp::NeutralTwoPhaseEosNlpContract out;
     out.problem_name = problem.name();
     out.derivative_backend = "cppad_explicit_density";
@@ -2796,10 +2797,7 @@ epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosPostsolve reactive_liquid_r
     double phase_distance_tolerance
 ) {
     const epcsaft::native::NativeRouteMetadata metadata =
-        epcsaft::native::reactive_liquid_root_route_metadata(
-            problem.phase_tagged_reaction_constraints_active(),
-            problem.phase_charge_constraints_active()
-        );
+        epcsaft::native::equilibrium_nlp::route_metadata_from_diagnostics(problem.diagnostics());
     epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosPostsolve out;
     out.derivative_backend = "cppad_explicit_density";
     epcsaft::native::apply_route_metadata(out, metadata);
@@ -2986,7 +2984,7 @@ epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult solve_reactive_
             [](double charge) { return std::abs(charge) > 1.0e-12; }
         );
     const epcsaft::native::NativeRouteMetadata metadata =
-        epcsaft::native::reactive_liquid_root_route_metadata(
+        epcsaft::native::equilibrium_nlp::reactive_liquid_root_route_metadata(
             !reaction_phase_stoichiometry_row_major.empty(),
             phase_charge_constraints_active
         );
@@ -3021,6 +3019,8 @@ epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult solve_reactive_
         reaction_phase_stoichiometry_row_major,
         phase_distance_tolerance
     );
+    const epcsaft::native::NativeRouteMetadata problem_metadata =
+        epcsaft::native::equilibrium_nlp::route_metadata_from_diagnostics(problem.diagnostics());
     best.phase_count = 2;
     best.species_count = static_cast<int>(problem.feed().size());
     best.balance_row_count = problem.balance_row_count();
@@ -3052,7 +3052,7 @@ epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult solve_reactive_
         result.problem_name = "reactive_liquid_root_eos";
         result.derivative_backend = "cppad_explicit_density";
         result.postsolve.derivative_backend = "cppad_explicit_density";
-        epcsaft::native::apply_route_metadata(result, metadata);
+        epcsaft::native::apply_route_metadata(result, problem_metadata);
         result.initial_point_strategy = "deterministic_seed_sweep";
         result.seed_name = seed_name;
         result.phase_count = 2;
@@ -3158,7 +3158,7 @@ epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult solve_reactive_
             [](double charge) { return std::abs(charge) > 1.0e-12; }
         );
     const epcsaft::native::NativeRouteMetadata metadata =
-        epcsaft::native::reactive_liquid_root_route_metadata(
+        epcsaft::native::equilibrium_nlp::reactive_liquid_root_route_metadata(
             !reaction_phase_stoichiometry_row_major.empty(),
             phase_charge_constraints_active
         );
@@ -3197,6 +3197,8 @@ epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult solve_reactive_
         phase2_mixture,
         phase2_global_indices
     );
+    const epcsaft::native::NativeRouteMetadata problem_metadata =
+        epcsaft::native::equilibrium_nlp::route_metadata_from_diagnostics(problem.diagnostics());
     best.phase_count = 2;
     best.species_count = static_cast<int>(problem.feed().size());
     best.balance_row_count = problem.balance_row_count();
@@ -3230,7 +3232,7 @@ epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult solve_reactive_
         result.problem_name = "reactive_liquid_root_eos";
         result.derivative_backend = "cppad_explicit_density";
         result.postsolve.derivative_backend = "cppad_explicit_density";
-        epcsaft::native::apply_route_metadata(result, metadata);
+        epcsaft::native::apply_route_metadata(result, problem_metadata);
         result.initial_point_strategy = "deterministic_seed_sweep";
         result.seed_name = seed_name;
         result.phase_count = 2;

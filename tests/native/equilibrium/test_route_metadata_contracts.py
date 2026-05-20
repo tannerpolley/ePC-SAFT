@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 
@@ -10,6 +12,8 @@ from tests.native.equilibrium.test_route_builders import (
 )
 
 pytestmark = pytest.mark.native_contract
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 def test_neutral_two_phase_contract_declares_route_metadata_without_solving() -> None:
@@ -115,4 +119,50 @@ def test_liquid_root_contracts_declare_residual_families_without_running_ipopt()
         "reaction_stationarity",
         "phase_equilibrium",
         "phase_charge",
+    ]
+
+
+def test_liquid_root_and_nlp_routes_share_metadata_type() -> None:
+    header = (REPO_ROOT / "src" / "epcsaft" / "native" / "epcsaft_equilibrium.h").read_text(encoding="utf-8")
+
+    assert "struct NativeRouteMetadata" not in header
+    assert "using NativeRouteMetadata = epcsaft::native::equilibrium_nlp::RouteMetadata;" in header
+
+
+def test_liquid_root_route_metadata_factories_live_with_nlp_metadata() -> None:
+    metadata_header = (
+        REPO_ROOT / "src" / "epcsaft" / "native" / "equilibrium_nlp" / "route_metadata.h"
+    ).read_text(encoding="utf-8")
+    equilibrium_header = (REPO_ROOT / "src" / "epcsaft" / "native" / "epcsaft_equilibrium.h").read_text(
+        encoding="utf-8"
+    )
+
+    assert "inline RouteMetadata electrolyte_liquid_root_route_metadata(" in metadata_header
+    assert "inline RouteMetadata reactive_liquid_root_route_metadata(" in metadata_header
+    assert "NativeRouteMetadata electrolyte_liquid_root_route_metadata" not in equilibrium_header
+    assert "NativeRouteMetadata reactive_liquid_root_route_metadata" not in equilibrium_header
+
+
+def test_phase_tagged_reactive_liquid_root_contract_declares_reaction_constraint() -> None:
+    mix = _neutral_binary_mixture()
+    contract = _core._native_reactive_lle_eos_nlp_contract(
+        mix._native,
+        300.0,
+        1.0e5,
+        [0.3, 0.7],
+        1,
+        [1.0, 1.0],
+        [1.0],
+        1,
+        [-1.0, 1.0],
+        [float(np.log(3.0))],
+        [0],
+        [-1.0, 0.0, 0.0, 1.0],
+    )
+
+    assert contract["constraint_families"] == [
+        "conserved_balance",
+        "reaction_stationarity",
+        "phase_pressure_consistency",
+        "phase_distance",
     ]

@@ -77,7 +77,7 @@ Jacobians remain in their route problem owners.
 - Description: Shared adapter pattern for currently supported native Ceres regression routes.
 - Change note: Initial algorithm-registry entry for native Ceres regression dispatch.
 - LaTeX: `docs/latex/algorithms.tex:53`
-- Code owners: `src/epcsaft/bindings.cpp:3601` (m.def("_fit_generic_native_ceres", &fit_generic_native_ceres_binding);), `src/epcsaft/native/epcsaft_regression.cpp:565` (ceres::Solver::Options ceres_regression_options_cpp(int max_num_iterations) {)
+- Code owners: `src/epcsaft/bindings.cpp:3619` (m.def("_fit_generic_native_ceres", &fit_generic_native_ceres_binding);), `src/epcsaft/native/epcsaft_regression.cpp:565` (ceres::Solver::Options ceres_regression_options_cpp(int max_num_iterations) {)
 
 The Ceres adapter family owns native least-squares solve setup for supported
 regression routes. It is separate from Ipopt and does not call Ipopt routes.
@@ -106,7 +106,7 @@ regression routes. It is separate from Ipopt and does not call Ipopt routes.
 - Description: Solves neutral two-phase TP flash through the native Ipopt EOS route.
 - Change note: Initial algorithm-registry entry for neutral TP flash.
 - LaTeX: `docs/latex/algorithms.tex:72`
-- Code owners: `src/epcsaft/bindings.cpp:2208` (m.def("_native_neutral_tp_flash_eos_nlp_contract", [](), `src/epcsaft/bindings.cpp:2879` (m.def("_native_neutral_tp_flash_eos_route_result", [](), `src/epcsaft/equilibrium.py:297` (@dataclass(frozen=True, slots=True)), `src/epcsaft/native/equilibrium_nlp/route_builders.cpp:1831` (NeutralTwoPhaseEosNlpContract evaluate_neutral_two_phase_eos_tp_flash_nlp_contract(), `src/epcsaft/native/equilibrium_nlp/route_builders.cpp:2720` (NeutralTwoPhaseEosRouteResult solve_neutral_two_phase_eos_tp_flash_route()
+- Code owners: `src/epcsaft/bindings.cpp:2208` (m.def("_native_neutral_tp_flash_eos_nlp_contract", [](), `src/epcsaft/bindings.cpp:2897` (m.def("_native_neutral_tp_flash_eos_route_result", [](), `src/epcsaft/equilibrium.py:297` (@dataclass(frozen=True, slots=True)), `src/epcsaft/native/equilibrium_nlp/route_builders.cpp:1778` (NeutralTwoPhaseEosNlpContract evaluate_neutral_two_phase_eos_tp_flash_nlp_contract(), `src/epcsaft/native/equilibrium_nlp/route_builders.cpp:2667` (NeutralTwoPhaseEosRouteResult solve_neutral_two_phase_eos_tp_flash_route()
 
 This entry covers the generic neutral TP flash route, including the typed
 `TPFlash` problem object and the string facade that adapts to it.
@@ -133,7 +133,7 @@ This entry covers the generic neutral TP flash route, including the typed
 - Description: Solves neutral LLE through the native Ipopt EOS route.
 - Change note: Initial algorithm-registry entry for neutral LLE.
 - LaTeX: `docs/latex/algorithms.tex:89`
-- Code owners: `src/epcsaft/bindings.cpp:2227` (m.def("_native_neutral_lle_eos_nlp_contract", [](), `src/epcsaft/bindings.cpp:2924` (m.def("_native_neutral_lle_eos_route_result", [](), `src/epcsaft/equilibrium.py:410` (@dataclass(frozen=True, slots=True)), `src/epcsaft/native/equilibrium_nlp/route_builders.cpp:1860` (NeutralTwoPhaseEosNlpContract evaluate_neutral_two_phase_eos_lle_nlp_contract(), `src/epcsaft/native/equilibrium_nlp/route_builders.cpp:2749` (NeutralTwoPhaseEosRouteResult solve_neutral_two_phase_eos_lle_route()
+- Code owners: `src/epcsaft/bindings.cpp:2227` (m.def("_native_neutral_lle_eos_nlp_contract", [](), `src/epcsaft/bindings.cpp:2942` (m.def("_native_neutral_lle_eos_route_result", [](), `src/epcsaft/equilibrium.py:410` (@dataclass(frozen=True, slots=True)), `src/epcsaft/native/equilibrium_nlp/route_builders.cpp:1807` (NeutralTwoPhaseEosNlpContract evaluate_neutral_two_phase_eos_lle_nlp_contract(), `src/epcsaft/native/equilibrium_nlp/route_builders.cpp:2696` (NeutralTwoPhaseEosRouteResult solve_neutral_two_phase_eos_lle_route()
 
 This entry covers the generic neutral liquid-liquid split route and its typed
 `LLEProblem` public problem object.
@@ -160,7 +160,7 @@ This entry covers the generic neutral liquid-liquid split route and its typed
 - Description: Solves electrolyte liquid-liquid split routes with charge-constrained phase amounts.
 - Change note: Initial algorithm-registry entry for electrolyte LLE.
 - LaTeX: `docs/latex/algorithms.tex:106`
-- Code owners: `src/epcsaft/bindings.cpp:2246` (m.def("_native_electrolyte_lle_eos_nlp_contract", [](), `src/epcsaft/bindings.cpp:2969` (m.def("_native_electrolyte_lle_eos_route_result", [](), `src/epcsaft/equilibrium.py:433` (@dataclass(frozen=True, slots=True)), `src/epcsaft/native/equilibrium_nlp/route_builders.cpp:1889` (NeutralTwoPhaseEosNlpContract evaluate_electrolyte_lle_eos_nlp_contract(), `src/epcsaft/native/equilibrium_nlp/route_builders.cpp:2778` (NeutralTwoPhaseEosRouteResult solve_electrolyte_lle_eos_route()
+- Code owners: `src/epcsaft/bindings.cpp:2246` (m.def("_native_electrolyte_lle_eos_nlp_contract", [](), `src/epcsaft/bindings.cpp:2987` (m.def("_native_electrolyte_lle_eos_route_result", [](), `src/epcsaft/equilibrium.py:433` (@dataclass(frozen=True, slots=True)), `src/epcsaft/native/equilibrium_nlp/route_builders.cpp:1836` (NeutralTwoPhaseEosNlpContract evaluate_electrolyte_lle_eos_nlp_contract(), `src/epcsaft/native/equilibrium_nlp/route_builders.cpp:2725` (NeutralTwoPhaseEosRouteResult solve_electrolyte_lle_eos_route()
 
 This entry covers the generic electrolyte LLE route. Downstream extraction or
 selectivity metrics remain outside the package algorithm.
@@ -187,7 +187,7 @@ selectivity metrics remain outside the package algorithm.
 - Description: Solves neutral bubble and dew route variants through native Ipopt.
 - Change note: Initial algorithm-registry entry for neutral bubble/dew routes.
 - LaTeX: `docs/latex/algorithms.tex:123`
-- Code owners: `src/epcsaft/bindings.cpp:2457` (m.def("_native_neutral_bubble_p_eos_nlp_contract", [](), `src/epcsaft/bindings.cpp:3019` (m.def("_native_neutral_bubble_p_eos_route_result", [](), `src/epcsaft/equilibrium.py:358` (@dataclass(frozen=True, slots=True)), `src/epcsaft/equilibrium.py:384` (@dataclass(frozen=True, slots=True)), `src/epcsaft/native/equilibrium_nlp/bubble_dew_route_builders.cpp:1863` (NeutralTwoPhaseEosRouteResult solve_pressure_route(), `src/epcsaft/native/equilibrium_nlp/bubble_dew_route_builders.cpp:1999` (NeutralTwoPhaseEosRouteResult solve_temperature_route()
+- Code owners: `src/epcsaft/bindings.cpp:2475` (m.def("_native_neutral_bubble_p_eos_nlp_contract", [](), `src/epcsaft/bindings.cpp:3037` (m.def("_native_neutral_bubble_p_eos_route_result", [](), `src/epcsaft/equilibrium.py:358` (@dataclass(frozen=True, slots=True)), `src/epcsaft/equilibrium.py:384` (@dataclass(frozen=True, slots=True)), `src/epcsaft/native/equilibrium_nlp/bubble_dew_route_builders.cpp:1863` (NeutralTwoPhaseEosRouteResult solve_pressure_route(), `src/epcsaft/native/equilibrium_nlp/bubble_dew_route_builders.cpp:1999` (NeutralTwoPhaseEosRouteResult solve_temperature_route()
 
 This entry groups the neutral bubble-pressure, bubble-temperature,
 dew-pressure, and dew-temperature routes because they share the same native
@@ -216,7 +216,7 @@ route-builder family.
 - Description: Solves neutral and electrolyte TPD trial routes through native Ipopt.
 - Change note: Initial algorithm-registry entry for stability routes.
 - LaTeX: `docs/latex/algorithms.tex:141`
-- Code owners: `src/epcsaft/bindings.cpp:2538` (m.def("_native_neutral_stability_tpd_nlp_contract", [](), `src/epcsaft/bindings.cpp:3225` (m.def("_native_neutral_stability_tpd_route_result", [](), `src/epcsaft/equilibrium.py:315` (@dataclass(frozen=True, slots=True)), `src/epcsaft/native/equilibrium_nlp/stability_route_builders.cpp:1016` (StabilityRouteResult solve_neutral_stability_tpd_route(), `src/epcsaft/native/equilibrium_nlp/stability_route_builders.cpp:1090` (StabilityRouteResult solve_electrolyte_stability_tpd_route()
+- Code owners: `src/epcsaft/bindings.cpp:2556` (m.def("_native_neutral_stability_tpd_nlp_contract", [](), `src/epcsaft/bindings.cpp:3243` (m.def("_native_neutral_stability_tpd_route_result", [](), `src/epcsaft/equilibrium.py:315` (@dataclass(frozen=True, slots=True)), `src/epcsaft/native/equilibrium_nlp/stability_route_builders.cpp:1016` (StabilityRouteResult solve_neutral_stability_tpd_route(), `src/epcsaft/native/equilibrium_nlp/stability_route_builders.cpp:1090` (StabilityRouteResult solve_electrolyte_stability_tpd_route()
 
 This entry covers neutral and electrolyte tangent-plane-distance trial routes.
 It does not describe downstream phase-selection policy beyond the returned
@@ -247,7 +247,7 @@ generic stability payload.
 - Description: Solves ideal homogeneous reactive speciation through native Ipopt.
 - Change note: Initial algorithm-registry entry for ideal speciation.
 - LaTeX: `docs/latex/algorithms.tex:161`
-- Code owners: `src/epcsaft/bindings.cpp:3607` (m.def("_solve_chemical_equilibrium_native", &solve_chemical_equilibrium_native_binding);), `src/epcsaft/equilibrium.py:489` (@dataclass(frozen=True, slots=True)), `src/epcsaft/native/equilibrium_nlp/ideal_speciation_problem.cpp:699` (IdealSpeciationIpoptResult solve_ideal_speciation_ipopt(), `src/epcsaft/native/equilibrium_nlp/ideal_speciation_problem.cpp:735` (ChemicalEquilibriumResultNative solve_ideal_speciation_chemical_equilibrium_ipopt(), `src/epcsaft/reactive_speciation.py:625` (def _solve_reactive_speciation_native()
+- Code owners: `src/epcsaft/bindings.cpp:3625` (m.def("_solve_chemical_equilibrium_native", &solve_chemical_equilibrium_native_binding);), `src/epcsaft/equilibrium.py:489` (@dataclass(frozen=True, slots=True)), `src/epcsaft/native/equilibrium_nlp/ideal_speciation_problem.cpp:699` (IdealSpeciationIpoptResult solve_ideal_speciation_ipopt(), `src/epcsaft/native/equilibrium_nlp/ideal_speciation_problem.cpp:735` (ChemicalEquilibriumResultNative solve_ideal_speciation_chemical_equilibrium_ipopt(), `src/epcsaft/reactive_speciation.py:625` (def _solve_reactive_speciation_native()
 
 This entry covers the ideal-standard-state speciation route. It is a chemical
 equilibrium algorithm, not a phase-equilibrium split.
@@ -274,7 +274,7 @@ equilibrium algorithm, not a phase-equilibrium split.
 - Description: Solves nonideal homogeneous reactive speciation through native Ipopt.
 - Change note: Initial algorithm-registry entry for nonideal speciation.
 - LaTeX: `docs/latex/algorithms.tex:178`
-- Code owners: `src/epcsaft/bindings.cpp:3607` (m.def("_solve_chemical_equilibrium_native", &solve_chemical_equilibrium_native_binding);), `src/epcsaft/equilibrium.py:489` (@dataclass(frozen=True, slots=True)), `src/epcsaft/native/epcsaft_chemical_equilibrium.cpp:2419` (ChemicalEquilibriumResultNative solve_nonideal_speciation_chemical_equilibrium_ipopt(), `src/epcsaft/reactive_speciation.py:625` (def _solve_reactive_speciation_native()
+- Code owners: `src/epcsaft/bindings.cpp:3625` (m.def("_solve_chemical_equilibrium_native", &solve_chemical_equilibrium_native_binding);), `src/epcsaft/equilibrium.py:489` (@dataclass(frozen=True, slots=True)), `src/epcsaft/native/epcsaft_chemical_equilibrium.cpp:2419` (ChemicalEquilibriumResultNative solve_nonideal_speciation_chemical_equilibrium_ipopt(), `src/epcsaft/reactive_speciation.py:625` (def _solve_reactive_speciation_native()
 
 This entry covers nonideal standard-state routes whose residuals require
 package thermodynamic activity/fugacity calculations.
@@ -301,7 +301,7 @@ package thermodynamic activity/fugacity calculations.
 - Description: Solves coupled neutral reactive LLE through the native liquid-root Ipopt route.
 - Change note: Initial algorithm-registry entry for reactive LLE.
 - LaTeX: `docs/latex/algorithms.tex:195`
-- Code owners: `src/epcsaft/bindings.cpp:2301` (m.def("_native_reactive_lle_eos_nlp_contract", [](), `src/epcsaft/equilibrium.py:625` (@dataclass(frozen=True, slots=True)), `src/epcsaft/native/equilibrium/reactive_phase_equilibrium_problem.cpp:2960` (epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult solve_reactive_phase_liquid_root_route_native(), `src/epcsaft/native/equilibrium_nlp/route_builders.cpp:2230` (ReactiveTwoPhaseEosRouteResult solve_reactive_lle_eos_route()
+- Code owners: `src/epcsaft/bindings.cpp:2301` (m.def("_native_reactive_lle_eos_nlp_contract", [](), `src/epcsaft/equilibrium.py:625` (@dataclass(frozen=True, slots=True)), `src/epcsaft/native/equilibrium/reactive_phase_equilibrium_problem.cpp:2958` (epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult solve_reactive_phase_liquid_root_route_native(), `src/epcsaft/native/equilibrium_nlp/route_builders.cpp:2177` (ReactiveTwoPhaseEosRouteResult solve_reactive_lle_eos_route()
 
 This entry is a coupled reactive phase-equilibrium route, not a staged
 speciation-then-split workflow.
@@ -328,7 +328,7 @@ speciation-then-split workflow.
 - Description: Solves coupled reactive electrolyte LLE through the native liquid-root Ipopt route.
 - Change note: Initial algorithm-registry entry for reactive electrolyte LLE.
 - LaTeX: `docs/latex/algorithms.tex:212`
-- Code owners: `src/epcsaft/bindings.cpp:2338` (m.def("_native_reactive_electrolyte_lle_eos_nlp_contract", [](), `src/epcsaft/equilibrium.py:625` (@dataclass(frozen=True, slots=True)), `src/epcsaft/native/equilibrium/reactive_phase_equilibrium_problem.cpp:2960` (epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult solve_reactive_phase_liquid_root_route_native(), `src/epcsaft/native/equilibrium_nlp/route_builders.cpp:2277` (ReactiveTwoPhaseEosRouteResult solve_reactive_electrolyte_lle_eos_route()
+- Code owners: `src/epcsaft/bindings.cpp:2356` (m.def("_native_reactive_electrolyte_lle_eos_nlp_contract", [](), `src/epcsaft/equilibrium.py:625` (@dataclass(frozen=True, slots=True)), `src/epcsaft/native/equilibrium/reactive_phase_equilibrium_problem.cpp:2958` (epcsaft::native::equilibrium_nlp::ReactiveTwoPhaseEosRouteResult solve_reactive_phase_liquid_root_route_native(), `src/epcsaft/native/equilibrium_nlp/route_builders.cpp:2224` (ReactiveTwoPhaseEosRouteResult solve_reactive_electrolyte_lle_eos_route()
 
 This entry preserves the boundary that the package returns generic reactive
 phase outputs; downstream projects compute application metrics from those
@@ -359,7 +359,7 @@ outputs.
 - Description: Fits currently supported pure-neutral parameter targets through native Ceres.
 - Change note: Initial algorithm-registry entry for pure-neutral regression.
 - LaTeX: `docs/latex/algorithms.tex:232`
-- Code owners: `src/epcsaft/bindings.cpp:3596` (m.def("_fit_pure_neutral_native_ceres", &fit_pure_neutral_native_ceres_binding);), `src/epcsaft/native/epcsaft_regression.cpp:578` (class PureNeutralCeresCostFunction final : public ceres::CostFunction {), `src/epcsaft/regression.py:2386` (def fit_pure_neutral(), `src/epcsaft/regression.py:2723` (def fit_pure_parameters()
+- Code owners: `src/epcsaft/bindings.cpp:3614` (m.def("_fit_pure_neutral_native_ceres", &fit_pure_neutral_native_ceres_binding);), `src/epcsaft/native/epcsaft_regression.cpp:578` (class PureNeutralCeresCostFunction final : public ceres::CostFunction {), `src/epcsaft/regression.py:2386` (def fit_pure_neutral(), `src/epcsaft/regression.py:2723` (def fit_pure_parameters()
 
 This entry covers the implemented pure-neutral native Ceres route and does not
 broaden support to every possible pure-component parameter family.
@@ -386,7 +386,7 @@ broaden support to every possible pure-component parameter family.
 - Description: Fits currently supported pure-ion and Born-related target sets through native Ceres.
 - Change note: Initial algorithm-registry entry for pure-ion regression.
 - LaTeX: `docs/latex/algorithms.tex:249`
-- Code owners: `src/epcsaft/bindings.cpp:3601` (m.def("_fit_generic_native_ceres", &fit_generic_native_ceres_binding);), `src/epcsaft/native/epcsaft_regression.cpp:1537` (class PureIonCeresCostFunction final : public ceres::CostFunction {), `src/epcsaft/regression.py:2771` (def fit_pure_ion(), `src/epcsaft/regression.py:2974` (def fit_liquid_electrolyte_parameters()
+- Code owners: `src/epcsaft/bindings.cpp:3619` (m.def("_fit_generic_native_ceres", &fit_generic_native_ceres_binding);), `src/epcsaft/native/epcsaft_regression.cpp:1537` (class PureIonCeresCostFunction final : public ceres::CostFunction {), `src/epcsaft/regression.py:2771` (def fit_pure_ion(), `src/epcsaft/regression.py:2974` (def fit_liquid_electrolyte_parameters()
 
 This entry is limited to the currently implemented pure-ion target surface.
 
@@ -411,7 +411,7 @@ This entry is limited to the currently implemented pure-ion target surface.
 - Description: Fits the currently implemented constant-k_ij binary parameter route through native Ceres.
 - Change note: Initial algorithm-registry entry keeps l_ij and k_hb_ij out of the claim until implementation evidence exists.
 - LaTeX: `docs/latex/algorithms.tex:265`
-- Code owners: `src/epcsaft/bindings.cpp:3601` (m.def("_fit_generic_native_ceres", &fit_generic_native_ceres_binding);), `src/epcsaft/native/epcsaft_regression.cpp:1660` (class BinaryKijCeresCostFunction final : public ceres::CostFunction {), `src/epcsaft/regression.py:2800` (def fit_binary_parameters()
+- Code owners: `src/epcsaft/bindings.cpp:3619` (m.def("_fit_generic_native_ceres", &fit_generic_native_ceres_binding);), `src/epcsaft/native/epcsaft_regression.cpp:1660` (class BinaryKijCeresCostFunction final : public ceres::CostFunction {), `src/epcsaft/regression.py:2800` (def fit_binary_parameters()
 
 This entry intentionally does not claim native optimizer support for every
 binary parameter family, including `l_{ij}` or `k^{hb}_{ij}`.
